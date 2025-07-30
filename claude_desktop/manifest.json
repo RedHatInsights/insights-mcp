@@ -1,14 +1,14 @@
 {
   "dxt_version": "0.2",
-  "name": "image-builder-mcp",
-  "display_name": "Image Builder MCP",
+  "name": "insights-mcp",
+  "display_name": "Insights MCP",
   "version": "---VERSION---",
-  "description": "Build Red Hat and CentOS linux machine images.\n_REQUIRES_ `podman` to be installed!",
+  "description": "Interact with Red Hat Insights services like the hosted image builder.\n_REQUIRES_ `podman` to be installed!",
   "author": {
     "name": "Florian Schüller",
     "email": "florian.schueller@redhat.com"
   },
-  "homepage": "https://github.com/osbuild/image-builder-mcp",
+  "homepage": "https://github.com/RedHatInsights/insights-mcp",
   "icon": "icon.png",
   "server": {
     "type": "binary",
@@ -18,32 +18,32 @@
       "args": [
             "run",
             "--env",
-            "IMAGE_BUILDER_CLIENT_ID",
+            "INSIGHTS_CLIENT_ID",
             "--env",
-            "IMAGE_BUILDER_CLIENT_SECRET",
+            "INSIGHTS_CLIENT_SECRET",
             "--interactive",
             "--rm",
-            "ghcr.io/osbuild/image-builder-mcp:latest"
+            "ghcr.io/RedHatInsights/insights-mcp:latest"
       ],
       "env": {
-            "IMAGE_BUILDER_CLIENT_ID": "${user_config.IMAGE_BUILDER_CLIENT_ID}",
-            "IMAGE_BUILDER_CLIENT_SECRET": "${user_config.IMAGE_BUILDER_CLIENT_SECRET}"
+            "INSIGHTS_CLIENT_ID": "${user_config.INSIGHTS_CLIENT_ID}",
+            "INSIGHTS_CLIENT_SECRET": "${user_config.INSIGHTS_CLIENT_SECRET}"
       }
     }
   },
   "tools_generated": true,
   "user_config": {
-    "IMAGE_BUILDER_CLIENT_ID": {
+    "INSIGHTS_CLIENT_ID": {
       "type": "string",
       "title": "console.redhat.com client ID",
-      "description": "client ID of a service account of console.redhat.com",
+      "description": "Client ID of a service account of console.redhat.com",
       "required": true,
       "sensitive": true
     },
-    "IMAGE_BUILDER_CLIENT_SECRET": {
+    "INSIGHTS_CLIENT_SECRET": {
       "type": "string",
       "title": "console.redhat.com client secret",
-      "description": "client secret of a service account of console.redhat.com",
+      "description": "Client secret of a service account of console.redhat.com",
       "required": true,
       "sensitive": true
     },

@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "image-builder-mcp"
+name = "insights-mcp"
 version = "0.1.0"
-description = "A Model Context Protocol server for Red Hat Image Builder"
+description = "A Model Context Protocol server for Red Hat Insights"
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
@@ -46,9 +46,9 @@ dev = [
 image-builder-mcp = "image_builder_mcp.server:main"
 
 [project.urls]
-Homepage = "https://github.com/osbuild/image-builder-mcp"
-Repository = "https://github.com/osbuild/image-builder-mcp"
-Issues = "https://github.com/osbuild/image-builder-mcp/issues"
+Homepage = "https://github.com/RedHatInsights/insights-mcp"
+Repository = "https://github.com/RedHatInsights/insights-mcp"
+Issues = "https://github.com/RedHatInsights/insights-mcp/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

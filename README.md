@@ -1,13 +1,14 @@
-# Image Builder MCP
+# Insights MCP
 
 This repo is in a DRAFT and playground state!
 
-An MCP server to interact with [hosted image builder](https://osbuild.org/docs/hosted/architecture/)
+An MCP server to interact with insights services like the
+ * [hosted image builder](https://osbuild.org/docs/hosted/architecture/)
 
 ## Authentication
 
 Go to https://console.redhat.com to `'YOUR USER' ➡ My User Access ➡ Service Accounts` create a service account
-and then set the environment variables `IMAGE_BUILDER_CLIENT_ID` and `IMAGE_BUILDER_CLIENT_SECRET` accordingly.
+and then set the environment variables `INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET` accordingly.
 
 ## Run
 
@@ -55,8 +56,7 @@ make run-stdio
 
 ### Additional info
 
-You can set the environment variable `IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK` to `True` to avoid
-adding a hint to `image-builder-mcp` in newly created blueprints.
+You can set the environment variable `IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK` to `True` to avoid adding a hint to newly created image builder blueprints.
 
 ## Integrations
 
@@ -68,37 +68,37 @@ the following content.
 {
     "inputs": [
         {
-            "id": "image_builder_client_id",
+            "id": "insights_client_id",
             "type": "promptString",
-            "description": "Enter the Image Builder Client ID",
+            "description": "Enter the Red Hat Insights Client ID",
             "default": "",
             "password": true
         },
         {
-            "id": "image_builder_client_secret",
+            "id": "insights_client_secret",
             "type": "promptString",
-            "description": "Enter the Image Builder Client Secret",
+            "description": "Enter the Red Hat Insights Client Secret",
             "default": "",
             "password": true
         }
     ],
     "servers": {
-        "image-builder-mcp-stdio": {
+        "insights-mcp-stdio": {
             "type": "stdio",
             "command": "podman",
             "args": [
                 "run",
                 "--env",
-                "IMAGE_BUILDER_CLIENT_ID",
+                "INSIGHTS_CLIENT_ID",
                 "--env",
-                "IMAGE_BUILDER_CLIENT_SECRET",
+                "INSIGHTS_CLIENT_SECRET",
                 "--interactive",
                 "--rm",
-                "ghcr.io/osbuild/image-builder-mcp:latest"
+                "ghcr.io/RedHatInsights/insights-mcp:latest"
             ],
             "env": {
-                "IMAGE_BUILDER_CLIENT_ID": "${input:image_builder_client_id}",
-                "IMAGE_BUILDER_CLIENT_SECRET": "${input:image_builder_client_secret}"
+                "INSIGHTS_CLIENT_ID": "${input:insights_client_id}",
+                "INSIGHTS_CLIENT_SECRET": "${input:insights_client_secret}"
             }
         }
     }
@@ -112,22 +112,22 @@ To start the integration create a file `~/.cursor/mcp.json` with
 ```
 {
   "mcpServers": {
-    "image-builder-mcp": {
+    "insights-mcp": {
         "type": "stdio",
         "command": "podman",
         "args": [
             "run",
             "--env",
-            "IMAGE_BUILDER_CLIENT_ID",
+            "INSIGHTS_CLIENT_ID",
             "--env",
-            "IMAGE_BUILDER_CLIENT_SECRET",
+            "INSIGHTS_CLIENT_SECRET",
             "--interactive",
             "--rm",
-            "ghcr.io/osbuild/image-builder-mcp:latest"
+            "ghcr.io/RedHatInsights/insights-mcp:latest"
         ],
         "env": {
-            "IMAGE_BUILDER_CLIENT_ID": "",
-            "IMAGE_BUILDER_CLIENT_SECRET": ""
+            "INSIGHTS_CLIENT_ID": "",
+            "INSIGHTS_CLIENT_SECRET": ""
         }
     }
   }
@@ -139,7 +139,7 @@ or use it via "Streamable HTTP"
 start the server:
 
 ```
-podman run --net host --rm ghcr.io/osbuild/image-builder-mcp:latest http
+podman run --net host --rm ghcr.io/RedHatInsights/insights-mcp:latest http
 ```
 
 then integrate:
@@ -147,12 +147,12 @@ then integrate:
 ```
 {
     "mcpServers": {
-        "image-builder-mcp-http": {
+        "insights-mcp-http": {
             "type": "Streamable HTTP",
             "url": "http://localhost:8000/mcp/",
             "headers": {
-                "image-builder-client-id": "",
-                "image-builder-client-secret": ""
+                "insights-client-id": "",
+                "insights-client-secret": ""
             }
         }
     }
@@ -163,16 +163,16 @@ then integrate:
 
 For Claude Desktop there is an extension file in the release section of the project.
 
-Just download the `image-builder-mcp*.dxt` file and add this in Claude Desktop with
+Just download the `insights-mcp*.dxt` file and add this in Claude Desktop with
 
 `Settings -> Extensions -> Advanced Extensions Settings -> Install Extension…`
 
 ### Generic STDIO
 
 For generic integration into other tools via STDIO, you should set the environment variables
-`IMAGE_BUILDER_CLIENT_ID` and `IMAGE_BUILDER_CLIENT_SECRET` and use this command for an
+`INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET` and use this command for an
 integration using podman:
 
 ```bash
-podman run --env IMAGE_BUILDER_CLIENT_ID --env IMAGE_BUILDER_CLIENT_SECRET --interactive --rm ghcr.io/osbuild/image-builder-mcp:latest
+podman run --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --interactive --rm ghcr.io/RedHatInsights/insights-mcp:latest
 ```

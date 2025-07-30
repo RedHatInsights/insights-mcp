@@ -18,8 +18,8 @@ from .oauth import Middleware
 
 from .client import ImageBuilderClient
 
-WATERMARK_CREATED = "Blueprint created via image-builder-mcp"
-WATERMARK_UPDATED = "Blueprint updated via image-builder-mcp"
+WATERMARK_CREATED = "Blueprint created via insights-mcp"
+WATERMARK_UPDATED = "Blueprint updated via insights-mcp"
 
 
 class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
@@ -222,7 +222,7 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
                 self.logger.debug(
                     "Using sid from Bearer token as client_id: %s", client_id)
         else:
-            client_id = headers.get("image-builder-client-id") or self.client_id or ""
+            client_id = headers.get("insights-client-id") or self.client_id or ""
             self.logger.debug("get_client_id request headers: %s", headers)
 
         # explicit check for mypy
@@ -232,7 +232,7 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
 
     def get_client_secret(self, headers: Dict[str, str]) -> str:
         """Get the client secret preferably from the headers."""
-        client_secret = headers.get("image-builder-client-secret") or self.client_secret
+        client_secret = headers.get("insights-client-secret") or self.client_secret
         self.logger.debug("get_client_secret request headers: %s", headers)
 
         if not client_secret:
@@ -267,8 +267,8 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
 
         if self.transport in ["sse", "http"]:
             return (
-                f"{base_message}header variables `image-builder-client-id` and "
-                "`image-builder-client-secret` in your request.\n"
+                f"{base_message}header variables `insights-client-id` and "
+                "`insights-client-secret` in your request.\n"
                 "Here is the direct link for the user's convenience: "
                 "[https://console.redhat.com/iam/service-accounts](https://console.redhat.com/iam/service-accounts) "
                 "Come up with a detailed description of this for the user. "
@@ -277,7 +277,7 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
             )
 
         return (
-            f"{base_message}`IMAGE_BUILDER_CLIENT_ID` and `IMAGE_BUILDER_CLIENT_SECRET` "
+            f"{base_message}`INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET` "
             "in your mcp.json config.\n"
             "Here is the direct link for the user's convenience: "
             "[https://console.redhat.com/iam/service-accounts](https://console.redhat.com/iam/service-accounts) "
@@ -777,15 +777,15 @@ def main():
         args.transport = "stdio"
 
     # Get credentials from environment variables or user input
-    client_id = os.getenv("IMAGE_BUILDER_CLIENT_ID")
-    client_secret = os.getenv("IMAGE_BUILDER_CLIENT_SECRET")
+    client_id = os.getenv("INSIGHTS_CLIENT_ID")
+    client_secret = os.getenv("INSIGHTS_CLIENT_SECRET")
 
     proxy_url = None
     if args.stage:
-        proxy_url = os.getenv("IMAGE_BUILDER_STAGE_PROXY_URL")
+        proxy_url = os.getenv("INSIGHTS_STAGE_PROXY_URL")
         if not proxy_url:
-            print("Please set IMAGE_BUILDER_STAGE_PROXY_URL to access the stage API")
-            print("hint: IMAGE_BUILDER_STAGE_PROXY_URL=http://yoursquidproxy…:3128")
+            print("Please set INSIGHTS_STAGE_PROXY_URL to access the stage API")
+            print("hint: INSIGHTS_STAGE_PROXY_URL=http://yoursquidproxy…:3128")
             sys.exit(1)
 
     if args.debug:
