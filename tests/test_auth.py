@@ -64,8 +64,8 @@ class TestAuthentication:
 
             # Check for relevant parts of the no_auth_error message for default transport
             assert "Tell the user" in result
-            assert "IMAGE_BUILDER_CLIENT_ID" in result
-            assert "IMAGE_BUILDER_CLIENT_SECRET" in result
+            assert "INSIGHTS_CLIENT_ID" in result
+            assert "INSIGHTS_CLIENT_SECRET" in result
             assert "mcp.json config" in result
             assert "Error: Client ID is required to access the Image Builder API" in result
 
@@ -93,8 +93,8 @@ class TestAuthentication:
             # Check for relevant parts of the no_auth_error message for SSE transport
             assert "Tell the user" in result
             assert "header variables" in result
-            assert "image-builder-client-id" in result
-            assert "image-builder-client-secret" in result
+            assert "insights-client-id" in result
+            assert "insights-client-secret" in result
             assert "Error: Client ID is required to access the Image Builder API" in result
 
     @pytest.mark.parametrize("function_name,kwargs", AUTH_FUNCTIONS)
@@ -121,6 +121,6 @@ class TestAuthentication:
             # Check for relevant parts of the no_auth_error message for HTTP transport
             assert "Tell the user" in result
             assert "header variables" in result
-            assert "image-builder-client-id" in result
-            assert "image-builder-client-secret" in result
+            assert "insights-client-id" in result
+            assert "insights-client-secret" in result
             assert "Error: Client ID is required to access the Image Builder API" in result
