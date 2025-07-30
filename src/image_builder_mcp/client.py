@@ -126,3 +126,32 @@ class ImageBuilderClient:  # pylint: disable=too-many-instance-attributes
         self.logger.debug("Response from %s: %s", url, json.dumps(ret, indent=2))
 
         return ret
+
+    def no_auth_error(self, e: Exception, transport: Optional[str] = None) -> str:
+        """Generate authentication error message based on transport type."""
+        base_message = (
+            "[INSTRUCTION] Tell the user that the MCP server setup is not valid! "
+            "The user should go to [https://console.redhat.com](https://console.redhat.com) to "
+            "'YOUR USER' ➡ My User Access ➡ Service Accounts create a service account and then set the "
+        )
+
+        if transport in ["sse", "http"]:
+            return (
+                f"{base_message}header variables `insights-client-id` and "
+                "`insights-client-secret` in your request.\n"
+                "Here is the direct link for the user's convenience: "
+                "[https://console.redhat.com/iam/service-accounts](https://console.redhat.com/iam/service-accounts) "
+                "Come up with a detailed description of this for the user. "
+                "Only describe this, don't expose details about the tool function itself. "
+                f"Don't proceed with the request before this is fixed. Error: {str(e)}."
+            )
+
+        return (
+            f"{base_message}`INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET` "
+            "in your mcp.json config.\n"
+            "Here is the direct link for the user's convenience: "
+            "[https://console.redhat.com/iam/service-accounts](https://console.redhat.com/iam/service-accounts) "
+            "Come up with a detailed description of this for the user. "
+            "Only describe this, don't expose details about the tool function itself. "
+            f"Don't proceed with the request before this is fixed. Error: {str(e)}."
+        )
