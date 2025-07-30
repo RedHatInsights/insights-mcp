@@ -43,8 +43,8 @@ jobs:
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u $ --password-stdin
-          podman manifest push --all --format v2s2 ib-mcp ghcr.io/${{ github.repository }}:${{ needs.generate-tag.outputs.tag }}
-          podman manifest push --all --format v2s2 ib-mcp ghcr.io/${{ github.repository }}:latest
+          podman manifest push --all --format v2s2 ib-mcp docker://ghcr.io/${{ github.repository }}:${{ needs.generate-tag.outputs.tag }}
+          podman manifest push --all --format v2s2 ib-mcp docker://ghcr.io/${{ github.repository }}:latest
 
   build-release-artifacts:
     runs-on: ubuntu-latest
@@ -68,4 +68,4 @@ jobs:
           gh release create "$TAG" \
             --title "Release $TAG" \
             --generate-notes \
-            image-builder-"$TAG".dxt
+            insights-mcp-"$TAG".dxt
