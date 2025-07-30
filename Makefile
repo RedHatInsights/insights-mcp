@@ -1,15 +1,15 @@
 build-prod: ## Build the container image but with the upstream tag
-	podman build --tag ghcr.io/osbuild/image-builder-mcp:latest .
+	podman build --tag ghcr.io/redhatinsights/insights-mcp:latest .
 
 build: ## Build the container image
-	podman build --tag image-builder-mcp .
+	podman build --tag insights-mcp .
 
 # please set from outside
 TAG ?= UNKNOWN
 
 build-claude-extension: ## Build the Claude extension
 	sed -i "s/---VERSION---/$(TAG)/g" claude_desktop/manifest.json
-	zip -j image-builder-$(TAG).dxt claude_desktop/*
+	zip -j insights-mcp-$(TAG).dxt claude_desktop/*
 	sed -i "s/$(TAG)/---VERSION---/g" claude_desktop/manifest.json
 
 lint: ## Run linting with pre-commit
@@ -50,18 +50,18 @@ help: ## Show this help message
 
 .PHONY: build test test-coverage install-test-deps clean-test help run-sse run-http run-stdio
 
-# `IMAGE_BUILDER_CLIENT_ID` and `IMAGE_BUILDER_CLIENT_SECRET` are optional
+# `INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET` are optional
 # if you hand those over via http headers from the client.
 run-sse: build ## Run the MCP server with SSE transport
 	# add firewall rules for fedora
-	podman run --rm --network=host --env IMAGE_BUILDER_CLIENT_ID --env IMAGE_BUILDER_CLIENT_SECRET --name image-builder-mcp-sse localhost/image-builder-mcp:latest sse
+	podman run --rm --network=host --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --name insights-mcp-sse localhost/insights-mcp:latest sse
 
 run-http: build ## Run the MCP server with HTTP streaming transport
 	# add firewall rules for fedora
-	podman run --rm --network=host --env IMAGE_BUILDER_CLIENT_ID --env IMAGE_BUILDER_CLIENT_SECRET --name image-builder-mcp-http localhost/image-builder-mcp:latest http
+	podman run --rm --network=host --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --name insights-mcp-http localhost/insights-mcp:latest http
 
 # just an example command
 # doesn't really make sense
 # rather integrate this with an MCP client directly
 run-stdio: build ## Run the MCP server with stdio transport
-	podman run --interactive --tty --rm --env IMAGE_BUILDER_CLIENT_ID --env IMAGE_BUILDER_CLIENT_SECRET --name image-builder-mcp-stdio localhost/image-builder-mcp:latest
+	podman run --interactive --tty --rm --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --name insights-mcp-stdio localhost/insights-mcp:latest

@@ -138,8 +138,8 @@ def start_mcp_server_process():
             from image_builder_mcp.server import ImageBuilderMCP
 
             # Get credentials from environment (may be None for testing)
-            client_id = os.getenv("IMAGE_BUILDER_CLIENT_ID")
-            client_secret = os.getenv("IMAGE_BUILDER_CLIENT_SECRET")
+            client_id = os.getenv("INSIGHTS_CLIENT_ID")
+            client_secret = os.getenv("INSIGHTS_CLIENT_SECRET")
 
             mcp_server = ImageBuilderMCP(
                 client_id=client_id,
