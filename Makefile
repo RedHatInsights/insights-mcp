@@ -8,12 +8,16 @@ build: generate-docs ## Build the container image
 
 # please set from outside
 TAG ?= UNKNOWN
+CONTAINER_IMAGE ?= ghcr.io/redhatinsights/insights-mcp:latest
 
 .PHONY: build-claude-extension
 build-claude-extension: ## Build the Claude extension
-	sed -i.bak "s/---VERSION---/$(TAG)/g" claude_desktop/manifest.json && rm claude_desktop/manifest.json.bak
-	zip -j insights-mcp-$(TAG).dxt claude_desktop/*
-	sed -i.bak "s/$(TAG)/---VERSION---/g" claude_desktop/manifest.json && rm claude_desktop/manifest.json.bak
+	sed "s/{{VERSION}}/$(TAG)/g; s|{{CONTAINER_IMAGE}}|$(CONTAINER_IMAGE)|g" claude_desktop/manifest.json.template > claude_desktop/manifest.json
+	zip -j insights-mcp-$(TAG).dxt claude_desktop/manifest.json claude_desktop/icon.png
+	rm claude_desktop/manifest.json
+
+build-claude-extension-dev: ## Build Claude extension for local development
+	$(MAKE) build-claude-extension TAG=local-dev CONTAINER_IMAGE=localhost/insights-mcp:latest
 
 .PHONY: lint
 lint: generate-docs ## Run linting with pre-commit

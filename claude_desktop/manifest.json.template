@@ -2,7 +2,7 @@
   "dxt_version": "0.2",
   "name": "insights-mcp",
   "display_name": "Insights MCP",
-  "version": "---VERSION---",
+  "version": "{{VERSION}}",
   "description": "Interact with Red Hat Insights services like the hosted image builder.\n_REQUIRES_ `podman` to be installed!",
   "author": {
     "name": "Florian Schüller",
@@ -23,7 +23,7 @@
             "INSIGHTS_CLIENT_SECRET",
             "--interactive",
             "--rm",
-            "ghcr.io/redhatinsights/insights-mcp:latest"
+            "{{CONTAINER_IMAGE}}"
       ],
       "env": {
             "INSIGHTS_CLIENT_ID": "${user_config.INSIGHTS_CLIENT_ID}",
