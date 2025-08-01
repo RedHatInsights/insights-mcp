@@ -1,20 +1,21 @@
 """Image Builder MCP server for creating and managing Linux images."""
 
 import argparse
+import asyncio
 import json
 import logging
 import os
 import sys
-from typing import Dict, Optional
 
-from fastmcp import FastMCP
+import httpx
+import jwt
+import uvicorn
 from fastmcp.server.dependencies import get_http_headers
 from fastmcp.tools.tool import Tool
 from mcp.types import ToolAnnotations
-import uvicorn
-import jwt
 
-from insights_mcp import InsightsClient
+from insights_mcp.client import InsightsClient, INSIGHTS_BASE_URL
+from insights_mcp.mcp import InsightsMCP  # TODO: import from insights_mcp directly, add to __all__
 
 from .oauth import Middleware
 
@@ -22,59 +23,26 @@ WATERMARK_CREATED = "Blueprint created via insights-mcp"
 WATERMARK_UPDATED = "Blueprint updated via insights-mcp"
 
 
-class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
+class ImageBuilderMCP(InsightsMCP):
     """MCP server for Red Hat Image Builder integration.
 
     This server provides tools for creating, managing, and building
     custom Linux images using the Red Hat Image Builder service.
     """
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(
             self,
-            client_id: Optional[str],
-            client_secret: Optional[str],
             default_response_size: int = 10,
-            stage: Optional[bool] = False,
-            proxy_url: Optional[str] = None,
-            transport: Optional[str] = None,
-            oauth_enabled: bool = False):
-        self.stage = stage
-        self.proxy_url = proxy_url
-        self.transport = transport
+            insights_base_url: str = INSIGHTS_BASE_URL,
+            # stage: Optional[bool] = False,  # TODO: solve switch to stage with configurable base path in client
+    ):
         self.default_response_size = default_response_size
         # TBD: make this configurable
         # probably we want to destiguish a hosted MCP server from
         # a local one (deployed by a customer)
         self.image_builder_mcp_client_id = "mcp"
-        self.oauth_enabled = oauth_enabled
 
         self.logger = logging.getLogger("ImageBuilderMCP")
-
-        self.client_noauth = InsightsClient(
-            api_path="api/image-builder/v1",
-            mcp_transport=self.transport,
-            oauth_enabled=self.oauth_enabled,
-            headers={"X-ImageBuilder-ui": self.image_builder_mcp_client_id},
-            proxy_url=self.proxy_url,
-        )
-
-        try:
-            # TBD: change openapi spec to have a proper schema-enum
-            # for image types and architectures
-            self.logger.info("Getting openapi")
-            openapi = json.loads(self.get_openapi(1))
-
-            self.image_types = list(openapi["components"]["schemas"]["ImageTypes"]["enum"])
-            self.image_types.sort()
-
-            self.architectures = list(openapi["components"]["schemas"]["ImageRequest"]
-                                      ["properties"]["architecture"]["enum"])
-            self.architectures.sort()
-
-            self.logger.info("Supported image types: %s", self.image_types)
-            self.logger.info("Supported architectures: %s", self.architectures)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            raise ValueError("Error getting openapi for image types and architectures") from e
 
         general_intro = """You are a comprehensive Linux Image Builder assistant that creates custom
         Linux disk images, ISOs, and virtual machine images.
@@ -132,32 +100,46 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
 
         super().__init__(
             name="Image Builder MCP Server",
+            toolset_name="image-builder",
+            api_path="api/image-builder/v1",
+            headers={"X-ImageBuilder-ui": self.image_builder_mcp_client_id},
             instructions=general_intro
         )
+        self.insights_base_url = insights_base_url
 
         # cache the client for all users
         # TBD: purge cache after some time
-        self.clients = {}
-        self.client_id = None
-        self.client_secret = None
-
-        if client_id and client_secret:
-            self.clients[client_id] = InsightsClient(
-                api_path="api/image-builder/v1",
-                client_id=client_id,
-                client_secret=client_secret,
-                mcp_transport=self.transport,
-                oauth_enabled=self.oauth_enabled,
-                proxy_url=self.proxy_url,
-                headers={"X-ImageBuilder-ui": self.image_builder_mcp_client_id},
-            )
-            self.client_id = client_id
-            self.client_secret = client_secret
+        self.clients = {self.insights_client.client_id: self.insights_client}
 
         self.register_tools()
 
+    def _get_image_types_architectures(self) -> tuple[list[str], list[str]] | None:
+        """Get the list of image types available to build images with."""
+        try:
+            # TBD: change openapi spec to have a proper schema-enum
+            # for image types and architectures
+            self.logger.info("Getting openapi")
+            openapi = json.loads(self.get_openapi_synchronous())
+
+            image_types = list(openapi["components"]["schemas"]["ImageTypes"]["enum"])
+            image_types.sort()
+
+            architectures = list(openapi["components"]["schemas"]["ImageRequest"]
+                                 ["properties"]["architecture"]["enum"])
+            architectures.sort()
+
+            self.logger.info("Supported image types: %s", image_types)
+            self.logger.info("Supported architectures: %s", architectures)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            raise ValueError("Error getting openapi for image types and architectures") from e
+        return image_types, architectures
+
     def register_tools(self):
         """Register all available tools with the MCP server."""
+        image_types, architectures = self._get_image_types_architectures()
+        if not image_types or not architectures:
+            return
+
         # prepend generic keywords for use of many other tools
         # and register with "self.tool()"
         tool_functions = [self.get_openapi,
@@ -178,8 +160,8 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
                 openWorldHint=True
             )
             description_str = f.__doc__.format(
-                architectures=", ".join(self.architectures),
-                image_types=", ".join(self.image_types)
+                architectures=", ".join(architectures),
+                image_types=", ".join(image_types)
             )
             tool.description = description_str
             tool.title = description_str.split("\n", 1)[0]
@@ -209,10 +191,10 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
         except Exception as e:  # pylint: disable=broad-exception-caught
             return f"Error getting distributions: {str(e)}"
 
-    def get_client_id(self, headers: Dict[str, str]) -> str:
+    def get_client_id(self, headers: dict[str, str]) -> str:
         """Get the client ID preferably from the headers."""
-        client_id = self.client_id or ""
-        if self.oauth_enabled:
+        client_id = self.insights_client.client_id or ""
+        if self.insights_client.oauth_enabled:
             caller_headers_auth = headers.get("authorization")
             if caller_headers_auth and caller_headers_auth.startswith("Bearer "):
                 # decode bearer token to get sid and use as client_id
@@ -222,7 +204,7 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
                 self.logger.debug(
                     "Using sid from Bearer token as client_id: %s", client_id)
         else:
-            client_id = headers.get("insights-client-id") or self.client_id or ""
+            client_id = headers.get("insights-client-id") or self.insights_client.client_id or ""
             self.logger.debug("get_client_id request headers: %s", headers)
 
         # explicit check for mypy
@@ -230,38 +212,49 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
             raise ValueError("Client ID is required to access the Image Builder API")
         return client_id
 
-    def get_client_secret(self, headers: Dict[str, str]) -> str:
+    def get_client_secret(self, headers: dict[str, str]) -> str:
         """Get the client secret preferably from the headers."""
-        client_secret = headers.get("insights-client-secret") or self.client_secret
+        client_secret = headers.get("insights-client-secret") or self.insights_client.client_secret
         self.logger.debug("get_client_secret request headers: %s", headers)
 
         if not client_secret:
             raise ValueError("Client secret is required to access the Image Builder API")
         return client_secret
 
-    def get_client(self, headers: Dict[str, str]) -> InsightsClient:
+    def get_client(self, headers: dict[str, str]) -> InsightsClient:
         """Get the InsightsClient instance for the current user."""
         client_id = self.get_client_id(headers)
         client = self.clients.get(client_id)
         if not client:
             client_secret = None
-            if not self.oauth_enabled:
+            if not self.insights_client.oauth_enabled:
                 client_secret = self.get_client_secret(headers)
             client = InsightsClient(
                 api_path="api/image-builder/v1",
                 client_id=client_id,
                 client_secret=client_secret,
-                mcp_transport=self.transport,
-                oauth_enabled=self.oauth_enabled,
+                mcp_transport=self.insights_client.mcp_transport,
+                oauth_enabled=self.insights_client.oauth_enabled,
                 headers={"X-ImageBuilder-ui": self.image_builder_mcp_client_id},
-                proxy_url=self.proxy_url,
+                proxy_url=self.insights_client.proxy_url,
             )
             self.clients[client_id] = client
         return client
 
-    def no_auth_error(self, e: Exception) -> str:
+    def get_openapi_synchronous(self) -> str:
+        """
+        Get OpenAPI spec synchronously to get image types and architectures for tool descriptions.
+
+        This function is synchronous because it is called from the constructor
+        before initialization of insights_client.
+        """
+        base_url = self.insights_base_url
+        api_path = self.api_path
+        return httpx.get(f"{base_url}/{api_path}/openapi.json", timeout=60).text
+
+    def no_auth_error(self, e: httpx.HTTPStatusError | ValueError) -> str:
         """Generate authentication error message based on transport type."""
-        return self.client_noauth.no_auth_error(e)
+        return self.insights_client.client.no_auth_error(e)
 
     async def blueprint_compose(self, blueprint_uuid: str) -> str:
         """Compose an image from a blueprint UUID created with create_blueprint, get_blueprints.
@@ -293,7 +286,7 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
         response_str = "[INSTRUCTION] Use the tool get_compose_details to get the details of the compose\n"
         response_str += "like the current build status\n"
         response_str += "[ANSWER] Compose created successfully:"
-        build_ids_str = []
+        build_ids_str: list[str] = []
 
         if isinstance(response, dict):
             return f"Error: the response of blueprint_compose is a dict. This is not expected. " \
@@ -326,7 +319,7 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
         # response_size is just a dummy parameter for langflow
         _ = response_size  # Unused parameter, required by interface
         try:
-            response = await self.client_noauth.get("openapi.json")
+            response = await self.insights_client.get("openapi.json", noauth=True)
             return json.dumps(response)
         # avoid crashing the server so we'll stick to the broad exception catch
         except Exception as e:  # pylint: disable=broad-exception-caught
@@ -417,7 +410,7 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
 
     def get_blueprint_url(self, client: InsightsClient, blueprint_id: str) -> str:
         """Get the URL for a blueprint."""
-        return f"{client.base_url}/insights/image-builder/imagewizard/{blueprint_id}"
+        return f"{client.insights_base_url}/insights/image-builder/imagewizard/{blueprint_id}"
 
     async def get_blueprints(self, limit: int = 7, offset: int = 0, search_string: str | None = None) -> str:
         """Show user's image blueprints (saved image templates/configurations for
@@ -529,7 +522,7 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
         }
 
         if compose.get("blueprint_id"):
-            data["blueprint_url"] = (f"{client.base_url}/insights/image-builder/"
+            data["blueprint_url"] = (f"{client.insights_base_url}/insights/image-builder/"
                                      f"imagewizard/{compose['blueprint_id']}")
         else:
             data["blueprint_url"] = "N/A"
@@ -721,7 +714,10 @@ gcloud compute images create {image_name}-copy --source-image-project red-hat-im
             return f"Error: {e}"
 
 
-def main():
+mcp_server = ImageBuilderMCP()
+
+
+async def main():
     """Main entry point for the Image Builder MCP server."""
     parser = argparse.ArgumentParser(
         description="Run Image Builder MCP server.")
@@ -771,14 +767,15 @@ def main():
 
     oauth_enabled = os.getenv("OAUTH_ENABLED", "false").lower() == "true"
 
-    # Create and run the MCP server
-    mcp_server = ImageBuilderMCP(
-        client_id,
-        client_secret,
-        stage=args.stage,
+    # Initialize the insights client
+    mcp_server.init_insights_client(
+        client_id=client_id,
+        client_secret=client_secret,
         proxy_url=proxy_url,
-        transport=args.transport,
         oauth_enabled=oauth_enabled,
+        mcp_transport=args.transport,
+        base_url=INSIGHTS_BASE_URL if not args.stage else os.getenv("INSIGHTS_STAGE_BASE_URL"),
+        refresh_token=os.getenv("INSIGHTS_REFRESH_TOKEN"),
     )
 
     if args.transport == "sse":
