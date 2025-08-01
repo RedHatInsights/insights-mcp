@@ -59,6 +59,9 @@ where = ["src"]
 [tool.pylint.format]
 max-line-length = 120
 
+[tool.pylint.messages_control]
+disable = ["fixme"]
+
 [tool.autopep8]
 max_line_length = 120
 
