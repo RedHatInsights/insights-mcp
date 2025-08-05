@@ -22,15 +22,17 @@ class TestAuthentication:
         ('blueprint_compose', {'blueprint_uuid': '12345678-1234-1234-1234-123456789012'}),
     ]
 
+    @pytest.mark.asyncio
     @pytest.mark.parametrize("function_name,kwargs", AUTH_FUNCTIONS)
-    def test_function_no_auth(self, function_name, kwargs):
+    async def test_function_no_auth(self, function_name, kwargs):
         """Test that functions without authentication return error."""
-        mcp_server = ImageBuilderMCP(
+        mcp_server = ImageBuilderMCP()
+        mcp_server.init_insights_client(
             client_id='test-client-id',
             client_secret='test-client-secret',
-            stage=False,
-            oauth_enabled=False
+            oauth_enabled=False,
         )
+        mcp_server.register_tools()
 
         # Setup mocks - no credentials
         with patch.object(image_builder_mcp, 'get_http_headers') as mock_headers:
@@ -38,29 +40,31 @@ class TestAuthentication:
 
             # Call the method
             method = getattr(mcp_server, function_name)
-            result = method(**kwargs)
+            result = await method(**kwargs)
 
             # Should return authentication error
             # The actual implementation makes API calls and gets 401 errors when no auth is provided
             assert result.startswith("Error:")
 
+    @pytest.mark.asyncio
     @pytest.mark.parametrize("function_name,kwargs", AUTH_FUNCTIONS)
-    def test_function_no_auth_error_message(self, function_name, kwargs):
+    async def test_function_no_auth_error_message(self, function_name, kwargs):
         """Test that functions return the no_auth_error() message when authentication is missing."""
         # Create MCP server without default credentials
-        mcp_server = ImageBuilderMCP(
+        mcp_server = ImageBuilderMCP()
+        mcp_server.init_insights_client(
             client_id=None,
             client_secret=None,
-            stage=False,
-            oauth_enabled=False
+            oauth_enabled=False,
         )
+        mcp_server.register_tools()
 
         # Test default transport mode
         with patch.object(image_builder_mcp, 'get_http_headers') as mock_headers:
             mock_headers.return_value = {}  # No auth headers
 
             method = getattr(mcp_server, function_name)
-            result = method(**kwargs)
+            result = await method(**kwargs)
 
             # Check for relevant parts of the no_auth_error message for default transport
             assert "Tell the user" in result
@@ -69,26 +73,28 @@ class TestAuthentication:
             assert "mcp.json config" in result
             assert "Error: Client ID is required to access the Image Builder API" in result
 
+    @pytest.mark.asyncio
     @pytest.mark.parametrize("function_name,kwargs", AUTH_FUNCTIONS)
-    def test_function_no_auth_error_message_sse_transport(self, function_name, kwargs):
+    async def test_function_no_auth_error_message_sse_transport(self, function_name, kwargs):
         """Test that functions return the no_auth_error() message for SSE transport.
 
         Tests the case when authentication is missing.
         """
         # Create MCP server with SSE transport
-        mcp_server = ImageBuilderMCP(
+        mcp_server = ImageBuilderMCP()
+        mcp_server.init_insights_client(
             client_id=None,
             client_secret=None,
-            stage=False,
-            transport="sse",
-            oauth_enabled=False
+            oauth_enabled=False,
+            mcp_transport="sse",
         )
+        mcp_server.register_tools()
 
         with patch.object(image_builder_mcp, 'get_http_headers') as mock_headers:
             mock_headers.return_value = {}  # No auth headers
 
             method = getattr(mcp_server, function_name)
-            result = method(**kwargs)
+            result = await method(**kwargs)
 
             # Check for relevant parts of the no_auth_error message for SSE transport
             assert "Tell the user" in result
@@ -97,26 +103,28 @@ class TestAuthentication:
             assert "insights-client-secret" in result
             assert "Error: Client ID is required to access the Image Builder API" in result
 
+    @pytest.mark.asyncio
     @pytest.mark.parametrize("function_name,kwargs", AUTH_FUNCTIONS)
-    def test_function_no_auth_error_message_http_transport(self, function_name, kwargs):
+    async def test_function_no_auth_error_message_http_transport(self, function_name, kwargs):
         """Test that functions return the no_auth_error() message for HTTP transport.
 
         Tests the case when authentication is missing.
         """
         # Create MCP server with HTTP transport
-        mcp_server = ImageBuilderMCP(
+        mcp_server = ImageBuilderMCP()
+        mcp_server.init_insights_client(
             client_id=None,
             client_secret=None,
-            stage=False,
-            transport="http",
-            oauth_enabled=False
+            oauth_enabled=False,
+            mcp_transport="http",
         )
+        mcp_server.register_tools()
 
         with patch.object(image_builder_mcp, 'get_http_headers') as mock_headers:
             mock_headers.return_value = {}  # No auth headers
 
             method = getattr(mcp_server, function_name)
-            result = method(**kwargs)
+            result = await method(**kwargs)
 
             # Check for relevant parts of the no_auth_error message for HTTP transport
             assert "Tell the user" in result
