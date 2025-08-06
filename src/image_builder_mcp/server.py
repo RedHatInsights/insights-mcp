@@ -5,7 +5,6 @@ import json
 import logging
 import os
 import sys
-from typing import override
 
 import httpx
 import jwt
@@ -129,7 +128,6 @@ class ImageBuilderMCP(InsightsMCP):
             raise ValueError("Error getting openapi for image types and architectures") from e
         return image_types, architectures
 
-    @override
     def register_tools(self):
         """Register all available tools with the MCP server."""
         image_types, architectures = self._get_image_types_architectures()
