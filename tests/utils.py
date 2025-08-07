@@ -141,14 +141,14 @@ def start_mcp_server_process():
             client_id = os.getenv("INSIGHTS_CLIENT_ID")
             client_secret = os.getenv("INSIGHTS_CLIENT_SECRET")
 
-            mcp_server = ImageBuilderMCP(
+            mcp_server = ImageBuilderMCP()
+            mcp_server.init_insights_client(
                 client_id=client_id,
                 client_secret=client_secret,
-                stage=False,  # Use production API
-                proxy_url=None,
-                transport="http",
                 oauth_enabled=False,
+                mcp_transport="http",
             )
+            mcp_server.register_tools()
 
             # Signal that server is starting
             server_queue.put("starting")
