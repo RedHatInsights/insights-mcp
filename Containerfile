@@ -22,4 +22,4 @@ COPY --from=builder /opt/app-root/lib/python3.12/site-packages/ /opt/app-root/li
 COPY --from=builder /opt/app-root/bin/ /opt/app-root/bin/
 
 # Command to run the application
-ENTRYPOINT ["python", "-m", "image_builder_mcp"]
+ENTRYPOINT ["python", "-m", "insights_mcp"]

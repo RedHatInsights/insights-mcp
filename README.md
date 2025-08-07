@@ -22,18 +22,18 @@ pip install -e .
 Then run using the CLI entry point:
 
 ```
-image-builder-mcp sse
+insights-mcp sse
 ```
 
-This will start `image-builder-mcp` server at http://localhost:9000/sse
+This will start `insights-mcp` server at http://localhost:9000/sse
 
 For HTTP streaming transport:
 
 ```
-`image-builder-mcp` http
+`insights-mcp` http
 ```
 
-This will start `image-builder-mcp` server with HTTP streaming transport at http://localhost:8000
+This will start `insights-mcp` server with HTTP streaming transport at http://localhost:8000
 
 ### Using Podman/Docker
 
