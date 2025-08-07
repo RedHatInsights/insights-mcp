@@ -55,7 +55,7 @@ class InsightsMCP(FastMCP):
     def init_insights_client(  # pylint: disable=too-many-arguments
         self,
         *,
-        base_url: str = INSIGHTS_BASE_URL,  # TODO: make this configurable
+        base_url: str = INSIGHTS_BASE_URL,
         client_id: str | None = None,
         client_secret: str | None = None,
         refresh_token: str | None = None,
@@ -87,7 +87,7 @@ class InsightsMCP(FastMCP):
         if headers is not None:
             self.headers.update(headers)
 
-        self.insights_client = InsightsClient(
+        self.insights_client = InsightsClient(  # pylint: disable=duplicate-code
             api_path=self.api_path,
             base_url=base_url,
             client_id=client_id,
