@@ -24,7 +24,7 @@ In both cases if you are in doubt, please disable/remove the `INSIGHTS_CLIENT_ID
 Install the package in development mode:
 
 ```
-pip install -e .
+uv tool install -e .
 ```
 
 Then run using the CLI entry point:
