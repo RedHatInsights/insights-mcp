@@ -60,3 +60,9 @@ repos:
           - llama-index-core
           - llama-index-tools-mcp
           - llama-index-llms-openai
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.7
+    hooks:
+      - id: ruff-check
+      # enable after https://github.com/RedHatInsights/insights-mcp/pull/1 is merged
+      # - id: ruff-format
