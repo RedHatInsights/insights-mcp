@@ -1,81 +1,40 @@
 """Image Builder MCP server for creating and managing Linux images."""
 
-import argparse
 import json
 import logging
 import os
-import sys
-from typing import Dict, Optional
 
-from fastmcp import FastMCP
+import httpx
+import jwt
 from fastmcp.server.dependencies import get_http_headers
 from fastmcp.tools.tool import Tool
 from mcp.types import ToolAnnotations
-import uvicorn
-import jwt
 
-from .oauth import Middleware
-
-from .client import ImageBuilderClient
+from insights_mcp.client import InsightsClient
+from insights_mcp.mcp import InsightsMCP
 
 WATERMARK_CREATED = "Blueprint created via insights-mcp"
 WATERMARK_UPDATED = "Blueprint updated via insights-mcp"
 
 
-class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
+class ImageBuilderMCP(InsightsMCP):
     """MCP server for Red Hat Image Builder integration.
 
     This server provides tools for creating, managing, and building
     custom Linux images using the Red Hat Image Builder service.
     """
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(
             self,
-            client_id: Optional[str],
-            client_secret: Optional[str],
             default_response_size: int = 10,
-            stage: Optional[bool] = False,
-            proxy_url: Optional[str] = None,
-            transport: Optional[str] = None,
-            oauth_enabled: bool = False):
-        self.stage = stage
-        self.proxy_url = proxy_url
-        self.transport = transport
+    ):
         self.default_response_size = default_response_size
         # TBD: make this configurable
         # probably we want to destiguish a hosted MCP server from
         # a local one (deployed by a customer)
         self.image_builder_mcp_client_id = "mcp"
-        self.oauth_enabled = oauth_enabled
 
         self.logger = logging.getLogger("ImageBuilderMCP")
-
-        self.client_noauth = ImageBuilderClient(
-            client_id=None,
-            client_secret=None,
-            stage=self.stage,
-            proxy_url=self.proxy_url,
-            image_builder_mcp_client_id=self.image_builder_mcp_client_id,
-            oauth_enabled=self.oauth_enabled
-        )
-
-        try:
-            # TBD: change openapi spec to have a proper schema-enum
-            # for image types and architectures
-            self.logger.info("Getting openapi")
-            openapi = json.loads(self.get_openapi(1))
-
-            self.image_types = list(openapi["components"]["schemas"]["ImageTypes"]["enum"])
-            self.image_types.sort()
-
-            self.architectures = list(openapi["components"]["schemas"]["ImageRequest"]
-                                      ["properties"]["architecture"]["enum"])
-            self.architectures.sort()
-
-            self.logger.info("Supported image types: %s", self.image_types)
-            self.logger.info("Supported architectures: %s", self.architectures)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            raise ValueError("Error getting openapi for image types and architectures") from e
 
         general_intro = """You are a comprehensive Linux Image Builder assistant that creates custom
         Linux disk images, ISOs, and virtual machine images.
@@ -133,31 +92,43 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
 
         super().__init__(
             name="Image Builder MCP Server",
+            toolset_name="image-builder",
+            api_path="api/image-builder/v1",
+            headers={"X-ImageBuilder-ui": self.image_builder_mcp_client_id},
             instructions=general_intro
         )
 
         # cache the client for all users
         # TBD: purge cache after some time
-        self.clients = {}
-        self.client_id = None
-        self.client_secret = None
+        self.clients = {self.insights_client.client_id: self.insights_client}
 
-        if client_id and client_secret:
-            self.clients[client_id] = ImageBuilderClient(
-                client_id,
-                client_secret,
-                stage=self.stage,
-                proxy_url=self.proxy_url,
-                image_builder_mcp_client_id=self.image_builder_mcp_client_id,
-                oauth_enabled=self.oauth_enabled
-            )
-            self.client_id = client_id
-            self.client_secret = client_secret
+    def _get_image_types_architectures(self) -> tuple[list[str], list[str]] | None:
+        """Get the list of image types available to build images with."""
+        try:
+            # TBD: change openapi spec to have a proper schema-enum
+            # for image types and architectures
+            self.logger.info("Getting openapi")
+            openapi = json.loads(self.get_openapi_synchronous())
 
-        self.register_tools()
+            image_types = list(openapi["components"]["schemas"]["ImageTypes"]["enum"])
+            image_types.sort()
+
+            architectures = list(openapi["components"]["schemas"]["ImageRequest"]
+                                 ["properties"]["architecture"]["enum"])
+            architectures.sort()
+
+            self.logger.info("Supported image types: %s", image_types)
+            self.logger.info("Supported architectures: %s", architectures)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            raise ValueError("Error getting openapi for image types and architectures") from e
+        return image_types, architectures
 
     def register_tools(self):
         """Register all available tools with the MCP server."""
+        image_types, architectures = self._get_image_types_architectures()
+        if not image_types or not architectures:
+            return
+
         # prepend generic keywords for use of many other tools
         # and register with "self.tool()"
         tool_functions = [self.get_openapi,
@@ -178,14 +149,14 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
                 openWorldHint=True
             )
             description_str = f.__doc__.format(
-                architectures=", ".join(self.architectures),
-                image_types=", ".join(self.image_types)
+                architectures=", ".join(architectures),
+                image_types=", ".join(image_types)
             )
             tool.description = description_str
             tool.title = description_str.split("\n", 1)[0]
             self.add_tool(tool)
 
-    def get_distributions(self) -> str:
+    async def get_distributions(self) -> str:
         """Get the list of distributions available to build images with.
 
         🟢 CALL IMMEDIATELY - No information gathering required.
@@ -204,15 +175,15 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
             return self.no_auth_error(e)
 
         try:
-            distributions = client.make_request("distributions")
+            distributions = await client.get("distributions")
             return json.dumps(distributions)
         except Exception as e:  # pylint: disable=broad-exception-caught
             return f"Error getting distributions: {str(e)}"
 
-    def get_client_id(self, headers: Dict[str, str]) -> str:
+    def get_client_id(self, headers: dict[str, str]) -> str:
         """Get the client ID preferably from the headers."""
-        client_id = self.client_id or ""
-        if self.oauth_enabled:
+        client_id = self.insights_client.client_id or ""
+        if self.insights_client.oauth_enabled:
             caller_headers_auth = headers.get("authorization")
             if caller_headers_auth and caller_headers_auth.startswith("Bearer "):
                 # decode bearer token to get sid and use as client_id
@@ -222,7 +193,7 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
                 self.logger.debug(
                     "Using sid from Bearer token as client_id: %s", client_id)
         else:
-            client_id = headers.get("insights-client-id") or self.client_id or ""
+            client_id = headers.get("insights-client-id") or self.insights_client.client_id or ""
             self.logger.debug("get_client_id request headers: %s", headers)
 
         # explicit check for mypy
@@ -230,63 +201,53 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
             raise ValueError("Client ID is required to access the Image Builder API")
         return client_id
 
-    def get_client_secret(self, headers: Dict[str, str]) -> str:
+    def get_client_secret(self, headers: dict[str, str]) -> str:
         """Get the client secret preferably from the headers."""
-        client_secret = headers.get("insights-client-secret") or self.client_secret
+        client_secret = headers.get("insights-client-secret") or self.insights_client.client_secret
         self.logger.debug("get_client_secret request headers: %s", headers)
 
         if not client_secret:
             raise ValueError("Client secret is required to access the Image Builder API")
         return client_secret
 
-    def get_client(self, headers: Dict[str, str]) -> ImageBuilderClient:
-        """Get the ImageBuilderClient instance for the current user."""
+    def get_client(self, headers: dict[str, str]) -> InsightsClient:
+        """Get the InsightsClient instance for the current user."""
         client_id = self.get_client_id(headers)
         client = self.clients.get(client_id)
         if not client:
             client_secret = None
-            if not self.oauth_enabled:
+            if not self.insights_client.oauth_enabled:
                 client_secret = self.get_client_secret(headers)
-            client = ImageBuilderClient(
-                client_id,
-                client_secret,
-                stage=self.stage,
-                proxy_url=self.proxy_url,
-                image_builder_mcp_client_id=self.image_builder_mcp_client_id,
-                oauth_enabled=self.oauth_enabled)
+            client = InsightsClient(
+                api_path="api/image-builder/v1",
+                client_id=client_id,
+                client_secret=client_secret,
+                mcp_transport=self.insights_client.mcp_transport,
+                oauth_enabled=self.insights_client.oauth_enabled,
+                headers={"X-ImageBuilder-ui": self.image_builder_mcp_client_id},
+                proxy_url=self.insights_client.proxy_url,
+            )
             self.clients[client_id] = client
         return client
 
-    def no_auth_error(self, e: Exception) -> str:
+    def get_openapi_synchronous(self) -> str:
+        """
+        Get OpenAPI spec synchronously to get image types and architectures for tool descriptions.
+
+        This function is synchronous because it is called from the constructor
+        before initialization of insights_client.
+        """
+        base_url = self.insights_client.insights_base_url
+        if not base_url:
+            raise ValueError("Insights base URL is not set, initialize the client with init_insights_client()")
+        api_path = self.api_path
+        return httpx.get(f"{base_url}/{api_path}/openapi.json", timeout=60).text
+
+    def no_auth_error(self, e: httpx.HTTPStatusError | ValueError) -> str:
         """Generate authentication error message based on transport type."""
-        base_message = (
-            "[INSTRUCTION] Tell the user that the MCP server setup is not valid! "
-            "The user should go to [https://console.redhat.com](https://console.redhat.com) to "
-            "'YOUR USER' ➡ My User Access ➡ Service Accounts create a service account and then set the "
-        )
+        return self.insights_client.client.no_auth_error(e)
 
-        if self.transport in ["sse", "http"]:
-            return (
-                f"{base_message}header variables `insights-client-id` and "
-                "`insights-client-secret` in your request.\n"
-                "Here is the direct link for the user's convenience: "
-                "[https://console.redhat.com/iam/service-accounts](https://console.redhat.com/iam/service-accounts) "
-                "Come up with a detailed description of this for the user. "
-                "Only describe this, don't expose details about the tool function itself. "
-                f"Don't proceed with the request before this is fixed. Error: {str(e)}."
-            )
-
-        return (
-            f"{base_message}`INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET` "
-            "in your mcp.json config.\n"
-            "Here is the direct link for the user's convenience: "
-            "[https://console.redhat.com/iam/service-accounts](https://console.redhat.com/iam/service-accounts) "
-            "Come up with a detailed description of this for the user. "
-            "Only describe this, don't expose details about the tool function itself. "
-            f"Don't proceed with the request before this is fixed. Error: {str(e)}."
-        )
-
-    def blueprint_compose(self, blueprint_uuid: str) -> str:
+    async def blueprint_compose(self, blueprint_uuid: str) -> str:
         """Compose an image from a blueprint UUID created with create_blueprint, get_blueprints.
         If the UUID is not clear, ask the user whether to create a new blueprint with create_blueprint
         or use an existing blueprint from get_blueprints.
@@ -307,8 +268,8 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
             return self.no_auth_error(e)
 
         try:
-            response = client.make_request(
-                f"blueprints/{blueprint_uuid}/compose", method="POST")
+            response = await client.post(
+                f"blueprints/{blueprint_uuid}/compose")
         # avoid crashing the server so we'll stick to the broad exception catch
         except Exception as e:  # pylint: disable=broad-exception-caught
             return f"Error: {str(e)} in blueprint_compose {blueprint_uuid}"
@@ -316,7 +277,7 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
         response_str = "[INSTRUCTION] Use the tool get_compose_details to get the details of the compose\n"
         response_str += "like the current build status\n"
         response_str += "[ANSWER] Compose created successfully:"
-        build_ids_str = []
+        build_ids_str: list[str] = []
 
         if isinstance(response, dict):
             return f"Error: the response of blueprint_compose is a dict. This is not expected. " \
@@ -332,7 +293,7 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
         response_str += "\nWe could double check the details or start the build/compose"
         return response_str
 
-    def get_openapi(self, response_size: int) -> str:
+    async def get_openapi(self, response_size: int) -> str:
         """Get OpenAPI spec. Use this to get details e.g for a new blueprint
 
         🟢 CALL IMMEDIATELY - No information gathering required.
@@ -349,13 +310,13 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
         # response_size is just a dummy parameter for langflow
         _ = response_size  # Unused parameter, required by interface
         try:
-            response = self.client_noauth.make_request("openapi.json")
+            response = await self.insights_client.get("openapi.json", noauth=True)
             return json.dumps(response)
         # avoid crashing the server so we'll stick to the broad exception catch
         except Exception as e:  # pylint: disable=broad-exception-caught
             return f"Error: {str(e)}"
 
-    def create_blueprint(self, data: dict) -> str:
+    async def create_blueprint(self, data: dict) -> str:
         """Create a custom Linux image blueprint.
 
         🔴 GATHER INFORMATION FIRST - Do not call immediately.
@@ -394,11 +355,13 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
                 desc_parts = [data.get("description", ""), WATERMARK_CREATED]
                 data["description"] = "\n".join(filter(None, desc_parts))
             # TBD: programmatically check against openapi
-            response = client.make_request(
-                "blueprints", method="POST", data=data)
+            response = await client.post("blueprints", json=data)
         # avoid crashing the server so we'll stick to the broad exception catch
         except Exception as e:  # pylint: disable=broad-exception-caught
             return f"Error: {str(e)}"
+
+        if isinstance(response, str):
+            return response
 
         if isinstance(response, list):
             return "Error: the response of blueprint creation is a list. This is not expected. " \
@@ -411,7 +374,7 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
         response_str += "We could double check the details or start the build/compose"
         return response_str
 
-    def update_blueprint(self, blueprint_uuid: str, data: dict) -> str:
+    async def update_blueprint(self, blueprint_uuid: str, data: dict) -> str:
         """Update a blueprint.
 
         🟡 VERIFY PARAMETERS - Get original blueprint details and UUID before proceeding.
@@ -433,18 +396,17 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
                 if all(wmark not in data.get("description", "") for wmark in [WATERMARK_CREATED, WATERMARK_UPDATED]):
                     desc_parts = [data.get("description", ""), WATERMARK_UPDATED]
                     data["description"] = "\n".join(filter(None, desc_parts))
-            response = client.make_request(
-                f"blueprints/{blueprint_uuid}", method="PUT", data=data)
+            response = await client.put(f"blueprints/{blueprint_uuid}", json=data)
         except Exception as e:  # pylint: disable=broad-exception-caught
             return f"Error: {str(e)}"
 
         return f"Blueprint updated successfully: {response}"
 
-    def get_blueprint_url(self, client: ImageBuilderClient, blueprint_id: str) -> str:
+    def get_blueprint_url(self, client: InsightsClient, blueprint_id: str) -> str:
         """Get the URL for a blueprint."""
-        return f"https://{client.domain}/insights/image-builder/imagewizard/{blueprint_id}"
+        return f"{client.insights_base_url}/insights/image-builder/imagewizard/{blueprint_id}"
 
-    def get_blueprints(self, limit: int = 7, offset: int = 0, search_string: str | None = None) -> str:
+    async def get_blueprints(self, limit: int = 7, offset: int = 0, search_string: str | None = None) -> str:
         """Show user's image blueprints (saved image templates/configurations for
         Linux distributions, packages, users).
 
@@ -474,7 +436,10 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
         try:
             # Make request with limit and offset parameters
             params = {"limit": limit, "offset": offset}
-            response = client.make_request("blueprints", params=params)
+            response = await client.get("blueprints", params=params)
+
+            if isinstance(response, str):
+                return response
 
             if isinstance(response, list):
                 return "Error: the response of get_blueprints is a list. This is not expected. " \
@@ -506,7 +471,7 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
         except Exception as e:  # pylint: disable=broad-exception-caught
             return f"Error: {str(e)}"
 
-    def get_blueprint_details(self, blueprint_identifier: str) -> str:
+    async def get_blueprint_details(self, blueprint_identifier: str) -> str:
         """Get blueprint details.
 
         🟢 CALL IMMEDIATELY - No information gathering required.
@@ -530,7 +495,7 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
         try:
             # If the identifier looks like a UUID, use it directly
             if len(blueprint_identifier) == 36 and blueprint_identifier.count('-') == 4:
-                response = client.make_request(f"blueprints/{blueprint_identifier}")
+                response = await client.get(f"blueprints/{blueprint_identifier}")
                 if isinstance(response, dict):
                     return json.dumps([response])
 
@@ -544,7 +509,7 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
         except Exception as e:  # pylint: disable=broad-exception-caught
             return f"Error: {str(e)}"
 
-    def _create_compose_data(self, compose: dict, reply_id: int, client: ImageBuilderClient) -> dict:
+    def _create_compose_data(self, compose: dict, reply_id: int, client: InsightsClient) -> dict:
         """Create compose data dictionary with blueprint URL."""
         data = {
             "reply_id": reply_id,
@@ -554,7 +519,7 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
         }
 
         if compose.get("blueprint_id"):
-            data["blueprint_url"] = (f"https://{client.domain}/insights/image-builder/"
+            data["blueprint_url"] = (f"{client.insights_base_url}/insights/image-builder/"
                                      f"imagewizard/{compose['blueprint_id']}")
         else:
             data["blueprint_url"] = "N/A"
@@ -568,7 +533,7 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
         return search_string.lower() in data["image_name"].lower()
 
     # NOTE: the _doc_ has escaped curly braces as __doc__.format() is called on the docstring
-    def get_composes(self, limit: int = 7, offset: int = 0, search_string: str | None = None) -> str:
+    async def get_composes(self, limit: int = 7, offset: int = 0, search_string: str | None = None) -> str:
         """Get a list of all image builds (composes) with their UUIDs and basic status.
 
         **ALWAYS USE THIS FIRST** when checking image build status or finding builds.
@@ -615,7 +580,10 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
 
             # Make request with limit and offset parameters
             params = {"limit": limit, "offset": offset}
-            response = client.make_request("composes", params=params)
+            response = await client.get("composes", params=params)
+
+            if isinstance(response, str):
+                return response
 
             if isinstance(response, list):
                 return (f"Error: the response of get_composes is a list. This is not expected. "
@@ -645,7 +613,7 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
         except Exception as e:  # pylint: disable=broad-exception-caught
             return f"Error: {str(e)}"
 
-    def get_compose_details(self, compose_identifier: str) -> str:
+    async def get_compose_details(self, compose_identifier: str) -> str:  # pylint: disable=too-many-return-statements
         """Get detailed information about a specific image build.
 
         ⚠️ REQUIRES: You MUST have the compose UUID from get_composes() first.
@@ -680,7 +648,10 @@ class ImageBuilderMCP(FastMCP):  # pylint: disable=too-many-instance-attributes
         try:
             # If the identifier looks like a UUID, use it directly
             if len(compose_identifier) == 36 and compose_identifier.count('-') == 4:
-                response = client.make_request(f"composes/{compose_identifier}")
+                response = await client.get(f"composes/{compose_identifier}")
+                if isinstance(response, str):
+                    return response
+
                 if isinstance(response, list):
                     self.logger.error(
                         "Error: the response of get_compose_details is a list. "
@@ -746,98 +717,4 @@ gcloud compute images create {image_name}-copy --source-image-project red-hat-im
             return f"Error: {e}"
 
 
-def main():
-    """Main entry point for the Image Builder MCP server."""
-    parser = argparse.ArgumentParser(
-        description="Run Image Builder MCP server.")
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
-    parser.add_argument("--stage", action="store_true", help="Use stage API instead of production API")
-
-    # Create subparsers for different transport modes
-    subparsers = parser.add_subparsers(dest="transport", help="Transport mode")
-
-    # stdio subcommand (default)
-    subparsers.add_parser("stdio", help="Use stdio transport (default)")
-
-    # sse subcommand
-    sse_parser = subparsers.add_parser("sse", help="Use SSE transport")
-    sse_parser.add_argument("--host", default="127.0.0.1", help="Host for SSE transport (default: 127.0.0.1)")
-    sse_parser.add_argument("--port", type=int, default=9000, help="Port for SSE transport (default: 9000)")
-
-    # http subcommand
-    http_parser = subparsers.add_parser(
-        "http", help="Use HTTP streaming transport")
-    http_parser.add_argument("--host", default="127.0.0.1", help="Host for HTTP transport (default: 127.0.0.1)")
-    http_parser.add_argument("--port", type=int, default=8000, help="Port for HTTP transport (default: 8000)")
-
-    args = parser.parse_args()
-
-    # Default to stdio if no subcommand is provided
-    if args.transport is None:
-        args.transport = "stdio"
-
-    # Get credentials from environment variables or user input
-    client_id = os.getenv("INSIGHTS_CLIENT_ID")
-    client_secret = os.getenv("INSIGHTS_CLIENT_SECRET")
-
-    proxy_url = None
-    if args.stage:
-        proxy_url = os.getenv("INSIGHTS_STAGE_PROXY_URL")
-        if not proxy_url:
-            print("Please set INSIGHTS_STAGE_PROXY_URL to access the stage API")
-            print("hint: INSIGHTS_STAGE_PROXY_URL=http://yoursquidproxy…:3128")
-            sys.exit(1)
-
-    if args.debug:
-        logging.getLogger("ImageBuilderMCP").setLevel(logging.DEBUG)
-        logging.getLogger("ImageBuilderClient").setLevel(logging.DEBUG)
-        logging.getLogger("ImageBuilderOAuthMiddleware").setLevel(logging.DEBUG)
-        logging.info("Debug mode enabled")
-
-    oauth_enabled = os.getenv("OAUTH_ENABLED", "false").lower() == "true"
-
-    # Create and run the MCP server
-    mcp_server = ImageBuilderMCP(
-        client_id,
-        client_secret,
-        stage=args.stage,
-        proxy_url=proxy_url,
-        transport=args.transport,
-        oauth_enabled=oauth_enabled,
-    )
-
-    if args.transport == "sse":
-        mcp_server.run(transport="sse", host=args.host, port=args.port)
-    elif args.transport == "http":
-        if oauth_enabled:
-            app = mcp_server.http_app(transport="http")
-            self_url = os.getenv(
-                "SELF_URL",
-                f"http://{args.host}:{args.port}",
-            )
-            oauth_url = os.getenv(
-                "OAUTH_URL",
-                "https://sso.redhat.com/auth/realms/redhat-external",
-            )
-            oauth_client = os.getenv("OAUTH_CLIENT")
-            if not oauth_client:
-                logging.fatal("OAUTH_CLIENT environment variable is required for OAuth-enabled HTTP transport")
-                sys.exit(1)
-
-            app.add_middleware(
-                Middleware,
-                self_url=self_url,
-                oauth_url=oauth_url,
-                oauth_client=oauth_client,
-            )
-
-            # Start the application
-            uvicorn.run(app, host=args.host, port=args.port)
-        else:
-            mcp_server.run(transport="http", host=args.host, port=args.port)
-    else:
-        mcp_server.run()
-
-
-if __name__ == "__main__":
-    main()
+mcp_server = ImageBuilderMCP()
