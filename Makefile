@@ -13,7 +13,7 @@ build-claude-extension: ## Build the Claude extension
 	sed -i "s/$(TAG)/---VERSION---/g" claude_desktop/manifest.json
 
 lint: ## Run linting with pre-commit
-	pre-commit run --all-files
+	pre-commit run --all-files --hook-stage manual
 
 test: ## Run tests with pytest (hides logging output)
 	@echo "Running pytest tests..."
