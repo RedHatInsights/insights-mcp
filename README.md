@@ -16,7 +16,7 @@ and then set the environment variables `INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT
 Install the package in development mode:
 
 ```
-pip install -e .
+uv tool install -e .
 ```
 
 Then run using the CLI entry point:
