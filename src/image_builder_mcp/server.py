@@ -1,22 +1,17 @@
 """Image Builder MCP server for creating and managing Linux images."""
 
-import argparse
 import json
 import logging
 import os
-import sys
 
 import httpx
 import jwt
-import uvicorn
 from fastmcp.server.dependencies import get_http_headers
 from fastmcp.tools.tool import Tool
 from mcp.types import ToolAnnotations
 
-from insights_mcp.client import INSIGHTS_BASE_URL, InsightsClient
-from insights_mcp.mcp import InsightsMCP  # TODO: import from insights_mcp directly, add to __all__
-
-from .oauth import Middleware
+from insights_mcp.client import InsightsClient
+from insights_mcp.mcp import InsightsMCP
 
 WATERMARK_CREATED = "Blueprint created via insights-mcp"
 WATERMARK_UPDATED = "Blueprint updated via insights-mcp"
@@ -723,102 +718,3 @@ gcloud compute images create {image_name}-copy --source-image-project red-hat-im
 
 
 mcp_server = ImageBuilderMCP()
-
-
-async def main():
-    """Main entry point for the Image Builder MCP server."""
-    parser = argparse.ArgumentParser(
-        description="Run Image Builder MCP server.")
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
-    parser.add_argument("--stage", action="store_true", help="Use stage API instead of production API")
-
-    # Create subparsers for different transport modes
-    subparsers = parser.add_subparsers(dest="transport", help="Transport mode")
-
-    # stdio subcommand (default)
-    subparsers.add_parser("stdio", help="Use stdio transport (default)")
-
-    # sse subcommand
-    sse_parser = subparsers.add_parser("sse", help="Use SSE transport")
-    sse_parser.add_argument("--host", default="127.0.0.1", help="Host for SSE transport (default: 127.0.0.1)")
-    sse_parser.add_argument("--port", type=int, default=9000, help="Port for SSE transport (default: 9000)")
-
-    # http subcommand
-    http_parser = subparsers.add_parser(
-        "http", help="Use HTTP streaming transport")
-    http_parser.add_argument("--host", default="127.0.0.1", help="Host for HTTP transport (default: 127.0.0.1)")
-    http_parser.add_argument("--port", type=int, default=8000, help="Port for HTTP transport (default: 8000)")
-
-    args = parser.parse_args()
-
-    # Default to stdio if no subcommand is provided
-    if args.transport is None:
-        args.transport = "stdio"
-
-    # Get credentials from environment variables or user input
-    client_id = os.getenv("INSIGHTS_CLIENT_ID")
-    client_secret = os.getenv("INSIGHTS_CLIENT_SECRET")
-
-    proxy_url = None
-    if args.stage:
-        proxy_url = os.getenv("INSIGHTS_STAGE_PROXY_URL")
-        if not proxy_url:
-            print("Please set INSIGHTS_STAGE_PROXY_URL to access the stage API")
-            print("hint: INSIGHTS_STAGE_PROXY_URL=http://yoursquidproxy…:3128")
-            sys.exit(1)
-
-    if args.debug:
-        logging.getLogger("ImageBuilderMCP").setLevel(logging.DEBUG)
-        logging.getLogger("InsightsClient").setLevel(logging.DEBUG)
-        logging.getLogger("ImageBuilderOAuthMiddleware").setLevel(logging.DEBUG)
-        logging.info("Debug mode enabled")
-
-    oauth_enabled = os.getenv("OAUTH_ENABLED", "false").lower() == "true"
-
-    # Initialize the insights client
-    mcp_server.init_insights_client(
-        client_id=client_id,
-        client_secret=client_secret,
-        proxy_url=proxy_url,
-        oauth_enabled=oauth_enabled,
-        mcp_transport=args.transport,
-        base_url=INSIGHTS_BASE_URL if not args.stage else os.getenv("INSIGHTS_BASE_URL"),
-        refresh_token=os.getenv("INSIGHTS_REFRESH_TOKEN"),
-    )
-    mcp_server.register_tools()
-
-    if args.transport == "sse":
-        mcp_server.run(transport="sse", host=args.host, port=args.port)
-    elif args.transport == "http":
-        if oauth_enabled:
-            app = mcp_server.http_app(transport="http")
-            self_url = os.getenv(
-                "SELF_URL",
-                f"http://{args.host}:{args.port}",
-            )
-            oauth_url = os.getenv(
-                "OAUTH_URL",
-                "https://sso.redhat.com/auth/realms/redhat-external",
-            )
-            oauth_client = os.getenv("OAUTH_CLIENT")
-            if not oauth_client:
-                logging.fatal("OAUTH_CLIENT environment variable is required for OAuth-enabled HTTP transport")
-                sys.exit(1)
-
-            app.add_middleware(
-                Middleware,
-                self_url=self_url,
-                oauth_url=oauth_url,
-                oauth_client=oauth_client,
-            )
-
-            # Start the application
-            uvicorn.run(app, host=args.host, port=args.port)
-        else:
-            mcp_server.run(transport="http", host=args.host, port=args.port)
-    else:
-        mcp_server.run()
-
-
-if __name__ == "__main__":
-    main()

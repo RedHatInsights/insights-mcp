@@ -36,4 +36,4 @@ COPY --from=builder /usr/local/lib64/python3.12/site-packages/ /usr/local/lib64/
 COPY --from=builder /usr/local/bin/ /usr/local/bin/
 
 # Command to run the application
-ENTRYPOINT ["python3.12", "-m", "image_builder_mcp"]
+ENTRYPOINT ["python3.12", "-m", "insights_mcp"]
