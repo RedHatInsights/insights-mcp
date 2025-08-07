@@ -8,9 +8,9 @@ from typing import Any
 import uvicorn
 from fastmcp import FastMCP
 
-from image_builder_mcp.oauth import Middleware
 from image_builder_mcp.server import mcp_server as ImageBuilderMCP
 from insights_mcp.mcp import INSIGHTS_BASE_URL, InsightsMCP
+from insights_mcp.oauth import Middleware
 
 MCPS: list[InsightsMCP] = [ImageBuilderMCP]
 
