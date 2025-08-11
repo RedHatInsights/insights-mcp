@@ -1130,6 +1130,7 @@ dev = [
     { name = "mypy" },
     { name = "pylint" },
     { name = "pytest" },
+    { name = "pytest-asyncio" },
     { name = "pytest-cov" },
     { name = "types-requests" },
 ]
@@ -1147,6 +1148,7 @@ requires-dist = [
     { name = "pyjwt" },
     { name = "pylint", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "requests" },
     { name = "types-requests", marker = "extra == 'dev'" },

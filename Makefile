@@ -17,22 +17,22 @@ lint: ## Run linting with pre-commit
 
 test: ## Run tests with pytest (hides logging output)
 	@echo "Running pytest tests..."
-	env DEEPEVAL_TELEMETRY_OPT_OUT=YES pytest -v
+	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v
 
 test-verbose: ## Run tests with pytest with verbose output (shows logging output)
 	@echo "Running pytest tests with verbose output..."
-	env DEEPEVAL_TELEMETRY_OPT_OUT=YES pytest -vv -o log_cli=true
+	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -vv -o log_cli=true
 
 test-very-verbose: ## Run tests with pytest showing all intermediate agent steps (shows logging output)
 	@echo "Running pytest tests with debug output..."
-	env DEEPEVAL_TELEMETRY_OPT_OUT=YES pytest -vvv -o log_cli=true
+	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -vvv -o log_cli=true
 
 test-coverage: ## Run tests with coverage reporting
 	@echo "Running pytest tests with coverage..."
-	env DEEPEVAL_TELEMETRY_OPT_OUT=YES pytest -v --cov=. --cov-report=html --cov-report=term-missing
+	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v --cov=. --cov-report=html --cov-report=term-missing
 
 install-test-deps: ## Install test dependencies
-	pip install -e .[dev]
+	uv sync --locked --all-extras --dev
 
 clean-test: ## Clean test artifacts and cache
 	@echo "Cleaning test artifacts..."
