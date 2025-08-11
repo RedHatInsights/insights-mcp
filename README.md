@@ -169,7 +169,7 @@ then integrate:
 
 ### Claude Desktop
 
-For Claude Desktop there is an extension file in the release section of the project.
+For Claude Desktop there is an extension file in the [release section](https://github.com/RedHatInsights/insights-mcp/releases) of the project.
 
 Just download the `insights-mcp*.dxt` file and add this in Claude Desktop with
 
