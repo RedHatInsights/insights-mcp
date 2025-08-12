@@ -1,32 +1,23 @@
-"""Enhanced MCP Agent implementation with WorkflowCheckpointer.
+"""Enhanced MCP Agent implementation focused on extracting called tools and steps.
 
-This implementation provides comprehensive agent reasoning capture, enhanced failure handling,
-and tool call extraction using LlamaIndex's native WorkflowCheckpointer for reliable
-debugging and testing of MCP server interactions.
-
-Features:
-- Full reasoning step extraction from workflow checkpoints
-- Enhanced failure handling with partial progress reporting
-- Tool call tracking and analysis
-- Real agent output parsing from checkpoint events
-- Robust error reporting with actionable debugging suggestions
+This implementation removes reliance on deprecated WorkflowCheckpointer and instead:
+- Wraps tools to record invocations for validation in tests
+- Streams workflow events to optionally log step progression
+- Returns called tools for assertions and minimal reasoning steps for logs
 """
 
 import asyncio
 import logging
-from typing import Awaitable, Callable, Dict, List, Any, Tuple, Optional, Union
+from typing import Callable, Dict, List, Any, Tuple, Optional, Union
 
 import requests
 from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.workflow import Context
-from llama_index.core.workflow.checkpointer import WorkflowCheckpointer
 from llama_index.llms.openai import OpenAI
 from llama_index.core.llms import ChatMessage
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 from llama_index.core.base.llms.types import LLMMetadata
 from llama_index.core.tools import BaseTool
-from workflows.events import Event
-from workflows.checkpointer import CheckpointCallback
 from deepeval.test_case import ToolCall
 
 from .utils import (
@@ -36,64 +27,12 @@ from .utils import (
 )
 
 
-class VerboseStartCheckpointCallback(CheckpointCallback):  # pylint: disable=too-few-public-methods
-    """Custom checkpoint callback that logs step starts to verbose_logger."""
-
-    def __init__(self, verbose_logger: logging.Logger, *args, **kwargs):  # pylint: disable=too-many-arguments
-        super().__init__(*args, **kwargs)
-        self.verbose_logger = verbose_logger
-
-    def __call__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-        self,
-        run_id: str,
-        last_completed_step: str | None,
-        input_ev: Event | None,
-        output_ev: Event | None,
-        ctx: "Context",
-    ) -> Awaitable[None]:
-        """Called when a workflow step starts - log it live."""
-        return self.on_step_start(last_completed_step or "unknown_step", {}, input_ev, output_ev)
-
-    async def on_step_start(
-        self,
-        step_name: str,
-        context: Dict[str, Any],  # pylint: disable=unused-argument
-        input_ev: Event | None,
-        output_ev: Event | None,
-    ):  # pylint: disable=unused-argument
-        """Called when a workflow step starts - log it live."""
-
-        context_str = "no details"
-
-        if input_ev:
-            context_str = f"{input_ev.__class__.__name__} {input_ev}"
-
-        output_str = f"🚀 {step_name} ({context_str})"
-
-        if len(output_str) > 2000:
-            self.verbose_logger.debug(output_str[:1000] + "\n<… abbreviated log …>\n" + output_str[-1000:])
-        else:
-            self.verbose_logger.debug(output_str)
-
-
-class VerboseWorkflowCheckpointer(WorkflowCheckpointer):
-    """Custom WorkflowCheckpointer that provides live step start logging."""
-
-    def __init__(self, workflow, verbose_logger: logging.Logger, *args, **kwargs):  # pylint: disable=too-many-arguments
-        super().__init__(workflow, *args, **kwargs)
-        self.verbose_logger = verbose_logger
-
-    def new_checkpoint_callback_for_run(self) -> CheckpointCallback:
-        """Override to return our verbose start callback."""
-        return VerboseStartCheckpointCallback(verbose_logger=self.verbose_logger)
-
-
 class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
-    """Enhanced MCP agent wrapper with comprehensive reasoning capture and failure handling.
+    """MCP agent wrapper that records tool calls and step progression.
 
-    This implementation leverages LlamaIndex's WorkflowCheckpointer to provide detailed
-    visibility into agent reasoning, tool execution, and failure scenarios. It captures
-    real agent outputs, tool calls, and intermediate reasoning steps for debugging and testing.
+    - Records tool calls for validation in tests
+    - Optionally logs step progression if a logger is provided
+    - Provides minimal reasoning steps useful for debugging output
     """
 
     def __init__(self, server_url: str, api_url: str, model_id: str, api_key: str):  # pylint: disable=too-many-instance-attributes
@@ -105,13 +44,21 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         self.system_prompt = ""
         self.agent: Optional[FunctionAgent] = None
         self.context: Optional[Context] = None
-        self.checkpointer: Optional[WorkflowCheckpointer] = None
+
+        # Recorded data
+        self._called_tools: List[ToolCall] = []
+        self._step_names: List[str] = []
 
         # Set up logging for debugging
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         # Initialize LlamaIndex LLM
-        self.llama_llm = CustomLlamaIndexLLM(api_url=api_url, model_id=model_id, api_key=api_key)
+        self.llama_llm = CustomLlamaIndexLLM(
+            api_url=api_url,
+            model_id=model_id,
+            api_key=api_key,
+            system_prompt="You are a helpful assistant that can use tools to answer questions and perform tasks.",
+        )
 
         # Run async initialization
         asyncio.run(self._initialize())
@@ -128,7 +75,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             mcp_tool_spec = McpToolSpec(client=mcp_client)
             self.tools = await mcp_tool_spec.to_tool_list_async()
             self.system_prompt = await self._get_system_prompt()
-            logging.info("Initialized %d tools from MCP server", len(self.tools))
+            logging.info("Initialized %d tools from MCP server", len(self.tools or []))
         except Exception as e:  # pylint: disable=broad-exception-caught
             logging.error("Failed to initialize MCP tools: %s", e)
             raise
@@ -147,173 +94,106 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             logging.warning("Failed to get system prompt: %s", e)
             return ""
 
+    def _record_tool_call(self, tool_name: str, arguments: Optional[Dict[str, Any]] = None) -> None:
+        """Record a tool call in a deepeval-compatible structure."""
+        if len(self._called_tools) > 0 and self._called_tools[-1].name == tool_name:
+            return
+        args = arguments or {}
+        self._called_tools.append(ToolCall(name=tool_name, input_parameters=args))
+
+    def _wrap_one_tool(self, tool: Union[BaseTool, Callable]) -> Union[BaseTool, Callable]:
+        """Monkey-patch a tool to record invocations while preserving behavior."""
+        try:
+            # Resolve tool name robustly and ensure it's str for typing
+            tool_name: str
+            if hasattr(tool, "metadata") and getattr(tool, "metadata") is not None:
+                tool_name = str(getattr(tool.metadata, "name", "unknown"))
+            else:
+                name_attr = getattr(tool, "name", None)
+                tool_name = (
+                    str(name_attr) if name_attr is not None else (f"unknown class:{tool.__class__.__name__} {tool}")
+                )
+
+            # Prefer async path if available
+            if hasattr(tool, "acall") and asyncio.iscoroutinefunction(getattr(tool, "acall")):
+                original_acall = getattr(tool, "acall")
+
+                async def wrapped_acall(*args: Any, **kwargs: Any) -> Any:  # type: ignore
+                    self._record_tool_call(tool_name, kwargs)
+                    return await original_acall(*args, **kwargs)
+
+                setattr(tool, "acall", wrapped_acall)
+                return tool
+
+            # Some BaseTool implementations expose __call__ as async
+            if hasattr(tool, "__call__") and asyncio.iscoroutinefunction(getattr(tool, "__call__")):
+                original_call = getattr(tool, "__call__")
+
+                async def wrapped_call(*args: Any, **kwargs: Any) -> Any:  # type: ignore
+                    self._record_tool_call(tool_name, kwargs)
+                    return await original_call(*args, **kwargs)
+
+                setattr(tool, "__call__", wrapped_call)  # type: ignore
+                return tool
+
+            # Fallback: sync call path
+            if hasattr(tool, "call") and callable(getattr(tool, "call")):
+                original_sync_call = getattr(tool, "call")
+
+                async def wrapped_sync(*args: Any, **kwargs: Any) -> Any:
+                    self._record_tool_call(tool_name, kwargs)
+                    return await asyncio.to_thread(original_sync_call, *args, **kwargs)
+
+                # Prefer to expose async interface to agent
+                setattr(tool, "acall", wrapped_sync)
+                return tool
+
+            if callable(tool):
+                original_callable = tool
+
+                async def wrapped_callable(*args: Any, **kwargs: Any) -> Any:
+                    self._record_tool_call(tool_name, kwargs)
+                    if asyncio.iscoroutinefunction(original_callable):
+                        return await original_callable(*args, **kwargs)
+                    return await asyncio.to_thread(original_callable, *args, **kwargs)
+
+                # Expose as async entrypoint commonly used by tools
+                setattr(tool, "acall", wrapped_callable)
+                return tool
+
+            return tool
+        except Exception:  # pylint: disable=broad-exception-caught
+            # If wrapping fails, return original tool unmodified
+            return tool
+
+    def _wrap_tools_for_recording(self) -> None:
+        if not self.tools:
+            return
+        wrapped: List[Union[BaseTool, Callable]] = []
+        for t in self.tools:
+            wrapped.append(self._wrap_one_tool(t))
+        self.tools = wrapped
+
     async def _setup_agent(self, verbose_logger: Optional[logging.Logger] = None):
-        """Setup LlamaIndex agent with MCP tools and optional verbose checkpointer."""
+        """Setup LlamaIndex agent with MCP tools and optional verbose logging."""
+        # Reset recordings for a new session
+        self._called_tools = []
+        self._step_names = []
+
+        # Wrap tools first so the agent uses the wrapped versions
+        self._wrap_tools_for_recording()
+
         self.agent = FunctionAgent(
             name="MCP Agent",
             description="Agent with MCP tools",
+            system_prompt=self.system_prompt,
             llm=self.llama_llm,
             tools=self.tools,
         )
         self.context = Context(self.agent)
 
-        # Use verbose checkpointer if logger provided, otherwise standard checkpointer
         if verbose_logger:
-            self.checkpointer = VerboseWorkflowCheckpointer(workflow=self.agent, verbose_logger=verbose_logger)
-            verbose_logger.info("📝 Initialized workflow with live step start logging")
-        else:
-            self.checkpointer = WorkflowCheckpointer(workflow=self.agent)
-
-    def _extract_reasoning_from_checkpoints(self, run_id: str) -> List[Dict[str, Any]]:  # pylint: disable=too-many-locals,too-many-branches,too-many-statements,too-many-nested-blocks
-        """Extract agent reasoning steps from workflow checkpoints."""
-        if not self.checkpointer or run_id not in self.checkpointer.checkpoints:
-            return []
-
-        reasoning_steps = []
-        checkpoints = self.checkpointer.checkpoints[run_id]
-        step_counter = 1
-
-        # Add initial reasoning
-        reasoning_steps.append(
-            {
-                "step_number": step_counter,
-                "step_type": "agent_reasoning",
-                "content": "🤖 Agent analyzed request and planned actions",
-            }
-        )
-        step_counter += 1
-
-        for checkpoint in checkpoints:  # pylint: disable=too-many-nested-blocks
-            step_name = checkpoint.last_completed_step
-
-            # Try to extract context from checkpoint
-            try:
-                # Look in the checkpoint's state/context for tool call information
-                ctx_store = getattr(checkpoint, "context", None)
-
-                # Debug: Log available context keys for development
-                if hasattr(ctx_store, "store") and ctx_store is not None and ctx_store.store:
-                    logging.debug("Checkpoint %s context keys: %s", step_name, list(ctx_store.store.keys()))
-                if hasattr(ctx_store, "store") and ctx_store is not None and ctx_store.store:
-                    # Look for tool calls in the context store
-                    for key, value in ctx_store.store.items():
-                        if "tool" in key.lower() and hasattr(value, "tool_name"):
-                            step = {
-                                "step_number": step_counter,
-                                "step_type": "tool_call",
-                                "content": f"🔧 Tool call: {value.tool_name} with {getattr(value, 'tool_kwargs', {})}",
-                            }
-                            reasoning_steps.append(step)
-                            step_counter += 1
-
-                # Look for tool-related step names and extract detailed info
-                if step_name and "call_tool" in step_name:
-                    # Try to extract tool call details from context
-                    tool_call_info = "⚙️ No tool call requested"
-                    if hasattr(ctx_store, "store") and ctx_store is not None and ctx_store.store:
-                        for key, value in ctx_store.store.items():
-                            if hasattr(value, "tool_name"):
-                                tool_name = getattr(value, "tool_name", "unknown")
-                                tool_kwargs = getattr(value, "tool_kwargs", {})
-                                tool_call_info = f"🔧 Tool call: {tool_name} with {tool_kwargs}"
-                                break
-                            if "tool_call" in str(key).lower() and hasattr(value, "name"):
-                                tool_name = getattr(value, "name", "unknown")
-                                tool_input = getattr(value, "tool_input", getattr(value, "input", {}))
-                                tool_call_info = f"🔧 Tool call: {tool_name} with {tool_input}"
-                                break
-
-                    reasoning_steps.append(
-                        {"step_number": step_counter, "step_type": "tool_execution", "content": tool_call_info}
-                    )
-                    step_counter += 1
-
-                    # Also try to capture tool result if available
-                    if hasattr(ctx_store, "store") and ctx_store is not None and ctx_store.store:
-                        for key, value in ctx_store.store.items():
-                            is_result_key = "result" in str(key).lower() or "output" in str(key).lower()
-                            if is_result_key and "tool" in str(key).lower():
-                                result_content = str(value)[:150]
-                                result_info = (
-                                    f"✅ Tool result: {result_content}..."
-                                    if len(str(value)) > 150
-                                    else f"✅ Tool result: {result_content}"
-                                )
-                                reasoning_steps.append(
-                                    {"step_number": step_counter, "step_type": "tool_result", "content": result_info}
-                                )
-                                step_counter += 1
-                                break
-                elif step_name and "run_agent_step" in step_name:
-                    reasoning_steps.append(
-                        {
-                            "step_number": step_counter,
-                            "step_type": "agent_thinking",
-                            "content": "🧠 Agent processing and deciding on actions",
-                        }
-                    )
-                    step_counter += 1
-                elif step_name and "parse_agent_output" in step_name:
-                    # Try to extract agent output details from checkpoint events
-                    output_info = "📝 Agent parsing output and planning next steps"
-
-                    # Look for actual agent output in checkpoint events
-                    checkpoint_attrs = ["output_event", "input_event"]
-                    for attr in checkpoint_attrs:
-                        if hasattr(checkpoint, attr):
-                            value = getattr(checkpoint, attr)
-                            if value and hasattr(value, "response"):
-                                agent_response = str(getattr(value, "response", ""))
-                                if agent_response.strip() and len(agent_response) > 5:
-                                    # Truncate long responses for readability
-                                    if len(agent_response) > 200:
-                                        output_info = f"📝 Agent output: {agent_response[:200]}..."
-                                    else:
-                                        output_info = f"📝 Agent output: {agent_response}"
-                                    break
-
-                    reasoning_steps.append(
-                        {"step_number": step_counter, "step_type": "agent_parsing", "content": output_info}
-                    )
-                    step_counter += 1
-
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                # Fallback to basic step information
-                logging.debug("Could not extract detailed context from checkpoint: %s", e)
-                if step_name not in ["_done", "start"]:  # Skip internal steps
-                    reasoning_steps.append(
-                        {
-                            "step_number": step_counter,
-                            "step_type": "workflow_step",
-                            "content": f"⚙️ Workflow step: {step_name}",
-                        }
-                    )
-                    step_counter += 1
-
-        # Add final reasoning
-        reasoning_steps.append(
-            {
-                "step_number": step_counter,
-                "step_type": "final_reasoning",
-                "content": "💭 Agent completed reasoning and generated final response",
-            }
-        )
-
-        return reasoning_steps
-
-    def _extract_tool_calls_from_reasoning(self, reasoning_steps: List[Dict[str, Any]]) -> List[Any]:
-        """Extract tool calls from reasoning steps for deepeval compatibility."""
-
-        tool_calls = []
-        for step in reasoning_steps:
-            if step.get("step_type") == "tool_call":
-                content = step.get("content", "")
-                # Parse tool name from content like "🔧 Tool call: create_blueprint with {...}"
-                if "Tool call:" in content:
-                    parts = content.split("Tool call:", 1)[1].strip()
-                    tool_name = parts.split(" with")[0].strip()
-                    tool_calls.append(ToolCall(name=tool_name, input_parameters={}))
-        return tool_calls
+            verbose_logger.info("📝 Initialized workflow with event streaming for step logging")
 
     async def execute_with_reasoning(  # pylint: disable=too-many-locals
         self,
@@ -322,151 +202,78 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         verbose_logger: Optional[logging.Logger] = None,
         max_iterations: int = 10,
     ) -> Tuple[str, List[Dict[str, Any]], List[Any], List[ChatMessage]]:  # pylint: disable=too-many-locals,too-many-arguments
-        """Execute agent with reasoning capture, including partial results on failure."""
+        """Execute agent, record tool calls and steps, return response and artifacts."""
         if chat_history is None:
             chat_history = []
 
-        # If verbose_logger provided and we don't have a verbose checkpointer, recreate agent
-        if verbose_logger and not isinstance(self.checkpointer, VerboseWorkflowCheckpointer):
+        # If verbose_logger provided, rebuild agent to ensure logging/wrapping
+        if verbose_logger:
             await self._setup_agent(verbose_logger)
 
-        if not self.agent or not self.checkpointer:
-            raise ValueError("Agent or checkpointer not initialized")
+        if not self.agent or not self.context:
+            raise ValueError("Agent or context not initialized")
 
-        # Track run ID for checkpoint extraction on failure
-        run_id = None
-        partial_reasoning_steps = []
-        partial_tool_calls = []
+        # Stream events for optional step logging while the workflow runs
+        if verbose_logger:
+            verbose_logger.info("🎬 Starting workflow execution...")
+            verbose_logger.info("📝 User message: %s", user_msg)
 
+        handler = self.agent.run(
+            user_msg=user_msg,
+            ctx=self.context,
+            chat_history=chat_history,
+            max_iterations=max_iterations,
+        )
+
+        # Consume events to capture step progression
+        async def _stream_events() -> None:
+            async for ev in handler.stream_events():
+                ev_name = ev.__class__.__name__
+                self._step_names.append(ev_name)
+                if verbose_logger and ev_name not in ["AgentStream"]:
+                    data = f"{ev}"
+                    if len(data) > 2000:
+                        data = data[:1000] + "\n<… abbreviated log …>\n" + data[-1000:]
+                    verbose_logger.debug("📡 Event %s: %s", ev_name, data)
+
+        # Run streaming in background while awaiting result
+        stream_task = asyncio.create_task(_stream_events())
         try:
-            if verbose_logger:
-                verbose_logger.info("🎬 Starting workflow execution...")
-                verbose_logger.info("📝 User message: %s", user_msg)
-
-            # Run agent with checkpointer to capture intermediate steps
-            handler = self.checkpointer.run(
-                user_msg=user_msg, ctx=self.context, chat_history=chat_history, max_iterations=max_iterations
-            )
-            run_id = handler.run_id
-
-            if verbose_logger:
-                verbose_logger.debug("🏃 Workflow run started with ID: %s", run_id)
-
             response = await handler
+        finally:
+            # Ensure streaming task cleaned up
+            try:
+                await asyncio.wait_for(stream_task, timeout=0.5)
+            except asyncio.TimeoutError:
+                stream_task.cancel()
 
-            if verbose_logger:
-                verbose_logger.debug("🎉 Workflow completed successfully: %s", run_id)
+        # Build minimal reasoning steps from recorded step names
+        reasoning_steps: List[Dict[str, Any]] = [
+            {"step_number": i + 1, "step_type": "event", "content": name} for i, name in enumerate(self._step_names)
+        ]
 
-            # Extract reasoning steps from checkpoints
-            reasoning_steps = self._extract_reasoning_from_checkpoints(run_id) if run_id else []
+        # Build updated chat history
+        updated_history = chat_history + [ChatMessage(role="user", content=user_msg)]
+        updated_history.append(ChatMessage(role="assistant", content=str(response)))
 
-            # Build updated chat history with reasoning steps
-            updated_history = chat_history + [ChatMessage(role="user", content=user_msg)]
+        # Return called tools as recorded
+        tools_called: List[Any] = list(self._called_tools)
 
-            # Add reasoning steps to history
-            for step in reasoning_steps:
-                step_msg = ChatMessage(role="assistant", content=f"[Step {step['step_number']}] {step['content']}")
-                updated_history.append(step_msg)
+        if verbose_logger:
+            verbose_logger.info("🔍 Agent response: %s", response)
+            if tools_called:
+                verbose_logger.info("🔧 Tools called: %s", [t.name for t in tools_called])
 
-            # Add final response
-            updated_history.append(ChatMessage(role="assistant", content=str(response)))
+        return str(response), reasoning_steps, tools_called, updated_history
 
-            # Extract tool calls from reasoning steps
-            tool_calls = self._extract_tool_calls_from_reasoning(reasoning_steps)
-
-            if verbose_logger:
-                verbose_logger.info("🔍 Agent response: %s", response)
-
-            return str(response), reasoning_steps, tool_calls, updated_history
-
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            # Extract partial progress even on failure
-            self.logger.error("❌ Agent execution failed: %s", e)
-            self.logger.info("🔍 Extracting partial progress...")
-
-            if run_id:
-                try:
-                    partial_reasoning_steps = self._extract_reasoning_from_checkpoints(run_id)
-                    partial_tool_calls = self._extract_tool_calls_from_reasoning(partial_reasoning_steps)
-                except Exception as extract_error:  # pylint: disable=broad-exception-caught
-                    self.logger.warning("⚠️  Could not extract partial steps: %s", extract_error)
-
-            # Pretty print partial progress
-            self._pretty_print_partial_progress(
-                user_msg, chat_history, partial_reasoning_steps, partial_tool_calls, str(e)
-            )
-
-            # Re-raise the original exception
-            raise e
-
-    def _pretty_print_partial_progress(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-        self,
-        user_msg: str,
-        chat_history: List[ChatMessage],
-        reasoning_steps: List[Dict[str, Any]],
-        tool_calls: List[Any],
-        error_message: str,
-    ):
-        """Pretty print partial progress when execution fails."""
-        self.logger.info("=" * 60)
-        self.logger.info("🚫 AGENT EXECUTION FAILURE REPORT")
-        self.logger.info("=" * 60)
-
-        self.logger.info("📝 Original Request:")
-        self.logger.info("   %s", user_msg)
-
-        self.logger.info("📚 Chat History Length: %d messages", len(chat_history))
-
-        self.logger.info("🧠 Partial Reasoning Steps Captured (%d):", len(reasoning_steps))
-        if reasoning_steps:
-            for i, step in enumerate(reasoning_steps):
-                step_type = step.get("step_type", "unknown")
-                content = step.get("content", "No content")
-                step_num = step.get("step_number", i + 1)
-                self.logger.info("   %2d. [%s] %s", step_num, step_type, content)
-        else:
-            self.logger.info("   ⚠️  No reasoning steps captured")
-
-        self.logger.info("🔧 Partial Tool Calls Captured (%d):", len(tool_calls))
-        if tool_calls:
-            for i, tool_call in enumerate(tool_calls):
-                if hasattr(tool_call, "name"):
-                    self.logger.info("   %d. %s", i + 1, tool_call.name)
-                else:
-                    self.logger.info("   %d. %s", i + 1, tool_call)
-        else:
-            self.logger.info("   ⚠️  No tool calls captured")
-
-        self.logger.error("❌ Failure Details:")
-        self.logger.error("   Error Message: %s", error_message)
-
-        self.logger.info("💡 Debug Suggestions:")
-        if "BadRequestError" in error_message:
-            self.logger.info("   - Check tool arguments and parameter validation")
-            self.logger.info("   - Verify MCP server is responding correctly")
-        elif "WorkflowRuntimeError" in error_message:
-            self.logger.info("   - Check max_iterations setting (current: 10)")
-            self.logger.info("   - Review agent prompt for infinite loops")
-        elif "timeout" in error_message.lower():
-            self.logger.info("   - Increase timeout settings")
-            self.logger.info("   - Check MCP server responsiveness")
-        else:
-            self.logger.info("   - Check logs for more detailed error information")
-            self.logger.info("   - Verify all dependencies are properly initialized")
-
-        self.logger.info("=" * 60)
-
+    # Backwards-compat small helpers used by tests elsewhere
     def get_all_checkpoints(self) -> Dict[str, List[Any]]:  # pylint: disable=too-few-public-methods
-        """Get all checkpoints across all runs."""
-        if not self.checkpointer:
-            return {}
-        return dict(self.checkpointer.checkpoints)
+        """No longer uses checkpoints; returns empty mapping for compatibility."""
+        return {}
 
-    def get_checkpoints_for_run(self, run_id: str) -> List[Any]:
-        """Get all checkpoints for a specific run ID."""
-        if not self.checkpointer or run_id not in self.checkpointer.checkpoints:
-            return []
-        return self.checkpointer.checkpoints[run_id]
+    def get_checkpoints_for_run(self, run_id: str) -> List[Any]:  # pylint: disable=unused-argument
+        """No longer uses checkpoints; returns empty list for compatibility."""
+        return []
 
 
 # Reuse the CustomLlamaIndexLLM from the original implementation

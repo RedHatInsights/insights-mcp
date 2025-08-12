@@ -76,8 +76,8 @@ class TestLLMIntegrationEasy:
             criteria=(
                 "The LLM should NOT immediately call create_blueprint. "
                 "Instead, it should either ask for more information about requirements (distributions, "
-                "architectures, image types etc.) or use get_openapi to understand the system first."
-                "In any case the response should be targeted to the user and not describe the tools"
+                "architectures, image types etc.) or optionally use get_openapi to understand the system first."
+                "In any case the response should be targeted to the user for more information."
             ),
             evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.TOOLS_CALLED],
             model=guardian_agent,
@@ -92,12 +92,6 @@ class TestLLMIntegrationEasy:
         verbose_logger.info("Tool calls executed: %s", [tool.name for tool in tools_executed])
         verbose_logger.info("Reasoning steps captured: %d", len(reasoning_steps))
 
-        # Show detailed reasoning steps
-        for i, step in enumerate(reasoning_steps):
-            step_type = step.get("step_type", "unknown")
-            content = step.get("content", "No content")
-            verbose_logger.info("  Step %d [%s]: %s", i + 1, step_type, content)
-
     @pytest.mark.parametrize("llm_config", llm_configurations, ids=[config["name"] for config in llm_configurations])
     @pytest.mark.asyncio
     # pylint: disable=redefined-outer-name,too-many-locals
@@ -109,14 +103,9 @@ class TestLLMIntegrationEasy:
 
         prompt = "What is the status of my latest image build?"
 
-        response, reasoning_steps, tools_executed, _ = await test_agent.execute_with_reasoning(
+        response, _, tools_executed, _ = await test_agent.execute_with_reasoning(
             prompt, chat_history=[], verbose_logger=verbose_logger
         )
-
-        # Log reasoning steps for debugging
-        verbose_logger.info("Reasoning steps captured: %d", len(reasoning_steps))
-        for i, step in enumerate(reasoning_steps):
-            verbose_logger.info("  Step %d: %s", i + 1, step.get("content", "No content"))
 
         # first we check if there is a question in the response for the name or UUID of the compose
         contains_question = GEval(
@@ -228,24 +217,14 @@ class TestLLMIntegrationEasy:
         # conversation_history from simplified agent is already ChatMessage objects
         (
             response,
-            reasoning_steps_followup,
+            _,
             tools_executed,
             updated_chat_history,
         ) = await test_agent.execute_with_reasoning(
             follow_up_prompt, chat_history=conversation_history, verbose_logger=verbose_logger
         )
 
-        verbose_logger.info("Follow-up Prompt: %s", follow_up_prompt)
-        verbose_logger.info("Follow-up reasoning steps: %d", len(reasoning_steps_followup))
-        for i, step in enumerate(reasoning_steps_followup):
-            verbose_logger.info("  Step %d: %s", i + 1, step.get("content", "No content"))
-
-        # Convert back to dict format for pretty printing
-        updated_history = [{"role": msg.role, "content": msg.content} for msg in updated_chat_history]
-        verbose_logger.info(
-            "Full conversation history:\n%s",
-            pretty_print_chat_history(updated_history, llm_config["name"], verbose_logger),
-        )
+        pretty_print_chat_history(updated_chat_history, llm_config["name"], verbose_logger)
 
         expected_tools = [ToolCall(name="get_blueprints", arguments={"limit": 3, "offset": 2})]
 

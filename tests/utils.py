@@ -268,15 +268,21 @@ def pretty_print_chat_history(
     conversation_history: List[ChatMessage], llm_name: str, verbose_logger: logging.Logger
 ) -> None:
     """Pretty print chat history for debugging."""
+    verbose_logger.info("Full conversation history:")
+
+    if len(conversation_history) == 0:
+        verbose_logger.info("No conversation history")
+        return
+
     for i, turn in enumerate(conversation_history):
         if turn.role == "user":
-            verbose_logger.info(f"{llm_name} {i + 1}: 👤 User: {turn.content}")
+            verbose_logger.info(f"{llm_name} turn {i + 1}: 👤 User: {turn.content}")
         elif turn.role == "assistant":
-            verbose_logger.info(f"{llm_name} {i + 1}: 🤖 Assistant: {turn.content}")
+            verbose_logger.info(f"{llm_name} turn {i + 1}: 🤖 Assistant: {turn.content}")
         elif turn.role == "tool":
-            verbose_logger.info(f"{llm_name} {i + 1}: 🔧 Tool: {turn.content}")
+            verbose_logger.info(f"{llm_name} turn {i + 1}: 🔧 Tool: {turn.content}")
         else:
-            verbose_logger.info(f"{llm_name} {i + 1}: ? {turn.role}: {turn.content}")
+            verbose_logger.info(f"{llm_name} turn {i + 1}: ? {turn.role}: {turn.content}")
 
 
 class CustomVLLMModel(DeepEvalBaseLLM):
