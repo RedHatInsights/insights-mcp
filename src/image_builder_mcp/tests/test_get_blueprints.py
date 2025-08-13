@@ -94,7 +94,8 @@ class TestGetBlueprints:
             # Parse the result
             assert result.startswith("[INSTRUCTION]")
             assert "Use the UI_URL to link to the blueprint" in result
-            assert "[ANSWER]" in result
+            # check paging reminder
+            assert "There could be more entries" in result
 
             # Extract JSON data from result
             json_start = result.find('[{"reply_id"')
@@ -317,4 +318,5 @@ class TestGetBlueprints:
 
             # Should return result
             assert "[INSTRUCTION]" in result
-            assert "[ANSWER]" in result
+            # check paging reminder
+            assert "There could be more entries" in result
