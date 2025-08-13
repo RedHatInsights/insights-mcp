@@ -88,7 +88,7 @@ class InsightsMCPServer(FastMCP):
             except NotImplementedError:
                 pass  # TBD log debug message
 
-            self.mount(mcp)
+            self.mount(mcp, prefix=f"{mcp.toolset_name}_")
 
 
 def main():  # pylint: disable=too-many-statements
