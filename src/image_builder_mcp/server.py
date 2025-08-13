@@ -36,6 +36,11 @@ class ImageBuilderMCP(InsightsMCP):
 
         self.logger = logging.getLogger("ImageBuilderMCP")
 
+        self.paging_reminder = (
+            "There could be more entries, ask the user if they want to get more"
+            "and use the parameters offset and limit accordingly.\n"
+        )
+
         general_intro = """You are a comprehensive Linux Image Builder assistant that creates custom
         Linux disk images, ISOs, and virtual machine images.
 
@@ -464,7 +469,7 @@ class ImageBuilderMCP(InsightsMCP):
                     ret.append(data)
 
             intro = "[INSTRUCTION] Use the UI_URL to link to the blueprint\n"
-            intro += "[ANSWER]\n"
+            intro += self.paging_reminder
             return f"{intro}\n{json.dumps(ret)}"
         # avoid crashing the server so we'll stick to the broad exception catch
         except Exception as e:  # pylint: disable=broad-exception-caught
@@ -606,6 +611,7 @@ class ImageBuilderMCP(InsightsMCP):
                 "[INSTRUCTION] Present a bulleted list and use the blueprint_url to link to the "
                 "blueprint which created this compose\n"
             )
+            intro += self.paging_reminder
             intro += "[ANSWER]\n"
             return f"{intro}\n{json.dumps(ret)}"
 
