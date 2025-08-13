@@ -43,5 +43,7 @@ def get_with_auth(self) -> dict[str, Any]:
 # from insights_mcp.servers.example import mcp as example_mcp
 # MCPS = [example_mcp]
 #
-# This server (toolset) can be enabled usign INSIGHTS_TOOLSET environment variable:
-# INSIGHTS_TOOLSET=example
+# This server (toolset) can be enabled using --toolset command line argument:
+#   insights-mcp --toolset=example
+# or using INSIGHTS_TOOLSET environment variable:
+#   INSIGHTS_TOOLSET=example

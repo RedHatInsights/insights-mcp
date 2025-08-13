@@ -97,6 +97,8 @@ def main():  # pylint: disable=too-many-statements
         description="Run Insights MCP server.")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     parser.add_argument("--stage", action="store_true", help="Use stage API instead of production API")
+    parser.add_argument("--toolset", type=str, help="Comma-separated list of toolsets to use. Available toolsets: " +
+                        "all, " + ", ".join(mcp.toolset_name for mcp in MCPS) + " (default: all)")
 
     # Create subparsers for different transport modes
     subparsers = parser.add_subparsers(dest="transport", help="Transport mode")
@@ -141,7 +143,7 @@ def main():  # pylint: disable=too-many-statements
         logging.info("Debug mode enabled")
 
     oauth_enabled = os.getenv("OAUTH_ENABLED", "false").lower() == "true"
-    toolset = os.getenv("INSIGHTS_TOOLSET", "all")
+    toolset = args.toolset or os.getenv("INSIGHTS_TOOLSET", "all")
 
     # Create and run the MCP server
     mcp_server = InsightsMCPServer(
