@@ -15,9 +15,9 @@ class TestAuthentication:
     # TBD: change to dynamically getting from MCP server
     AUTH_FUNCTIONS = [
         ("create_blueprint", {"data": {"name": "test", "description": "test"}}),
-        ("get_blueprints", {"limit": 7, "offset": 0}),
+        ("get_blueprints", {"limit": 7, "offset": 0, "search_string": ""}),
         ("get_blueprint_details", {"blueprint_identifier": "12345678-1234-1234-1234-123456789012"}),
-        ("get_composes", {"limit": 7, "offset": 0}),
+        ("get_composes", {"limit": 7, "offset": 0, "search_string": ""}),
         ("get_compose_details", {"compose_identifier": "12345678-1234-1234-1234-123456789012"}),
         ("blueprint_compose", {"blueprint_uuid": "12345678-1234-1234-1234-123456789012"}),
     ]

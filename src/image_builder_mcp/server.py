@@ -3,12 +3,14 @@
 import json
 import logging
 import os
+from typing import Annotated, Optional
 
 import httpx
 import jwt
 from fastmcp.server.dependencies import get_http_headers
 from fastmcp.tools.tool import Tool
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from insights_mcp.client import InsightsClient
 from insights_mcp.mcp import InsightsMCP
@@ -246,15 +248,14 @@ class ImageBuilderMCP(InsightsMCP):
         """Generate authentication error message based on transport type."""
         return self.insights_client.client.no_auth_error(e)
 
-    async def blueprint_compose(self, blueprint_uuid: str) -> str:
+    async def blueprint_compose(
+        self, blueprint_uuid: Annotated[str, Field(description="The UUID of the blueprint to compose")]
+    ) -> str:
         """Compose an image from a blueprint UUID created with create_blueprint, get_blueprints.
         If the UUID is not clear, ask the user whether to create a new blueprint with create_blueprint
         or use an existing blueprint from get_blueprints.
 
         🟡 VERIFY PARAMETERS - Confirm blueprint UUID before proceeding.
-
-        Args:
-            blueprint_uuid: the UUID of the blueprint to compose
 
         Returns:
             The response from the image-builder API
@@ -293,13 +294,12 @@ class ImageBuilderMCP(InsightsMCP):
         response_str += "\nWe could double check the details or start the build/compose"
         return response_str
 
-    async def get_openapi(self, response_size: int) -> str:
+    async def get_openapi(
+        self, response_size: Annotated[int, Field(7, description="Number of items returned (use 7 as default)")]
+    ) -> str:
         """Get OpenAPI spec. Use this to get details e.g for a new blueprint
 
         🟢 CALL IMMEDIATELY - No information gathering required.
-
-        Args:
-            response_size: number of items returned (use 7 as default)
 
         Returns:
             List of blueprints
@@ -316,7 +316,13 @@ class ImageBuilderMCP(InsightsMCP):
         except Exception as e:  # pylint: disable=broad-exception-caught
             return f"Error: {str(e)}"
 
-    async def create_blueprint(self, data: dict) -> str:
+    async def create_blueprint(
+        self,
+        data: Annotated[
+            dict,
+            Field(description="Complete blueprint data formatted according to CreateBlueprintRequest from get_openapi"),
+        ],
+    ) -> str:
         """Create a custom Linux image blueprint.
 
         🔴 GATHER INFORMATION FIRST - Do not call immediately.
@@ -339,9 +345,6 @@ class ImageBuilderMCP(InsightsMCP):
 
         Never make assumptions or fill in data yourself unless the user explicitly asks for it.
         Always ask the user for explicit input through conversation.
-
-        Args:
-            data: Complete blueprint data formatted according to CreateBlueprintRequest from get_openapi
 
         Returns:
             The response from the image-builder API
@@ -376,14 +379,17 @@ class ImageBuilderMCP(InsightsMCP):
         response_str += "We could double check the details or start the build/compose"
         return response_str
 
-    async def update_blueprint(self, blueprint_uuid: str, data: dict) -> str:
+    async def update_blueprint(
+        self,
+        blueprint_uuid: Annotated[str, Field(description="The UUID of the blueprint to update")],
+        data: Annotated[
+            dict,
+            Field(description="Complete blueprint data formatted according to CreateBlueprintRequest from get_openapi"),
+        ],
+    ) -> str:
         """Update a blueprint.
 
         🟡 VERIFY PARAMETERS - Get original blueprint details and UUID before proceeding.
-
-        Args:
-            blueprint_uuid: the UUID of the blueprint to update
-            data: Complete blueprint data formatted according to CreateBlueprintRequest from get_openapi
 
         Returns:
             The response from the image-builder API
@@ -408,19 +414,16 @@ class ImageBuilderMCP(InsightsMCP):
         """Get the URL for a blueprint."""
         return f"{client.insights_base_url}/insights/image-builder/imagewizard/{blueprint_id}"
 
-    async def get_blueprints(self, limit: int = 7, offset: int = 0, search_string: str | None = None) -> str:
+    async def get_blueprints(
+        self,
+        limit: Annotated[int, Field(7, description="Maximum number of items to return (use 7 as default)")],
+        offset: Annotated[int, Field(0, description="Number of items to skip when paging (use 0 as default)")],
+        search_string: Annotated[Optional[str], Field(None, description="Substring to search for in the name")],
+    ) -> str:
         """Show user's image blueprints (saved image templates/configurations for
         Linux distributions, packages, users).
 
         🟢 CALL IMMEDIATELY - No information gathering required.
-
-        Args:
-            limit: maximum number of items to return (default: 7)
-            offset: number of items to skip (default: 0)
-            search_string: substring to search for in the name (optional)
-
-        Returns:
-            List of blueprints with their UUIDs and details
         """
 
         try:
@@ -475,13 +478,12 @@ class ImageBuilderMCP(InsightsMCP):
         except Exception as e:  # pylint: disable=broad-exception-caught
             return f"Error: {str(e)}"
 
-    async def get_blueprint_details(self, blueprint_identifier: str) -> str:
+    async def get_blueprint_details(
+        self, blueprint_identifier: Annotated[str, Field(description="The UUID, name or reply_id to query")]
+    ) -> str:
         """Get blueprint details.
 
         🟢 CALL IMMEDIATELY - No information gathering required.
-
-        Args:
-            blueprint_identifier: the UUID, name or reply_id to query
 
         Returns:
             Blueprint details
@@ -531,14 +533,19 @@ class ImageBuilderMCP(InsightsMCP):
 
         return data
 
-    def _should_include_compose(self, data: dict, search_string: str | None) -> bool:
+    def _should_include_compose(self, data: dict, search_string: Optional[str]) -> bool:
         """Determine if compose should be included based on search criteria."""
         if not search_string:
             return True
         return search_string.lower() in data["image_name"].lower()
 
     # NOTE: the _doc_ has escaped curly braces as __doc__.format() is called on the docstring
-    async def get_composes(self, limit: int = 7, offset: int = 0, search_string: str | None = None) -> str:
+    async def get_composes(
+        self,
+        limit: Annotated[int, Field(7, description="Maximum number of items to return (use 7 as default)")],
+        offset: Annotated[int, Field(0, description="Number of items to skip when paging (use 0 as default)")],
+        search_string: Annotated[Optional[str], Field(None, description="Substring to search for in the name")],
+    ) -> str:
         """Get a list of all image builds (composes) with their UUIDs and basic status.
 
         **ALWAYS USE THIS FIRST** when checking image build status or finding builds.
@@ -553,12 +560,6 @@ class ImageBuilderMCP(InsightsMCP):
 
         You can also provide this link so the user can check directly in the UI:
         https://console.redhat.com/insights/image-builder
-
-
-        Args:
-            limit: maximum number of items to return (default: 7)
-            offset: number of items to skip (default: 0)
-            search_string: substring to search for in the name (optional)
 
         Returns:
             List of composes with:
@@ -621,7 +622,10 @@ class ImageBuilderMCP(InsightsMCP):
         except Exception as e:  # pylint: disable=broad-exception-caught
             return f"Error: {str(e)}"
 
-    async def get_compose_details(self, compose_identifier: str) -> str:  # pylint: disable=too-many-return-statements
+    # pylint: disable=too-many-return-statements
+    async def get_compose_details(
+        self, compose_identifier: Annotated[str, "The exact UUID string from get_composes()"]
+    ) -> str:
         """Get detailed information about a specific image build.
 
         ⚠️ REQUIRES: You MUST have the compose UUID from get_composes() first.
@@ -632,11 +636,6 @@ class ImageBuilderMCP(InsightsMCP):
         1. User asks about build status → call get_composes()
         2. Find the desired compose and copy its UUID
         3. Call this function with that exact UUID
-
-        Args:
-            compose_identifier: The exact UUID string from get_composes()
-                            Example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-                            NOT: "latest", "recent", "my-image", etc.
 
         Returns:
             Detailed compose information including:
