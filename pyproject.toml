@@ -32,6 +32,7 @@ dev = [
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
+    "pytest-subtests",
     "mypy",
     "types-requests",
     "pylint",
@@ -72,3 +73,8 @@ line-length = 120
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
 testpaths = ["tests", "src"]
+
+[dependency-groups]
+dev = [
+    "pytest-subtests>=0.14.2",
+]
