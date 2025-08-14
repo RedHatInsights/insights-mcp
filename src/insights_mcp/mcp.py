@@ -4,6 +4,7 @@ This module provides a FastMCP-based server class for integrating with Red Hat I
 It handles authentication, client initialization, and provides a foundation for building
 Insights-specific MCP tools and resources.
 """
+
 from typing import Any
 
 from fastmcp import FastMCP

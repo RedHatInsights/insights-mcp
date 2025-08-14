@@ -14,12 +14,12 @@ class TestAuthentication:
     # List of functions to test for authentication (excluding get_openapi)
     # TBD: change to dynamically getting from MCP server
     AUTH_FUNCTIONS = [
-        ('create_blueprint', {'data': {'name': 'test', 'description': 'test'}}),
-        ('get_blueprints', {'limit': 7, 'offset': 0}),
-        ('get_blueprint_details', {'blueprint_identifier': '12345678-1234-1234-1234-123456789012'}),
-        ('get_composes', {'limit': 7, 'offset': 0}),
-        ('get_compose_details', {'compose_identifier': '12345678-1234-1234-1234-123456789012'}),
-        ('blueprint_compose', {'blueprint_uuid': '12345678-1234-1234-1234-123456789012'}),
+        ("create_blueprint", {"data": {"name": "test", "description": "test"}}),
+        ("get_blueprints", {"limit": 7, "offset": 0}),
+        ("get_blueprint_details", {"blueprint_identifier": "12345678-1234-1234-1234-123456789012"}),
+        ("get_composes", {"limit": 7, "offset": 0}),
+        ("get_compose_details", {"compose_identifier": "12345678-1234-1234-1234-123456789012"}),
+        ("blueprint_compose", {"blueprint_uuid": "12345678-1234-1234-1234-123456789012"}),
     ]
 
     @pytest.mark.asyncio
@@ -28,14 +28,14 @@ class TestAuthentication:
         """Test that functions without authentication return error."""
         mcp_server = ImageBuilderMCP()
         mcp_server.init_insights_client(
-            client_id='test-client-id',
-            client_secret='test-client-secret',
+            client_id="test-client-id",
+            client_secret="test-client-secret",
             oauth_enabled=False,
         )
         mcp_server.register_tools()
 
         # Setup mocks - no credentials
-        with patch.object(image_builder_mcp, 'get_http_headers') as mock_headers:
+        with patch.object(image_builder_mcp, "get_http_headers") as mock_headers:
             mock_headers.return_value = {}
 
             # Call the method
@@ -60,7 +60,7 @@ class TestAuthentication:
         mcp_server.register_tools()
 
         # Test default transport mode
-        with patch.object(image_builder_mcp, 'get_http_headers') as mock_headers:
+        with patch.object(image_builder_mcp, "get_http_headers") as mock_headers:
             mock_headers.return_value = {}  # No auth headers
 
             method = getattr(mcp_server, function_name)
@@ -90,7 +90,7 @@ class TestAuthentication:
         )
         mcp_server.register_tools()
 
-        with patch.object(image_builder_mcp, 'get_http_headers') as mock_headers:
+        with patch.object(image_builder_mcp, "get_http_headers") as mock_headers:
             mock_headers.return_value = {}  # No auth headers
 
             method = getattr(mcp_server, function_name)
@@ -120,7 +120,7 @@ class TestAuthentication:
         )
         mcp_server.register_tools()
 
-        with patch.object(image_builder_mcp, 'get_http_headers') as mock_headers:
+        with patch.object(image_builder_mcp, "get_http_headers") as mock_headers:
             mock_headers.return_value = {}  # No auth headers
 
             method = getattr(mcp_server, function_name)

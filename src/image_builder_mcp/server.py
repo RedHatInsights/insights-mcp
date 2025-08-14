@@ -25,8 +25,8 @@ class ImageBuilderMCP(InsightsMCP):
     """
 
     def __init__(
-            self,
-            default_response_size: int = 10,
+        self,
+        default_response_size: int = 10,
     ):
         self.default_response_size = default_response_size
         # TBD: make this configurable
@@ -95,7 +95,7 @@ class ImageBuilderMCP(InsightsMCP):
             toolset_name="image-builder",
             api_path="api/image-builder/v1",
             headers={"X-ImageBuilder-ui": self.image_builder_mcp_client_id},
-            instructions=general_intro
+            instructions=general_intro,
         )
 
         # cache the client for all users
@@ -113,8 +113,7 @@ class ImageBuilderMCP(InsightsMCP):
             image_types = list(openapi["components"]["schemas"]["ImageTypes"]["enum"])
             image_types.sort()
 
-            architectures = list(openapi["components"]["schemas"]["ImageRequest"]
-                                 ["properties"]["architecture"]["enum"])
+            architectures = list(openapi["components"]["schemas"]["ImageRequest"]["properties"]["architecture"]["enum"])
             architectures.sort()
 
             self.logger.info("Supported image types: %s", image_types)
@@ -131,26 +130,23 @@ class ImageBuilderMCP(InsightsMCP):
 
         # prepend generic keywords for use of many other tools
         # and register with "self.tool()"
-        tool_functions = [self.get_openapi,
-                          self.create_blueprint,
-                          self.update_blueprint,
-                          self.get_blueprints,
-                          self.get_blueprint_details,
-                          self.get_composes,
-                          self.get_compose_details,
-                          self.blueprint_compose,
-                          self.get_distributions
-                          ]
+        tool_functions = [
+            self.get_openapi,
+            self.create_blueprint,
+            self.update_blueprint,
+            self.get_blueprints,
+            self.get_blueprint_details,
+            self.get_composes,
+            self.get_compose_details,
+            self.blueprint_compose,
+            self.get_distributions,
+        ]
 
         for f in tool_functions:
             tool = Tool.from_function(f)
-            tool.annotations = ToolAnnotations(
-                readOnlyHint=True,
-                openWorldHint=True
-            )
+            tool.annotations = ToolAnnotations(readOnlyHint=True, openWorldHint=True)
             description_str = f.__doc__.format(
-                architectures=", ".join(architectures),
-                image_types=", ".join(image_types)
+                architectures=", ".join(architectures), image_types=", ".join(image_types)
             )
             tool.description = description_str
             tool.title = description_str.split("\n", 1)[0]
@@ -188,10 +184,8 @@ class ImageBuilderMCP(InsightsMCP):
             if caller_headers_auth and caller_headers_auth.startswith("Bearer "):
                 # decode bearer token to get sid and use as client_id
                 token = caller_headers_auth.split("Bearer ", 1)[-1]
-                client_id = jwt.decode(
-                    token, options={"verify_signature": False}).get("sid")
-                self.logger.debug(
-                    "Using sid from Bearer token as client_id: %s", client_id)
+                client_id = jwt.decode(token, options={"verify_signature": False}).get("sid")
+                self.logger.debug("Using sid from Bearer token as client_id: %s", client_id)
         else:
             client_id = headers.get("insights-client-id") or self.insights_client.client_id or ""
             self.logger.debug("get_client_id request headers: %s", headers)
@@ -268,8 +262,7 @@ class ImageBuilderMCP(InsightsMCP):
             return self.no_auth_error(e)
 
         try:
-            response = await client.post(
-                f"blueprints/{blueprint_uuid}/compose")
+            response = await client.post(f"blueprints/{blueprint_uuid}/compose")
         # avoid crashing the server so we'll stick to the broad exception catch
         except Exception as e:  # pylint: disable=broad-exception-caught
             return f"Error: {str(e)} in blueprint_compose {blueprint_uuid}"
@@ -280,11 +273,13 @@ class ImageBuilderMCP(InsightsMCP):
         build_ids_str: list[str] = []
 
         if isinstance(response, dict):
-            return f"Error: the response of blueprint_compose is a dict. This is not expected. " \
+            return (
+                f"Error: the response of blueprint_compose is a dict. This is not expected. "
                 f"Response: {json.dumps(response)}"
+            )
 
         for build in response:
-            if isinstance(build, dict) and 'id' in build:
+            if isinstance(build, dict) and "id" in build:
                 build_ids_str.append(f"UUID: {build['id']}")
             else:
                 build_ids_str.append(f"Invalid build object: {build}")
@@ -364,8 +359,10 @@ class ImageBuilderMCP(InsightsMCP):
             return response
 
         if isinstance(response, list):
-            return "Error: the response of blueprint creation is a list. This is not expected. " \
+            return (
+                "Error: the response of blueprint creation is a list. This is not expected. "
                 f"Response: {json.dumps(response)}"
+            )
 
         response_str = "[INSTRUCTION] Use the tool get_blueprint_details to get the details of the blueprint\n"
         response_str += "or ask the user to start the build/compose with blueprint_compose\n"
@@ -442,20 +439,22 @@ class ImageBuilderMCP(InsightsMCP):
                 return response
 
             if isinstance(response, list):
-                return "Error: the response of get_blueprints is a list. This is not expected. " \
+                return (
+                    "Error: the response of get_blueprints is a list. This is not expected. "
                     f"Response: {json.dumps(response)}"
+                )
 
             # Sort data by created_at
-            sorted_data = sorted(response["data"],
-                                 key=lambda x: x.get("last_modified_at", ""),
-                                 reverse=True)
+            sorted_data = sorted(response["data"], key=lambda x: x.get("last_modified_at", ""), reverse=True)
 
             ret: list[dict] = []
             for i, blueprint in enumerate(sorted_data, 1):
-                data = {"reply_id": i + offset,
-                        "blueprint_uuid": blueprint["id"],
-                        "UI_URL": self.get_blueprint_url(client, blueprint["id"]),
-                        "name": blueprint["name"]}
+                data = {
+                    "reply_id": i + offset,
+                    "blueprint_uuid": blueprint["id"],
+                    "UI_URL": self.get_blueprint_url(client, blueprint["id"]),
+                    "name": blueprint["name"],
+                }
 
                 # Apply search filter if provided
                 if search_string:
@@ -494,7 +493,7 @@ class ImageBuilderMCP(InsightsMCP):
 
         try:
             # If the identifier looks like a UUID, use it directly
-            if len(blueprint_identifier) == 36 and blueprint_identifier.count('-') == 4:
+            if len(blueprint_identifier) == 36 and blueprint_identifier.count("-") == 4:
                 response = await client.get(f"blueprints/{blueprint_identifier}")
                 if isinstance(response, dict):
                     return json.dumps([response])
@@ -515,12 +514,13 @@ class ImageBuilderMCP(InsightsMCP):
             "reply_id": reply_id,
             "compose_uuid": compose["id"],
             "blueprint_id": compose.get("blueprint_id", "N/A"),
-            "image_name": compose.get("image_name", "")
+            "image_name": compose.get("image_name", ""),
         }
 
         if compose.get("blueprint_id"):
-            data["blueprint_url"] = (f"{client.insights_base_url}/insights/image-builder/"
-                                     f"imagewizard/{compose['blueprint_id']}")
+            data["blueprint_url"] = (
+                f"{client.insights_base_url}/insights/image-builder/imagewizard/{compose['blueprint_id']}"
+            )
         else:
             data["blueprint_url"] = "N/A"
 
@@ -586,13 +586,13 @@ class ImageBuilderMCP(InsightsMCP):
                 return response
 
             if isinstance(response, list):
-                return (f"Error: the response of get_composes is a list. This is not expected. "
-                        f"Response: {json.dumps(response)}")
+                return (
+                    f"Error: the response of get_composes is a list. This is not expected. "
+                    f"Response: {json.dumps(response)}"
+                )
 
             # Sort data by created_at
-            sorted_data = sorted(response["data"],
-                                 key=lambda x: x.get("created_at", ""),
-                                 reverse=True)
+            sorted_data = sorted(response["data"], key=lambda x: x.get("created_at", ""), reverse=True)
 
             ret: list[dict] = []
             for i, compose in enumerate(sorted_data, 1):
@@ -602,8 +602,10 @@ class ImageBuilderMCP(InsightsMCP):
                 if self._should_include_compose(data, search_string):
                     ret.append(data)
 
-            intro = ("[INSTRUCTION] Present a bulleted list and use the blueprint_url to link to the "
-                     "blueprint which created this compose\n")
+            intro = (
+                "[INSTRUCTION] Present a bulleted list and use the blueprint_url to link to the "
+                "blueprint which created this compose\n"
+            )
             intro += "[ANSWER]\n"
             return f"{intro}\n{json.dumps(ret)}"
 
@@ -647,7 +649,7 @@ class ImageBuilderMCP(InsightsMCP):
 
         try:
             # If the identifier looks like a UUID, use it directly
-            if len(compose_identifier) == 36 and compose_identifier.count('-') == 4:
+            if len(compose_identifier) == 36 and compose_identifier.count("-") == 4:
                 response = await client.get(f"composes/{compose_identifier}")
                 if isinstance(response, str):
                     return response
@@ -656,23 +658,24 @@ class ImageBuilderMCP(InsightsMCP):
                     self.logger.error(
                         "Error: the response of get_compose_details is a list. "
                         "This is not expected. Response for %s: %s",
-                        compose_identifier, json.dumps(response))
+                        compose_identifier,
+                        json.dumps(response),
+                    )
                     return f"Error: Unexpected list response for {compose_identifier}"
                 response["compose_uuid"] = compose_identifier
             else:
-                ret = (f"[INSTRUCTION] Error: {compose_identifier} is not a valid compose identifier,"
-                       "please use the UUID from get_composes\n")
+                ret = (
+                    f"[INSTRUCTION] Error: {compose_identifier} is not a valid compose identifier,"
+                    "please use the UUID from get_composes\n"
+                )
                 ret += "[INSTRUCTION] retry calling get_composes\n\n"
                 ret += f"[ANSWER] {compose_identifier} is not a valid compose identifier"
                 return ret
 
             intro = ""
-            download_url = response.get("image_status", {}).get(
-                "upload_status", {}).get("options", {}).get("url")
-            upload_target = response.get("image_status", {}).get(
-                "upload_status", {}).get("type")
-            image_name = response.get("image_status", {}).get(
-                "upload_status", {}).get("options", {}).get("image_name")
+            download_url = response.get("image_status", {}).get("upload_status", {}).get("options", {}).get("url")
+            upload_target = response.get("image_status", {}).get("upload_status", {}).get("type")
+            image_name = response.get("image_status", {}).get("upload_status", {}).get("options", {}).get("image_name")
 
             if download_url and upload_target == "oci.objectstorage":
                 intro += """

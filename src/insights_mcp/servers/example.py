@@ -1,4 +1,5 @@
 """Example MCP server."""
+
 from typing import Any
 from insights_mcp.mcp import InsightsMCP
 
@@ -37,6 +38,7 @@ def get_without_auth(self) -> dict[str, Any]:
 def get_with_auth(self) -> dict[str, Any]:
     """Send GET request to Insights API with authentication."""
     return self.insights_client.get("/endpoint")
+
 
 # To include this server in Insights MCP server, add the following to the server.py file:
 #
