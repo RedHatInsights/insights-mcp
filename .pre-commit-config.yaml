@@ -51,7 +51,7 @@ repos:
         # always pass all classes, otherwise e.g. tests fail
         stages: [manual]
         pass_filenames: false
-        args: [--recursive=y, .]
+        args: [--recursive=y, src, tests]
         additional_dependencies:
           - PyYAML
           - types-PyYAML
