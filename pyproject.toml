@@ -66,6 +66,9 @@ disable = ["fixme"]
 [tool.autopep8]
 max_line_length = 120
 
+[tool.ruff]
+line-length = 120
+
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
 testpaths = ["tests", "src"]

@@ -72,7 +72,7 @@ class Middleware(starlette.middleware.base.BaseHTTPMiddleware):  # pylint: disab
             return starlette.responses.Response(
                 status_code=401,
                 headers={
-                    "WWW-Authenticate": f"Bearer resource_metadata=\"{resource_url}\"",
+                    "WWW-Authenticate": f'Bearer resource_metadata="{resource_url}"',
                 },
             )
 

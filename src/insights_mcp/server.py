@@ -1,4 +1,5 @@
 """Main Insights MCP server that mounts multiple Red Hat service servers."""
+
 import argparse
 import logging
 import os
@@ -91,14 +92,15 @@ class InsightsMCPServer(FastMCP):
             self.mount(mcp, prefix=f"{mcp.toolset_name}_")
 
 
-def main():  # pylint: disable=too-many-statements
+def main():  # pylint: disable=too-many-statements,too-many-locals
     """Main entry point for the Insights MCP server."""
-    parser = argparse.ArgumentParser(
-        description="Run Insights MCP server.")
+    available_toolsets = f"all, {', '.join(mcp.toolset_name for mcp in MCPS)}"
+    toolset_help = f"Comma-separated list of toolsets to use. Available toolsets: {available_toolsets} (default: all)"
+
+    parser = argparse.ArgumentParser(description="Run Insights MCP server.")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     parser.add_argument("--stage", action="store_true", help="Use stage API instead of production API")
-    parser.add_argument("--toolset", type=str, help="Comma-separated list of toolsets to use. Available toolsets: " +
-                        "all, " + ", ".join(mcp.toolset_name for mcp in MCPS) + " (default: all)")
+    parser.add_argument("--toolset", type=str, help=toolset_help)
 
     # Create subparsers for different transport modes
     subparsers = parser.add_subparsers(dest="transport", help="Transport mode")
@@ -112,8 +114,7 @@ def main():  # pylint: disable=too-many-statements
     sse_parser.add_argument("--port", type=int, default=9000, help="Port for SSE transport (default: 9000)")
 
     # http subcommand
-    http_parser = subparsers.add_parser(
-        "http", help="Use HTTP streaming transport")
+    http_parser = subparsers.add_parser("http", help="Use HTTP streaming transport")
     http_parser.add_argument("--host", default="127.0.0.1", help="Host for HTTP transport (default: 127.0.0.1)")
     http_parser.add_argument("--port", type=int, default=8000, help="Port for HTTP transport (default: 8000)")
 

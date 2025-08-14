@@ -43,19 +43,24 @@ class VerboseStartCheckpointCallback(CheckpointCallback):  # pylint: disable=too
         super().__init__(*args, **kwargs)
         self.verbose_logger = verbose_logger
 
-    # pylint: disable=too-many-arguments
-    def __call__(self,
-                 run_id: str,
-                 last_completed_step: str | None,
-                 input_ev: Event | None,
-                 output_ev: Event | None,
-                 ctx: "Context",
-                 ) -> Awaitable[None]:
+    def __call__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        self,
+        run_id: str,
+        last_completed_step: str | None,
+        input_ev: Event | None,
+        output_ev: Event | None,
+        ctx: "Context",
+    ) -> Awaitable[None]:
         """Called when a workflow step starts - log it live."""
         return self.on_step_start(last_completed_step or "unknown_step", {}, input_ev, output_ev)
 
-    async def on_step_start(self, step_name: str, context: Dict[str, Any],  # pylint: disable=unused-argument
-                            input_ev: Event | None, output_ev: Event | None):  # pylint: disable=unused-argument
+    async def on_step_start(
+        self,
+        step_name: str,
+        context: Dict[str, Any],  # pylint: disable=unused-argument
+        input_ev: Event | None,
+        output_ev: Event | None,
+    ):  # pylint: disable=unused-argument
         """Called when a workflow step starts - log it live."""
 
         context_str = "no details"
@@ -80,9 +85,7 @@ class VerboseWorkflowCheckpointer(WorkflowCheckpointer):
 
     def new_checkpoint_callback_for_run(self) -> CheckpointCallback:
         """Override to return our verbose start callback."""
-        return VerboseStartCheckpointCallback(
-            verbose_logger=self.verbose_logger
-        )
+        return VerboseStartCheckpointCallback(verbose_logger=self.verbose_logger)
 
 
 class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
@@ -137,8 +140,8 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             response = requests.post(self.server_url, json=init_request, headers=DEFAULT_JSON_HEADERS, timeout=10)
             if response.status_code == 200:
                 response_data = parse_mcp_response(response.text)
-                if isinstance(response_data, dict) and 'result' in response_data:
-                    return response_data['result'].get('instructions', '')
+                if isinstance(response_data, dict) and "result" in response_data:
+                    return response_data["result"].get("instructions", "")
             return ""
         except Exception as e:  # pylint: disable=broad-exception-caught
             logging.warning("Failed to get system prompt: %s", e)
@@ -156,10 +159,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
 
         # Use verbose checkpointer if logger provided, otherwise standard checkpointer
         if verbose_logger:
-            self.checkpointer = VerboseWorkflowCheckpointer(
-                workflow=self.agent,
-                verbose_logger=verbose_logger
-            )
+            self.checkpointer = VerboseWorkflowCheckpointer(workflow=self.agent, verbose_logger=verbose_logger)
             verbose_logger.info("📝 Initialized workflow with live step start logging")
         else:
             self.checkpointer = WorkflowCheckpointer(workflow=self.agent)
@@ -174,11 +174,13 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         step_counter = 1
 
         # Add initial reasoning
-        reasoning_steps.append({
-            "step_number": step_counter,
-            "step_type": "agent_reasoning",
-            "content": "🤖 Agent analyzed request and planned actions"
-        })
+        reasoning_steps.append(
+            {
+                "step_number": step_counter,
+                "step_type": "agent_reasoning",
+                "content": "🤖 Agent analyzed request and planned actions",
+            }
+        )
         step_counter += 1
 
         for checkpoint in checkpoints:  # pylint: disable=too-many-nested-blocks
@@ -187,79 +189,81 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             # Try to extract context from checkpoint
             try:
                 # Look in the checkpoint's state/context for tool call information
-                ctx_store = getattr(checkpoint, 'context', None)
+                ctx_store = getattr(checkpoint, "context", None)
 
                 # Debug: Log available context keys for development
-                if hasattr(ctx_store, 'store') and ctx_store is not None and ctx_store.store:
+                if hasattr(ctx_store, "store") and ctx_store is not None and ctx_store.store:
                     logging.debug("Checkpoint %s context keys: %s", step_name, list(ctx_store.store.keys()))
-                if hasattr(ctx_store, 'store') and ctx_store is not None and ctx_store.store:
+                if hasattr(ctx_store, "store") and ctx_store is not None and ctx_store.store:
                     # Look for tool calls in the context store
                     for key, value in ctx_store.store.items():
-                        if 'tool' in key.lower() and hasattr(value, 'tool_name'):
-                            reasoning_steps.append({
+                        if "tool" in key.lower() and hasattr(value, "tool_name"):
+                            step = {
                                 "step_number": step_counter,
                                 "step_type": "tool_call",
-                                "content": f"🔧 Tool call: {value.tool_name} with {getattr(value, 'tool_kwargs', {})}"
-                            })
+                                "content": f"🔧 Tool call: {value.tool_name} with {getattr(value, 'tool_kwargs', {})}",
+                            }
+                            reasoning_steps.append(step)
                             step_counter += 1
 
                 # Look for tool-related step names and extract detailed info
-                if step_name and 'call_tool' in step_name:
+                if step_name and "call_tool" in step_name:
                     # Try to extract tool call details from context
                     tool_call_info = "⚙️ No tool call requested"
-                    if hasattr(ctx_store, 'store') and ctx_store is not None and ctx_store.store:
+                    if hasattr(ctx_store, "store") and ctx_store is not None and ctx_store.store:
                         for key, value in ctx_store.store.items():
-                            if hasattr(value, 'tool_name'):
-                                tool_name = getattr(value, 'tool_name', 'unknown')
-                                tool_kwargs = getattr(value, 'tool_kwargs', {})
+                            if hasattr(value, "tool_name"):
+                                tool_name = getattr(value, "tool_name", "unknown")
+                                tool_kwargs = getattr(value, "tool_kwargs", {})
                                 tool_call_info = f"🔧 Tool call: {tool_name} with {tool_kwargs}"
                                 break
-                            if 'tool_call' in str(key).lower() and hasattr(value, 'name'):
-                                tool_name = getattr(value, 'name', 'unknown')
-                                tool_input = getattr(value, 'tool_input', getattr(value, 'input', {}))
+                            if "tool_call" in str(key).lower() and hasattr(value, "name"):
+                                tool_name = getattr(value, "name", "unknown")
+                                tool_input = getattr(value, "tool_input", getattr(value, "input", {}))
                                 tool_call_info = f"🔧 Tool call: {tool_name} with {tool_input}"
                                 break
 
-                    reasoning_steps.append({
-                        "step_number": step_counter,
-                        "step_type": "tool_execution",
-                        "content": tool_call_info
-                    })
+                    reasoning_steps.append(
+                        {"step_number": step_counter, "step_type": "tool_execution", "content": tool_call_info}
+                    )
                     step_counter += 1
 
                     # Also try to capture tool result if available
-                    if hasattr(ctx_store, 'store') and ctx_store is not None and ctx_store.store:
+                    if hasattr(ctx_store, "store") and ctx_store is not None and ctx_store.store:
                         for key, value in ctx_store.store.items():
-                            is_result_key = ('result' in str(key).lower() or 'output' in str(key).lower())
-                            if is_result_key and 'tool' in str(key).lower():
+                            is_result_key = "result" in str(key).lower() or "output" in str(key).lower()
+                            if is_result_key and "tool" in str(key).lower():
                                 result_content = str(value)[:150]
-                                result_info = f"✅ Tool result: {result_content}..." if len(
-                                    str(value)) > 150 else f"✅ Tool result: {result_content}"
-                                reasoning_steps.append({
-                                    "step_number": step_counter,
-                                    "step_type": "tool_result",
-                                    "content": result_info
-                                })
+                                result_info = (
+                                    f"✅ Tool result: {result_content}..."
+                                    if len(str(value)) > 150
+                                    else f"✅ Tool result: {result_content}"
+                                )
+                                reasoning_steps.append(
+                                    {"step_number": step_counter, "step_type": "tool_result", "content": result_info}
+                                )
                                 step_counter += 1
                                 break
-                elif step_name and 'run_agent_step' in step_name:
-                    reasoning_steps.append({
-                        "step_number": step_counter,
-                        "step_type": "agent_thinking",
-                        "content": "🧠 Agent processing and deciding on actions"
-                    })
+                elif step_name and "run_agent_step" in step_name:
+                    reasoning_steps.append(
+                        {
+                            "step_number": step_counter,
+                            "step_type": "agent_thinking",
+                            "content": "🧠 Agent processing and deciding on actions",
+                        }
+                    )
                     step_counter += 1
-                elif step_name and 'parse_agent_output' in step_name:
+                elif step_name and "parse_agent_output" in step_name:
                     # Try to extract agent output details from checkpoint events
                     output_info = "📝 Agent parsing output and planning next steps"
 
                     # Look for actual agent output in checkpoint events
-                    checkpoint_attrs = ['output_event', 'input_event']
+                    checkpoint_attrs = ["output_event", "input_event"]
                     for attr in checkpoint_attrs:
                         if hasattr(checkpoint, attr):
                             value = getattr(checkpoint, attr)
-                            if value and hasattr(value, 'response'):
-                                agent_response = str(getattr(value, 'response', ''))
+                            if value and hasattr(value, "response"):
+                                agent_response = str(getattr(value, "response", ""))
                                 if agent_response.strip() and len(agent_response) > 5:
                                     # Truncate long responses for readability
                                     if len(agent_response) > 200:
@@ -268,30 +272,32 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
                                         output_info = f"📝 Agent output: {agent_response}"
                                     break
 
-                    reasoning_steps.append({
-                        "step_number": step_counter,
-                        "step_type": "agent_parsing",
-                        "content": output_info
-                    })
+                    reasoning_steps.append(
+                        {"step_number": step_counter, "step_type": "agent_parsing", "content": output_info}
+                    )
                     step_counter += 1
 
             except Exception as e:  # pylint: disable=broad-exception-caught
                 # Fallback to basic step information
                 logging.debug("Could not extract detailed context from checkpoint: %s", e)
-                if step_name not in ['_done', 'start']:  # Skip internal steps
-                    reasoning_steps.append({
-                        "step_number": step_counter,
-                        "step_type": "workflow_step",
-                        "content": f"⚙️ Workflow step: {step_name}"
-                    })
+                if step_name not in ["_done", "start"]:  # Skip internal steps
+                    reasoning_steps.append(
+                        {
+                            "step_number": step_counter,
+                            "step_type": "workflow_step",
+                            "content": f"⚙️ Workflow step: {step_name}",
+                        }
+                    )
                     step_counter += 1
 
         # Add final reasoning
-        reasoning_steps.append({
-            "step_number": step_counter,
-            "step_type": "final_reasoning",
-            "content": "💭 Agent completed reasoning and generated final response"
-        })
+        reasoning_steps.append(
+            {
+                "step_number": step_counter,
+                "step_type": "final_reasoning",
+                "content": "💭 Agent completed reasoning and generated final response",
+            }
+        )
 
         return reasoning_steps
 
@@ -300,21 +306,22 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
 
         tool_calls = []
         for step in reasoning_steps:
-            if step.get('step_type') == 'tool_call':
-                content = step.get('content', '')
+            if step.get("step_type") == "tool_call":
+                content = step.get("content", "")
                 # Parse tool name from content like "🔧 Tool call: create_blueprint with {...}"
-                if 'Tool call:' in content:
-                    parts = content.split('Tool call:', 1)[1].strip()
-                    tool_name = parts.split(' with')[0].strip()
+                if "Tool call:" in content:
+                    parts = content.split("Tool call:", 1)[1].strip()
+                    tool_name = parts.split(" with")[0].strip()
                     tool_calls.append(ToolCall(name=tool_name, input_parameters={}))
         return tool_calls
 
-    async def execute_with_reasoning(self,  # pylint: disable=too-many-locals
-                                     user_msg: str,
-                                     chat_history: Optional[List[ChatMessage]] = None,
-                                     verbose_logger: Optional[logging.Logger] = None,
-                                     max_iterations: int = 10) -> Tuple[str, List[Dict[str, Any]],
-                                                                        List[Any], List[ChatMessage]]:  # pylint: disable=too-many-locals,too-many-arguments
+    async def execute_with_reasoning(  # pylint: disable=too-many-locals
+        self,
+        user_msg: str,
+        chat_history: Optional[List[ChatMessage]] = None,
+        verbose_logger: Optional[logging.Logger] = None,
+        max_iterations: int = 10,
+    ) -> Tuple[str, List[Dict[str, Any]], List[Any], List[ChatMessage]]:  # pylint: disable=too-many-locals,too-many-arguments
         """Execute agent with reasoning capture, including partial results on failure."""
         if chat_history is None:
             chat_history = []
@@ -338,10 +345,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
 
             # Run agent with checkpointer to capture intermediate steps
             handler = self.checkpointer.run(
-                user_msg=user_msg,
-                ctx=self.context,
-                chat_history=chat_history,
-                max_iterations=max_iterations
+                user_msg=user_msg, ctx=self.context, chat_history=chat_history, max_iterations=max_iterations
             )
             run_id = handler.run_id
 
@@ -361,10 +365,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
 
             # Add reasoning steps to history
             for step in reasoning_steps:
-                step_msg = ChatMessage(
-                    role="assistant",
-                    content=f"[Step {step['step_number']}] {step['content']}"
-                )
+                step_msg = ChatMessage(role="assistant", content=f"[Step {step['step_number']}] {step['content']}")
                 updated_history.append(step_msg)
 
             # Add final response
@@ -392,23 +393,19 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
 
             # Pretty print partial progress
             self._pretty_print_partial_progress(
-                user_msg,
-                chat_history,
-                partial_reasoning_steps,
-                partial_tool_calls,
-                str(e)
+                user_msg, chat_history, partial_reasoning_steps, partial_tool_calls, str(e)
             )
 
             # Re-raise the original exception
             raise e
 
-    def _pretty_print_partial_progress(  # pylint: disable=too-many-arguments
+    def _pretty_print_partial_progress(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         user_msg: str,
         chat_history: List[ChatMessage],
         reasoning_steps: List[Dict[str, Any]],
         tool_calls: List[Any],
-        error_message: str
+        error_message: str,
     ):
         """Pretty print partial progress when execution fails."""
         self.logger.info("=" * 60)
@@ -423,9 +420,9 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         self.logger.info("🧠 Partial Reasoning Steps Captured (%d):", len(reasoning_steps))
         if reasoning_steps:
             for i, step in enumerate(reasoning_steps):
-                step_type = step.get('step_type', 'unknown')
-                content = step.get('content', 'No content')
-                step_num = step.get('step_number', i+1)
+                step_type = step.get("step_type", "unknown")
+                content = step.get("content", "No content")
+                step_num = step.get("step_number", i + 1)
                 self.logger.info("   %2d. [%s] %s", step_num, step_type, content)
         else:
             self.logger.info("   ⚠️  No reasoning steps captured")
@@ -433,10 +430,10 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         self.logger.info("🔧 Partial Tool Calls Captured (%d):", len(tool_calls))
         if tool_calls:
             for i, tool_call in enumerate(tool_calls):
-                if hasattr(tool_call, 'name'):
-                    self.logger.info("   %d. %s", i+1, tool_call.name)
+                if hasattr(tool_call, "name"):
+                    self.logger.info("   %d. %s", i + 1, tool_call.name)
                 else:
-                    self.logger.info("   %d. %s", i+1, tool_call)
+                    self.logger.info("   %d. %s", i + 1, tool_call)
         else:
             self.logger.info("   ⚠️  No tool calls captured")
 
@@ -479,11 +476,7 @@ class CustomLlamaIndexLLM(OpenAI):
 
     def __init__(self, api_url: str, model_id: str, api_key: str, system_prompt: str = "", **kwargs):
         super().__init__(
-            model=model_id,
-            api_key=api_key,
-            api_base=api_url,
-            temperature=kwargs.get('temperature', 0.1),
-            **kwargs
+            model=model_id, api_key=api_key, api_base=api_url, temperature=kwargs.get("temperature", 0.1), **kwargs
         )
         self._custom_model_id = model_id
         self._system_prompt = system_prompt

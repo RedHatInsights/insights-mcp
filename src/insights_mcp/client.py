@@ -19,13 +19,9 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client
 from authlib.oauth2.rfc6749 import OAuth2Token
 from fastmcp.server.dependencies import get_http_headers
 
-TOKEN_ENDPOINT = (
-    "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"
-)
+TOKEN_ENDPOINT = "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"
 INSIGHTS_BASE_URL = "https://console.redhat.com"
-USER_AGENT = (
-    "insights-mcp/0.1"  # TODO: automatically set this to the version of the MCP server
-)
+USER_AGENT = "insights-mcp/0.1"  # TODO: automatically set this to the version of the MCP server
 
 
 class InsightsClientBase(httpx.AsyncClient):
@@ -78,9 +74,7 @@ class InsightsClientBase(httpx.AsyncClient):
             return response.json()
         except httpx.HTTPStatusError as e:
             content = self.get_error_message(e)
-            return {
-                "Unexpected HTTP status code": f"{e.response.status_code}, content: {content}"
-            }
+            return {"Unexpected HTTP status code": f"{e.response.status_code}, content: {content}"}
         except Exception as exc:  # pylint: disable=broad-exception-caught
             return {"Unhandled error": str(exc)}
 
