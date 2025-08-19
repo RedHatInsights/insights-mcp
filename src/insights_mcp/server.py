@@ -94,6 +94,17 @@ class InsightsMCPServer(FastMCP):
             self.mount(mcp, prefix=f"{mcp.toolset_name}_")
 
 
+def get_instructions(allowed_mcps: list[str]) -> str:
+    """Get instructions from MCP server."""
+    instructions_parts = []
+    for mcp in MCPS:
+        if mcp.toolset_name not in allowed_mcps:
+            continue
+        if hasattr(mcp, "instructions") and mcp.instructions:
+            instructions_parts.append(f"## {mcp.name}\n\n{mcp.instructions}")
+    return "\n\n".join(instructions_parts)
+
+
 def main():  # pylint: disable=too-many-statements,too-many-locals
     """Main entry point for the Insights MCP server."""
     available_toolsets = f"all, {', '.join(mcp.toolset_name for mcp in MCPS)}"
@@ -148,6 +159,13 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     oauth_enabled = os.getenv("OAUTH_ENABLED", "false").lower() == "true"
     toolset = args.toolset or os.getenv("INSIGHTS_TOOLSET", "all")
 
+    if toolset == "all":
+        toolset_list = [mcp.toolset_name for mcp in MCPS]
+    else:
+        toolset_list = toolset.split(",")
+
+    instructions = get_instructions(toolset_list)
+
     # Create and run the MCP server
     mcp_server = InsightsMCPServer(
         base_url=INSIGHTS_BASE_URL if not args.stage else os.getenv("INSIGHTS_BASE_URL"),
@@ -157,12 +175,10 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
         proxy_url=proxy_url,
         oauth_enabled=oauth_enabled,
         mcp_transport=args.transport,
+        instructions=instructions,
     )
 
-    if toolset == "all":
-        mcp_server.register_mcps([mcp.toolset_name for mcp in MCPS])
-    else:
-        mcp_server.register_mcps(toolset.split(","))
+    mcp_server.register_mcps(toolset_list)
 
     if args.transport == "sse":
         mcp_server.run(transport="sse", host=args.host, port=args.port)

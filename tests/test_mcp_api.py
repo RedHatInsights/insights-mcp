@@ -5,26 +5,51 @@ Test includes:
 - tool parameter descriptions
 """
 
-from typing import Dict
+from typing import Any, Dict
 
 import pytest
 
+# checks if the MCP tools include descriptions and annotations
+# using image-builder__get_blueprints and image-builder__get_composes as examples
+
 
 @pytest.mark.parametrize(
-    "tool_name, expected_desc, param_descs",
+    "tool_name, expected_desc, params",
     [
         (
             "image-builder__get_blueprints",
             "Show user's image blueprints",
-            {"limit": "Maximum number of items to return (use 7 as default)"},
+            {
+                "limit": {
+                    "description": "Maximum number of items to return (use 7 as default)",
+                    "default": 7,
+                    "type": "integer",
+                    "anyOf": None,
+                }
+            },
         ),
         (
             "image-builder__get_composes",
             "Get a list of all image builds (composes)",
             {
-                "limit": "Maximum number of items to return (use 7 as default)",
-                "offset": "Number of items to skip when paging (use 0 as default)",
-                "search_string": "Substring to search for in the name",
+                "limit": {
+                    "description": "Maximum number of items to return (use 7 as default)",
+                    "default": 7,
+                    "type": "integer",
+                    "anyOf": None,
+                },
+                "offset": {
+                    "description": "Number of items to skip when paging (use 0 as default)",
+                    "default": 0,
+                    "type": "integer",
+                    "anyOf": None,
+                },
+                "search_string": {
+                    "description": "Substring to search for in the name",
+                    "default": None,
+                    "type": None,
+                    "anyOf": [{"type": "string"}, {"type": "null"}],
+                },
             },
         ),
     ],
@@ -35,7 +60,7 @@ def test_mcp_tools_include_descriptions_and_annotations(
     subtests,
     tool_name: str,
     expected_desc: str,
-    param_descs: Dict[str, str],
+    params: Dict[str, Dict[str, Any]],
 ):  # pylint: disable=redefined-outer-name
     """Test that the MCP tools include descriptions and annotations."""
     tools = mcp_tools
@@ -56,9 +81,12 @@ def test_mcp_tools_include_descriptions_and_annotations(
     assert isinstance(schema_obj, dict), f"{tool_name}: invalid fn_schema (model_json_schema not dict)"
 
     props = schema_obj.get("properties", {}) or {}
-    for param_name, expected_param_desc in param_descs.items():
+    for param_name, expected_param_desc in params.items():
         with subtests.test(param=param_name):
-            assert props.get(param_name, {}).get("description") == expected_param_desc
+            assert props.get(param_name, {}).get("description") == expected_param_desc.get("description")
+            assert props.get(param_name, {}).get("default") == expected_param_desc.get("default")
+            assert props.get(param_name, {}).get("type") == expected_param_desc.get("type")
+            assert props.get(param_name, {}).get("anyOf") == expected_param_desc.get("anyOf")
     # Note: Testing defaults would be ideal but
     # default is null in FastMCP schema by design; actual defaulting occurs server-side
 

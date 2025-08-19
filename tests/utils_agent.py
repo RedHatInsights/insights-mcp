@@ -35,7 +35,15 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
     - Provides minimal reasoning steps useful for debugging output
     """
 
-    def __init__(self, server_url: str, api_url: str, model_id: str, api_key: str):  # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def __init__(
+        self,
+        server_url: str,
+        api_url: str,
+        model_id: str,
+        api_key: str,
+        verbose_logger: Optional[logging.Logger] = None,
+    ):  # pylint: disable=too-many-instance-attributes
         self.server_url = server_url
         self.api_url = api_url
         self.model_id = model_id
@@ -59,6 +67,10 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             api_key=api_key,
             system_prompt="You are a helpful assistant that can use tools to answer questions and perform tasks.",
         )
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+        if verbose_logger:
+            self.logger = verbose_logger
 
         # Run async initialization
         asyncio.run(self._initialize())
@@ -77,7 +89,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             self.system_prompt = await self._get_system_prompt()
             logging.info("Initialized %d tools from MCP server", len(self.tools or []))
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logging.error("Failed to initialize MCP tools: %s", e)
+            self.logger.error("Failed to initialize MCP tools: %s", e)
             raise
 
     async def _get_system_prompt(self) -> str:
@@ -91,7 +103,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
                     return response_data["result"].get("instructions", "")
             return ""
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logging.warning("Failed to get system prompt: %s", e)
+            self.logger.warning("Failed to get system prompt: %s", e)
             return ""
 
     def _record_tool_call(self, tool_name: str, arguments: Optional[Dict[str, Any]] = None) -> None:
@@ -174,7 +186,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             wrapped.append(self._wrap_one_tool(t))
         self.tools = wrapped
 
-    async def _setup_agent(self, verbose_logger: Optional[logging.Logger] = None):
+    async def _setup_agent(self):
         """Setup LlamaIndex agent with MCP tools and optional verbose logging."""
         # Reset recordings for a new session
         self._called_tools = []
@@ -192,31 +204,28 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         )
         self.context = Context(self.agent)
 
-        if verbose_logger:
-            verbose_logger.info("📝 Initialized workflow with event streaming for step logging")
+        self.logger.info("📝 Initialized workflow with event streaming for step logging")
 
     async def execute_with_reasoning(  # pylint: disable=too-many-locals
         self,
         user_msg: str,
         chat_history: Optional[List[ChatMessage]] = None,
-        verbose_logger: Optional[logging.Logger] = None,
         max_iterations: int = 10,
     ) -> Tuple[str, List[Dict[str, Any]], List[Any], List[ChatMessage]]:  # pylint: disable=too-many-locals,too-many-arguments
         """Execute agent, record tool calls and steps, return response and artifacts."""
-        if chat_history is None:
-            chat_history = []
-
-        # If verbose_logger provided, rebuild agent to ensure logging/wrapping
-        if verbose_logger:
-            await self._setup_agent(verbose_logger)
+        if chat_history is None or len(chat_history) == 0:
+            # ensure system prompt is included in chat history
+            if self.system_prompt:
+                chat_history = [ChatMessage(role="system", content=self.system_prompt)]
+            else:
+                chat_history = []
 
         if not self.agent or not self.context:
             raise ValueError("Agent or context not initialized")
 
         # Stream events for optional step logging while the workflow runs
-        if verbose_logger:
-            verbose_logger.info("🎬 Starting workflow execution...")
-            verbose_logger.info("📝 User message: %s", user_msg)
+        self.logger.info("🎬 Starting workflow execution...")
+        self.logger.info("📝 User message: %s", user_msg)
 
         handler = self.agent.run(
             user_msg=user_msg,
@@ -230,11 +239,11 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             async for ev in handler.stream_events():
                 ev_name = ev.__class__.__name__
                 self._step_names.append(ev_name)
-                if verbose_logger and ev_name not in ["AgentStream"]:
+                if self.logger and ev_name not in ["AgentStream"]:
                     data = f"{ev}"
                     if len(data) > 2000:
                         data = data[:1000] + "\n<… abbreviated log …>\n" + data[-1000:]
-                    verbose_logger.debug("📡 Event %s: %s", ev_name, data)
+                    self.logger.debug("📡 Event %s: %s", ev_name, data)
 
         # Run streaming in background while awaiting result
         stream_task = asyncio.create_task(_stream_events())
@@ -259,10 +268,9 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         # Return called tools as recorded
         tools_called: List[Any] = list(self._called_tools)
 
-        if verbose_logger:
-            verbose_logger.info("🔍 Agent response: %s", response)
-            if tools_called:
-                verbose_logger.info("🔧 Tools called: %s", [t.name for t in tools_called])
+        self.logger.info("🔍 Agent response: %s", response)
+        if tools_called:
+            self.logger.info("🔧 Tools called: %s", [t.name for t in tools_called])
 
         return str(response), reasoning_steps, tools_called, updated_history
 
