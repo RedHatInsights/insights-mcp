@@ -10,6 +10,7 @@ from tests.conftest import (
     test_client_credentials,
     mock_http_headers,
     mcp_server_url,
+    mcp_tools,
     verbose_logger,
 )
 
@@ -21,5 +22,6 @@ __all__ = [
     "test_client_credentials",
     "mock_http_headers",
     "mcp_server_url",
+    "mcp_tools",
     "verbose_logger",
 ]

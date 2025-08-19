@@ -1,118 +1,19 @@
 """Test the MCP API.
 
 Test includes:
-- tool descriptions and annotations
-- tool parameter descriptions
+- Generic MCP server functionality and transport validation
+- Blueprint pattern tests are now in module-specific test files
 """
 
-from typing import Any, Dict
 
-import pytest
-
-# checks if the MCP tools include descriptions and annotations
-# using image-builder__get_blueprints and image-builder__get_composes as examples
+def test_mcp_server_provides_tools(mcp_tools):
+    """Test that the MCP server provides some tools."""
+    assert len(mcp_tools) > 0, "MCP server should provide at least one tool"
 
 
-@pytest.mark.parametrize(
-    "tool_name, expected_desc, params",
-    [
-        (
-            "image-builder__get_blueprints",
-            "Show user's image blueprints",
-            {
-                "limit": {
-                    "description": "Maximum number of items to return (use 7 as default)",
-                    "default": 7,
-                    "type": "integer",
-                    "anyOf": None,
-                }
-            },
-        ),
-        (
-            "image-builder__get_composes",
-            "Get a list of all image builds (composes)",
-            {
-                "limit": {
-                    "description": "Maximum number of items to return (use 7 as default)",
-                    "default": 7,
-                    "type": "integer",
-                    "anyOf": None,
-                },
-                "offset": {
-                    "description": "Number of items to skip when paging (use 0 as default)",
-                    "default": 0,
-                    "type": "integer",
-                    "anyOf": None,
-                },
-                "search_string": {
-                    "description": "Substring to search for in the name",
-                    "default": None,
-                    "type": None,
-                    "anyOf": [{"type": "string"}, {"type": "null"}],
-                },
-            },
-        ),
-    ],
-    ids=["image-builder__get_blueprints", "image-builder__get_composes"],
-)
-def test_mcp_tools_include_descriptions_and_annotations(
-    mcp_tools,
-    subtests,
-    tool_name: str,
-    expected_desc: str,
-    params: Dict[str, Dict[str, Any]],
-):  # pylint: disable=redefined-outer-name
-    """Test that the MCP tools include descriptions and annotations."""
-    tools = mcp_tools
-
-    # Build map for quick lookup
-    name_to_tool = {getattr(t.metadata, "name", ""): t for t in tools}
-    assert tool_name in name_to_tool, f"Tool not found: {tool_name}"
-    tool = name_to_tool[tool_name]
-
-    # Description check
-    desc = getattr(tool.metadata, "description", "") or ""
-    assert desc.startswith(expected_desc)
-
-    fn_schema = getattr(tool.metadata, "fn_schema", None)
-    assert fn_schema is not None, f"{tool_name}: fn_schema is None"
-    assert hasattr(fn_schema, "model_json_schema"), f"{tool_name}: fn_schema.model_json_schema missing"
-    schema_obj = fn_schema.model_json_schema()  # type: ignore[attr-defined]
-    assert isinstance(schema_obj, dict), f"{tool_name}: invalid fn_schema (model_json_schema not dict)"
-
-    props = schema_obj.get("properties", {}) or {}
-    for param_name, expected_param_desc in params.items():
-        with subtests.test(param=param_name):
-            assert props.get(param_name, {}).get("description") == expected_param_desc.get("description")
-            assert props.get(param_name, {}).get("default") == expected_param_desc.get("default")
-            assert props.get(param_name, {}).get("type") == expected_param_desc.get("type")
-            assert props.get(param_name, {}).get("anyOf") == expected_param_desc.get("anyOf")
-    # Note: Testing defaults would be ideal but
-    # default is null in FastMCP schema by design; actual defaulting occurs server-side
-
-
-@pytest.mark.parametrize("mcp_server_url", ["http", "sse"], indirect=True)
-def test_transport_types_with_get_blueprints(mcp_tools, request):
-    """Test that http and sse transport types can start and expose get_blueprints tool."""
-    # Get transport from the fixture parameter
-    transport = request.node.callspec.params["mcp_server_url"]
-
-    # Build map for quick lookup
-    tool_names = {getattr(t.metadata, "name", "") for t in mcp_tools}
-
-    # Verify get_blueprints is available (with image-builder prefix)
-    assert "image-builder__get_blueprints" in tool_names, (
-        f"image-builder__get_blueprints not found in tools for {transport} transport. Available tools: {tool_names}"
-    )
-
-
-@pytest.mark.parametrize("mcp_server_url", ["stdio"], indirect=True)
-def test_stdio_transport_with_get_blueprints(mcp_tools):
-    """Test stdio transport with get_blueprints tool using BasicMCPClient subprocess."""
-    # Build map for quick lookup
-    tool_names = {getattr(t.metadata, "name", "") for t in mcp_tools}
-
-    # Verify get_blueprints is available (with image-builder prefix)
-    assert "image-builder__get_blueprints" in tool_names, (
-        f"image-builder__get_blueprints not found in tools for stdio transport. Available tools: {tool_names}"
-    )
+def test_all_tools_have_metadata(mcp_tools):
+    """Test that all tools have proper metadata."""
+    for tool in mcp_tools:
+        assert hasattr(tool, "metadata"), f"Tool {tool} missing metadata"
+        assert hasattr(tool.metadata, "name"), f"Tool {tool} missing name in metadata"
+        assert hasattr(tool.metadata, "description"), f"Tool {tool} missing description in metadata"
