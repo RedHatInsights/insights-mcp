@@ -14,12 +14,12 @@ import pytest
     "tool_name, expected_desc, param_descs",
     [
         (
-            "get_blueprints",
+            "image-builder__get_blueprints",
             "Show user's image blueprints",
             {"limit": "Maximum number of items to return (use 7 as default)"},
         ),
         (
-            "get_composes",
+            "image-builder__get_composes",
             "Get a list of all image builds (composes)",
             {
                 "limit": "Maximum number of items to return (use 7 as default)",
@@ -28,7 +28,7 @@ import pytest
             },
         ),
     ],
-    ids=["get_blueprints", "get_composes"],
+    ids=["image-builder__get_blueprints", "image-builder__get_composes"],
 )
 def test_mcp_tools_include_descriptions_and_annotations(
     mcp_tools,
