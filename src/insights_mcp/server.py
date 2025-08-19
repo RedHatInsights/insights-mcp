@@ -10,10 +10,11 @@ import uvicorn
 from fastmcp import FastMCP
 
 from image_builder_mcp.server import mcp_server as ImageBuilderMCP
+from vulnerability_mcp.server import mcp as VulnerabilityMCP
 from insights_mcp.mcp import INSIGHTS_BASE_URL, InsightsMCP
 from insights_mcp.oauth import Middleware
 
-MCPS: list[InsightsMCP] = [ImageBuilderMCP]
+MCPS: list[InsightsMCP] = [ImageBuilderMCP, VulnerabilityMCP]
 
 
 class InsightsMCPServer(FastMCP):
