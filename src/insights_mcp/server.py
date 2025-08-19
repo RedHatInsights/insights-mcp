@@ -9,13 +9,14 @@ from typing import Any
 import uvicorn
 from fastmcp import FastMCP
 
+from rhel_advisor_mcp.server import mcp_server as RhelAdvisorMCP
 from image_builder_mcp.server import mcp_server as ImageBuilderMCP
 from vulnerability_mcp.server import mcp as VulnerabilityMCP
 from remediations_mcp.server import mcp as RemediationsMCP
 from insights_mcp.mcp import INSIGHTS_BASE_URL, InsightsMCP
 from insights_mcp.oauth import Middleware
 
-MCPS: list[InsightsMCP] = [ImageBuilderMCP, VulnerabilityMCP, RemediationsMCP]
+MCPS: list[InsightsMCP] = [ImageBuilderMCP, VulnerabilityMCP, RemediationsMCP, RhelAdvisorMCP]
 
 
 class InsightsMCPServer(FastMCP):
