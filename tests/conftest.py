@@ -1,15 +1,25 @@
-"""
-Pytest configuration and shared fixtures for image-builder-mcp tests.
-"""
+"""Pytest configuration and common fixtures."""
+
+# Apply defensive patch for llama-index MCP schema violation bug
+# This prevents TypeError when llama-index incorrectly generates additionalProperties: true
+# (which violates MCP specification that expects explicit object properties)
 
 import asyncio
 import logging
 import pytest
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
+
+# pylint: disable=wrong-import-position
+from .llama_index_non_iterable_bool_patch import apply_llama_index_bool_patch
+
+if apply_llama_index_bool_patch():
+    print("✅ Patch applied successfully")
+else:
+    print("❌ Failed to apply patch")
+
 from .utils import start_insights_mcp_server, cleanup_server_process, load_llm_configurations
 from .utils import CustomVLLMModel
 from .utils_agent import MCPAgentWrapper
-
 
 # Load LLM configurations for fixtures
 _, guardian_llm_config = load_llm_configurations()
