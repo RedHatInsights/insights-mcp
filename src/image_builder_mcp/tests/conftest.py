@@ -9,7 +9,7 @@ from tests.conftest import (
     default_response_size,
     test_client_credentials,
     mock_http_headers,
-    mcp_server_thread,
+    mcp_server_url,
     verbose_logger,
 )
 
@@ -20,6 +20,6 @@ __all__ = [
     "default_response_size",
     "test_client_credentials",
     "mock_http_headers",
-    "mcp_server_thread",
+    "mcp_server_url",
     "verbose_logger",
 ]

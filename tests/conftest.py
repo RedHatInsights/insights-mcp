@@ -2,9 +2,11 @@
 Pytest configuration and shared fixtures for image-builder-mcp tests.
 """
 
+import asyncio
 import logging
 import pytest
-from .utils import start_mcp_server_process, cleanup_server_process, load_llm_configurations
+from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
+from .utils import start_insights_mcp_server, cleanup_server_process, load_llm_configurations
 from .utils import CustomVLLMModel
 from .utils_agent import MCPAgentWrapper
 
@@ -14,13 +16,13 @@ _, guardian_llm_config = load_llm_configurations()
 
 
 @pytest.fixture
-def test_agent(mcp_server_thread, verbose_logger, request):  # pylint: disable=redefined-outer-name
+def test_agent(mcp_server_url, verbose_logger, request):  # pylint: disable=redefined-outer-name
     """Create and configure a simplified test agent for the current LLM configuration."""
     # Get llm_config from the test's parametrization
     llm_config = request.node.callspec.params["llm_config"]
 
     agent = MCPAgentWrapper(
-        server_url=mcp_server_thread,
+        server_url=mcp_server_url,
         api_url=llm_config["MODEL_API"],
         model_id=llm_config["MODEL_ID"],
         api_key=llm_config["USER_KEY"],
@@ -77,14 +79,45 @@ def mock_http_headers(test_client_credentials):
 
 
 @pytest.fixture(scope="session")
-def mcp_server_thread():  # pylint: disable=too-many-locals
-    """Start MCP server in a separate thread using HTTP streaming."""
-    server_url, server_process = start_mcp_server_process()
+def mcp_server_url(request):
+    """Start MCP server and return the URL.
+
+    Supports different transport types via pytest.mark.parametrize or direct specification.
+    Defaults to 'http' transport for backward compatibility.
+    """
+    # Get transport from test parameter if available, otherwise default to http
+    transport = getattr(request, "param", "http")
+    if hasattr(request.node, "callspec") and "transport" in request.node.callspec.params:
+        transport = request.node.callspec.params["transport"]
+
+    server_url, server_process = start_insights_mcp_server(transport)
 
     try:
         yield server_url
     finally:
         cleanup_server_process(server_process)
+
+
+@pytest.fixture()
+def mcp_tools(mcp_server_url):  # pylint: disable=redefined-outer-name
+    """Fetch tools from the MCP server.
+
+    For stdio transport, uses BasicMCPClient subprocess approach.
+    For HTTP/SSE transports, connects to the running server.
+    """
+    if mcp_server_url == "stdio":
+        # For stdio, use subprocess approach
+        client = BasicMCPClient("python", args=["-m", "insights_mcp.server", "stdio"])
+    else:
+        # For HTTP/SSE, connect to running server
+        client = BasicMCPClient(mcp_server_url)
+
+    tool_spec = McpToolSpec(client=client)
+
+    async def _fetch():
+        return await tool_spec.to_tool_list_async()
+
+    return asyncio.run(_fetch())
 
 
 @pytest.fixture
