@@ -55,8 +55,20 @@ from tests.test_patterns import (
                 },
             },
         ),
+        (
+            "image-builder__get_openapi",
+            "Get OpenAPI spec. Use this to get details e.g for a new blueprint",
+            {
+                "response_size": {
+                    "description": "Number of items returned (use 7 as default)",
+                    "default": 7,
+                    "type": "integer",
+                    "anyOf": None,
+                }
+            },
+        ),
     ],
-    ids=["image-builder__get_blueprints", "image-builder__get_composes"],
+    ids=["image-builder__get_blueprints", "image-builder__get_composes", "image-builder__get_openapi"],
 )
 def test_mcp_tools_include_descriptions_and_annotations(
     mcp_tools,
