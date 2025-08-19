@@ -5,8 +5,8 @@ import json
 import logging
 import socket
 import time
-import asyncio
 import multiprocessing
+import sys
 from typing import Dict, List, Any, Tuple, Optional
 
 import requests
@@ -119,89 +119,108 @@ def get_free_port() -> int:
     return port
 
 
-def start_mcp_server_process():
-    """Start MCP server in a separate process - shared utility function."""
+def start_insights_mcp_server(transport: str, timeout: int = 30) -> tuple[str, multiprocessing.Process]:
+    """Start the insights MCP server with specified transport type.
+
+    Args:
+        transport: Transport type ('http', 'sse', or 'stdio')
+        timeout: Timeout in seconds for server startup
+
+    Returns:
+        Tuple of (server_url, server_process)
+    """
     port = get_free_port()
-    server_url = f"http://127.0.0.1:{port}/mcp/"
 
-    # Use multiprocessing instead of threading to avoid asyncio conflicts
-    server_queue = multiprocessing.Queue()
+    if transport == "stdio":
+        # For stdio, we don't need a URL/port, but we'll use a placeholder
+        server_url = "stdio"
+    elif transport == "sse":
+        server_url = f"http://127.0.0.1:{port}/sse"
+    else:  # http
+        server_url = f"http://127.0.0.1:{port}/mcp/"
 
-    def server_process():
+    server_queue: multiprocessing.Queue = multiprocessing.Queue()
+
+    def server_worker():
         """Start the MCP server in a separate process."""
         try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            # Mock sys.argv to simulate command line arguments
+            original_argv = sys.argv.copy()
+            try:
+                if transport == "stdio":
+                    sys.argv = ["insights_mcp", "stdio"]
+                elif transport == "sse":
+                    sys.argv = ["insights_mcp", "sse", "--host", "127.0.0.1", "--port", str(port)]
+                else:  # http
+                    sys.argv = ["insights_mcp", "http", "--host", "127.0.0.1", "--port", str(port)]
 
-            # Import here to avoid module-level asyncio conflicts
-            # pylint: disable=import-outside-toplevel
-            from image_builder_mcp.server import ImageBuilderMCP
+                # Import and call main
+                # pylint: disable=import-outside-toplevel
+                from insights_mcp.server import main
 
-            # Get credentials from environment (may be None for testing)
-            client_id = os.getenv("INSIGHTS_CLIENT_ID")
-            client_secret = os.getenv("INSIGHTS_CLIENT_SECRET")
+                # Signal that server is starting
+                server_queue.put("starting")
 
-            mcp_server = ImageBuilderMCP()
-            mcp_server.init_insights_client(
-                client_id=client_id,
-                client_secret=client_secret,
-                oauth_enabled=False,
-                mcp_transport="http",
-            )
-            mcp_server.register_tools()
+                # Start the server
+                main()
 
-            # Signal that server is starting
-            server_queue.put("starting")
-
-            # Start server with HTTP transport on dynamic port
-            mcp_server.run(transport="http", host="127.0.0.1", port=port)
+            finally:
+                sys.argv = original_argv
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             server_queue.put(f"error: {e}")
 
     # Start server process
-    server_process = multiprocessing.Process(target=server_process, daemon=True)
+    server_process = multiprocessing.Process(target=server_worker, daemon=True)
     server_process.start()
 
     try:
         # Wait for server to start
-        start_signal = server_queue.get(timeout=10)
+        start_signal = server_queue.get(timeout=timeout)
         if start_signal.startswith("error:"):
-            raise ServerStartupError(f"Server failed to start: {start_signal}")
+            raise RuntimeError(f"Server failed to start: {start_signal}")
 
         # Additional wait for server to be fully ready
-        time.sleep(3)
+        time.sleep(1)
 
-        # Test server connectivity with retry logic
-        max_retries = 5
-        for attempt in range(max_retries):
-            try:
-                test_request = create_mcp_init_request()
-                response = requests.post(server_url, json=test_request, headers=DEFAULT_JSON_HEADERS, timeout=10)
+        # For HTTP transport, test connectivity with MCP init request
+        if transport == "http":
+            max_retries = 5
+            for attempt in range(max_retries):
+                try:
+                    test_request = create_mcp_init_request()
+                    response = requests.post(server_url, json=test_request, headers=DEFAULT_JSON_HEADERS, timeout=10)
 
-                if response.status_code == 200:
-                    break
+                    if response.status_code == 200:
+                        break
 
-                if attempt == max_retries - 1:
-                    raise ServerConnectionError(
-                        (
-                            f"Server not responding properly after {max_retries} "
-                            f"attempts: {response.status_code} - {response.text}"
+                    if attempt == max_retries - 1:
+                        raise ServerConnectionError(
+                            (
+                                f"Server not responding properly after {max_retries} "
+                                f"attempts: {response.status_code} - {response.text}"
+                            )
                         )
-                    )
 
-                time.sleep(2)  # Wait before retry
+                    time.sleep(2)  # Wait before retry
 
-            except requests.exceptions.RequestException as e:
-                if attempt == max_retries - 1:
-                    raise ServerConnectionError(f"Failed to connect to server after {max_retries} attempts: {e}") from e
-                time.sleep(2)  # Wait before retry
+                except requests.exceptions.RequestException as e:
+                    if attempt == max_retries - 1:
+                        raise ServerConnectionError(
+                            f"Failed to connect to server after {max_retries} attempts: {e}"
+                        ) from e
+                    time.sleep(2)  # Wait before retry
+
+                # For SSE transport, skip connectivity test since SSE streams continuously
+        # The server startup signal is sufficient to confirm it's working
+        elif transport == "sse":
+            pass  # SSE endpoint streaming behavior makes connectivity testing complex
 
         return server_url, server_process
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except Exception:  # pylint: disable=broad-exception-caught
         cleanup_server_process(server_process)
-        raise e
+        raise
 
 
 def parse_mcp_response(response_text: str) -> Dict[str, Any]:

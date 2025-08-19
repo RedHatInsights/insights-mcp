@@ -5,40 +5,9 @@ Test includes:
 - tool parameter descriptions
 """
 
-import asyncio
 from typing import Dict
 
 import pytest
-
-from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
-
-from .utils import start_mcp_server_process, cleanup_server_process
-
-
-# Fixtures
-@pytest.fixture(scope="module")
-def mcp_server_url():
-    """Start the MCP server and return the URL."""
-    server_url, server_process = start_mcp_server_process()
-    try:
-        assert server_url and server_url.endswith("/mcp/"), f"Invalid server_url: {server_url}"
-        yield server_url
-    finally:
-        cleanup_server_process(server_process)
-
-
-@pytest.fixture()
-def mcp_tools(mcp_server_url: str):  # pylint: disable=redefined-outer-name
-    """Fetch the tools from the MCP server."""
-    # Synchronous wrapper around async tool fetch for clearer stacktraces
-    client = BasicMCPClient(mcp_server_url)
-    tool_spec = McpToolSpec(client=client)
-
-    async def _fetch():
-        return await tool_spec.to_tool_list_async()
-
-    # Use a local event loop via asyncio.run for this isolated call
-    return asyncio.run(_fetch())
 
 
 @pytest.mark.parametrize(
@@ -92,3 +61,30 @@ def test_mcp_tools_include_descriptions_and_annotations(
             assert props.get(param_name, {}).get("description") == expected_param_desc
     # Note: Testing defaults would be ideal but
     # default is null in FastMCP schema by design; actual defaulting occurs server-side
+
+
+@pytest.mark.parametrize("mcp_server_url", ["http", "sse"], indirect=True)
+def test_transport_types_with_get_blueprints(mcp_tools, request):
+    """Test that http and sse transport types can start and expose get_blueprints tool."""
+    # Get transport from the fixture parameter
+    transport = request.node.callspec.params["mcp_server_url"]
+
+    # Build map for quick lookup
+    tool_names = {getattr(t.metadata, "name", "") for t in mcp_tools}
+
+    # Verify get_blueprints is available (with image-builder prefix)
+    assert "image-builder__get_blueprints" in tool_names, (
+        f"image-builder__get_blueprints not found in tools for {transport} transport. Available tools: {tool_names}"
+    )
+
+
+@pytest.mark.parametrize("mcp_server_url", ["stdio"], indirect=True)
+def test_stdio_transport_with_get_blueprints(mcp_tools):
+    """Test stdio transport with get_blueprints tool using BasicMCPClient subprocess."""
+    # Build map for quick lookup
+    tool_names = {getattr(t.metadata, "name", "") for t in mcp_tools}
+
+    # Verify get_blueprints is available (with image-builder prefix)
+    assert "image-builder__get_blueprints" in tool_names, (
+        f"image-builder__get_blueprints not found in tools for stdio transport. Available tools: {tool_names}"
+    )
