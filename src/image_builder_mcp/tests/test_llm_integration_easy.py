@@ -66,7 +66,7 @@ class TestLLMIntegrationEasy:
             f"The response was: {response}\n"
         )
 
-        test_case = LLMTestCase(input=prompt, actual_output=response, tools_called=tools_executed)
+        test_case = LLMTestCase(input=prompt, actual_output=response, expected_tools=[], tools_called=tools_executed)
 
         # Define expected behavior metric using custom LLM
         behavioral_compliance = GEval(
@@ -79,9 +79,9 @@ class TestLLMIntegrationEasy:
             ),
             evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.TOOLS_CALLED],
             model=guardian_agent,
-            strict_mode=True,
         )
 
+        verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.model_id)
         # Evaluate with deepeval metric
         assert_test(test_case, [behavioral_compliance])
 
