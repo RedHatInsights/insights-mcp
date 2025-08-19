@@ -21,24 +21,46 @@ In both cases if you are in doubt, please disable/remove the `INSIGHTS_CLIENT_ID
 ## Run
 
 ### Using Python directly
-Install the package in development mode:
 
-```
+#### Option 1: Global CLI tool (recommended for usage)
+Install as a global CLI tool (lighter, no development dependencies):
+
+```bash
 uv tool install -e .
 ```
 
-Then run using the CLI entry point:
+Then run directly:
 
-```
+```bash
 insights-mcp sse
 ```
 
-This will start `insights-mcp` server at http://localhost:9000/sse
+#### Option 2: Project environment (recommended for development)
+Set up the development environment (includes development dependencies for testing, linting, etc.):
+
+```bash
+uv sync --all-extras --dev
+```
+
+Then run with `uv`:
+
+```bash
+uv run insights-mcp sse
+```
+
+**Note**: Use Option 2 if you need to run tests, linting, or other development tasks:
+```bash
+uv run pytest
+uv run mypy src/
+uv run pylint src/
+```
+
+Both approaches will start `insights-mcp` server at http://localhost:9000/sse
 
 For HTTP streaming transport:
 
-```
-`insights-mcp` http
+```bash
+insights-mcp http
 ```
 
 This will start `insights-mcp` server with HTTP streaming transport at http://localhost:8000/mcp
