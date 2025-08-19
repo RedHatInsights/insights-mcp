@@ -11,6 +11,7 @@ Classes:
     InsightsClient: High-level client that automatically selects auth method
 """
 
+import json as json_lib
 from logging import getLogger
 from typing import Any
 
@@ -72,6 +73,10 @@ class InsightsClientBase(httpx.AsyncClient):
             response = await fn(*args, **kwargs)
             response.raise_for_status()
             return response.json()
+        except json_lib.JSONDecodeError as e:
+            # failed to decode JSON, return raw content
+            self.logger.debug("JSONDecodeError: %s", e)
+            return response.content.decode("utf-8")
         except httpx.HTTPStatusError as e:
             content = self.get_error_message(e)
             return {"Unexpected HTTP status code": f"{e.response.status_code}, content: {content}"}
