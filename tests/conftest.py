@@ -36,6 +36,7 @@ def test_agent(mcp_server_url, verbose_logger, request):  # pylint: disable=rede
         api_url=llm_config["MODEL_API"],
         model_id=llm_config["MODEL_ID"],
         api_key=llm_config["USER_KEY"],
+        verbose_logger=verbose_logger,
     )
     verbose_logger.info("🧪 Testing the model: %s", agent.model_id)
 

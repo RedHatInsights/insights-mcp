@@ -54,9 +54,7 @@ class TestLLMIntegrationEasy:
         prompt = "Can you create a RHEL 9 image for me?"
 
         # Execute tools and capture reasoning steps and tool calls
-        response, reasoning_steps, tools_executed, _ = await test_agent.execute_with_reasoning(
-            prompt, chat_history=[], verbose_logger=verbose_logger
-        )
+        response, reasoning_steps, tools_executed, _ = await test_agent.execute_with_reasoning(prompt, chat_history=[])
 
         # Check that create_blueprint is not called immediately
         tool_names = [tool.name for tool in tools_executed]
@@ -103,9 +101,7 @@ class TestLLMIntegrationEasy:
 
         prompt = "What is the status of my latest image build?"
 
-        response, _, tools_executed, _ = await test_agent.execute_with_reasoning(
-            prompt, chat_history=[], verbose_logger=verbose_logger
-        )
+        response, _, tools_executed, _ = await test_agent.execute_with_reasoning(prompt, chat_history=[])
 
         # first we check if there is a question in the response for the name or UUID of the compose
         contains_question = GEval(
@@ -167,9 +163,7 @@ class TestLLMIntegrationEasy:
     async def test_tool_usage_patterns(self, test_agent, verbose_logger, llm_config, scenario):  # pylint: disable=redefined-outer-name
         """Test various tool usage patterns and their appropriateness."""
 
-        response, _, tools_executed, _ = await test_agent.execute_with_reasoning(
-            scenario["prompt"], chat_history=[], verbose_logger=verbose_logger
-        )
+        response, _, tools_executed, _ = await test_agent.execute_with_reasoning(scenario["prompt"], chat_history=[])
         expected_tools = [ToolCall(name=name) for name in scenario["expected_tools"]]
 
         test_case = LLMTestCase(
@@ -200,7 +194,7 @@ class TestLLMIntegrationEasy:
         prompt = "List my latest 2 blueprints"
 
         response, _reasoning_steps, tools_executed, conversation_history = await test_agent.execute_with_reasoning(
-            prompt, chat_history=[], verbose_logger=verbose_logger
+            prompt, chat_history=[]
         )
         expected_tools = [ToolCall(name="get_blueprints")]
 
@@ -220,9 +214,7 @@ class TestLLMIntegrationEasy:
             _,
             tools_executed,
             updated_chat_history,
-        ) = await test_agent.execute_with_reasoning(
-            follow_up_prompt, chat_history=conversation_history, verbose_logger=verbose_logger
-        )
+        ) = await test_agent.execute_with_reasoning(follow_up_prompt, chat_history=conversation_history)
 
         pretty_print_chat_history(updated_chat_history, llm_config["name"], verbose_logger)
 

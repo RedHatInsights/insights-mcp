@@ -31,7 +31,7 @@ class TestLLMIntegrationHard:
         prompt = "Can you help me understand what blueprints are available?"
 
         response, _reasoning_steps, tools_executed, conversation_history = await test_agent.execute_with_reasoning(
-            prompt, chat_history=[], verbose_logger=verbose_logger
+            prompt, chat_history=[]
         )
 
         expected_tools = [ToolCall(name="get_blueprints"), ToolCall(name="get_openapi")]
