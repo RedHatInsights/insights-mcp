@@ -1135,7 +1135,13 @@ dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
+    { name = "pytest-subtests" },
     { name = "types-requests" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest-subtests" },
 ]
 
 [package.metadata]
@@ -1143,7 +1149,7 @@ requires-dist = [
     { name = "autopep8", marker = "extra == 'dev'" },
     { name = "deepeval", marker = "extra == 'dev'" },
     { name = "fastmcp", specifier = ">=2.10.1" },
-    { name = "llama-index", marker = "extra == 'dev'" },
+    { name = "llama-index", marker = "extra == 'dev'"},
     { name = "llama-index-core", marker = "extra == 'dev'" },
     { name = "llama-index-llms-openai", marker = "extra == 'dev'" },
     { name = "llama-index-tools-mcp", marker = "extra == 'dev'" },
