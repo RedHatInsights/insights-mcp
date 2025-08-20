@@ -271,6 +271,8 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         self.logger.info("🔍 Agent response: %s", response)
         if tools_called:
             self.logger.info("🔧 Tools called: %s", [t.name for t in tools_called])
+        else:
+            self.logger.info("🔧 No tools called")
 
         return str(response), reasoning_steps, tools_called, updated_history
 

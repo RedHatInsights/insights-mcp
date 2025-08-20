@@ -58,10 +58,10 @@ class TestLLMIntegrationEasy:
 
         # Check that create_blueprint is not called immediately
         tool_names = [tool.name for tool in tools_executed]
-        assert "create_blueprint" not in tool_names, (
+        assert "image-builder__create_blueprint" not in tool_names, (
             f"❌ BEHAVIORAL RULE VIOLATION for {llm_config['name']} "
             f"({llm_config['MODEL_ID']}): "
-            f"LLM called create_blueprint immediately! Tool calls: {tool_names}. "
+            f"LLM called image-builder__create_blueprint immediately! Tool calls: {tool_names}. "
             f"System prompt not working correctly.\nThe prompt was: {prompt}\n"
             f"The response was: {response}\n"
         )
@@ -72,7 +72,7 @@ class TestLLMIntegrationEasy:
         behavioral_compliance = GEval(
             name="Behavioral Compliance",
             criteria=(
-                "The LLM should NOT immediately call create_blueprint. "
+                "The LLM should NOT immediately call image-builder__create_blueprint. "
                 "Instead, it should either ask for more information about requirements (distributions, "
                 "architectures, image types etc.) or optionally use get_openapi to understand the system first."
                 "In any case the response should be targeted to the user for more information."
@@ -119,6 +119,7 @@ class TestLLMIntegrationEasy:
         answered_with_question = None
         # if this fails that's ok, we can continue
         try:
+            verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.model_id)
             assert_test(question_test_case, [contains_question])
             verbose_logger.info("✓ LLM %s correctly answered with a question", llm_config["name"])
         except AssertionError as e:
@@ -127,7 +128,7 @@ class TestLLMIntegrationEasy:
 
         # Define expected tools for this query
         expected_tools = [
-            ToolCall(name="get_composes"),
+            ToolCall(name="image-builder__get_composes"),
             # Could also include get_compose_details if compose ID is known
         ]
 
@@ -137,7 +138,7 @@ class TestLLMIntegrationEasy:
 
         # Check if relevant tools were selected
         tool_names = [tool.name for tool in tools_executed]
-        expected_tool_names = ["get_composes", "get_compose_details"]
+        expected_tool_names = ["image-builder__get_composes", "image-builder__get_compose_details"]
         found_relevant = any(tool in tool_names for tool in expected_tool_names)
 
         if found_relevant:
@@ -147,6 +148,7 @@ class TestLLMIntegrationEasy:
 
         answered_with_tools = None
         try:
+            verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.model_id)
             assert_test(test_case, [tool_correctness])
             verbose_logger.info("✓ LLM %s correctly used the tools", llm_config["name"])
         except AssertionError as e:
@@ -160,7 +162,7 @@ class TestLLMIntegrationEasy:
         "scenario", TOOL_USAGE_SCENARIOS, ids=[scenario["prompt"] for scenario in TOOL_USAGE_SCENARIOS]
     )
     @pytest.mark.asyncio
-    async def test_tool_usage_patterns(self, test_agent, verbose_logger, llm_config, scenario):  # pylint: disable=redefined-outer-name
+    async def test_tool_usage_patterns(self, test_agent, verbose_logger, llm_config, scenario, guardian_agent):  # pylint: disable=redefined-outer-name
         """Test various tool usage patterns and their appropriateness."""
 
         response, _, tools_executed, _ = await test_agent.execute_with_reasoning(scenario["prompt"], chat_history=[])
@@ -180,6 +182,7 @@ class TestLLMIntegrationEasy:
         # Create tool correctness metric - doesn't support model parameter
         tool_correctness = ToolCorrectnessMetric(threshold=0.6)
         # Evaluate with deepeval
+        verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.model_id)
         assert_test(test_case, [tool_correctness])
 
         verbose_logger.info(
@@ -188,15 +191,15 @@ class TestLLMIntegrationEasy:
 
     @pytest.mark.parametrize("llm_config", llm_configurations, ids=[config["name"] for config in llm_configurations])
     @pytest.mark.asyncio
-    async def test_llm_paging(self, test_agent, verbose_logger, llm_config):  # pylint: disable=redefined-outer-name,too-many-locals
+    async def test_llm_paging(self, test_agent, verbose_logger, llm_config, guardian_agent):  # pylint: disable=redefined-outer-name,too-many-locals
         """Test that the LLM can page through results."""
 
         prompt = "List my latest 2 blueprints"
 
-        response, _reasoning_steps, tools_executed, conversation_history = await test_agent.execute_with_reasoning(
+        response, _, tools_executed, conversation_history = await test_agent.execute_with_reasoning(
             prompt, chat_history=[]
         )
-        expected_tools = [ToolCall(name="get_blueprints")]
+        expected_tools = [ToolCall(name="image-builder__get_blueprints")]
 
         test_case_initial = LLMTestCase(
             input=prompt, actual_output=response, tools_called=tools_executed, expected_tools=expected_tools
@@ -218,11 +221,12 @@ class TestLLMIntegrationEasy:
 
         pretty_print_chat_history(updated_chat_history, llm_config["name"], verbose_logger)
 
-        expected_tools = [ToolCall(name="get_blueprints", arguments={"limit": 3, "offset": 2})]
+        expected_tools = [ToolCall(name="image-builder__get_blueprints", arguments={"limit": 3, "offset": 2})]
 
         test_case_subsequent = LLMTestCase(
             input=follow_up_prompt, actual_output=response, tools_called=tools_executed, expected_tools=expected_tools
         )
         tool_correctness = ToolCorrectnessMetric(threshold=0.6)
 
+        verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.model_id)
         assert_test(test_case_subsequent, [tool_correctness])
