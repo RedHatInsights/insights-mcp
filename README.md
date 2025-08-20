@@ -207,5 +207,5 @@ integration using podman:
 podman run --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --interactive --rm ghcr.io/redhatinsights/insights-mcp:latest
 ```
 
-### Contributing
+## Contributing
 Please refer to the [hacking guide](HACKING.md) to learn more.
