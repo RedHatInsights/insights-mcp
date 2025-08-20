@@ -29,9 +29,7 @@ class TestLLMIntegrationHard:
 
         prompt = "Can you help me understand what blueprints are available?"
 
-        response, _, tools_executed, conversation_history = await test_agent.execute_with_reasoning(
-            prompt, chat_history=[]
-        )
+        response, _, tools_executed, _ = await test_agent.execute_with_reasoning(prompt, chat_history=[])
 
         expected_tools = [ToolCall(name="image-builder__get_blueprints")]
 
