@@ -9,7 +9,6 @@ from deepeval.test_case import LLMTestCase, LLMTestCaseParams, ToolCall
 
 from tests.utils import (
     load_llm_configurations,
-    pretty_print_chat_history,
     should_skip_llm_matrix_tests,
 )
 
