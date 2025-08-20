@@ -1,0 +1,11 @@
+# Test Prompts
+- List all hosts running RHEL 9 that were last seen in the past day
+- Show me the top 5 most recently active hosts
+- Get details for host named 'web-server-prod-01'
+- How many hosts are currently stale?
+- List all hosts with the Satellite tag `lifecycle_environment` set to `Prod`
+- Get the system profile information for hosts with IDs: `12345678-1234-1234-1234-123456789abc, 87654321-4321-4321-4321-ba9876543210`
+- Get all tags for hosts that were updated in the last 24 hours
+- Find all hosts with `FQDN` ending in `.example.com`
+- Show me all enabled repositories on host `XXX`
+- Find hosts with more than 16GB of memory running on AWS
