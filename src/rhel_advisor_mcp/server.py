@@ -26,17 +26,19 @@ class RhelAdvisorMCP(InsightsMCP):
             toolset_name="advisor",
             api_path="api/insights/v1",
             instructions=(
-                """This server provides tools to discover and inspect Red Hat Insights Advisor Recommendations for RHEL.
+                """
+This server provides tools to discover and inspect Red Hat Insights Advisor Recommendations for RHEL.
 (A recommendation was formerly called a rule in Red Hat Insights for Red Hat Enterprise Linux.)
 
 Available tools:
-- get_active_rules: List active recommendations for your account with filters (impacting, incident, has_automatic_remediation, impact 1-4, likelihood 1-4, offset, limit).
+- get_active_rules: List active recommendations for your account with filters
+                    (impacting, incident, has_automatic_remediation, impact 1-4, likelihood 1-4, offset, limit).
 - get_rule_from_node_id: Find recommendations linked to a Knowledge Base article by node_id.
 - get_rule_details: Retrieve detailed information for a recommendation by rule_id.
 - get_hosts_hitting_a_rule: List systems affected by a recommendation.
 - get_hosts_details_hitting_a_rule: Get detailed per-system impact information for a recommendation.
 
-Use these tools to identify issues, assess impact, and plan remediation across your RHEL systems."""  # pylint: disable=line-too-long
+Use these tools to identify issues, assess impact, and plan remediation across your RHEL systems."""
             ),
         )
 
@@ -155,7 +157,7 @@ Use these tools to identify issues, assess impact, and plan remediation across y
             return int(value.strip())
         return None
 
-    async def get_active_rules(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    async def get_active_rules(  # pylint: disable=too-many-arguments
         self,
         *,
         impacting: Annotated[
@@ -445,7 +447,8 @@ Use these tools to identify issues, assess impact, and plan remediation across y
                     rhel_version_stripped,
                     ", ".join(sorted(valid_rhel_versions)),
                 )
-                return f"Error: Invalid RHEL version '{rhel_version_stripped}'. Valid versions are: {', '.join(sorted(valid_rhel_versions))}"  # pylint: disable=line-too-long
+                valid_versions = ", ".join(sorted(valid_rhel_versions))
+                return f"Error: Invalid RHEL version '{rhel_version_stripped}'. Valid versions are: {valid_versions}"
             sanitized_rhel_version = rhel_version_stripped
 
         # Build query parameters
