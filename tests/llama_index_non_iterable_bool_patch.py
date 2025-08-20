@@ -73,6 +73,7 @@ violates the MCP specification.
 """
 
 from typing import Any
+
 from llama_index.tools.mcp.tool_spec_mixins import TypeResolutionMixin
 
 

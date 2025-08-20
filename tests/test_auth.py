@@ -1,11 +1,13 @@
 """Test suite for authentication-related functionality."""
 
 from unittest.mock import patch
+
 import pytest
+
+import image_builder_mcp.server as image_builder_mcp
 
 # Clean import - no sys.path.insert needed with proper package structure!
 from image_builder_mcp import ImageBuilderMCP
-import image_builder_mcp.server as image_builder_mcp
 
 
 class TestAuthentication:

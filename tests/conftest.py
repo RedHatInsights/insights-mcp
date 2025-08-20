@@ -6,6 +6,7 @@
 
 import asyncio
 import logging
+
 import pytest
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 
@@ -17,8 +18,7 @@ if apply_llama_index_bool_patch():
 else:
     print("❌ Failed to apply patch")
 
-from .utils import start_insights_mcp_server, cleanup_server_process, load_llm_configurations
-from .utils import CustomVLLMModel
+from .utils import CustomVLLMModel, cleanup_server_process, load_llm_configurations, start_insights_mcp_server
 from .utils_agent import MCPAgentWrapper
 
 # Load LLM configurations for fixtures

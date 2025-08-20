@@ -8,17 +8,17 @@ This implementation removes reliance on deprecated WorkflowCheckpointer and inst
 
 import asyncio
 import logging
-from typing import Callable, Dict, List, Any, Tuple, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import requests
+from deepeval.test_case import ToolCall
 from llama_index.core.agent.workflow import FunctionAgent
+from llama_index.core.base.llms.types import LLMMetadata
+from llama_index.core.llms import ChatMessage
+from llama_index.core.tools import BaseTool
 from llama_index.core.workflow import Context
 from llama_index.llms.openai import OpenAI
-from llama_index.core.llms import ChatMessage
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
-from llama_index.core.base.llms.types import LLMMetadata
-from llama_index.core.tools import BaseTool
-from deepeval.test_case import ToolCall
 
 from .utils import (
     DEFAULT_JSON_HEADERS,

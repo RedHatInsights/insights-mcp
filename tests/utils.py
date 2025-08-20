@@ -1,19 +1,18 @@
 """Utility functions for testing."""
 
-import os
 import json
 import logging
-import socket
-import time
 import multiprocessing
+import os
+import socket
 import sys
-from typing import Dict, List, Any, Tuple, Optional
+import time
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
+from deepeval.models.base_model import DeepEvalBaseLLM
 from llama_index.core.llms import ChatMessage
 from pydantic import BaseModel
-from deepeval.models.base_model import DeepEvalBaseLLM
-
 
 # Constants
 DEFAULT_JSON_HEADERS = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}

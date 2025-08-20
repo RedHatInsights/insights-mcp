@@ -4,13 +4,13 @@ Conftest for image_builder_mcp tests - re-exports fixtures from top-level tests.
 
 # Import directly from tests since pytest now knows where to find packages
 from tests.conftest import (
-    test_agent,
-    guardian_agent,
     default_response_size,
-    test_client_credentials,
-    mock_http_headers,
+    guardian_agent,
     mcp_server_url,
     mcp_tools,
+    mock_http_headers,
+    test_agent,
+    test_client_credentials,
     verbose_logger,
 )
 
