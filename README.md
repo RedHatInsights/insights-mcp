@@ -207,5 +207,13 @@ integration using podman:
 podman run --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --interactive --rm ghcr.io/redhatinsights/insights-mcp:latest
 ```
 
+## Examples
+
+It's probably best to just ask the LLM you just attached to the MCP server to.
+e.g.
+```
+Please explain insights-mcp and what I can do with it?
+```
+
 ## Contributing
 Please refer to the [hacking guide](HACKING.md) to learn more.
