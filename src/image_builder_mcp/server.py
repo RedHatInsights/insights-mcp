@@ -74,7 +74,8 @@ class ImageBuilderMCP(InsightsMCP):
         🟡 **VERIFY PARAMETERS** (tools marked with yellow indicator):
         - blueprint_compose: Confirm blueprint UUID before proceeding
 
-        **Note**: Each tool description includes color-coded behavioral indicators for MCP clients that ignore server instructions.
+        **Note**: Each tool description includes color-coded behavioral indicators for MCP clients
+                  that ignore server instructions.
 
         RULES FOR CREATION TOOLS:
         1. **ALWAYS GATHER COMPLETE INFORMATION FIRST** through a conversational approach
@@ -690,7 +691,8 @@ To run the image copy the link below and follow the steps below:
 
    * Go to "Compute" in Oracle Cloud and choose "Custom Images".
    * Click on "Import image", choose "Import from an object storage URL".
-   * Choose "Import from an object storage URL" and paste the URL in the "Object Storage URL" field. The image type has to be set to QCOW2 and the launch mode should be paravirtualized.
+   * Choose "Import from an object storage URL" and paste the URL in the "Object Storage URL" field.
+        The image type has to be set to QCOW2 and the launch mode should be paravirtualized.
 
 ```
 {download_url}

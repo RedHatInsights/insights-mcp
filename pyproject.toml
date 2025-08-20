@@ -80,9 +80,7 @@ select = [
     "F",                    # pyflakes
     "I",                    # isort
 ]
-ignore = [
-    "E501",  # ignore "line too long" error as it is reported also for long strings
-]
+ignore = []
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]

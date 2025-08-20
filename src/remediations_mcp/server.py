@@ -15,7 +15,8 @@ mcp = InsightsMCP(
     api_path="api/remediations/v1",
     instructions="""
     This server provides tools to create Ansible Remediation Playbooks to fix systems connected to Insights.
-    You can create playbooks for different issues, such as vulnerability mitigation or applying InsightsAdvisor recommendations.
+    You can create playbooks for different issues, such as vulnerability mitigation
+    or applying InsightsAdvisor recommendations.
 
     [INSTRUCTION] Be communicative. Ask user if they want to get a link to the playbook or to get the YAML content.
     Playbooks in YAML format MUST be returned as is without any changes.
