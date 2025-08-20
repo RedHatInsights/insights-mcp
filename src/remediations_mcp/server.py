@@ -6,8 +6,8 @@ Provides tools to create Ansible Remediation Playbooks to fix systems connected 
 
 import random
 from typing import Any
-from insights_mcp.mcp import InsightsMCP
 
+from insights_mcp.mcp import InsightsMCP
 
 mcp = InsightsMCP(
     name="Insights Remediations MCP Server",

@@ -4,15 +4,14 @@ This includes more difficult questions to the LLM
 
 import pytest
 from deepeval import assert_test
-from deepeval.test_case import LLMTestCase, LLMTestCaseParams, ToolCall
 from deepeval.metrics import GEval, ToolCorrectnessMetric
+from deepeval.test_case import LLMTestCase, LLMTestCaseParams, ToolCall
 
 from tests.utils import (
-    should_skip_llm_matrix_tests,
     load_llm_configurations,
+    pretty_print_chat_history,
+    should_skip_llm_matrix_tests,
 )
-from tests.utils import pretty_print_chat_history
-
 
 # Load LLM configurations for parametrization
 llm_configurations, _ = load_llm_configurations()

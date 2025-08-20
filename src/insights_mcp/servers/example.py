@@ -1,6 +1,7 @@
 """Example MCP server."""
 
 from typing import Any
+
 from insights_mcp.mcp import InsightsMCP
 
 

@@ -5,6 +5,7 @@ Provides tools to get host inventory data for systems connected to Insights.
 """
 
 from typing import Any
+
 from insights_mcp.mcp import InsightsMCP
 
 mcp = InsightsMCP(

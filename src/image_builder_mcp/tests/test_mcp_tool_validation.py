@@ -11,8 +11,8 @@ import pytest
 # Import the test pattern functions from top-level tests
 from tests.test_patterns import (
     assert_mcp_tool_descriptions_and_annotations,
-    assert_transport_types_expose_tool,
     assert_stdio_transport_exposes_tool,
+    assert_transport_types_expose_tool,
 )
 
 
