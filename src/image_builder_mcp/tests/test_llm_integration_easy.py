@@ -162,7 +162,8 @@ class TestLLMIntegrationEasy:
         "scenario", TOOL_USAGE_SCENARIOS, ids=[scenario["prompt"] for scenario in TOOL_USAGE_SCENARIOS]
     )
     @pytest.mark.asyncio
-    async def test_tool_usage_patterns(self, test_agent, verbose_logger, llm_config, scenario, guardian_agent):  # pylint: disable=redefined-outer-name
+    # pylint: disable=redefined-outer-name,too-many-arguments,too-many-positional-arguments
+    async def test_tool_usage_patterns(self, test_agent, verbose_logger, llm_config, scenario, guardian_agent):
         """Test various tool usage patterns and their appropriateness."""
 
         response, _, tools_executed, _ = await test_agent.execute_with_reasoning(scenario["prompt"], chat_history=[])
