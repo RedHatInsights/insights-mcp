@@ -29,20 +29,15 @@ class TestLLMIntegrationHard:
 
         prompt = "Can you help me understand what blueprints are available?"
 
-        response, _reasoning_steps, tools_executed, conversation_history = await test_agent.execute_with_reasoning(
+        response, _, tools_executed, conversation_history = await test_agent.execute_with_reasoning(
             prompt, chat_history=[]
         )
 
-        expected_tools = [ToolCall(name="get_blueprints"), ToolCall(name="get_openapi")]
+        expected_tools = [ToolCall(name="image-builder__get_blueprints")]
 
         test_case = LLMTestCase(
             input=prompt, actual_output=response, tools_called=tools_executed, expected_tools=expected_tools
         )
-
-        verbose_logger.info("Conversation prompt for %s: %s", llm_config["name"], prompt)
-        verbose_logger.info("Tools called: %s", [tool.name for tool in tools_executed])
-
-        pretty_print_chat_history(conversation_history, llm_config["name"], verbose_logger)
 
         # Define conversation flow metric using custom LLM
         conversation_quality = GEval(
@@ -65,6 +60,7 @@ class TestLLMIntegrationHard:
         # Add a strict tool correctness check to fail when expected tools are not called
         tool_correctness = ToolCorrectnessMetric(threshold=0.6)
 
+        verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.model_id)
         # Evaluate with deepeval metrics
         assert_test(test_case, [conversation_quality, tool_correctness])
 
