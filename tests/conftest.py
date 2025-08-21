@@ -6,9 +6,15 @@
 
 import asyncio
 import logging
+from contextlib import contextmanager
+from unittest.mock import Mock, patch
 
 import pytest
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
+
+# Add imports for mock client creation
+from insights_mcp.client import InsightsClient
+from insights_mcp.mcp import INSIGHTS_BASE_URL
 
 # pylint: disable=wrong-import-position
 from .llama_index_non_iterable_bool_patch import apply_llama_index_bool_patch
@@ -146,3 +152,74 @@ def verbose_logger(request):
         logger.setLevel(logging.WARNING)
 
     return logger
+
+
+TEST_CLIENT_ID = "test-client-id"
+TEST_CLIENT_SECRET = "test-client-secret"
+TEST_BLUEPRINT_UUID = "12345678-1234-1234-1234-123456789012"
+
+
+def create_mcp_server(server_class, client_id=TEST_CLIENT_ID, client_secret=TEST_CLIENT_SECRET):
+    """Create a mock MCP server instance for any server class."""
+    server = server_class()
+    server.init_insights_client(
+        client_id=client_id,
+        client_secret=client_secret,
+    )
+    server.register_tools()
+    return server
+
+
+def create_mock_client(client_id=TEST_CLIENT_ID, client_secret=TEST_CLIENT_SECRET, api_path=None):
+    """Create a mock InsightsClient instance for any test."""
+    client = Mock(spec=InsightsClient)
+    client.client_id = client_id
+    client.client_secret = client_secret
+    client.insights_base_url = INSIGHTS_BASE_URL
+    if api_path:
+        client.api_path = api_path
+    return client
+
+
+# No server-specific fixtures needed!
+# Tests can import the server class directly and use create_mcp_server(ServerClass)
+
+
+@contextmanager
+# pylint: disable=too-many-arguments,too-many-positional-arguments
+def setup_mcp_mock(
+    server_module, mcp_server, mock_client, mock_response=None, side_effect=None, client_id=TEST_CLIENT_ID
+):
+    """Generic context manager for setting up MCP server mock patterns."""
+    with patch.object(server_module, "get_http_headers") as mock_headers:
+        mock_headers.return_value = {
+            "insights-client-id": client_id,
+            "insights-client-secret": TEST_CLIENT_SECRET,
+        }
+
+        if side_effect:
+            mock_client.get.side_effect = side_effect
+            mock_client.post.side_effect = side_effect
+            mock_client.put.side_effect = side_effect
+        elif mock_response is not None:
+            mock_client.get.return_value = mock_response
+            mock_client.post.return_value = mock_response
+            mock_client.put.return_value = mock_response
+
+        mcp_server.clients[client_id] = mock_client
+        yield mock_headers
+
+
+def assert_api_error_result(result, error_message="API Error"):
+    """Helper to assert API error results."""
+    assert result.startswith(f"Error: {error_message}") or error_message.lower() in result.lower()
+
+
+def assert_empty_response(result):
+    """Helper to assert empty response results."""
+    assert "[]" in result
+
+
+def assert_instruction_in_result(result, instruction="[INSTRUCTION]"):
+    """Helper to assert instruction text in result."""
+    assert instruction in result
