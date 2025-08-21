@@ -148,7 +148,7 @@ class TestLLMIntegrationEasy:
 
         answered_with_tools = None
         try:
-            verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.model_id)
+            verbose_logger.info("🤔 Checking tool correctness")
             assert_test(test_case, [tool_correctness])
             verbose_logger.info("✓ LLM %s correctly used the tools", llm_config["name"])
         except AssertionError as e:
@@ -162,8 +162,8 @@ class TestLLMIntegrationEasy:
         "scenario", TOOL_USAGE_SCENARIOS, ids=[scenario["prompt"] for scenario in TOOL_USAGE_SCENARIOS]
     )
     @pytest.mark.asyncio
-    # pylint: disable=redefined-outer-name,too-many-arguments,too-many-positional-arguments
-    async def test_tool_usage_patterns(self, test_agent, verbose_logger, llm_config, scenario, guardian_agent):
+    # pylint: disable=redefined-outer-name
+    async def test_tool_usage_patterns(self, test_agent, verbose_logger, llm_config, scenario):
         """Test various tool usage patterns and their appropriateness."""
 
         response, _, tools_executed, _ = await test_agent.execute_with_reasoning(scenario["prompt"], chat_history=[])
@@ -183,7 +183,7 @@ class TestLLMIntegrationEasy:
         # Create tool correctness metric - doesn't support model parameter
         tool_correctness = ToolCorrectnessMetric(threshold=0.6)
         # Evaluate with deepeval
-        verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.model_id)
+        verbose_logger.info("🤔 Checking tool correctness")
         assert_test(test_case, [tool_correctness])
 
         verbose_logger.info(
@@ -192,7 +192,7 @@ class TestLLMIntegrationEasy:
 
     @pytest.mark.parametrize("llm_config", llm_configurations, ids=[config["name"] for config in llm_configurations])
     @pytest.mark.asyncio
-    async def test_llm_paging(self, test_agent, verbose_logger, llm_config, guardian_agent):  # pylint: disable=redefined-outer-name,too-many-locals
+    async def test_llm_paging(self, test_agent, verbose_logger, llm_config):  # pylint: disable=redefined-outer-name,too-many-locals
         """Test that the LLM can page through results."""
 
         prompt = "List my latest 2 blueprints"
@@ -229,5 +229,5 @@ class TestLLMIntegrationEasy:
         )
         tool_correctness = ToolCorrectnessMetric(threshold=0.6)
 
-        verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.model_id)
+        verbose_logger.info("🤔 Checking tool correctness")
         assert_test(test_case_subsequent, [tool_correctness])
