@@ -180,7 +180,7 @@ The available toolsets are listed in [toolsets.md](toolsets.md).
 
 **Example toolsets (not exhaustive):**
 - **remediations**: System remediation tools
-- **rhel-advisor**: RHEL system advisory tools  
+- **advisor**: System advisory tools  
 - **vulnerability**: Security vulnerability management
 
 **Tool Naming Convention:**

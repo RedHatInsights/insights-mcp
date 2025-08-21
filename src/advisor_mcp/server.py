@@ -10,7 +10,7 @@ from pydantic import Field
 from insights_mcp.mcp import InsightsMCP
 
 
-class RhelAdvisorMCP(InsightsMCP):
+class AdvisorMCP(InsightsMCP):
     """MCP server for Red Hat Insights Advisor Recommendations integration.
 
     This server provides tools for querying Red Hat Insights
@@ -20,9 +20,9 @@ class RhelAdvisorMCP(InsightsMCP):
     """
 
     def __init__(self):
-        self.logger = logging.getLogger("RhelAdvisorMCP")
+        self.logger = logging.getLogger("AdvisorMCP")
         super().__init__(
-            name="RHEL Advisor Recommendations MCP Server",
+            name="Advisor Recommendations MCP Server",
             toolset_name="advisor",
             api_path="api/insights/v1",
             instructions=(
@@ -470,4 +470,4 @@ Use these tools to identify issues, assess impact, and plan remediation across y
             return f"Failed to retrieve detailed system information for recommendation {rule_id}: {str(e)}"
 
 
-mcp_server = RhelAdvisorMCP()
+mcp_server = AdvisorMCP()
