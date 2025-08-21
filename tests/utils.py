@@ -118,16 +118,8 @@ def get_free_port() -> int:
     return port
 
 
-def start_insights_mcp_server(transport: str, timeout: int = 30) -> tuple[str, multiprocessing.Process]:
-    """Start the insights MCP server with specified transport type.
-
-    Args:
-        transport: Transport type ('http', 'sse', or 'stdio')
-        timeout: Timeout in seconds for server startup
-
-    Returns:
-        Tuple of (server_url, server_process)
-    """
+def get_server_url_and_port(transport: str) -> tuple[str, int]:
+    """Get server URL and port for the given transport type."""
     port = get_free_port()
 
     if transport == "stdio":
@@ -137,6 +129,23 @@ def start_insights_mcp_server(transport: str, timeout: int = 30) -> tuple[str, m
         server_url = f"http://127.0.0.1:{port}/sse"
     else:  # http
         server_url = f"http://127.0.0.1:{port}/mcp/"
+    return server_url, port
+
+
+def start_insights_mcp_server(
+    transport: str, timeout: int = 30, toolset: str | None = None
+) -> tuple[str, multiprocessing.Process]:
+    """Start the insights MCP server with specified transport type.
+
+    Args:
+        transport: Transport type ('http', 'sse', or 'stdio')
+        timeout: Timeout in seconds for server startup
+        toolset: Toolset to use (e.g., 'all', 'image-builder', 'inventory', 'image-builder,inventory')
+
+    Returns:
+        Tuple of (server_url, server_process)
+    """
+    server_url, port = get_server_url_and_port(transport)
 
     server_queue: multiprocessing.Queue = multiprocessing.Queue()
 
@@ -146,12 +155,21 @@ def start_insights_mcp_server(transport: str, timeout: int = 30) -> tuple[str, m
             # Mock sys.argv to simulate command line arguments
             original_argv = sys.argv.copy()
             try:
+                base_args = ["insights_mcp"]
+
+                # Add toolset argument if specified
+                if toolset is not None:
+                    base_args.extend(["--toolset", toolset])
+
+                # Add transport-specific arguments
                 if transport == "stdio":
-                    sys.argv = ["insights_mcp", "stdio"]
+                    base_args.append("stdio")
                 elif transport == "sse":
-                    sys.argv = ["insights_mcp", "sse", "--host", "127.0.0.1", "--port", str(port)]
+                    base_args.extend(["sse", "--host", "127.0.0.1", "--port", str(port)])
                 else:  # http
-                    sys.argv = ["insights_mcp", "http", "--host", "127.0.0.1", "--port", str(port)]
+                    base_args.extend(["http", "--host", "127.0.0.1", "--port", str(port)])
+
+                sys.argv = base_args
 
                 # Import and call main
                 # pylint: disable=import-outside-toplevel

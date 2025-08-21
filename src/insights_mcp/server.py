@@ -1,6 +1,7 @@
 """Main Insights MCP server that mounts multiple Red Hat service servers."""
 
 import argparse
+import asyncio
 import logging
 import os
 import sys
@@ -107,6 +108,59 @@ def get_instructions(allowed_mcps: list[str]) -> str:
     return "\n\n".join(instructions_parts)
 
 
+def print_toolset_help_and_exit(args: argparse.Namespace):
+    """Print toolset help and exit."""
+    if args.toolset_help:
+        print("# All available toolsets")
+        for mcp in MCPS:
+            print(f"\n## {mcp.toolset_name}")
+
+            # Register tools to ensure they are available
+            try:
+                mcp.register_tools()
+            except NotImplementedError:
+                pass  # Some MCPs might not implement register_tools
+
+            # Get and display tools
+            tools = None
+            try:
+                tools = asyncio.run(mcp.get_tools())
+            except Exception:  # pylint: disable=broad-exception-caught
+                print("  Error retrieving tools")
+                print()
+                continue
+
+            if not tools:
+                print("  No tools available")
+                print()
+                continue
+
+            for tool_name, tool in tools.items():
+                title = getattr(tool, "title", None)
+                description = getattr(tool, "description", None)
+
+                # Determine title part
+                title_part = None
+                if title and title.strip() and title != "None":
+                    title_part = title.strip()
+                elif description and description.strip():
+                    title_part = description.split("\n")[0].strip()
+
+                # Format: tool_name or tool_name: title
+                if title_part:
+                    display_text = f"`{tool_name}`: {title_part}"
+                else:
+                    display_text = f"`{tool_name}`"
+
+                # Truncate very long lines
+                if len(display_text) > 100:
+                    display_text = display_text[:97] + "…"
+
+                print(f"- {display_text}")
+
+        sys.exit(0)
+
+
 def main():  # pylint: disable=too-many-statements,too-many-locals
     """Main entry point for the Insights MCP server."""
     available_toolsets = f"all, {', '.join(mcp.toolset_name for mcp in MCPS)}"
@@ -116,6 +170,7 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     parser.add_argument("--stage", action="store_true", help="Use stage API instead of production API")
     parser.add_argument("--toolset", type=str, help=toolset_help)
+    parser.add_argument("--toolset-help", action="store_true", help="Show toolset details of all toolsets")
 
     # Create subparsers for different transport modes
     subparsers = parser.add_subparsers(dest="transport", help="Transport mode")
@@ -134,6 +189,8 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     http_parser.add_argument("--port", type=int, default=8000, help="Port for HTTP transport (default: 8000)")
 
     args = parser.parse_args()
+
+    print_toolset_help_and_exit(args)
 
     # Default to stdio if no subcommand is provided
     if args.transport is None:
@@ -164,7 +221,7 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     if toolset == "all":
         toolset_list = [mcp.toolset_name for mcp in MCPS]
     else:
-        toolset_list = toolset.split(",")
+        toolset_list = [t.strip() for t in toolset.split(",")]
 
     instructions = get_instructions(toolset_list)
 

@@ -5,6 +5,10 @@ This repo is in a DRAFT and playground state!
 An MCP server to interact with insights services like the
  * [hosted image builder](https://osbuild.org/docs/hosted/architecture/)
 
+## Toolsets
+
+See [toolsets.md](toolsets.md) for the toolsets available in the MCP server.
+
 ## Authentication
 
 Go to https://console.redhat.com to `'YOUR USER' ➡ My User Access ➡ Service Accounts` create a service account
@@ -19,6 +23,10 @@ For a deployment where you connect to this MCP server from a different machine, 
 In both cases if you are in doubt, please disable/remove the `INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET` from your account after you are done using the MCP server.
 
 ## Run
+
+### Usage
+
+See [usage.md](usage.md) for the usage of the MCP server.
 
 ### Using Python directly
 

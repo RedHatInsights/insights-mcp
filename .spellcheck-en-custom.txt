@@ -5,12 +5,15 @@ Claude
 codebase
 config
 customizations
+CVE
 deepeval
 hardcode
+hostname
 HTTPS
 Integrations
 integrations
 JWT
+JSON
 LLM
 Makefile
 MCP
@@ -42,3 +45,4 @@ toolset
 Toolsets
 toolsets
 UUID
+UUIDs
