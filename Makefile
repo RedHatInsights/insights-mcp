@@ -85,8 +85,9 @@ ALL_PYTHON_FILES := $(shell find src -name "*.py")
 generate-docs: usage.md toolsets.md ## Generate documentation from the MCP server
 
 usage.md: $(ALL_PYTHON_FILES) Makefile
+	uv tool install -e .
 	echo '```' > $@
-	uv run python -m insights_mcp --help >> $@
+	insights-mcp --help >> $@
 	echo '```' >> $@
 
 toolsets.md: $(ALL_PYTHON_FILES) Makefile

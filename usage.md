@@ -1,7 +1,7 @@
 ```
-usage: __main__.py [-h] [--debug] [--stage] [--toolset TOOLSET]
-                   [--toolset-help]
-                   {stdio,sse,http} ...
+usage: insights-mcp [-h] [--debug] [--stage] [--toolset TOOLSET]
+                    [--toolset-help]
+                    {stdio,sse,http} ...
 
 Run Insights MCP server.
 
