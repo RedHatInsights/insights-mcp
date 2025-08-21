@@ -107,6 +107,8 @@ make help  # Shows all available targets with descriptions
 env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v
 ```
 
+see also [usage.md](usage.md) for more details on the CLI.
+
 ### Test Configuration
 
 1. **Copy example configuration:**
@@ -167,10 +169,7 @@ autopep8 --in-place src/       # Code formatting
 
 ### Dynamic Tool Discovery
 
-**To see current available toolsets:**
-```bash
-insights-mcp --help  # Shows available toolset options
-```
+The available toolsets are listed in [toolsets.md](toolsets.md).
 
 **To discover tools for a specific toolset:**
 1. Start the server: `insights-mcp --toolset=<toolset-name>`
@@ -178,8 +177,6 @@ insights-mcp --help  # Shows available toolset options
 3. Call `<toolset-name>_get_openapi` for detailed API schema and tool descriptions
 
 ### Toolset Examples
-
-**Authoritative toolset list:** See `src/insights_mcp/server.py` MCPS list for complete current toolsets.
 
 **Example toolsets (not exhaustive):**
 - **remediations**: System remediation tools
@@ -298,7 +295,7 @@ podman run -it --rm insights-mcp /bin/bash
 1. **Always reference [README.md](README.md)** first for basic project information
 2. **Security**: Never commit credentials or sensitive data
 3. **Testing**: Run `make test` after significant changes
-4. **Code Style**: 120-character line limit, follow existing patterns
+4. **Code Style**: stick to the settings in `pyproject.toml` and `.editorconfig`
 5. **Dependencies**: Check `pyproject.toml` for current dependencies
 
 This guide supplements the README with development-specific information for AI coding assistants working on the Insights MCP project. The architecture supports multiple Red Hat Insights service toolsets through a unified server interface.
