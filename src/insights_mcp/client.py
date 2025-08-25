@@ -16,7 +16,7 @@ from logging import getLogger
 from typing import Any
 
 import httpx
-from authlib.integrations.httpx_client import AsyncOAuth2Client
+from authlib.integrations.httpx_client import AsyncOAuth2Client, OAuthError
 from authlib.oauth2.rfc6749 import OAuth2Token
 from fastmcp.server.dependencies import get_http_headers
 
@@ -245,10 +245,13 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
                 self.headers["authorization"] = caller_headers_auth
         elif "access_token" not in self.token or self.token.is_expired():
             self.logger.info("Token is expired, refreshing token")
-            if "refresh_token" in self.token:
-                await self.refresh_token()
-            else:
-                await self.fetch_token()
+            try:
+                if "refresh_token" in self.token:
+                    await self.refresh_token()
+                else:
+                    await self.fetch_token()
+            except OAuthError as e:
+                raise ValueError(self.no_auth_error(e)) from e
         return await super().make_request(fn, *args, **kwargs)
 
 
