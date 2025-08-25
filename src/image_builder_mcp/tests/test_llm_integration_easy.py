@@ -16,9 +16,11 @@ from tests.utils import (
     should_skip_llm_matrix_tests,
 )
 
-# Load LLM configurations for parametrization
-llm_configurations, _ = load_llm_configurations()
-
+# Test prompts
+TEST_RHEL_INITIAL_QUESTION_PROMPT = "Can you create a RHEL 9 image for me?"
+TEST_IMAGE_BUILD_STATUS_PROMPT = "What is the status of my latest image build?"
+TEST_LLM_PAGING_PROMPT_1 = "List my latest 2 blueprints"
+TEST_LLM_PAGING_PROMPT_2 = "Can you show me the next 3 blueprints?"
 
 # Test scenarios for tool usage patterns
 # not sure why mypy needs Any here
@@ -40,6 +42,9 @@ TOOL_USAGE_SCENARIOS: List[Dict[str, Any]] = [
     },
 ]
 
+# Load LLM configurations for parametrization
+llm_configurations, _ = load_llm_configurations()
+
 
 @pytest.mark.skipif(should_skip_llm_matrix_tests(), reason="No valid LLM configurations found")
 class TestLLMIntegrationEasy:
@@ -51,7 +56,7 @@ class TestLLMIntegrationEasy:
     async def test_rhel_initial_question(self, test_agent, guardian_agent, llm_config, verbose_logger):
         """Test that LLM follows behavioral rules and doesn't immediately call create_blueprint."""
 
-        prompt = "Can you create a RHEL 9 image for me?"
+        prompt = TEST_RHEL_INITIAL_QUESTION_PROMPT
 
         # Execute tools and capture reasoning steps and tool calls
         response, reasoning_steps, tools_executed, _ = await test_agent.execute_with_reasoning(prompt, chat_history=[])
@@ -99,7 +104,7 @@ class TestLLMIntegrationEasy:
         # Define tool correctness metric - ToolCorrectnessMetric doesn't support model parameter
         tool_correctness = ToolCorrectnessMetric(threshold=0.7, include_reason=True)
 
-        prompt = "What is the status of my latest image build?"
+        prompt = TEST_IMAGE_BUILD_STATUS_PROMPT
 
         response, _, tools_executed, _ = await test_agent.execute_with_reasoning(prompt, chat_history=[])
 
@@ -195,7 +200,7 @@ class TestLLMIntegrationEasy:
     async def test_llm_paging(self, test_agent, verbose_logger, llm_config):  # pylint: disable=redefined-outer-name,too-many-locals
         """Test that the LLM can page through results."""
 
-        prompt = "List my latest 2 blueprints"
+        prompt = TEST_LLM_PAGING_PROMPT_1
 
         response, _, tools_executed, conversation_history = await test_agent.execute_with_reasoning(
             prompt, chat_history=[]
@@ -210,7 +215,7 @@ class TestLLMIntegrationEasy:
         assert_test(test_case_initial, [tool_correctness])
 
         # Now ask for more with conversation context
-        follow_up_prompt = "Can you show me the next 3 blueprints?"
+        follow_up_prompt = TEST_LLM_PAGING_PROMPT_2
 
         # conversation_history from simplified agent is already ChatMessage objects
         (

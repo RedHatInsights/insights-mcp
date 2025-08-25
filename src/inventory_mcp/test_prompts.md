@@ -1,4 +1,4 @@
-# Test Prompts
+# Inventory MCP Test Prompts
 - List all hosts running RHEL 9 that were last seen in the past day
 - Show me the top 5 most recently active hosts
 - Get details for host named 'web-server-prod-01'

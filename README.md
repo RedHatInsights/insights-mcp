@@ -223,5 +223,13 @@ e.g.
 Please explain insights-mcp and what I can do with it?
 ```
 
+For example questions specific to each toolset please have a look at the test files:
+
+ * [`image-builder-mcp`](src/image_builder_mcp/tests/test_llm_integration_easy.py#L20)
+ * [`inventory-mcp`](src/inventory_mcp/test_prompts.md)
+ * [`remediations-mcp`](src/remediations_mcp/test_prompts.md)
+ * [`rhel-advisor-mcp`](src/rhel_advisor_mcp/test_prompts.md)
+ * [`vulnerability-mcp`](src/vulnerability_mcp/test_prompts.md)
+
 ## Contributing
 Please refer to the [hacking guide](HACKING.md) to learn more.
