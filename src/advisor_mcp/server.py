@@ -1,5 +1,6 @@
 """Advisor Recommendations MCP server for Red Hat Insights recommendations management."""
 
+import json
 import logging
 from typing import Annotated
 
@@ -37,8 +38,16 @@ Available tools:
 - get_rule_details: Retrieve detailed information for a recommendation by rule_id.
 - get_hosts_hitting_a_rule: List systems affected by a recommendation.
 - get_hosts_details_hitting_a_rule: Get detailed per-system impact information for a recommendation.
+- get_recommendations_statistics: Get overall risk posture statistics with breakdown by risk levels and categories.
 
-Use these tools to identify issues, assess impact, and plan remediation across your RHEL systems."""
+Use these tools to identify issues, assess impact, and plan remediation across your RHEL systems.
+
+Insights Advisor requires correct RBAC permissions to be able to use the tools. Ensure that your
+Service Account has at least this role:
+- RHEL Advisor viewer
+
+If you don't have this role, please contact your organization administrator to get it.
+"""
             ),
         )
 
@@ -115,6 +124,18 @@ Use these tools to identify issues, assess impact, and plan remediation across y
                     openWorldHint=False,
                 ),
             },
+            "get_recommendations_statistics": {
+                "function": self.get_recommendations_statistics,
+                "tags": ("insights", "advisor", "statistics", "risk", "categories", "overview"),
+                "title": "Get Statistics of Recommendations Across Categories and Risks",
+                "annotations": ToolAnnotations(
+                    title="Get Statistics of Recommendations Across Categories and Risks",
+                    readOnlyHint=True,
+                    destructiveHint=False,
+                    idempotentHint=True,
+                    openWorldHint=True,
+                ),
+            },
         }
 
         for config in tool_configs.values():
@@ -147,6 +168,34 @@ Use these tools to identify issues, assess impact, and plan remediation across y
         return None
 
     @staticmethod
+    def _parse_string_list(value: str | list[str] | None) -> list[str] | None:
+        """Parse string list from string or list input with error handling."""
+        if value is None:
+            return None
+        if isinstance(value, list):
+            # If it's already a list, validate each item is a string
+            result = [str(x).strip() for x in value if x is not None and str(x).strip()]
+            return result if result else None
+        if isinstance(value, str):
+            if not value.strip():
+                return None
+            try:
+                try:
+                    parsed = json.loads(value)
+                    if isinstance(parsed, list):
+                        result = [str(x).strip() for x in parsed if x is not None and str(x).strip()]
+                        return result if result else None
+                except json.JSONDecodeError:
+                    pass
+
+                # Handle comma-separated string format like 'item1,item2'
+                result = [x.strip() for x in value.split(",") if x.strip()]
+                return result if result else None
+            except (ValueError, AttributeError):
+                pass
+        return None
+
+    @staticmethod
     def _parse_int(value: str | int | None) -> int | None:
         """Parse integer from string or int input with error handling."""
         if value is None:
@@ -157,7 +206,22 @@ Use these tools to identify issues, assess impact, and plan remediation across y
             return int(value.strip())
         return None
 
-    async def get_active_rules(  # pylint: disable=too-many-arguments
+    @staticmethod
+    def _parse_bool(value: str | bool | None) -> bool | None:
+        """Parse boolean from string or bool input with error handling."""
+        if value is None:
+            return None
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            value_lower = value.strip().lower()
+            if value_lower in ("true", "1", "yes", "on"):
+                return True
+            if value_lower in ("false", "0", "no", "off"):
+                return False
+        return None
+
+    async def get_active_rules(  # pylint: disable=too-many-arguments,too-many-locals,too-many-branches
         self,
         *,
         impacting: Annotated[
@@ -177,23 +241,63 @@ Use these tools to identify issues, assess impact, and plan remediation across y
             str | None,
             Field(
                 description="Impact level filter as comma-separated string, e.g. '1,2,3'. "
-                "Levels range 1-4, higher values indicate more severe impact. Example: '3,4'"
+                "Available values: 1=Low, 2=Medium, 3=High, 4=Critical. Example: '3,4'"
             ),
         ],
         likelihood: Annotated[
             str | None,
             Field(
                 description="Likelihood level filter as comma-separated string, e.g. '1,2,3'. "
-                "Levels range 1-4, higher values indicate higher likelihood. Example: '2,3,4'"
+                "Available values: 1=Low, 2=Medium, 3=High, 4=Very High. Example: '3,4'"
+            ),
+        ],
+        category: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "Recommendation category filter as comma-separated string, e.g. '1,2,3'. "
+                    "Available values: 1=Availability, 2=Security, 3=Stability, 4=Performance. Example: '2,4'"
+                ),
+            ),
+        ],
+        reboot: Annotated[
+            str | bool | None,
+            Field(
+                None,
+                description="Filter recommendations that require a reboot to fix. "
+                "True shows only reboot-required recommendations, "
+                "None shows all recommendations. Example: true",
+            ),
+        ],
+        sort: Annotated[
+            str | None,
+            Field(
+                description="Sort field as comma-separated string. Available fields: "
+                "category, description, impact, impacted_count, likelihood, playbook_count, publish_date, "
+                "resolution_risk, rule_id, total_risk. Use '-' prefix for descending order. "
+                "Example: '-total_risk,rule_id'"
             ),
         ],
         offset: Annotated[
             str | int | None,
-            Field(description="Pagination offset to skip specified number of results. Used with limit. Example: 20"),
+            Field(description="Pagination offset to skip specified number of results. Used with limit. Example: 0"),
         ],
         limit: Annotated[
             str | int | None,
-            Field(description="Pagination: Maximum number of results per page. Example: 50"),
+            Field(description="Pagination: Maximum number of results per page. Default: 20"),
+        ],
+        tags: Annotated[
+            str | list[str] | None,
+            Field(
+                None,
+                description=(
+                    "Used with impacting=True to filter recommendations that are relevant to the target systems. "
+                    "Filter recommendations by system tags or groups using 'namespace/key=value' format. "
+                    "namespace: 'satellite' or 'insights-client' "
+                    "Examples: ['satellite/group=database-servers', 'insights-client/security=strict'] or "
+                    'JSON string format: \'["satellite/group=database-servers", "insights-client/security=strict"]\''
+                ),
+            ),
         ],
     ) -> str:
         """
@@ -204,17 +308,26 @@ Use these tools to identify issues, assess impact, and plan remediation across y
         and automatic remediation availability. Higher impact/likelihood values indicate more critical issues.
 
         Call examples:
-            Standard call: {"impacting": true, "impact": "3,4", "offset": 0, "limit": 20}
-            High impact only: {"impact": "4", "likelihood": "3,4"}
+            Standard call: {"impacting": true, "offset": 0, "limit": 20}
+            High risk only: {"impacting": true, "impact": "3,4", "likelihood": "3,4"}
             Pagination: {"offset": 20, "limit": 20}
             With automatic remediation: {"has_automatic_remediation": true}
-        """
+            Security and Performance categories: {"category": "2,4"}
+            Reboot required to fix: {"reboot": true}
+            Sorted by total risk: {"sort": "-total_risk"}
+            For systems tagged 'database-servers': {
+                "impacting": true,
+                "tags": ["insights-client/group=database-servers"]
+            }
+        """  # pylint: disable=line-too-long
 
         # Parameter validation and conversion
         impact_list = self._parse_int_list(impact)
         likelihood_list = self._parse_int_list(likelihood)
+        category_list = self._parse_int_list(category)
         offset_int = self._parse_int(offset)
         limit_int = self._parse_int(limit)
+        reboot_bool = self._parse_bool(reboot)
 
         params: dict[str, bool | int | str] = {}
         params["impacting"] = impacting
@@ -229,6 +342,28 @@ Use these tools to identify issues, assess impact, and plan remediation across y
             params["impact"] = ",".join(map(str, impact_list))
         if likelihood_list is not None:
             params["likelihood"] = ",".join(map(str, likelihood_list))
+        if category_list is not None:
+            params["category"] = ",".join(map(str, category_list))
+        if reboot_bool is not None:
+            params["reboot"] = reboot_bool
+        if sort is not None:
+            params["sort"] = sort
+
+        # Handle tags parameter
+        if tags:
+            # Parse tags input using the helper function to handle both string and list inputs
+            parsed_tags = self._parse_string_list(tags)
+            if parsed_tags:
+                # Validate tags input - each tag should be in namespace/key=value format
+                tag_list = []
+                for tag in parsed_tags:
+                    if tag and "/" in tag and "=" in tag:
+                        tag_list.append(tag)
+                    elif tag:
+                        self.logger.warning("Invalid tag format '%s', expected namespace/key=value", tag)
+
+                if tag_list:
+                    params["tags"] = ",".join(tag_list)
 
         try:
             response = await self.insights_client.get("rule/", params=params)
@@ -242,8 +377,10 @@ Use these tools to identify issues, assess impact, and plan remediation across y
         node_id: Annotated[
             str,
             Field(
-                description="Node ID of the knowledge base article or solution to find related Advisor Recommendations."
-                "Must be a valid string format. Example: '123456'",  # pylint: disable=line-too-long
+                description=(
+                    "Node ID of the knowledge base article or solution to find related Advisor Recommendations. "
+                    "Must be a valid string format. Example: '123456'"
+                ),
             ),
         ],
     ) -> str:
@@ -468,6 +605,57 @@ Use these tools to identify issues, assess impact, and plan remediation across y
                 "Failed to retrieve detailed system information for recommendation %s: %s", rule_id, str(e)
             )
             return f"Failed to retrieve detailed system information for recommendation {rule_id}: {str(e)}"
+
+    async def get_recommendations_statistics(
+        self,
+        *,
+        tags: Annotated[
+            str | list[str] | None,
+            Field(
+                None,
+                description="Filter recommendations by system tags in the form namespace/key=value. "
+                "namespace: 'satellite' or 'insights-client' "
+                "Examples: ['satellite/group=database-servers', 'insights-client/security=strict'] or "
+                'JSON string format: \'["satellite/group=database-servers", "insights-client/security=strict"]\'',
+            ),
+        ] = None,
+    ) -> str:
+        """
+        Show statistics of recommendations across categories and risks.
+
+        Call examples:
+            Standard call showing all recommendations: {}
+            Statistics for a specific system group: {"tags": ["satellite/group=database-servers"]}
+            Statistics for systems tagged 'security=strict': {"tags": ["insights-client/security=strict"]}
+        """
+        params: dict[str, str] = {}
+
+        if tags is not None and tags:
+            # Parse tags input using the helper function to handle both string and list inputs
+            parsed_tags = self._parse_string_list(tags)
+            if parsed_tags:
+                # Validate and process tags format
+                tag_list = []
+                for tag in parsed_tags:
+                    tag_stripped = tag.strip()
+                    if not tag_stripped:
+                        continue
+                    # Validate tag format: should be in form namespace/key=value
+                    if "/" not in tag_stripped or "=" not in tag_stripped:
+                        return (
+                            f"Error: Invalid tag format '{tag_stripped}'. Tags must be in format 'namespace/key=value'."
+                        )
+                    tag_list.append(tag_stripped)
+
+                if tag_list:
+                    params["tags"] = ",".join(tag_list)
+
+        try:
+            response = await self.insights_client.get("stats/rules/", params=params)
+            return str(response) if response else "No recommendations statistics found or empty response."
+        except (ValueError, TypeError, ConnectionError) as e:
+            self.logger.error("Failed to retrieve recommendations statistics: %s", str(e))
+            return f"Failed to retrieve recommendations statistics: {str(e)}"
 
 
 mcp_server = AdvisorMCP()
