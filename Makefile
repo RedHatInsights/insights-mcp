@@ -11,9 +11,9 @@ TAG ?= UNKNOWN
 
 .PHONY: build-claude-extension
 build-claude-extension: ## Build the Claude extension
-	sed -i "s/---VERSION---/$(TAG)/g" claude_desktop/manifest.json
+	sed -i.bak "s/---VERSION---/$(TAG)/g" claude_desktop/manifest.json && rm claude_desktop/manifest.json.bak
 	zip -j insights-mcp-$(TAG).dxt claude_desktop/*
-	sed -i "s/$(TAG)/---VERSION---/g" claude_desktop/manifest.json
+	sed -i.bak "s/$(TAG)/---VERSION---/g" claude_desktop/manifest.json && rm claude_desktop/manifest.json.bak
 
 .PHONY: lint
 lint: generate-docs ## Run linting with pre-commit
@@ -57,7 +57,7 @@ help: ## Show this help message
 	@echo "make [TARGETS...]"
 	@echo
 	@echo 'Targets:'
-	@awk 'match($$0, /^([a-zA-Z_\/-]+):.*? ## (.*)$$/, m) {printf "  \033[36m%-30s\033[0m %s\n", m[1], m[2]}' $(MAKEFILE_LIST) | sort
+	@awk '/^[a-zA-Z_\/-]+:.*? ## .*$$/ { split($$0, parts, " ## "); split(parts[1], target_parts, ":"); printf "  \033[36m%-30s\033[0m %s\n", target_parts[1], parts[2] }' $(MAKEFILE_LIST) | sort
 
 
 # `INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET` are optional
