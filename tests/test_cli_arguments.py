@@ -83,6 +83,7 @@ class TestCliArguments:
             "advisor__get_rule_details",
             "advisor__get_hosts_hitting_a_rule",
             "advisor__get_hosts_details_hitting_a_rule",
+            "advisor__get_recommendations_statistics",
         },
     }
 
