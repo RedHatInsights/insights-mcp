@@ -7,6 +7,7 @@ from typing import Annotated, Optional
 
 import httpx
 import jwt
+from authlib.integrations.httpx_client import OAuthError
 from fastmcp.server.dependencies import get_http_headers
 from fastmcp.tools.tool import Tool
 from mcp.types import ToolAnnotations
@@ -175,7 +176,7 @@ class ImageBuilderMCP(InsightsMCP):
         """
         try:
             client = self.get_client(get_http_headers())
-        except ValueError as e:
+        except (ValueError, OAuthError) as e:
             return self.no_auth_error(e)
 
         try:
@@ -265,7 +266,7 @@ class ImageBuilderMCP(InsightsMCP):
         """
         try:
             client = self.get_client(get_http_headers())
-        except ValueError as e:
+        except (ValueError, OAuthError) as e:
             return self.no_auth_error(e)
 
         try:
@@ -352,7 +353,7 @@ class ImageBuilderMCP(InsightsMCP):
         """
         try:
             client = self.get_client(get_http_headers())
-        except ValueError as e:
+        except (ValueError, OAuthError) as e:
             return self.no_auth_error(e)
         try:
             if os.environ.get("IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK", "").lower() != "true":
@@ -429,7 +430,7 @@ class ImageBuilderMCP(InsightsMCP):
 
         try:
             client = self.get_client(get_http_headers())
-        except ValueError as e:
+        except (ValueError, OAuthError) as e:
             return self.no_auth_error(e)
 
         # workaround seen in LLama 3.3 70B Instruct
@@ -496,7 +497,7 @@ class ImageBuilderMCP(InsightsMCP):
             return "Error: a blueprint identifier is required"
         try:
             client = self.get_client(get_http_headers())
-        except ValueError as e:
+        except (ValueError, OAuthError) as e:
             return self.no_auth_error(e)
 
         try:
@@ -617,11 +618,11 @@ class ImageBuilderMCP(InsightsMCP):
             intro += "[ANSWER]\n"
             return f"{intro}\n{json.dumps(ret)}"
 
-        except ValueError as e:
+        except (ValueError, OAuthError) as e:
             return self.no_auth_error(e)
         # avoid crashing the server so we'll stick to the broad exception catch
         except Exception as e:  # pylint: disable=broad-exception-caught
-            return f"Error: {str(e)}"
+            return f"Error ({type(e).__name__}): {str(e)}"
 
     # pylint: disable=too-many-return-statements
     async def get_compose_details(
