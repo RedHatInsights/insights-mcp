@@ -132,6 +132,48 @@ def get_server_url_and_port(transport: str) -> tuple[str, int]:
     return server_url, port
 
 
+def _server_worker(transport: str, port: int, toolset: str | None, server_queue: multiprocessing.Queue):
+    """Start the MCP server in a separate process.
+
+    This function is at module level so it can be pickled for multiprocessing.
+    """
+    try:
+        # Mock sys.argv to simulate command line arguments
+        original_argv = sys.argv.copy()
+        try:
+            base_args = ["insights_mcp"]
+
+            # Add toolset argument if specified
+            if toolset is not None:
+                base_args.extend(["--toolset", toolset])
+
+            # Add transport-specific arguments
+            if transport == "stdio":
+                base_args.append("stdio")
+            elif transport == "sse":
+                base_args.extend(["sse", "--host", "127.0.0.1", "--port", str(port)])
+            else:  # http
+                base_args.extend(["http", "--host", "127.0.0.1", "--port", str(port)])
+
+            sys.argv = base_args
+
+            # Import and call main
+            # pylint: disable=import-outside-toplevel
+            from insights_mcp.server import main
+
+            # Signal that server is starting
+            server_queue.put("starting")
+
+            # Start the server
+            main()
+
+        finally:
+            sys.argv = original_argv
+
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        server_queue.put(f"error: {e}")
+
+
 def start_insights_mcp_server(
     transport: str, timeout: int = 30, toolset: str | None = None
 ) -> tuple[str, multiprocessing.Process]:
@@ -149,46 +191,10 @@ def start_insights_mcp_server(
 
     server_queue: multiprocessing.Queue = multiprocessing.Queue()
 
-    def server_worker():
-        """Start the MCP server in a separate process."""
-        try:
-            # Mock sys.argv to simulate command line arguments
-            original_argv = sys.argv.copy()
-            try:
-                base_args = ["insights_mcp"]
-
-                # Add toolset argument if specified
-                if toolset is not None:
-                    base_args.extend(["--toolset", toolset])
-
-                # Add transport-specific arguments
-                if transport == "stdio":
-                    base_args.append("stdio")
-                elif transport == "sse":
-                    base_args.extend(["sse", "--host", "127.0.0.1", "--port", str(port)])
-                else:  # http
-                    base_args.extend(["http", "--host", "127.0.0.1", "--port", str(port)])
-
-                sys.argv = base_args
-
-                # Import and call main
-                # pylint: disable=import-outside-toplevel
-                from insights_mcp.server import main
-
-                # Signal that server is starting
-                server_queue.put("starting")
-
-                # Start the server
-                main()
-
-            finally:
-                sys.argv = original_argv
-
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            server_queue.put(f"error: {e}")
-
-    # Start server process
-    server_process = multiprocessing.Process(target=server_worker, daemon=True)
+    # Start server process using module-level function for pickling compatibility
+    server_process = multiprocessing.Process(
+        target=_server_worker, args=(transport, port, toolset, server_queue), daemon=True
+    )
     server_process.start()
 
     try:
