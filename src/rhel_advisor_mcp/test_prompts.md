@@ -1,4 +1,4 @@
-# Test Prompts
+# Advisor MCP Test Prompts
 - Show me the top 5 critical issues on my systems
 - I saw a Knowledge Base Article https://access.redhat.com/articles/6464541; does any of my systems are affected by the issue it describes?
 - List all the affected recommendations that have automated solutions available

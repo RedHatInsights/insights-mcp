@@ -12,6 +12,9 @@ from tests.utils import (
     should_skip_llm_matrix_tests,
 )
 
+# Test prompts
+TEST_COMPLETE_CONVERSATION_FLOW_PROMPT = "Can you help me understand what blueprints are available?"
+
 # Load LLM configurations for parametrization
 llm_configurations, _ = load_llm_configurations()
 
@@ -26,7 +29,7 @@ class TestLLMIntegrationHard:
     async def test_complete_conversation_flow(self, test_agent, guardian_agent, verbose_logger, llm_config):  # pylint: disable=redefined-outer-name
         """Test complete conversation flow with proper agent behavior."""
 
-        prompt = "Can you help me understand what blueprints are available?"
+        prompt = TEST_COMPLETE_CONVERSATION_FLOW_PROMPT
 
         response, _, tools_executed, _ = await test_agent.execute_with_reasoning(prompt, chat_history=[])
 
