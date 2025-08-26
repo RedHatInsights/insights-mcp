@@ -31,21 +31,9 @@ class AdvisorMCP(InsightsMCP):
 This server provides tools to discover and inspect Red Hat Insights Advisor Recommendations for RHEL.
 (A recommendation was formerly called a rule in Red Hat Insights for Red Hat Enterprise Linux.)
 
-Available tools:
-- get_active_rules: List active recommendations for your account with filters
-                    (impacting, incident, has_automatic_remediation, impact 1-4, likelihood 1-4, offset, limit).
-- get_rule_from_node_id: Find recommendations linked to a Knowledge Base article by node_id.
-- get_rule_details: Retrieve detailed information for a recommendation by rule_id.
-- get_hosts_hitting_a_rule: List systems affected by a recommendation.
-- get_hosts_details_hitting_a_rule: Get detailed per-system impact information for a recommendation.
-- get_recommendations_statistics: Get overall risk posture statistics with breakdown by risk levels and categories.
-
-Use these tools to identify issues, assess impact, and plan remediation across your RHEL systems.
-
 Insights Advisor requires correct RBAC permissions to be able to use the tools. Ensure that your
 Service Account has at least this role:
 - RHEL Advisor viewer
-
 If you don't have this role, please contact your organization administrator to get it.
 """
             ),
