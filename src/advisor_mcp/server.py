@@ -112,6 +112,18 @@ If you don't have this role, please contact your organization administrator to g
                     openWorldHint=False,
                 ),
             },
+            "get_rule_by_text_search": {
+                "function": self.get_rule_by_text_search,
+                "tags": ("insights", "advisor", "recommendations", "search", "text", "substring", "keyword"),
+                "title": "Find Advisor Recommendations by Text Search",
+                "annotations": ToolAnnotations(
+                    title="Find Advisor Recommendations by Text Search",
+                    readOnlyHint=True,
+                    destructiveHint=False,
+                    idempotentHint=True,
+                    openWorldHint=False,
+                ),
+            },
             "get_recommendations_statistics": {
                 "function": self.get_recommendations_statistics,
                 "tags": ("insights", "advisor", "statistics", "risk", "categories", "overview"),
@@ -228,20 +240,23 @@ If you don't have this role, please contact your organization administrator to g
         impact: Annotated[
             str | None,
             Field(
+                None,
                 description="Impact level filter as comma-separated string, e.g. '1,2,3'. "
-                "Available values: 1=Low, 2=Medium, 3=High, 4=Critical. Example: '3,4'"
+                "Available values: 1=Low, 2=Medium, 3=High, 4=Critical. Example: '3,4'",
             ),
         ],
         likelihood: Annotated[
             str | None,
             Field(
+                None,
                 description="Likelihood level filter as comma-separated string, e.g. '1,2,3'. "
-                "Available values: 1=Low, 2=Medium, 3=High, 4=Very High. Example: '3,4'"
+                "Available values: 1=Low, 2=Medium, 3=High, 4=Very High. Example: '3,4'",
             ),
         ],
         category: Annotated[
             str | None,
             Field(
+                None,
                 description=(
                     "Recommendation category filter as comma-separated string, e.g. '1,2,3'. "
                     "Available values: 1=Availability, 2=Security, 3=Stability, 4=Performance. Example: '2,4'"
@@ -260,19 +275,36 @@ If you don't have this role, please contact your organization administrator to g
         sort: Annotated[
             str | None,
             Field(
+                "-total_risk",
                 description="Sort field as comma-separated string. Available fields: "
                 "category, description, impact, impacted_count, likelihood, playbook_count, publish_date, "
                 "resolution_risk, rule_id, total_risk. Use '-' prefix for descending order. "
-                "Example: '-total_risk,rule_id'"
+                "Example: '-total_risk,rule_id'",
             ),
         ],
         offset: Annotated[
             str | int | None,
-            Field(description="Pagination offset to skip specified number of results. Used with limit. Example: 0"),
+            Field(
+                None,
+                description="Pagination offset to skip specified number of results. Used with limit. Example: 0",
+            ),
         ],
         limit: Annotated[
             str | int | None,
-            Field(description="Pagination: Maximum number of results per page. Default: 20"),
+            Field(
+                None,
+                description="Pagination: Maximum number of results per page. Default: 20",
+            ),
+        ],
+        groups: Annotated[
+            str | list[str] | None,
+            Field(
+                None,
+                description=(
+                    "Filter based on workspace names. Comma separated list of workspace names."
+                    "Example: 'workspace1,workspace2'"
+                ),
+            ),
         ],
         tags: Annotated[
             str | list[str] | None,
@@ -301,7 +333,7 @@ If you don't have this role, please contact your organization administrator to g
             Pagination: {"offset": 20, "limit": 20}
             With automatic remediation: {"has_automatic_remediation": true}
             Security and Performance categories: {"category": "2,4"}
-            Reboot required to fix: {"reboot": true}
+            Reboot required: {"reboot": true}
             Sorted by total risk: {"sort": "-total_risk"}
             For systems tagged 'database-servers': {
                 "impacting": true,
@@ -336,6 +368,10 @@ If you don't have this role, please contact your organization administrator to g
             params["reboot"] = reboot_bool
         if sort is not None:
             params["sort"] = sort
+        if groups is not None:
+            group_list = self._parse_string_list(groups)
+            if group_list:
+                params["groups"] = ",".join(group_list)
 
         # Handle tags parameter
         if tags:
@@ -594,9 +630,38 @@ If you don't have this role, please contact your organization administrator to g
             )
             return f"Failed to retrieve detailed system information for recommendation {rule_id}: {str(e)}"
 
+    async def get_rule_by_text_search(
+        self,
+        text: Annotated[
+            str,
+            Field(description="The text substring to search for. Example: 'xfs'"),
+        ],
+    ) -> str:
+        """
+        Finds Advisor Recommendations that contain an exact text substring.
+        """
+        sanitized_text = text.strip()
+        if not sanitized_text or not isinstance(sanitized_text, str):
+            return "Error: Text search query must be a non-empty string."
+
+        try:
+            response = await self.insights_client.get("rule/", params={"text": sanitized_text})
+            return str(response) if response else "No recommendations found for the given text search."
+        except (ValueError, TypeError, ConnectionError) as e:
+            self.logger.error("Failed to retrieve recommendations for text search '%s': %s", text, str(e))
+            return f"Failed to retrieve recommendations for text search {text}: {str(e)}"
+
     async def get_recommendations_statistics(
         self,
         *,
+        groups: Annotated[
+            str | list[str] | None,
+            Field(
+                None,
+                description="Filter recommendations by system groups. Comma separated list of workspace names. "
+                "Example: 'workspace1,workspace2'",
+            ),
+        ],
         tags: Annotated[
             str | list[str] | None,
             Field(
@@ -606,7 +671,7 @@ If you don't have this role, please contact your organization administrator to g
                 "Examples: ['satellite/group=database-servers', 'insights-client/security=strict'] or "
                 'JSON string format: \'["satellite/group=database-servers", "insights-client/security=strict"]\'',
             ),
-        ] = None,
+        ],
     ) -> str:
         """
         Show statistics of recommendations across categories and risks.
@@ -617,6 +682,11 @@ If you don't have this role, please contact your organization administrator to g
             Statistics for systems tagged 'security=strict': {"tags": ["insights-client/security=strict"]}
         """
         params: dict[str, str] = {}
+
+        if groups is not None:
+            group_list = self._parse_string_list(groups)
+            if group_list:
+                params["groups"] = ",".join(group_list)
 
         if tags is not None and tags:
             # Parse tags input using the helper function to handle both string and list inputs
