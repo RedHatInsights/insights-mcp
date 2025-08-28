@@ -16,7 +16,7 @@ build-claude-extension: ## Build the Claude extension
 	zip -j insights-mcp-$(TAG).dxt claude_desktop/manifest.json claude_desktop/icon.png
 	rm claude_desktop/manifest.json
 
-build-claude-extension-dev: ## Build Claude extension for local development
+build-claude-extension-dev: build ## Build Claude extension for local development
 	$(MAKE) build-claude-extension TAG=local-dev CONTAINER_IMAGE=localhost/insights-mcp:latest
 
 .PHONY: lint
