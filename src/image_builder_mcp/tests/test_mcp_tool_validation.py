@@ -59,11 +59,11 @@ from tests.test_patterns import (
             "image-builder__get_openapi",
             "Get OpenAPI spec. Use this to get details e.g for a new blueprint",
             {
-                "response_size": {
-                    "description": "Number of items returned (use 7 as default)",
-                    "default": 7,
-                    "type": "integer",
-                    "anyOf": None,
+                "endpoints": {
+                    "description": "Comma-separated list of endpoint specs to reduce the spec",
+                    "default": None,
+                    "type": None,
+                    "anyOf": [{"type": "string"}, {"type": "null"}],
                 }
             },
         ),
