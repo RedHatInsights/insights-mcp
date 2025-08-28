@@ -1,7 +1,5 @@
 # Insights MCP
 
-This repo is in a DRAFT and playground state!
-
 An MCP server to interact with insights services like the
  * [advisor](https://docs.redhat.com/en/documentation/red_hat_insights/1-latest/html/assessing_rhel_configuration_issues_using_the_red_hat_insights_advisor_service/index)
  * [hosted image builder](https://osbuild.org/docs/hosted/architecture/)
@@ -195,6 +193,10 @@ For example questions specific to each toolset please have a look at the test fi
  * [`remediations-mcp`](src/remediations_mcp/test_prompts.md)
  * [`advisor-mcp`](src/advisor_mcp/test_prompts.md)
  * [`vulnerability-mcp`](src/vulnerability_mcp/test_prompts.md)
+
+## Disclaimer
+
+This software is provided "as is" without warranty of any kind, either express or implied. Use at your own risk. The authors and contributors are not liable for any damages or issues that may arise from using this software.
 
 ## Contributing
 Please refer to the [hacking guide](HACKING.md) to learn more.
