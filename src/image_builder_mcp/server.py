@@ -438,7 +438,27 @@ class ImageBuilderMCP(InsightsMCP):
         except Exception as e:  # pylint: disable=broad-exception-caught
             return f"Error: {str(e)}"
 
-        return f"Blueprint updated successfully: {response}"
+        # Normalize response handling similar to create_blueprint
+        if isinstance(response, str):
+            return response
+
+        if isinstance(response, list):
+            return (
+                "Error: the response of blueprint update is a list. This is not expected. "
+                f"Response: {json.dumps(response)}"
+            )
+
+        # Build an instructional answer with a UI link like in create_blueprint
+        instruction = (
+            "[INSTRUCTION] Use the tool get_blueprint_details to verify the updated blueprint or open the UI URL.\n"
+            f"Always show a link to the blueprint UI: "
+            f"{self.get_blueprint_url(client, response.get('id', blueprint_uuid))}\n"
+        )
+        answer = (
+            f"[ANSWER] Blueprint updated successfully: {{'UUID': '{response.get('id', blueprint_uuid)}'}}\n"
+            "We could double check the details or start the build/compose"
+        )
+        return f"{instruction}{answer}"
 
     def get_blueprint_url(self, client: InsightsClient, blueprint_id: str) -> str:
         """Get the URL for a blueprint."""
