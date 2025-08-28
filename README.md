@@ -116,8 +116,8 @@ then integrate:
 {
     "mcpServers": {
         "insights-mcp-http": {
-            "type": "Streamable HTTP",
-            "url": "http://localhost:8000/mcp/",
+            "type": "http",
+            "url": "http://localhost:8000/mcp",
             "headers": {
                 "insights-client-id": "",
                 "insights-client-secret": ""
@@ -158,7 +158,7 @@ For example questions specific to each toolset please have a look at the test fi
  * [`image-builder-mcp`](src/image_builder_mcp/tests/test_llm_integration_easy.py#L20)
  * [`inventory-mcp`](src/inventory_mcp/test_prompts.md)
  * [`remediations-mcp`](src/remediations_mcp/test_prompts.md)
- * [`rhel-advisor-mcp`](src/rhel_advisor_mcp/test_prompts.md)
+ * [`advisor-mcp`](src/advisor_mcp/test_prompts.md)
  * [`vulnerability-mcp`](src/vulnerability_mcp/test_prompts.md)
 
 ## Contributing
