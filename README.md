@@ -15,8 +15,43 @@ See [toolsets.md](toolsets.md) for the toolsets available in the MCP server.
 
 ## Authentication
 
-Go to https://console.redhat.com to `'YOUR USER' ➡ My User Access ➡ Service Accounts` create a service account
-and then set the environment variables `INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET` accordingly.
+**Note**: Authentication is only required for accessing Red Hat Insights APIs. The MCP server itself does not require authentication.
+
+### Service Account Setup
+
+1. Go to https://console.redhat.com → `'YOUR USER' ➡ My User Access ➡ Service Accounts`
+2. Create a service account and set environment variables `INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET`
+
+### Required Permissions by Toolset
+
+Different toolsets require specific roles for your service account:
+
+- **Advisor tools**: `RHEL Advisor viewer`
+- **Inventory tools**: `Inventory Hosts viewer`
+- **Vulnerability tools**: `Vulnerability viewer`, `Inventory Hosts viewer`
+- **Remediation tools**: `Remediations user`
+
+### Granting Permissions to Service Accounts
+
+By default, service accounts have no access. An organization administrator must assign permissions:
+
+For detailed step-by-step instructions, see this video tutorial: [Service Account Permissions Setup](https://www.youtube.com/watch?v=UvNcmJsbg1w)
+
+1. **Log in as Organization Administrator** with User Access administrator role
+2. **Navigate to User Access Settings**: Click gear icon → "User Access" → "Groups"
+3. **Assign permissions** (choose one option):
+
+   **Option A - Create New Group:**
+   - Create new group (e.g., `mcp-service-accounts`)
+   - Add required roles (e.g., RHEL Advisor viewer, Inventory Hosts viewer, etc.)
+   - Add your service account to this group
+
+   **Option B - Use Existing Group:**
+   - Open existing group with necessary roles
+   - Go to "Service accounts" tab
+   - Add your service account to the group
+
+Your service account will inherit all roles from the assigned group.
 
 ### ⚠️ Security Remarks ⚠️
 
