@@ -6,7 +6,6 @@ Updated to use the simplified agent approach with WorkflowCheckpointer.
 from typing import Any, Dict, List
 
 import pytest
-from deepeval import assert_test
 from deepeval.metrics import GEval, ToolCorrectnessMetric
 from deepeval.test_case import LLMTestCase, LLMTestCaseParams, ToolCall
 
@@ -27,17 +26,17 @@ TEST_LLM_PAGING_PROMPT_2 = "Can you show me the next 3 blueprints?"
 TOOL_USAGE_SCENARIOS: List[Dict[str, Any]] = [
     {
         "prompt": "List all my recent builds",
-        "expected_tools": ["get_composes"],
+        "expected_tools": ["image-builder__get_composes"],
         "description": "Should use get_composes for build listings",
     },
     {
         "prompt": "What blueprints do I have?",
-        "expected_tools": ["get_blueprints"],
+        "expected_tools": ["image-builder__get_blueprints"],
         "description": "Should use get_blueprints for blueprint listings",
     },
     {
         "prompt": "Please show my blueprints",
-        "expected_tools": ["get_blueprints"],
+        "expected_tools": ["image-builder__get_blueprints"],
         "description": "Should use get_blueprints for blueprint listings",
     },
 ]
@@ -87,10 +86,26 @@ class TestLLMIntegrationEasy:
         )
 
         verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.model_id)
-        # Evaluate with deepeval metric
-        assert_test(test_case, [behavioral_compliance])
 
-        verbose_logger.info("Test passed for %s", prompt)
+        # Measure once to get access to explanation and avoid double LLM call
+        behavioral_compliance.measure(test_case)
+
+        # Log detailed evaluation results
+        verbose_logger.info(
+            "📊 Behavioral Compliance Score: %.2f (threshold: %.2f)",
+            behavioral_compliance.score,
+            behavioral_compliance.threshold,
+        )
+        verbose_logger.info("📝 Guardian Agent Explanation: %s", behavioral_compliance.reason)
+
+        # Assert using success property (no additional LLM call)
+        assert behavioral_compliance.success, (
+            f"Behavioral compliance test failed. Score: {behavioral_compliance.score:.2f}, "
+            f"Threshold: {behavioral_compliance.threshold:.2f}. "
+            f"Reason: {behavioral_compliance.reason}"
+        )
+
+        verbose_logger.info("✅ Test passed for %s", prompt)
         verbose_logger.info("Response: %s", response)
         verbose_logger.info("Tool calls executed: %s", [tool.name for tool in tools_executed])
         verbose_logger.info("Reasoning steps captured: %d", len(reasoning_steps))
@@ -125,7 +140,18 @@ class TestLLMIntegrationEasy:
         # if this fails that's ok, we can continue
         try:
             verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.model_id)
-            assert_test(question_test_case, [contains_question])
+
+            # Measure once to get access to explanation and avoid double LLM call
+            contains_question.measure(question_test_case)
+            verbose_logger.info("📊 Contains Question Score: %.2f", contains_question.score)
+            verbose_logger.info("📝 Guardian Agent Explanation: %s", contains_question.reason)
+
+            # Assert using success property (no additional LLM call)
+            assert contains_question.success, (
+                f"Contains question test failed. Score: {contains_question.score:.2f}, "
+                f"Threshold: {contains_question.threshold:.2f}. "
+                f"Reason: {contains_question.reason}"
+            )
             verbose_logger.info("✓ LLM %s correctly answered with a question", llm_config["name"])
         except AssertionError as e:
             answered_with_question = e
@@ -154,7 +180,20 @@ class TestLLMIntegrationEasy:
         answered_with_tools = None
         try:
             verbose_logger.info("🤔 Checking tool correctness")
-            assert_test(test_case, [tool_correctness])
+
+            # Measure once to get access to explanation and avoid double LLM call
+            tool_correctness.measure(test_case)
+            verbose_logger.info(
+                "📊 Tool Correctness Score: %.2f (threshold: %.2f)", tool_correctness.score, tool_correctness.threshold
+            )
+            verbose_logger.info("📝 Tool Correctness Explanation: %s", tool_correctness.reason)
+
+            # Assert using success property (no additional LLM call)
+            assert tool_correctness.success, (
+                f"Tool correctness test failed. Score: {tool_correctness.score:.2f}, "
+                f"Threshold: {tool_correctness.threshold:.2f}. "
+                f"Reason: {tool_correctness.reason}"
+            )
             verbose_logger.info("✓ LLM %s correctly used the tools", llm_config["name"])
         except AssertionError as e:
             answered_with_tools = e
@@ -187,9 +226,23 @@ class TestLLMIntegrationEasy:
 
         # Create tool correctness metric - doesn't support model parameter
         tool_correctness = ToolCorrectnessMetric(threshold=0.6)
+
         # Evaluate with deepeval
         verbose_logger.info("🤔 Checking tool correctness")
-        assert_test(test_case, [tool_correctness])
+
+        # Measure once to get access to explanation and avoid double LLM call
+        tool_correctness.measure(test_case)
+        verbose_logger.info(
+            "📊 Tool Correctness Score: %.2f (threshold: %.2f)", tool_correctness.score, tool_correctness.threshold
+        )
+        verbose_logger.info("📝 Tool Correctness Explanation: %s", tool_correctness.reason)
+
+        # Assert using success property (no additional LLM call)
+        assert tool_correctness.success, (
+            f"Tool correctness test failed. Score: {tool_correctness.score:.2f}, "
+            f"Threshold: {tool_correctness.threshold:.2f}. "
+            f"Reason: {tool_correctness.reason}"
+        )
 
         verbose_logger.info(
             "✓ Tool usage pattern test passed for %s with prompt: %s", llm_config["name"], scenario["prompt"]
@@ -212,7 +265,21 @@ class TestLLMIntegrationEasy:
         )
         tool_correctness = ToolCorrectnessMetric(threshold=0.6)
 
-        assert_test(test_case_initial, [tool_correctness])
+        # Measure once to get access to explanation and avoid double LLM call
+        tool_correctness.measure(test_case_initial)
+        verbose_logger.info(
+            "📊 Initial Tool Correctness Score: %.2f (threshold: %.2f)",
+            tool_correctness.score,
+            tool_correctness.threshold,
+        )
+        verbose_logger.info("📝 Initial Tool Correctness Explanation: %s", tool_correctness.reason)
+
+        # Assert using success property (no additional LLM call)
+        assert tool_correctness.success, (
+            f"Initial tool correctness test failed. Score: {tool_correctness.score:.2f}, "
+            f"Threshold: {tool_correctness.threshold:.2f}. "
+            f"Reason: {tool_correctness.reason}"
+        )
 
         # Now ask for more with conversation context
         follow_up_prompt = TEST_LLM_PAGING_PROMPT_2
@@ -235,4 +302,19 @@ class TestLLMIntegrationEasy:
         tool_correctness = ToolCorrectnessMetric(threshold=0.6)
 
         verbose_logger.info("🤔 Checking tool correctness")
-        assert_test(test_case_subsequent, [tool_correctness])
+
+        # Measure once to get access to explanation and avoid double LLM call
+        tool_correctness.measure(test_case_subsequent)
+        verbose_logger.info(
+            "📊 Subsequent Tool Correctness Score: %.2f (threshold: %.2f)",
+            tool_correctness.score,
+            tool_correctness.threshold,
+        )
+        verbose_logger.info("📝 Subsequent Tool Correctness Explanation: %s", tool_correctness.reason)
+
+        # Assert using success property (no additional LLM call)
+        assert tool_correctness.success, (
+            f"Subsequent tool correctness test failed. Score: {tool_correctness.score:.2f}, "
+            f"Threshold: {tool_correctness.threshold:.2f}. "
+            f"Reason: {tool_correctness.reason}"
+        )
