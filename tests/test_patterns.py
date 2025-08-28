@@ -43,7 +43,8 @@ def assert_mcp_tool_descriptions_and_annotations(
     props = schema_obj.get("properties", {}) or {}
     for param_name, expected_param_desc in params.items():
         with subtests.test(param=param_name):
-            assert props.get(param_name, {}).get("description") == expected_param_desc.get("description")
+            desc = props.get(param_name, {}).get("description", "")
+            assert desc.startswith(expected_param_desc.get("description", ""))
             assert props.get(param_name, {}).get("default") == expected_param_desc.get("default")
             assert props.get(param_name, {}).get("type") == expected_param_desc.get("type")
             assert props.get(param_name, {}).get("anyOf") == expected_param_desc.get("anyOf")

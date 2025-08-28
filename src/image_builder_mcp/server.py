@@ -14,6 +14,7 @@ from pydantic import Field
 
 from insights_mcp.client import InsightsClient
 from insights_mcp.mcp import InsightsMCP
+from tools import OpenAPIReducer
 
 WATERMARK_CREATED = "Blueprint created via insights-mcp"
 WATERMARK_UPDATED = "Blueprint updated via insights-mcp"
@@ -296,22 +297,45 @@ class ImageBuilderMCP(InsightsMCP):
         return response_str
 
     async def get_openapi(
-        self, response_size: Annotated[int, Field(7, description="Number of items returned (use 7 as default)")]
+        self,
+        endpoints: Annotated[
+            Optional[str],
+            Field(
+                None,
+                description=(
+                    "Comma-separated list of endpoint specs to reduce the spec, e.g. "
+                    "'GET:/blueprints,POST:/blueprints'. Only needed for create_blueprint/update_blueprint."
+                ),
+            ),
+        ],
     ) -> str:
         """Get OpenAPI spec. Use this to get details e.g for a new blueprint
 
         🟢 CALL IMMEDIATELY - No information gathering required.
 
+        Optional parameters:
+        - **endpoints**: Comma-separated endpoint specs (like `GET:/blueprints,POST:/blueprints`).
+          When provided, the returned OpenAPI is minimized to only the selected paths and their transitive
+          component references. Use this only to prepare payloads for `create_blueprint` or `update_blueprint`.
+
         Returns:
-            List of blueprints
+            OpenAPI specification JSON (possibly reduced when 'endpoints' is provided)
 
         Raises:
             Exception: If the image-builder connection fails.
         """
-        # response_size is just a dummy parameter for langflow
-        _ = response_size  # Unused parameter, required by interface
         try:
             response = await self.insights_client.get("openapi.json", noauth=True)
+            if endpoints:
+                try:
+                    endpoint_list = [e.strip() for e in endpoints.split(",") if e.strip()]
+                    reducer = OpenAPIReducer.from_response(response)
+                    reduced = reducer.reduce(endpoint_list)
+                    return json.dumps(reduced)
+                except Exception as reduce_err:  # pylint: disable=broad-exception-caught
+                    # Fall back to full spec on any reduction error
+                    self.logger.warning("OpenAPI reduction failed: %s", reduce_err)
+                    return json.dumps(response)
             return json.dumps(response)
         # avoid crashing the server so we'll stick to the broad exception catch
         except Exception as e:  # pylint: disable=broad-exception-caught
@@ -339,7 +363,8 @@ class ImageBuilderMCP(InsightsMCP):
         7. Any customizations ("Do you need any specific packages, services, or configurations?")
 
         YOUR PROCESS AS THE AI ASSISTANT:
-        1. If you haven't already, call get_openapi to understand the CreateBlueprintRequest structure
+        1. If you haven't already, call get_openapi to understand the CreateBlueprintRequest structure.
+           For minimal context, call `get_openapi(endpoints="POST:/blueprints")` when preparing the payload.
         2. only for registration, call get_blueprints and get_blueprint_details to guess the "organization" value
         3. Ask the user for ALL the required information listed above through conversation
         4. Only after collecting all information, call this function with properly formatted data
@@ -391,6 +416,10 @@ class ImageBuilderMCP(InsightsMCP):
         """Update a blueprint.
 
         🟡 VERIFY PARAMETERS - Get original blueprint details and UUID before proceeding.
+
+        Guidance for LLM:
+        - Use `get_openapi(endpoints="PUT:/blueprints/{{id}}")` to fetch the minimal schema needed to format the
+          update payload (path placeholders are acceptable in endpoint specs).
 
         Returns:
             The response from the image-builder API
