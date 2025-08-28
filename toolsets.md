@@ -29,6 +29,8 @@
 - `get_rule_details`: Get Detailed Advisor Recommendation Information
 - `get_hosts_hitting_a_rule`: Get Systems Affected by Advisor Recommendation
 - `get_hosts_details_hitting_a_rule`: Get Detailed System Information for Advisor Recommendation
+- `get_rule_by_text_search`: Find Advisor Recommendations by Text Search
+- `get_recommendations_statistics`: Get Statistics of Recommendations Across Categories and Risks
 
 ## inventory
 - `list_hosts`: List hosts with filtering and sorting options.
