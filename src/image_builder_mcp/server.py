@@ -95,6 +95,13 @@ class ImageBuilderMCP(InsightsMCP):
         immediately and create the perfect custom Linux image, ISO, or virtual machine image for their
         specific deployment needs.
 
+        🚨 **CRITICAL REPOSITORY HANDLING**:
+        When users want to add custom repositories to their blueprints, you MUST:
+        1. Use `content-sources_list_repositories` to find repository UUIDs
+        2. Include the SAME repository UUIDs in BOTH payload_repositories AND custom_repositories fields
+        3. This dual inclusion is MANDATORY - missing either field causes build failures
+        4. NEVER make up or guess repository UUIDs - ALWAYS use the actual UUIDs from content-sources_list_repositories
+
         <|function_call_library|>
 
         """
@@ -362,12 +369,37 @@ class ImageBuilderMCP(InsightsMCP):
         6. For RHEL images specifically: "Do you want to enable registration for Red Hat services?"
         7. Any customizations ("Do you need any specific packages, services, or configurations?")
 
+        🚨 CRITICAL REPOSITORY REQUIREMENT:
+        ⚠️ **CUSTOM REPOSITORIES MUST BE INCLUDED IN BOTH FIELDS**:
+        When adding custom repositories to a blueprint, you MUST include them in BOTH:
+        - payload_repositories - for package installation during build
+        - custom_repositories - for repository configuration in the final image
+        
+        This dual inclusion is REQUIRED for the blueprint to work correctly. Missing either field will cause build failures.
+        
+        📋 REPOSITORY SETUP PROCESS:
+        1. Use content_sources_mcp tool to find repository UUIDs: `content-sources_list_repositories`
+        2. Include the same repository UUIDs in BOTH payload_repositories and custom_repositories arrays along with their URL
+        3. NEVER use fake or made-up UUIDs - ALWAYS get real UUIDs from the content-sources tool
+        4. Example structure:
+           ```json
+           {{
+             "payload_repositories": [{{"id": "repo-uuid-1", "url": "https://repo-url-1"}}, {{"id": "repo-uuid-2", "url": "https://repo-url-2"}}],
+             "custom_repositories": [{{"id": "repo-uuid-1", "url": "https://repo-url-1"}}, {{"id": "repo-uuid-2", "url": "https://repo-url-2"}}]
+           }}
+           ```
+        
+        NOTES ON CUSTOMIZATIONS:
+        1. If you need to add custom repositories, pass them in as payload_repositories AND custom_repositories
+        2. For custom_repositories and payload_repositories, its best to store the UUID from the repositories in the content_sources_mcp tool
+        3. CRITICAL: NEVER use fake or made-up repository UUIDs. ALWAYS call content-sources_list_repositories to get real UUIDs
+
         YOUR PROCESS AS THE AI ASSISTANT:
         1. If you haven't already, call get_openapi to understand the CreateBlueprintRequest structure.
            For minimal context, call `get_openapi(endpoints="POST:/blueprints")` when preparing the payload.
         2. only for registration, call get_blueprints and get_blueprint_details to guess the "organization" value
-        3. Ask the user for ALL the required information listed above through conversation
-        4. Only after collecting all information, call this function with properly formatted data
+        4. Ask the user for ALL the required information listed above through conversation
+        5. Only after collecting all information, call this function with properly formatted data
 
         Never make assumptions or fill in data yourself unless the user explicitly asks for it.
         Always ask the user for explicit input through conversation.
