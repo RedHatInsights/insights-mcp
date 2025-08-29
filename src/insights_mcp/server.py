@@ -11,6 +11,7 @@ import uvicorn
 from fastmcp import FastMCP
 
 from advisor_mcp.server import mcp_server as AdvisorMCP
+from content_sources_mcp.server import mcp as ContentSourcesMCP
 from image_builder_mcp.server import mcp_server as ImageBuilderMCP
 from insights_mcp import __version__
 from insights_mcp.mcp import INSIGHTS_BASE_URL, InsightsMCP
@@ -19,7 +20,7 @@ from inventory_mcp.server import mcp as InventoryMCP
 from remediations_mcp.server import mcp as RemediationsMCP
 from vulnerability_mcp.server import mcp as VulnerabilityMCP
 
-MCPS: list[InsightsMCP] = [ImageBuilderMCP, VulnerabilityMCP, RemediationsMCP, AdvisorMCP, InventoryMCP]
+MCPS: list[InsightsMCP] = [ImageBuilderMCP, VulnerabilityMCP, RemediationsMCP, AdvisorMCP, InventoryMCP, ContentSourcesMCP]
 
 
 class InsightsMCPServer(FastMCP):
