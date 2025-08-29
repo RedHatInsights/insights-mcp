@@ -1,14 +1,15 @@
 .PHONY: build-prod
 build-prod: generate-docs ## Build the container image but with the upstream tag
-	podman build --tag ghcr.io/redhatinsights/insights-mcp:latest .
+	podman build --build-arg INSIGHTS_MCP_VERSION=$(VERSION) --tag ghcr.io/redhatinsights/insights-mcp:latest .
 
 .PHONY: build
 build: generate-docs ## Build the container image
-	podman build --tag insights-mcp .
+	podman build --build-arg INSIGHTS_MCP_VERSION=$(VERSION) --tag insights-mcp .
 
 # please set from outside
-TAG ?= UNKNOWN
 CONTAINER_IMAGE ?= ghcr.io/redhatinsights/insights-mcp:latest
+TAG ?= v0.0.0-dev
+VERSION ?= $(TAG)
 
 .PHONY: build-claude-extension
 build-claude-extension: ## Build the Claude extension

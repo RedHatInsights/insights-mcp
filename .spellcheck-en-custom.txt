@@ -4,6 +4,7 @@ CLI
 Claude
 codebase
 config
+Containerfile
 customizations
 CVE
 deepeval
@@ -39,6 +40,7 @@ RHEL
 rhel
 Starlette
 Streamable
+Tekton
 toml
 Toolset
 toolset

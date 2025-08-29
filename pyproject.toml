@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "insights-mcp"
-version = "0.1.0"
+version = "0.0.0"
 description = "A Model Context Protocol server for Red Hat Insights"
 readme = "README.md"
 license = {file = "LICENSE"}

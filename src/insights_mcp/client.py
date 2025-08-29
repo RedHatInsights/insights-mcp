@@ -20,9 +20,11 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client, OAuthError
 from authlib.oauth2.rfc6749 import OAuth2Token
 from fastmcp.server.dependencies import get_http_headers
 
+from . import __version__
+
 TOKEN_ENDPOINT = "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"
 INSIGHTS_BASE_URL = "https://console.redhat.com"
-USER_AGENT = "insights-mcp/0.1"  # TODO: automatically set this to the version of the MCP server
+USER_AGENT = f"insights-mcp/{__version__}"
 
 
 class InsightsClientBase(httpx.AsyncClient):
