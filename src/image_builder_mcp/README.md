@@ -2,6 +2,15 @@
 
 This is the Image Builder MCP.
 
+## Important Notes
+
+### Custom Repositories
+When adding custom repositories to blueprints, you **MUST** include them in both:
+- `payload_repositories` - for package installation during build
+- `custom_repositories` - for repository configuration in the final image
+
+This dual inclusion is required for the blueprint to work correctly. Use the `content-sources_mcp` tool to find repository UUIDs.
+
 ## Customizations
 
 All customizations are documented in the [blueprint reference](https://osbuild.org/docs/user-guide/blueprint-reference/).
@@ -69,3 +78,13 @@ For example questions specific to each toolset please have a look at the test fi
 
  * [`image-builder-mcp`](tests/test_llm_integration_easy.py#L20)
  * [`image-builder-mcp`](tests/test_llm_integration_hard.py#L16)
+
+### Custom Repository Tests
+The test suite includes specific tests for custom repository handling:
+- **Test**: `test_custom_repositories_guidance` in `tests/test_llm_integration_easy.py`
+- **Prompt**: "I want to create a RHEL 9 image with custom repositories. Can you help me set that up?"
+- **Expected**: LLM should guide user to use content-sources_mcp and explain dual inclusion requirement
+
+- **Test**: `test_epel_repository_lookup` in `tests/test_llm_integration_easy.py`
+- **Prompt**: "I want to add EPEL repository to my RHEL 9 image. Can you help me find the correct repository UUID?"
+- **Expected**: LLM should call content-sources_list_repositories and provide actual UUIDs, not fake ones
