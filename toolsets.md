@@ -38,3 +38,6 @@
 - `get_host_system_profile`: Get detailed system profile information for specific hosts.
 - `get_host_tags`: Get tags for specific hosts.
 - `find_host_by_name`: Find a host by its hostname/display name.
+
+## content-sources
+- `list_repositories`: List repositories with filtering and pagination options.
