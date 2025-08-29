@@ -188,6 +188,14 @@ integration using podman:
 podman run --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --interactive --rm ghcr.io/redhatinsights/insights-mcp:latest
 ```
 
+#### Claude Code
+
+For instance, to use Claude Code with the STDIO server, use this command:
+
+```bash
+claude mcp add insights-mcp -- podman run --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --interactive --rm ghcr.io/redhatinsights/insights-mcp:latest
+```
+
 ## Examples
 
 It's probably best to just ask the LLM you just attached to the MCP server to.
