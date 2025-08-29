@@ -2,9 +2,9 @@
 
 import argparse
 import asyncio
-import logging
 import os
 import sys
+from logging import DEBUG, getLogger
 from typing import Any
 
 import uvicorn
@@ -12,6 +12,7 @@ from fastmcp import FastMCP
 
 from advisor_mcp.server import mcp_server as AdvisorMCP
 from image_builder_mcp.server import mcp_server as ImageBuilderMCP
+from insights_mcp import __version__
 from insights_mcp.mcp import INSIGHTS_BASE_URL, InsightsMCP
 from insights_mcp.oauth import Middleware
 from inventory_mcp.server import mcp as InventoryMCP
@@ -208,12 +209,14 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
             print("hint: INSIGHTS_STAGE_PROXY_URL=http://yoursquidproxy…:3128")
             sys.exit(1)
 
+    logger = getLogger("InsightsMCPServer")
+
     if args.debug:  # FIXME: make common logging setup
-        logging.getLogger("ImageBuilderMCP").setLevel(logging.DEBUG)
-        logging.getLogger("InsightsClientBase").setLevel(logging.DEBUG)
-        logging.getLogger("InsightsClient").setLevel(logging.DEBUG)
-        logging.getLogger("ImageBuilderOAuthMiddleware").setLevel(logging.DEBUG)
-        logging.info("Debug mode enabled")
+        getLogger("ImageBuilderMCP").setLevel(DEBUG)
+        getLogger("InsightsClientBase").setLevel(DEBUG)
+        getLogger("InsightsClient").setLevel(DEBUG)
+        getLogger("ImageBuilderOAuthMiddleware").setLevel(DEBUG)
+        logger.info("Debug mode enabled")
 
     oauth_enabled = os.getenv("OAUTH_ENABLED", "false").lower() == "true"
     toolset = args.toolset or os.getenv("INSIGHTS_TOOLSET", "all")
@@ -222,6 +225,13 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
         toolset_list = [mcp.toolset_name for mcp in MCPS]
     else:
         toolset_list = [t.strip() for t in toolset.split(",")]
+
+    logger.warning(
+        "Starting Insights MCP %s (%s) with toolsets: %s",
+        __version__,
+        args.transport,
+        ", ".join(toolset_list),
+    )
 
     instructions = get_instructions(toolset_list)
 
@@ -254,7 +264,7 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
             )
             oauth_client = os.getenv("OAUTH_CLIENT")
             if not oauth_client:
-                logging.fatal("OAUTH_CLIENT environment variable is required for OAuth-enabled HTTP transport")
+                logger.fatal("OAUTH_CLIENT environment variable is required for OAuth-enabled HTTP transport")
                 sys.exit(1)
 
             app.add_middleware(

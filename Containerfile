@@ -1,6 +1,9 @@
 # Build stage
 FROM registry.access.redhat.com/ubi9/ubi-minimal AS builder
 
+# Allow version to be set at build time
+ARG INSIGHTS_MCP_VERSION
+
 # Set up a working directory
 WORKDIR /app
 
@@ -25,6 +28,10 @@ RUN pip3.12 install -U --no-cache-dir pip uv && \
 
 # Runtime stage
 FROM registry.access.redhat.com/ubi9/ubi-minimal
+
+# Inherit version from build stage
+ARG INSIGHTS_MCP_VERSION
+ENV INSIGHTS_MCP_VERSION=${INSIGHTS_MCP_VERSION}
 
 RUN microdnf install -y --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
     python312 && \
