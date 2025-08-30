@@ -1,16 +1,10 @@
 """Test suite for the get_blueprints() method."""
 
 import json
-from unittest.mock import Mock, patch
 
 import pytest
 
-import image_builder_mcp.server as image_builder_mcp
-
-# Clean import - no sys.path.insert needed with proper package structure!
-from image_builder_mcp import ImageBuilderMCP
-from insights_mcp.client import InsightsClient
-from insights_mcp.mcp import INSIGHTS_BASE_URL
+from .conftest import setup_imagebuilder_mock
 
 
 class TestGetBlueprints:
@@ -52,44 +46,18 @@ class TestGetBlueprints:
             ]
         }
 
-    @pytest.fixture
-    def mcp_server(self):
-        """Create a mock MCP server instance."""
-        server = ImageBuilderMCP()
-        server.init_insights_client(
-            client_id="test-client-id",
-            client_secret="test-client-secret",
-        )
-        server.register_tools()
-        return server
-
-    @pytest.fixture
-    def mock_client(self):
-        """Create a mock InsightsClient."""
-        client = Mock(spec=InsightsClient)
-        client.client_id = "test-client-id"
-        client.client_secret = "test-client-secret"
-        client.insights_base_url = INSIGHTS_BASE_URL
-        client.api_path = "api/v1/image-builder"
-        return client
-
     @pytest.mark.asyncio
-    async def test_get_blueprints_basic_functionality(self, mcp_server, mock_client, mock_api_response):  # pylint: disable=too-many-locals
+    async def test_get_blueprints_basic_functionality(
+        self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response
+    ):  # pylint: disable=too-many-locals
         """Test basic functionality of get_blueprints method."""
         # Setup mocks
-        with patch.object(image_builder_mcp, "get_http_headers") as mock_headers:
-            mock_headers.return_value = {
-                "insights-client-id": "test-client-id",
-                "insights-client-secret": "test-client-secret",
-            }
-            mock_client.get.return_value = mock_api_response
-            mcp_server.clients["test-client-id"] = mock_client
-
+        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call the method with new interface
-            result = await mcp_server.get_blueprints(limit=7, offset=0, search_string="")
+            result = await imagebuilder_mcp_server.get_blueprints(limit=7, offset=0, search_string="")
 
             # Verify API was called correctly with limit and offset parameters
-            mock_client.get.assert_called_once_with("blueprints", params={"limit": 7, "offset": 0})
+            imagebuilder_mock_client.get.assert_called_once_with("blueprints", params={"limit": 7, "offset": 0})
 
             # Parse the result
             assert result.startswith("[INSTRUCTION]")
@@ -135,23 +103,18 @@ class TestGetBlueprints:
                 assert blueprint["UI_URL"] == expected_url
 
     @pytest.mark.asyncio
-    async def test_get_blueprints_with_limit_and_offset(self, mcp_server, mock_client, mock_api_response):
+    async def test_get_blueprints_with_limit_and_offset(
+        self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response
+    ):
         """Test get_blueprints with limit and offset parameters."""
         # Setup mocks
-        with patch.object(image_builder_mcp, "get_http_headers") as mock_headers:
-            mock_headers.return_value = {
-                "insights-client-id": "test-client-id",
-                "insights-client-secret": "test-client-secret",
-            }
-            mock_client.get.return_value = mock_api_response
-            mcp_server.clients["test-client-id"] = mock_client
-
+        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call with limit=2, offset=1
-            result = await mcp_server.get_blueprints(limit=2, offset=1, search_string="")
+            result = await imagebuilder_mcp_server.get_blueprints(limit=2, offset=1, search_string="")
 
             # Verify API was called with correct parameters
             # Note: search_string is not passed to the Image Builder API
-            mock_client.get.assert_called_once_with("blueprints", params={"limit": 2, "offset": 1})
+            imagebuilder_mock_client.get.assert_called_once_with("blueprints", params={"limit": 2, "offset": 1})
 
             # Extract JSON data from result
             json_start = result.find('[{"reply_id"')
@@ -167,22 +130,18 @@ class TestGetBlueprints:
             assert reply_ids == [2, 3, 4, 5]  # offset=1, so starts from 2
 
     @pytest.mark.asyncio
-    async def test_get_blueprints_with_search_string(self, mcp_server, mock_client, mock_api_response):
+    async def test_get_blueprints_with_search_string(
+        self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response
+    ):
         """Test get_blueprints with search string filtering."""
         # Setup mocks
-        with patch.object(image_builder_mcp, "get_http_headers") as mock_headers:
-            mock_headers.return_value = {
-                "insights-client-id": "test-client-id",
-                "insights-client-secret": "test-client-secret",
-            }
-            mock_client.get.return_value = mock_api_response
-            mcp_server.clients["test-client-id"] = mock_client
 
+        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call with search string
-            result = await mcp_server.get_blueprints(limit=10, offset=0, search_string="rhel-10")
+            result = await imagebuilder_mcp_server.get_blueprints(limit=10, offset=0, search_string="rhel-10")
 
             # Note: search_string is not passed to the Image Builder API
-            mock_client.get.assert_called_once_with("blueprints", params={"limit": 10, "offset": 0})
+            imagebuilder_mock_client.get.assert_called_once_with("blueprints", params={"limit": 10, "offset": 0})
 
             # Extract JSON data from result
             json_start = result.find('[{"reply_id"')
@@ -196,19 +155,15 @@ class TestGetBlueprints:
                 assert "rhel-10" in blueprint["name"].lower()
 
     @pytest.mark.asyncio
-    async def test_get_blueprints_case_insensitive_search(self, mcp_server, mock_client, mock_api_response):
+    async def test_get_blueprints_case_insensitive_search(
+        self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response
+    ):
         """Test get_blueprints search is case insensitive."""
         # Setup mocks
-        with patch.object(image_builder_mcp, "get_http_headers") as mock_headers:
-            mock_headers.return_value = {
-                "insights-client-id": "test-client-id",
-                "insights-client-secret": "test-client-secret",
-            }
-            mock_client.get.return_value = mock_api_response
-            mcp_server.clients["test-client-id"] = mock_client
 
+        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call with uppercase search string
-            result = await mcp_server.get_blueprints(limit=10, offset=0, search_string="TEST")
+            result = await imagebuilder_mcp_server.get_blueprints(limit=10, offset=0, search_string="TEST")
 
             # Extract JSON data from result
             json_start = result.find('[{"reply_id"')
@@ -223,54 +178,39 @@ class TestGetBlueprints:
             assert "test-rhel-10-x86_64-07012025-1726" in blueprint_names
 
     @pytest.mark.asyncio
-    async def test_get_blueprints_empty_response(self, mcp_server, mock_client):
+    async def test_get_blueprints_empty_response(self, imagebuilder_mcp_server, imagebuilder_mock_client):
         """Test get_blueprints with empty API response."""
         # Setup mocks
-        with patch.object(image_builder_mcp, "get_http_headers") as mock_headers:
-            mock_headers.return_value = {
-                "insights-client-id": "test-client-id",
-                "insights-client-secret": "test-client-secret",
-            }
-            mock_client.get.return_value = {"data": []}
-            mcp_server.clients["test-client-id"] = mock_client
 
+        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, {"data": []}):
             # Call the method
-            result = await mcp_server.get_blueprints(limit=7, offset=0, search_string="")
+            result = await imagebuilder_mcp_server.get_blueprints(limit=7, offset=0, search_string="")
 
             # Should return empty list
             assert "[]" in result
 
     @pytest.mark.asyncio
-    async def test_get_blueprints_api_error(self, mcp_server, mock_client):
+    async def test_get_blueprints_api_error(self, imagebuilder_mcp_server, imagebuilder_mock_client):
         """Test get_blueprints when API returns error."""
         # Setup mocks
-        with patch.object(image_builder_mcp, "get_http_headers") as mock_headers:
-            mock_headers.return_value = {
-                "insights-client-id": "test-client-id",
-                "insights-client-secret": "test-client-secret",
-            }
-            mock_client.get.side_effect = Exception("API Error")
-            mcp_server.clients["test-client-id"] = mock_client
 
+        with setup_imagebuilder_mock(
+            imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")
+        ):
             # Call the method
-            result = await mcp_server.get_blueprints(limit=7, offset=0, search_string="")
+            result = await imagebuilder_mcp_server.get_blueprints(limit=7, offset=0, search_string="")
 
             # Should return error message
             assert result.startswith("Error: API Error")
 
     @pytest.mark.asyncio
-    async def test_get_blueprints_null_search_string_handling(self, mcp_server, mock_client, mock_api_response):
+    async def test_get_blueprints_null_search_string_handling(
+        self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response
+    ):
         """Test handling of 'null' string as search parameter."""
-        with patch.object(image_builder_mcp, "get_http_headers") as mock_headers:
-            mock_headers.return_value = {
-                "insights-client-id": "test-client-id",
-                "insights-client-secret": "test-client-secret",
-            }
-            mock_client.get.return_value = mock_api_response
-            mcp_server.clients["test-client-id"] = mock_client
-
+        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call with "null" string (workaround for LLama 3.3 70B Instruct)
-            result = await mcp_server.get_blueprints(limit=10, offset=0, search_string="null")
+            result = await imagebuilder_mcp_server.get_blueprints(limit=10, offset=0, search_string="null")
 
             # Should treat "null" string as None and return all blueprints
             json_start = result.find('[{"reply_id"')
@@ -281,22 +221,18 @@ class TestGetBlueprints:
             assert len(blueprints) == 4  # All blueprints should be returned
 
     @pytest.mark.asyncio
-    async def test_get_blueprints_zero_limit_uses_default(self, mcp_server, mock_client, mock_api_response):
+    async def test_get_blueprints_zero_limit_uses_default(
+        self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response
+    ):
         """Test that zero or negative limit uses default response size."""
         # Setup mocks
-        with patch.object(image_builder_mcp, "get_http_headers") as mock_headers:
-            mock_headers.return_value = {
-                "insights-client-id": "test-client-id",
-                "insights-client-secret": "test-client-secret",
-            }
-            mock_client.get.return_value = mock_api_response
-            mcp_server.clients["test-client-id"] = mock_client
 
+        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call with zero limit
-            result = await mcp_server.get_blueprints(limit=0, offset=0, search_string="")
+            result = await imagebuilder_mcp_server.get_blueprints(limit=0, offset=0, search_string="")
 
             # Should use default response size (10)
-            mock_client.get.assert_called_once_with("blueprints", params={"limit": 10, "offset": 0})
+            imagebuilder_mock_client.get.assert_called_once_with("blueprints", params={"limit": 10, "offset": 0})
 
             # Should return result
             assert "[INSTRUCTION]" in result
