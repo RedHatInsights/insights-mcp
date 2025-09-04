@@ -6,7 +6,7 @@ Provides tools to get repository information from content sources.
 
 import json
 import logging
-from typing import Any
+from typing import Annotated, Any, Optional
 
 from fastmcp.tools.tool import Tool
 from mcp.types import ToolAnnotations
@@ -70,17 +70,20 @@ class ContentSourcesMCP(InsightsMCP):
             tool.title = description_str.split("\n", 1)[0]
             self.add_tool(tool)
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     async def list_repositories(
         self,
-        limit: int = Field(default=10, description="Maximum number of repositories to return (default: 10)."),
-        offset: int = Field(default=0, description="Number of repositories to skip for pagination (default: 0)."),
-        name: str = Field(default="", description="Filter by repository name (case-insensitive)."),
-        url: str = Field(default="", description="Filter by repository URL (case-insensitive)."),
-        content_type: str = Field(default="", description="Filter by content type (e.g., 'rpm', 'ostree')."),
-        origin: str = Field(default="", description="Filter by origin (e.g., 'red_hat', 'external')."),
-        enabled: bool = Field(default=None, description="Filter by enabled status (True/False)."),
-        arch: str = Field(default="", description="Filter by architecture (e.g., 'x86_64', 'aarch64')."),
-        version: str = Field(default="", description="Filter by version (e.g., '8', '9')."),
+        enabled: Annotated[Optional[bool], Field(default=None, description="Filter by enabled status (True/False).")],
+        limit: Annotated[int, Field(default=10, description="Maximum number of repositories to return (default: 10).")],
+        offset: Annotated[
+            int, Field(default=0, description="Number of repositories to skip for pagination (default: 0).")
+        ],
+        name: Annotated[str, Field(default="", description="Filter by repository name (case-insensitive).")],
+        url: Annotated[str, Field(default="", description="Filter by repository URL (case-insensitive).")],
+        content_type: Annotated[str, Field(default="", description="Filter by content type (e.g., 'rpm', 'ostree').")],
+        origin: Annotated[str, Field(default="", description="Filter by origin (e.g., 'red_hat', 'external').")],
+        arch: Annotated[str, Field(default="", description="Filter by architecture (e.g., 'x86_64', 'aarch64').")],
+        version: Annotated[str, Field(default="", description="Filter by version (e.g., '8', '9').")],
     ) -> str:
         """List repositories with filtering and pagination options.
 

@@ -374,25 +374,35 @@ class ImageBuilderMCP(InsightsMCP):
         When adding custom repositories to a blueprint, you MUST include them in BOTH:
         - payload_repositories - for package installation during build
         - custom_repositories - for repository configuration in the final image
-        
-        This dual inclusion is REQUIRED for the blueprint to work correctly. Missing either field will cause build failures.
-        
+
+        This dual inclusion is REQUIRED for the blueprint to work correctly.
+        Missing either field will cause build failures.
+
         📋 REPOSITORY SETUP PROCESS:
         1. Use content_sources_mcp tool to find repository UUIDs: `content-sources_list_repositories`
-        2. Include the same repository UUIDs in BOTH payload_repositories and custom_repositories arrays along with their URL
+        2. Include the same repository UUIDs in BOTH payload_repositories and custom_repositories arrays
+           along with their URL
         3. NEVER use fake or made-up UUIDs - ALWAYS get real UUIDs from the content-sources tool
         4. Example structure:
            ```json
            {{
-             "payload_repositories": [{{"id": "repo-uuid-1", "url": "https://repo-url-1"}}, {{"id": "repo-uuid-2", "url": "https://repo-url-2"}}],
-             "custom_repositories": [{{"id": "repo-uuid-1", "url": "https://repo-url-1"}}, {{"id": "repo-uuid-2", "url": "https://repo-url-2"}}]
+             "payload_repositories": [
+               {{"id": "repo-uuid-1", "url": "https://repo-url-1"}},
+               {{"id": "repo-uuid-2", "url": "https://repo-url-2"}}
+              ],
+             "custom_repositories": [
+               {{"id": "repo-uuid-1", "url": "https://repo-url-1"}},
+               {{"id": "repo-uuid-2", "url": "https://repo-url-2"}}
+             ]
            }}
            ```
-        
+
         NOTES ON CUSTOMIZATIONS:
         1. If you need to add custom repositories, pass them in as payload_repositories AND custom_repositories
-        2. For custom_repositories and payload_repositories, its best to store the UUID from the repositories in the content_sources_mcp tool
-        3. CRITICAL: NEVER use fake or made-up repository UUIDs. ALWAYS call content-sources_list_repositories to get real UUIDs
+        2. For custom_repositories and payload_repositories, its best to store the UUID from the repositories in
+           the content_sources_mcp tool
+        3. CRITICAL: NEVER use fake or made-up repository UUIDs. ALWAYS call content-sources_list_repositories
+           to get real UUIDs
 
         YOUR PROCESS AS THE AI ASSISTANT:
         1. If you haven't already, call get_openapi to understand the CreateBlueprintRequest structure.
