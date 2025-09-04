@@ -226,17 +226,17 @@ If you don't have this role, please contact your organization administrator to g
         *,
         impacting: Annotated[
             bool, Field(True, description="Only show recommendations currently impacting systems. Default: true")
-        ],
+        ] = True,
         incident: Annotated[
             bool, Field(False, description="Only show recommendations that cause incidents. Default: false")
-        ],
+        ] = False,
         has_automatic_remediation: Annotated[
             bool,
             Field(
                 False,
                 description="Only show recommendations that have a playbook for automatic remediation. Default: false",
             ),
-        ],
+        ] = False,
         impact: Annotated[
             str | None,
             Field(
@@ -244,7 +244,7 @@ If you don't have this role, please contact your organization administrator to g
                 description="Impact level filter as comma-separated string, e.g. '1,2,3'. "
                 "Available values: 1=Low, 2=Medium, 3=High, 4=Critical. Example: '3,4'",
             ),
-        ],
+        ] = None,
         likelihood: Annotated[
             str | None,
             Field(
@@ -252,7 +252,7 @@ If you don't have this role, please contact your organization administrator to g
                 description="Likelihood level filter as comma-separated string, e.g. '1,2,3'. "
                 "Available values: 1=Low, 2=Medium, 3=High, 4=Very High. Example: '3,4'",
             ),
-        ],
+        ] = None,
         category: Annotated[
             str | None,
             Field(
@@ -262,7 +262,7 @@ If you don't have this role, please contact your organization administrator to g
                     "Available values: 1=Availability, 2=Security, 3=Stability, 4=Performance. Example: '2,4'"
                 ),
             ),
-        ],
+        ] = None,
         reboot: Annotated[
             str | bool | None,
             Field(
@@ -271,7 +271,7 @@ If you don't have this role, please contact your organization administrator to g
                 "True shows only reboot-required recommendations, "
                 "None shows all recommendations. Example: true",
             ),
-        ],
+        ] = None,
         sort: Annotated[
             str | None,
             Field(
@@ -281,21 +281,21 @@ If you don't have this role, please contact your organization administrator to g
                 "resolution_risk, rule_id, total_risk. Use '-' prefix for descending order. "
                 "Example: '-total_risk,rule_id'",
             ),
-        ],
+        ] = "-total_risk",
         offset: Annotated[
             str | int | None,
             Field(
                 None,
                 description="Pagination offset to skip specified number of results. Used with limit. Example: 0",
             ),
-        ],
+        ] = None,
         limit: Annotated[
             str | int | None,
             Field(
                 None,
                 description="Pagination: Maximum number of results per page. Default: 20",
             ),
-        ],
+        ] = None,
         groups: Annotated[
             str | list[str] | None,
             Field(
@@ -305,7 +305,7 @@ If you don't have this role, please contact your organization administrator to g
                     "Example: 'workspace1,workspace2'"
                 ),
             ),
-        ],
+        ] = None,
         tags: Annotated[
             str | list[str] | None,
             Field(
@@ -318,10 +318,9 @@ If you don't have this role, please contact your organization administrator to g
                     'JSON string format: \'["satellite/group=database-servers", "insights-client/security=strict"]\''
                 ),
             ),
-        ],
+        ] = None,
     ) -> str:
-        """
-        Get active Advisor Recommendations for your account that help identify issues
+        """Get active Advisor Recommendations for your account that help identify issues
         affecting system availability, stability, performance, or security.
 
         Use filters to find recommendations by impact level, likelihood, systems affected,
@@ -384,7 +383,8 @@ If you don't have this role, please contact your organization administrator to g
                     if tag and "/" in tag and "=" in tag:
                         tag_list.append(tag)
                     elif tag:
-                        self.logger.warning("Invalid tag format '%s', expected namespace/key=value", tag)
+                        self.logger.error("Invalid tag format '%s', expected namespace/key=value", tag)
+                        return f"Error: Invalid tag format '{tag}', expected namespace/key=value"
 
                 if tag_list:
                     params["tags"] = ",".join(tag_list)
@@ -392,9 +392,9 @@ If you don't have this role, please contact your organization administrator to g
         try:
             response = await self.insights_client.get("rule/", params=params)
             return str(response) if response else "No recommendations found or empty response."
-        except (ValueError, TypeError, ConnectionError) as e:
-            self.logger.error("Failed to retrieve recommendations: %s", str(e))
-            return f"Failed to retrieve recommendations: {str(e)}"
+        except (ValueError, TypeError, ConnectionError, Exception) as e:  # pylint: disable=broad-except
+            self.logger.error("Error: Failed to retrieve recommendations: %s", str(e))
+            return f"Error: Failed to retrieve recommendations: {str(e)}"
 
     async def get_rule_from_node_id(
         self,
@@ -408,8 +408,7 @@ If you don't have this role, please contact your organization administrator to g
             ),
         ],
     ) -> str:
-        """
-        Find Advisor Recommendations related to a specific Knowledge Base article or solution.
+        """Find Advisor Recommendations related to a specific Knowledge Base article or solution.
 
         Use this when you have a Knowledge Base article or solution ID and want to find
         corresponding Advisor Recommendations that provide system-specific remediation steps.
@@ -428,9 +427,9 @@ If you don't have this role, please contact your organization administrator to g
         try:
             response = await self.insights_client.get(f"kcs/{sanitized_node_id}/")
             return str(response) if response else "No recommendation found for the given node ID."
-        except (ValueError, TypeError, ConnectionError) as e:
+        except (ValueError, TypeError, ConnectionError, Exception) as e:  # pylint: disable=broad-except
             self.logger.error("Failed to retrieve recommendation for node ID %s: %s", node_id, str(e))
-            return f"Failed to retrieve recommendation for node ID {node_id}: {str(e)}"
+            return f"Error: Failed to retrieve recommendation for node ID {node_id}: {str(e)}"
 
     async def get_rule_details(
         self,
@@ -442,8 +441,7 @@ If you don't have this role, please contact your organization administrator to g
             ),
         ],
     ) -> str:
-        """
-        Get detailed information about a specific Advisor Recommendation, including
+        """Get detailed information about a specific Advisor Recommendation, including
         impact level, likelihood, remediation steps, and related knowledge base articles.
 
         Call Examples:
@@ -460,9 +458,9 @@ If you don't have this role, please contact your organization administrator to g
         try:
             response = await self.insights_client.get(f"rule/{sanitized_rule_id}/")
             return str(response) if response else "No recommendation details found."
-        except (ValueError, TypeError, ConnectionError) as e:
-            self.logger.error("Failed to retrieve recommendation details for %s: %s", rule_id, str(e))
-            return f"Failed to retrieve recommendation details for {rule_id}: {str(e)}"
+        except (ValueError, TypeError, ConnectionError, Exception) as e:  # pylint: disable=broad-except
+            self.logger.error("Error: Failed to retrieve recommendation details for %s: %s", rule_id, str(e))
+            return f"Error: Failed to retrieve recommendation details for {rule_id}: {str(e)}"
 
     async def get_hosts_hitting_a_rule(
         self,
@@ -474,8 +472,7 @@ If you don't have this role, please contact your organization administrator to g
             ),
         ],
     ) -> str:
-        """
-        Get all RHEL systems affected by a specific Advisor Recommendation.
+        """Get all RHEL systems affected by a specific Advisor Recommendation.
 
         Shows which systems in your infrastructure have the issue identified
         by this recommendation. Use this to understand the scope of impact.
@@ -493,9 +490,9 @@ If you don't have this role, please contact your organization administrator to g
         try:
             response = await self.insights_client.get(f"rule/{sanitized_rule_id}/systems/")
             return str(response) if response else "No systems found for the specified recommendation."
-        except (ValueError, TypeError, ConnectionError) as e:
-            self.logger.error("Failed to retrieve systems for recommendation %s: %s", rule_id, str(e))
-            return f"Failed to retrieve systems for recommendation {rule_id}: {str(e)}"
+        except (ValueError, TypeError, ConnectionError, Exception) as e:  # pylint: disable=broad-except
+            self.logger.error("Error: Failed to retrieve systems for recommendation %s: %s", rule_id, str(e))
+            return f"Error: Failed to retrieve systems for recommendation {rule_id}: {str(e)}"
 
     async def get_hosts_details_hitting_a_rule(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
@@ -526,8 +523,7 @@ If you don't have this role, please contact your organization administrator to g
             ),
         ] = None,
     ) -> str:
-        """
-        Get detailed information about RHEL systems affected by a specific Advisor Recommendation.
+        """Get detailed information about RHEL systems affected by a specific Advisor Recommendation.
 
         Returns paginated system details with comprehensive information about each affected system,
         including system identification, impact metrics, RHEL version, and last seen timestamps.
@@ -604,7 +600,7 @@ If you don't have this role, please contact your organization administrator to g
             rhel_version_stripped = rhel_version.strip()
             if rhel_version_stripped not in valid_rhel_versions:
                 self.logger.error(
-                    "Invalid RHEL version '%s'. Valid versions are: %s",
+                    "Error: Invalid RHEL version '%s'. Valid versions are: %s",
                     rhel_version_stripped,
                     ", ".join(sorted(valid_rhel_versions)),
                 )
@@ -624,11 +620,11 @@ If you don't have this role, please contact your organization administrator to g
         try:
             response = await self.insights_client.get(f"rule/{sanitized_rule_id}/systems_detail/", params=params)
             return str(response) if response else "No detailed system information found."
-        except (ValueError, TypeError, ConnectionError) as e:
+        except (ValueError, TypeError, ConnectionError, Exception) as e:  # pylint: disable=broad-except
             self.logger.error(
-                "Failed to retrieve detailed system information for recommendation %s: %s", rule_id, str(e)
+                "Error: Failed to retrieve detailed system information for recommendation %s: %s", rule_id, str(e)
             )
-            return f"Failed to retrieve detailed system information for recommendation {rule_id}: {str(e)}"
+            return f"Error: Failed to retrieve detailed system information for recommendation {rule_id}: {str(e)}"
 
     async def get_rule_by_text_search(
         self,
@@ -637,19 +633,24 @@ If you don't have this role, please contact your organization administrator to g
             Field(description="The text substring to search for. Example: 'xfs'"),
         ],
     ) -> str:
+        """Finds Advisor Recommendations that contain an exact text substring.
+
+        Call examples:
+            Standard call: {"text": "xfs"}
         """
-        Finds Advisor Recommendations that contain an exact text substring.
-        """
+        if not isinstance(text, str):
+            return "Error: Text search query must be a non-empty string."
+
         sanitized_text = text.strip()
-        if not sanitized_text or not isinstance(sanitized_text, str):
+        if not sanitized_text:
             return "Error: Text search query must be a non-empty string."
 
         try:
             response = await self.insights_client.get("rule/", params={"text": sanitized_text})
             return str(response) if response else "No recommendations found for the given text search."
-        except (ValueError, TypeError, ConnectionError) as e:
-            self.logger.error("Failed to retrieve recommendations for text search '%s': %s", text, str(e))
-            return f"Failed to retrieve recommendations for text search {text}: {str(e)}"
+        except (ValueError, TypeError, ConnectionError, Exception) as e:  # pylint: disable=broad-except
+            self.logger.error("Error: Failed to retrieve recommendations for text search '%s': %s", text, str(e))
+            return f"Error: Failed to retrieve recommendations for text search {text}: {str(e)}"
 
     async def get_recommendations_statistics(
         self,
@@ -661,7 +662,7 @@ If you don't have this role, please contact your organization administrator to g
                 description="Filter recommendations by system groups. Comma separated list of workspace names. "
                 "Example: 'workspace1,workspace2'",
             ),
-        ],
+        ] = None,
         tags: Annotated[
             str | list[str] | None,
             Field(
@@ -671,10 +672,9 @@ If you don't have this role, please contact your organization administrator to g
                 "Examples: ['satellite/group=database-servers', 'insights-client/security=strict'] or "
                 'JSON string format: \'["satellite/group=database-servers", "insights-client/security=strict"]\'',
             ),
-        ],
+        ] = None,
     ) -> str:
-        """
-        Show statistics of recommendations across categories and risks.
+        """Show statistics of recommendations across categories and risks.
 
         Call examples:
             Standard call showing all recommendations: {}
@@ -696,13 +696,12 @@ If you don't have this role, please contact your organization administrator to g
                 tag_list = []
                 for tag in parsed_tags:
                     tag_stripped = tag.strip()
+                    # Validate tag format: should be in form namespace/key=value
                     if not tag_stripped:
                         continue
-                    # Validate tag format: should be in form namespace/key=value
                     if "/" not in tag_stripped or "=" not in tag_stripped:
-                        return (
-                            f"Error: Invalid tag format '{tag_stripped}'. Tags must be in format 'namespace/key=value'."
-                        )
+                        self.logger.error("Invalid tag format '%s', expected namespace/key=value", tag_stripped)
+                        return f"Error: Invalid tag format '{tag_stripped}', expected namespace/key=value"
                     tag_list.append(tag_stripped)
 
                 if tag_list:
@@ -711,9 +710,9 @@ If you don't have this role, please contact your organization administrator to g
         try:
             response = await self.insights_client.get("stats/rules/", params=params)
             return str(response) if response else "No recommendations statistics found or empty response."
-        except (ValueError, TypeError, ConnectionError) as e:
-            self.logger.error("Failed to retrieve recommendations statistics: %s", str(e))
-            return f"Failed to retrieve recommendations statistics: {str(e)}"
+        except (ValueError, TypeError, ConnectionError, Exception) as e:  # pylint: disable=broad-except
+            self.logger.error("Error: Failed to retrieve recommendations statistics: %s", str(e))
+            return f"Error: Failed to retrieve recommendations statistics: {str(e)}"
 
 
 mcp_server = AdvisorMCP()
