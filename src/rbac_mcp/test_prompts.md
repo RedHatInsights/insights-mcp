@@ -8,7 +8,7 @@ Currently, only the `get_all_access` function is implemented.
 
 ### Get Access Across All Applications
 ```
-Show me access permissions across all applications
+please check my insights permissions are there any missing for insights-mcp?
 ```
 
 ### Get Access for a Specific User

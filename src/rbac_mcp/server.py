@@ -15,7 +15,7 @@ mcp = InsightsMCP(
     toolset_name="rbac",
     api_path="api/rbac/v1",
     instructions="""
-    This server provides tools to manage Role-Based Access Control (RBAC) for Red Hat services.
+    This server provides tools to manage Role-Based Access Control (RBAC) for Red Hat insights services.
     You can get access information, manage roles, permission policies, and conditional policies.
 
     Insights RBAC requires correct RBAC permissions to be able to use the tools. Ensure that your
@@ -220,9 +220,9 @@ async def get_all_access(
         int, Field(default=0, description="Number of access records to skip for pagination (default: 0).")
     ],
 ) -> dict[str, Any] | str:
-    """Get access information for all applications.
+    """Get access information for all Red Hat insights applications.
 
-    This endpoint returns access information across all applications.
+    This endpoint returns access information across all Red Hat insights applications.
     The API returns gzipped responses for this endpoint, which are handled by the client.
     Use this when you need to see access permissions across all applications.
     """
