@@ -21,7 +21,15 @@ from rbac_mcp.server import mcp as RbacMCP
 from remediations_mcp.server import mcp as RemediationsMCP
 from vulnerability_mcp.server import mcp as VulnerabilityMCP
 
-MCPS: list[InsightsMCP] = [ImageBuilderMCP, VulnerabilityMCP, RemediationsMCP, AdvisorMCP, InventoryMCP, ContentSourcesMCP, RbacMCP]
+MCPS: list[InsightsMCP] = [
+    ImageBuilderMCP,
+    VulnerabilityMCP,
+    RemediationsMCP,
+    AdvisorMCP,
+    InventoryMCP,
+    ContentSourcesMCP,
+    RbacMCP,
+]
 
 
 class InsightsMCPServer(FastMCP):

@@ -32,12 +32,19 @@ mcp = InsightsMCP(
 )
 
 # disabled for now to minimize the number of tools
-#@mcp.tool()
+# @mcp.tool()
+
+
 async def get_access(
-    application: Annotated[str, Field(description="Name of the Red Hat application (e.g., 'content-sources', 'advisor', 'vulnerability'). Required parameter.")],
+    application: Annotated[
+        str,
+        Field(description="Name of the Red Hat application (e.g., 'content-sources', 'advisor', 'vulnerability')."),
+    ],
     username: Annotated[str, Field(default="", description="Optional username to filter access for specific user.")],
     limit: Annotated[int, Field(default=20, description="Maximum number of access records to return (default: 20).")],
-    offset: Annotated[int, Field(default=0, description="Number of access records to skip for pagination (default: 0).")],
+    offset: Annotated[
+        int, Field(default=0, description="Number of access records to skip for pagination (default: 0).")
+    ],
 ) -> dict[str, Any] | str:
     """Get access information for a specific application.
 
@@ -64,14 +71,19 @@ async def get_access(
         return response
     return response
 
+
 # disabled for now to minimize the number of tools
 # @mcp.tool()
+
+
 async def get_roles(
     limit: Annotated[int, Field(default=20, description="Maximum number of roles to return (default: 20).")],
     offset: Annotated[int, Field(default=0, description="Number of roles to skip for pagination (default: 0).")],
     name: Annotated[str, Field(default="", description="Filter roles by name (partial match).")],
     system: Annotated[bool, Field(default=False, description="Include system roles in the results (default: False).")],
-    order_by: Annotated[str, Field(default="name", description="Field to order results by ('name', 'modified', 'policyCount').")],
+    order_by: Annotated[
+        str, Field(default="name", description="Field to order results by ('name', 'modified', 'policyCount').")
+    ],
 ) -> dict[str, Any] | str:
     """Get list of roles.
 
@@ -93,8 +105,11 @@ async def get_roles(
         return response
     return response
 
+
 # disabled for now to minimize the number of tools
 # @mcp.tool()
+
+
 async def get_role_details(
     role_uuid: Annotated[str, Field(description="UUID of the role to retrieve details for.")],
 ) -> dict[str, Any] | str:
@@ -127,7 +142,9 @@ async def get_groups(
     limit: Annotated[int, Field(default=20, description="Maximum number of groups to return (default: 20).")],
     offset: Annotated[int, Field(default=0, description="Number of groups to skip for pagination (default: 0).")],
     name: Annotated[str, Field(default="", description="Filter groups by name (partial match).")],
-    scope: Annotated[str, Field(default="account", description="Scope of groups to retrieve ('account', 'principal').")],
+    scope: Annotated[
+        str, Field(default="account", description="Scope of groups to retrieve ('account', 'principal').")
+    ],
     order_by: Annotated[str, Field(default="name", description="Field to order results by ('name', 'modified').")],
 ) -> dict[str, Any] | str:
     """Get list of groups.
@@ -194,11 +211,14 @@ async def get_principals(
         return response
     return response
 
+
 @mcp.tool()
 async def get_all_access(
     username: Annotated[str, Field(default="", description="Optional username to filter access for specific user.")],
     limit: Annotated[int, Field(default=20, description="Maximum number of access records to return (default: 20).")],
-    offset: Annotated[int, Field(default=0, description="Number of access records to skip for pagination (default: 0).")],
+    offset: Annotated[
+        int, Field(default=0, description="Number of access records to skip for pagination (default: 0).")
+    ],
 ) -> dict[str, Any] | str:
     """Get access information for all applications.
 

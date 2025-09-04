@@ -83,7 +83,7 @@ For example questions specific to each toolset please have a look at the test fi
 The test suite includes specific tests for custom repository handling:
 - **Test**: `test_custom_repositories_guidance` in `tests/test_llm_integration_easy.py`
 - **Prompt**: "I want to create a RHEL 9 image with custom repositories. Can you help me set that up?"
-- **Expected**: LLM should guide user to use content-sources_mcp and explain dual inclusion requirement
+- **Expected**: LLM should guide user to use `content-sources_mcp` and explain dual inclusion requirement
 
 - **Test**: `test_epel_repository_lookup` in `tests/test_llm_integration_easy.py`
 - **Prompt**: "I want to add EPEL repository to my RHEL 9 image. Can you help me find the correct repository UUID?"

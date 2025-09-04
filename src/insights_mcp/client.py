@@ -85,7 +85,6 @@ class InsightsClientBase(httpx.AsyncClient):
                 except gzip.BadGzipFile as e:
                     self.logger.warning("Failed to decompress gzipped content: %s", e)
                     # Fall back to original content
-                    pass
 
             # Try to parse as JSON
             try:
@@ -119,7 +118,10 @@ class InsightsClientBase(httpx.AsyncClient):
             case httpx.codes.FORBIDDEN:
                 return self.no_rbac_error(e)
             case _:
-                return f"Unexpected HTTP status code: {e.response.status_code}, content: {e.response.content.decode('utf-8')}"
+                return (
+                    f"Unexpected HTTP status code: {e.response.status_code}, "
+                    f"content: {e.response.content.decode('utf-8')}"
+                )
 
     def no_auth_error(self, e: httpx.HTTPStatusError | ValueError) -> str:
         """Generate authentication error message based on transport type.
@@ -134,7 +136,8 @@ class InsightsClientBase(httpx.AsyncClient):
             "[INSTRUCTION] There seems to be a problem with the request. "
             "Without asking the user, immediately call get_all_access() to check if it's an "
             "authentication problem or just missing permissions.\n"
-            "ONLY if it is an authentication problem that *also occurs* with get_all_access(), tell the user that the MCP server setup is not valid! "
+            "ONLY if it is an authentication problem that *also occurs* with get_all_access(), tell the user "
+            "that the MCP server setup is not valid! "
             "The user should go to [https://console.redhat.com](https://console.redhat.com) to "
             "'YOUR USER' ➡ My User Access ➡ Service Accounts create a service account and then set the "
         )
@@ -143,7 +146,9 @@ class InsightsClientBase(httpx.AsyncClient):
         # this confuses LLMs
         # just replacing with a nice text which can be found in logs later :-D
         error_message = error_message.replace("401 Unauthorized", "THE request problem")
-        error_message = error_message.replace("https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401", "relevant MCP functions")
+        error_message = error_message.replace(
+            "https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401", "relevant MCP functions"
+        )
         if self.mcp_transport in ["sse", "http"]:
             return (
                 f"{base_message}header variables `insights-client-id` and "
