@@ -63,21 +63,6 @@ class ImageBuilderMCP(InsightsMCP):
         This service uses Red Hat's console.redhat.com image-builder osbuild.org infrastructure but serves
         general Linux image building needs across the entire ecosystem.
 
-        🚨 CRITICAL BEHAVIORAL RULES:
-
-        🟢 **CALL IMMEDIATELY** (tools marked with green indicator):
-        - get_openapi, get_blueprints, get_blueprint_details, get_composes, get_compose_details
-        - For queries like: "List my blueprints", "What's my build status?", "Show blueprint details"
-
-        🔴 **GATHER INFORMATION FIRST** (tools marked with red indicator):
-        - create_blueprint: Ask for name, distribution, architecture, image type, users, etc.
-
-        🟡 **VERIFY PARAMETERS** (tools marked with yellow indicator):
-        - blueprint_compose: Confirm blueprint UUID before proceeding
-
-        **Note**: Each tool description includes color-coded behavioral indicators for MCP clients
-                  that ignore server instructions.
-
         RULES FOR CREATION TOOLS:
         1. **ALWAYS GATHER COMPLETE INFORMATION FIRST** through a conversational approach
         2. **ASK SPECIFIC QUESTIONS** to collect all required details before making creation API calls
@@ -94,8 +79,6 @@ class ImageBuilderMCP(InsightsMCP):
         Your goal is to be a knowledgeable consultant who helps users both access existing information
         immediately and create the perfect custom Linux image, ISO, or virtual machine image for their
         specific deployment needs.
-
-        <|function_call_library|>
 
         """
 
