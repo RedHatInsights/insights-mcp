@@ -2,7 +2,7 @@
 
 import json
 import logging
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastmcp.tools.tool import Tool
 from mcp.types import ToolAnnotations
@@ -26,16 +26,15 @@ class AdvisorMCP(InsightsMCP):
             name="Advisor Recommendations MCP Server",
             toolset_name="advisor",
             api_path="api/insights/v1",
+            # TODO: check if role should be added to failed http responses.
             instructions=(
-                """
-This server provides tools to discover and inspect Red Hat Insights Advisor Recommendations for RHEL.
-(A recommendation was formerly called a rule in Red Hat Insights for Red Hat Enterprise Linux.)
-
-Insights Advisor requires correct RBAC permissions to be able to use the tools. Ensure that your
-Service Account has at least this role:
-- RHEL Advisor viewer
-If you don't have this role, please contact your organization administrator to get it.
-"""
+                "This server provides tools to discover and inspect Red Hat Insights Advisor "
+                "Recommendations for RHEL.\n"
+                "(A recommendation was formerly called a rule in Red Hat Insights.)\n\n"
+                "Insights Advisor requires correct RBAC permissions to be able to use the tools. Ensure that your\n"
+                "Service Account has at least this role:\n"
+                "- RHEL Advisor viewer\n"
+                "If you don't have this role, please contact your organization administrator to get it."
             ),
         )
 
@@ -45,7 +44,7 @@ If you don't have this role, please contact your organization administrator to g
         tool_configs = {
             "get_active_rules": {
                 "function": self.get_active_rules,
-                "tags": ("insights", "advisor", "recommendations", "active", "systems", "health"),
+                "tags": ("insights", "advisor", "recommendations", "rules", "issues", "health"),
                 "title": "Get Active Advisor Recommendations for Account",
                 "annotations": ToolAnnotations(
                     title="Get Active Advisor Recommendations for Account",
@@ -58,7 +57,6 @@ If you don't have this role, please contact your organization administrator to g
             "get_rule_from_node_id": {
                 "function": self.get_rule_from_node_id,
                 "tags": (
-                    "insights",
                     "advisor",
                     "recommendations",
                     "knowledge-base",
@@ -67,9 +65,9 @@ If you don't have this role, please contact your organization administrator to g
                     "article",
                     "kb",
                 ),
-                "title": "Find Advisor Recommendations by Knowledge Base Solutions or Articles by ID",
+                "title": "Find Advisor Recommendations using Knowledge Base solution ID or article ID",
                 "annotations": ToolAnnotations(
-                    title="Find Advisor Recommendations by Knowledge Base Solutions or Articles by ID",
+                    title="Find Advisor Recommendations using Knowledge Base solution ID or article ID",
                     readOnlyHint=True,
                     destructiveHint=False,
                     idempotentHint=True,
@@ -78,7 +76,7 @@ If you don't have this role, please contact your organization administrator to g
             },
             "get_rule_details": {
                 "function": self.get_rule_details,
-                "tags": ("insights", "advisor", "recommendations", "details", "info", "remediation"),
+                "tags": ("insights", "advisor", "recommendations", "details"),
                 "title": "Get Detailed Advisor Recommendation Information",
                 "annotations": ToolAnnotations(
                     title="Get Detailed Advisor Recommendation Information",
@@ -102,7 +100,7 @@ If you don't have this role, please contact your organization administrator to g
             },
             "get_hosts_details_hitting_a_rule": {
                 "function": self.get_hosts_details_hitting_a_rule,
-                "tags": ("insights", "advisor", "recommendations", "systems", "details", "impact"),
+                "tags": ("insights", "advisor", "recommendations", "systems", "details", "impactted", "hosts"),
                 "title": "Get Detailed System Information for Advisor Recommendation",
                 "annotations": ToolAnnotations(
                     title="Get Detailed System Information for Advisor Recommendation",
@@ -150,6 +148,17 @@ If you don't have this role, please contact your organization administrator to g
             self.add_tool(tool)
 
     @staticmethod
+    def _parse_bool(value: bool | str | None) -> bool | None:
+        """Parse boolean value from string or boolean input with error handling."""
+        if value is None:
+            return None
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.lower() in ("true", "1", "yes", "on")
+        return None
+
+    @staticmethod
     def _parse_int_list(value: str | list[int] | None) -> list[int] | None:
         """Parse integer list from string or list input with error handling."""
         if value is None:
@@ -195,62 +204,36 @@ If you don't have this role, please contact your organization administrator to g
                 pass
         return None
 
-    @staticmethod
-    def _parse_int(value: str | int | None) -> int | None:
-        """Parse integer from string or int input with error handling."""
-        if value is None:
-            return None
-        if isinstance(value, int):
-            return value
-        if isinstance(value, str) and value.strip().isdigit():
-            return int(value.strip())
-        return None
-
-    @staticmethod
-    def _parse_bool(value: str | bool | None) -> bool | None:
-        """Parse boolean from string or bool input with error handling."""
-        if value is None:
-            return None
-        if isinstance(value, bool):
-            return value
-        if isinstance(value, str):
-            value_lower = value.strip().lower()
-            if value_lower in ("true", "1", "yes", "on"):
-                return True
-            if value_lower in ("false", "0", "no", "off"):
-                return False
-        return None
-
     async def get_active_rules(  # pylint: disable=too-many-arguments,too-many-locals,too-many-branches
         self,
         *,
         impacting: Annotated[
-            bool, Field(True, description="Only show recommendations currently impacting systems. Default: true")
+            bool | str | None, Field(True, description="Only show recommendations currently impacting systems.")
         ],
         incident: Annotated[
-            bool, Field(False, description="Only show recommendations that cause incidents. Default: false")
+            bool | str | None, Field(None, description="Only show recommendations that cause incidents.")
         ],
         has_automatic_remediation: Annotated[
-            bool,
+            bool | str | None,
             Field(
-                False,
-                description="Only show recommendations that have a playbook for automatic remediation. Default: false",
+                None,
+                description="Only show recommendations that have a playbook for automatic remediation.",
             ),
         ],
         impact: Annotated[
             str | None,
             Field(
                 None,
-                description="Impact level filter as comma-separated string, e.g. '1,2,3'. "
-                "Available values: 1=Low, 2=Medium, 3=High, 4=Critical. Example: '3,4'",
+                description="Impact level filter as comma-separated string, Example: '1,2,3'. "
+                "Available values: 1=Low, 2=Medium, 3=High, 4=Critical.",
             ),
         ],
         likelihood: Annotated[
             str | None,
             Field(
                 None,
-                description="Likelihood level filter as comma-separated string, e.g. '1,2,3'. "
-                "Available values: 1=Low, 2=Medium, 3=High, 4=Very High. Example: '3,4'",
+                description="Likelihood level filter as comma-separated string, Example: '1,2,3'. "
+                "Available values: 1=Low, 2=Medium, 3=High, 4=Very High.",
             ),
         ],
         category: Annotated[
@@ -258,42 +241,37 @@ If you don't have this role, please contact your organization administrator to g
             Field(
                 None,
                 description=(
-                    "Recommendation category filter as comma-separated string, e.g. '1,2,3'. "
-                    "Available values: 1=Availability, 2=Security, 3=Stability, 4=Performance. Example: '2,4'"
+                    "Recommendation category filter as comma-separated string, Example: '1,2,3'. "
+                    "Available values: 1=Availability, 2=Security, 3=Stability, 4=Performance."
                 ),
             ),
         ],
         reboot: Annotated[
-            str | bool | None,
-            Field(
-                None,
-                description="Filter recommendations that require a reboot to fix. "
-                "True shows only reboot-required recommendations, "
-                "None shows all recommendations. Example: true",
-            ),
+            bool | str | None,
+            Field(None, description="Filter recommendations that require a reboot to fix."),
         ],
         sort: Annotated[
-            str | None,
+            str,
             Field(
                 "-total_risk",
-                description="Sort field as comma-separated string. Available fields: "
-                "category, description, impact, impacted_count, likelihood, playbook_count, publish_date, "
-                "resolution_risk, rule_id, total_risk. Use '-' prefix for descending order. "
-                "Example: '-total_risk,rule_id'",
+                description="Sort field as comma-separated string. Example: '-total_risk,rule_id'. "
+                "Available fields: category, description, impact, impacted_count, likelihood, "
+                "playbook_count, publish_date, resolution_risk, rule_id, total_risk. "
+                "Use '-' prefix for descending order.",
             ),
         ],
         offset: Annotated[
-            str | int | None,
+            int,
             Field(
-                None,
-                description="Pagination offset to skip specified number of results. Used with limit. Example: 0",
+                0,
+                description="Pagination offset to skip specified number of results. Used with limit.",
             ),
         ],
         limit: Annotated[
-            str | int | None,
+            int,
             Field(
-                None,
-                description="Pagination: Maximum number of results per page. Default: 20",
+                10,
+                description="Pagination: Maximum number of results per page.",
             ),
         ],
         groups: Annotated[
@@ -302,6 +280,7 @@ If you don't have this role, please contact your organization administrator to g
                 None,
                 description=(
                     "Filter based on workspace names. Comma separated list of workspace names."
+                    "Used only when impacting=True. "
                     "Example: 'workspace1,workspace2'"
                 ),
             ),
@@ -311,20 +290,18 @@ If you don't have this role, please contact your organization administrator to g
             Field(
                 None,
                 description=(
-                    "Used with impacting=True to filter recommendations that are relevant to the target systems. "
-                    "Filter recommendations by system tags or groups using 'namespace/key=value' format. "
-                    "namespace: 'satellite' or 'insights-client' "
-                    "Examples: ['satellite/group=database-servers', 'insights-client/security=strict'] or "
-                    'JSON string format: \'["satellite/group=database-servers", "insights-client/security=strict"]\''
+                    "Filter based on system tags. Accepts a single tag or a comma-separated list."
+                    "Used only when impacting=True. "
+                    "Tag format: 'namespace/key=value'. "
+                    "Example: 'satellite/group=database-servers,insights-client/security=strict'"
                 ),
             ),
         ],
-    ) -> str:
-        """
-        Get active Advisor Recommendations for your account that help identify issues
+    ) -> dict[str, Any] | str:
+        """Get active Advisor Recommendations for your account that help identify issues
         affecting system availability, stability, performance, or security.
 
-        Use filters to find recommendations by impact level, likelihood, systems affected,
+        Use filters to find recommendations by impact level, likelihood, systems affected, workspace, tags,
         and automatic remediation availability. Higher impact/likelihood values indicate more critical issues.
 
         Call examples:
@@ -335,6 +312,7 @@ If you don't have this role, please contact your organization administrator to g
             Security and Performance categories: {"category": "2,4"}
             Reboot required: {"reboot": true}
             Sorted by total risk: {"sort": "-total_risk"}
+            For workspaces 'workspace1': {"impacting": true, "groups": "workspace1"}
             For systems tagged 'database-servers': {
                 "impacting": true,
                 "tags": ["insights-client/group=database-servers"]
@@ -342,36 +320,39 @@ If you don't have this role, please contact your organization administrator to g
         """  # pylint: disable=line-too-long
 
         # Parameter validation and conversion
+        impacting = self._parse_bool(impacting)
+        incident = self._parse_bool(incident)
+        has_automatic_remediation = self._parse_bool(has_automatic_remediation)
+        reboot = self._parse_bool(reboot)
+
         impact_list = self._parse_int_list(impact)
         likelihood_list = self._parse_int_list(likelihood)
         category_list = self._parse_int_list(category)
-        offset_int = self._parse_int(offset)
-        limit_int = self._parse_int(limit)
-        reboot_bool = self._parse_bool(reboot)
+        sort_list = self._parse_string_list(sort)
+        group_list = self._parse_string_list(groups)
 
         params: dict[str, bool | int | str] = {}
-        params["impacting"] = impacting
-        params["incident"] = incident
-        params["has_playbook"] = has_automatic_remediation
+        params["offset"] = offset
+        params["limit"] = limit
 
-        if offset_int is not None:
-            params["offset"] = offset_int
-        if limit_int is not None:
-            params["limit"] = limit_int
-        if impact_list is not None:
+        if impacting is not None:
+            params["impacting"] = impacting
+        if incident is not None:
+            params["incident"] = incident
+        if has_automatic_remediation is not None:
+            params["has_playbook"] = has_automatic_remediation
+        if impact_list:
             params["impact"] = ",".join(map(str, impact_list))
-        if likelihood_list is not None:
+        if likelihood_list:
             params["likelihood"] = ",".join(map(str, likelihood_list))
-        if category_list is not None:
+        if category_list:
             params["category"] = ",".join(map(str, category_list))
-        if reboot_bool is not None:
-            params["reboot"] = reboot_bool
+        if reboot is not None:
+            params["reboot"] = reboot
         if sort is not None:
-            params["sort"] = sort
-        if groups is not None:
-            group_list = self._parse_string_list(groups)
-            if group_list:
-                params["groups"] = ",".join(group_list)
+            params["sort"] = ",".join(sort_list) if sort_list else "-total_risk"
+        if group_list:
+            params["groups"] = ",".join(map(str, group_list))
 
         # Handle tags parameter
         if tags:
@@ -384,73 +365,59 @@ If you don't have this role, please contact your organization administrator to g
                     if tag and "/" in tag and "=" in tag:
                         tag_list.append(tag)
                     elif tag:
-                        self.logger.warning("Invalid tag format '%s', expected namespace/key=value", tag)
+                        self.logger.error("Invalid tag format '%s', Required format: namespace/key=value", tag)
+                        return f"Error: Invalid tag format '{tag}', Required format: namespace/key=value"
 
                 if tag_list:
                     params["tags"] = ",".join(tag_list)
 
         try:
             response = await self.insights_client.get("rule/", params=params)
-            return str(response) if response else "No recommendations found or empty response."
-        except (ValueError, TypeError, ConnectionError) as e:
-            self.logger.error("Failed to retrieve recommendations: %s", str(e))
-            return f"Failed to retrieve recommendations: {str(e)}"
+            return response
+        except Exception as e:  # pylint: disable=broad-except
+            self.logger.error("Error: Failed to retrieve recommendations: %s", str(e))
+            return f"Error: Failed to retrieve recommendations: {str(e)}"
 
     async def get_rule_from_node_id(
         self,
+        *,
         node_id: Annotated[
-            str,
-            Field(
-                description=(
-                    "Node ID of the knowledge base article or solution to find related Advisor Recommendations. "
-                    "Must be a valid string format. Example: '123456'"
-                ),
-            ),
+            int,
+            Field(description="Node ID of the knowledge base article or solution. Example: 123456"),
         ],
-    ) -> str:
-        """
-        Find Advisor Recommendations related to a specific Knowledge Base article or solution.
+    ) -> dict[str, Any] | str:
+        """Find Advisor Recommendations related to a specific Knowledge Base article or solution.
 
         Use this when you have a Knowledge Base article or solution ID and want to find
         corresponding Advisor Recommendations that provide system-specific remediation steps.
 
         Call examples:
-            Standard call: {"node_id": "123456"}
+            Standard call: {"node_id": 123456}
         """
-        if not node_id or not isinstance(node_id, str):
-            return "Error: Node ID must be a non-empty string."
-
-        # Sanitize node_id to prevent injection
-        sanitized_node_id = node_id.strip()
-        if not sanitized_node_id.isalnum():
-            return "Error: Node ID must contain only alphanumeric characters."
 
         try:
-            response = await self.insights_client.get(f"kcs/{sanitized_node_id}/")
-            return str(response) if response else "No recommendation found for the given node ID."
-        except (ValueError, TypeError, ConnectionError) as e:
+            response = await self.insights_client.get(f"kcs/{node_id}/")
+            return response
+        except Exception as e:  # pylint: disable=broad-except
             self.logger.error("Failed to retrieve recommendation for node ID %s: %s", node_id, str(e))
-            return f"Failed to retrieve recommendation for node ID {node_id}: {str(e)}"
+            return f"Error: Failed to retrieve recommendation for node ID {node_id}: {str(e)}"
 
     async def get_rule_details(
         self,
+        *,
         rule_id: Annotated[
             str,
-            Field(
-                description="Unique identifier of the Advisor Recommendation. Must be a valid string format. "
-                "Example: 'xfs_with_md_raid_hang|XFS_WITH_MD_RAID_HANG_ISSUE_DEFAULT_KERNEL'"
-            ),
+            Field(description="Recommendation identifier in format: rule_name|ERROR_KEY."),
         ],
-    ) -> str:
-        """
-        Get detailed information about a specific Advisor Recommendation, including
+    ) -> dict[str, Any] | str:
+        """Get detailed information about a specific Advisor Recommendation, including
         impact level, likelihood, remediation steps, and related knowledge base articles.
 
         Call Examples:
             Standard call: {"rule_id": "xfs_with_md_raid_hang|XFS_WITH_MD_RAID_HANG_ISSUE_DEFAULT_KERNEL"}
         """
-        if not rule_id or not isinstance(rule_id, str):
-            return "Error: Recommendation ID must be a non-empty string."
+        if not rule_id or not isinstance(rule_id, str) or "|" not in rule_id:
+            return "Error: Recommendation ID must be a non-empty string in format rule_name|ERROR_KEY."
 
         # Basic sanitization for rule_id
         sanitized_rule_id = rule_id.strip()
@@ -459,23 +426,20 @@ If you don't have this role, please contact your organization administrator to g
 
         try:
             response = await self.insights_client.get(f"rule/{sanitized_rule_id}/")
-            return str(response) if response else "No recommendation details found."
-        except (ValueError, TypeError, ConnectionError) as e:
-            self.logger.error("Failed to retrieve recommendation details for %s: %s", rule_id, str(e))
-            return f"Failed to retrieve recommendation details for {rule_id}: {str(e)}"
+            return response
+        except Exception as e:  # pylint: disable=broad-except
+            self.logger.error("Error: Failed to retrieve recommendation details for %s: %s", rule_id, str(e))
+            return f"Error: Failed to retrieve recommendation details for {rule_id}: {str(e)}"
 
     async def get_hosts_hitting_a_rule(
         self,
+        *,
         rule_id: Annotated[
             str,
-            Field(
-                description="Unique identifier of the Advisor Recommendation. Must be a valid string "
-                "format. Example: 'xfs_with_md_raid_hang|XFS_WITH_MD_RAID_HANG_ISSUE_DEFAULT_KERNEL'"
-            ),
+            Field(description="Recommendation identifier in format: rule_name|ERROR_KEY."),
         ],
-    ) -> str:
-        """
-        Get all RHEL systems affected by a specific Advisor Recommendation.
+    ) -> dict[str, Any] | str:
+        """Get all RHEL systems affected by a specific Advisor Recommendation.
 
         Shows which systems in your infrastructure have the issue identified
         by this recommendation. Use this to understand the scope of impact.
@@ -483,7 +447,7 @@ If you don't have this role, please contact your organization administrator to g
         Call Examples:
             Standard call: {"rule_id": "xfs_with_md_raid_hang|XFS_WITH_MD_RAID_HANG_ISSUE_DEFAULT_KERNEL"}
         """
-        if not rule_id or not isinstance(rule_id, str):
+        if not rule_id or not isinstance(rule_id, str) or "|" not in rule_id:
             return "Error: Recommendation ID must be a non-empty string."
 
         sanitized_rule_id = rule_id.strip()
@@ -492,42 +456,36 @@ If you don't have this role, please contact your organization administrator to g
 
         try:
             response = await self.insights_client.get(f"rule/{sanitized_rule_id}/systems/")
-            return str(response) if response else "No systems found for the specified recommendation."
-        except (ValueError, TypeError, ConnectionError) as e:
-            self.logger.error("Failed to retrieve systems for recommendation %s: %s", rule_id, str(e))
-            return f"Failed to retrieve systems for recommendation {rule_id}: {str(e)}"
+            return response
+        except Exception as e:  # pylint: disable=broad-except
+            self.logger.error("Error: Failed to retrieve systems for recommendation %s: %s", rule_id, str(e))
+            return f"Error: Failed to retrieve systems for recommendation {rule_id}: {str(e)}"
 
-    async def get_hosts_details_hitting_a_rule(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    async def get_hosts_details_hitting_a_rule(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
         self,
+        *,
         rule_id: Annotated[
             str,
-            Field(
-                description="Unique identifier of the Advisor Recommendation. Must be a valid string format. "
-                "Example: 'xfs_with_md_raid_hang|XFS_WITH_MD_RAID_HANG_ISSUE_DEFAULT_KERNEL'"
-            ),
+            Field(description="Recommendation identifier in format: rule_name|ERROR_KEY."),
         ],
-        *,
         limit: Annotated[
-            str | int | None,
-            Field(20, description="Pagination: Maximum number of results per page. Default: 20"),
-        ] = None,
+            int,
+            Field(10, description="Pagination: Maximum number of results per page."),
+        ],
         offset: Annotated[
-            str | int | None,
-            Field(0, description="Pagination offset to skip specified number of results. Used with limit. Default: 0"),
-        ] = None,
+            int,
+            Field(0, description="Pagination offset to skip specified number of results. Used with limit."),
+        ],
         rhel_version: Annotated[
-            str | None,
+            str | list[str] | None,
             Field(
                 None,
-                description="Display only systems with these versions of RHEL. "
-                "Available values: 10.0, 10.1, 10.2, 6.0, 6.1, 6.10, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9, "
-                "7.0, 7.1, 7.10, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9, 8.0, 8.1, 8.10, 8.2, 8.3, 8.4, 8.5, "
-                "8.6, 8.7, 8.8, 8.9, 9.0, 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8. Example: '9.4'",
+                description="Filter systems by RHEL version. Accepts a comma-separated string or a list. "
+                "Allowed values: 6.0-6.10, 7.0-7.10, 8.0-8.10, 9.0-9.8, 10.0-10.2. Example: '9.3,9.4,9.5'",
             ),
-        ] = None,
-    ) -> str:
-        """
-        Get detailed information about RHEL systems affected by a specific Advisor Recommendation.
+        ],
+    ) -> dict[str, Any] | str:
+        """Get detailed information about RHEL systems affected by a specific Advisor Recommendation.
 
         Returns paginated system details with comprehensive information about each affected system,
         including system identification, impact metrics, RHEL version, and last seen timestamps.
@@ -539,16 +497,14 @@ If you don't have this role, please contact your organization administrator to g
             Filter by RHEL version: {"rule_id": "rule_id", "rhel_version": "9.4"}
             Combined filters: {"rule_id": "rule_id", "limit": 50, "offset": 20, "rhel_version": "8.9"}
         """
-        if not rule_id or not isinstance(rule_id, str):
+        if not rule_id or not isinstance(rule_id, str) or "|" not in rule_id:
             return "Error: Recommendation ID must be a non-empty string."
 
         sanitized_rule_id = rule_id.strip()
         if not sanitized_rule_id:
             return "Error: Recommendation ID cannot be empty."
 
-        # Parameter validation and conversion
-        limit_int = self._parse_int(limit)
-        offset_int = self._parse_int(offset)
+        rhel_version_list = self._parse_string_list(rhel_version)
 
         # Validate RHEL version format if provided
         valid_rhel_versions = {
@@ -599,57 +555,62 @@ If you don't have this role, please contact your organization administrator to g
             "9.8",
         }
 
-        sanitized_rhel_version = None
-        if rhel_version:
-            rhel_version_stripped = rhel_version.strip()
-            if rhel_version_stripped not in valid_rhel_versions:
+        if rhel_version_list:
+            invalid_versions = []
+            for version in rhel_version_list:
+                version_stripped = str(version).strip()
+                if version_stripped not in valid_rhel_versions:
+                    invalid_versions.append(version_stripped)
+
+            if invalid_versions:
                 self.logger.error(
-                    "Invalid RHEL version '%s'. Valid versions are: %s",
-                    rhel_version_stripped,
+                    "Error: Invalid RHEL version(s) '%s'. Valid versions are: %s",
+                    ", ".join(invalid_versions),
                     ", ".join(sorted(valid_rhel_versions)),
                 )
                 valid_versions = ", ".join(sorted(valid_rhel_versions))
-                return f"Error: Invalid RHEL version '{rhel_version_stripped}'. Valid versions are: {valid_versions}"
-            sanitized_rhel_version = rhel_version_stripped
+                invalid_list = ", ".join(invalid_versions)
+                return f"Error: Invalid RHEL version(s) '{invalid_list}'. Valid versions are: {valid_versions}"
 
         # Build query parameters
         params: dict[str, int | str] = {}
-        if limit_int is not None:
-            params["limit"] = limit_int
-        if offset_int is not None:
-            params["offset"] = offset_int
-        if sanitized_rhel_version is not None:
-            params["rhel_version"] = sanitized_rhel_version
+        params["limit"] = limit
+        params["offset"] = offset
+        if rhel_version_list:
+            params["rhel_version"] = ",".join(map(str, rhel_version_list))
 
         try:
             response = await self.insights_client.get(f"rule/{sanitized_rule_id}/systems_detail/", params=params)
-            return str(response) if response else "No detailed system information found."
-        except (ValueError, TypeError, ConnectionError) as e:
+            return response
+        except Exception as e:  # pylint: disable=broad-except
             self.logger.error(
-                "Failed to retrieve detailed system information for recommendation %s: %s", rule_id, str(e)
+                "Error: Failed to retrieve detailed system information for recommendation %s: %s", rule_id, str(e)
             )
-            return f"Failed to retrieve detailed system information for recommendation {rule_id}: {str(e)}"
+            return f"Error: Failed to retrieve detailed system information for recommendation {rule_id}: {str(e)}"
 
     async def get_rule_by_text_search(
         self,
+        *,
         text: Annotated[
             str,
             Field(description="The text substring to search for. Example: 'xfs'"),
         ],
-    ) -> str:
-        """
-        Finds Advisor Recommendations that contain an exact text substring.
+    ) -> dict[str, Any] | str:
+        """Finds Advisor Recommendations that contain an exact text substring.
+
+        Call examples:
+            Standard call: {"text": "xfs"}
         """
         sanitized_text = text.strip()
-        if not sanitized_text or not isinstance(sanitized_text, str):
+        if not sanitized_text:
             return "Error: Text search query must be a non-empty string."
 
         try:
             response = await self.insights_client.get("rule/", params={"text": sanitized_text})
-            return str(response) if response else "No recommendations found for the given text search."
-        except (ValueError, TypeError, ConnectionError) as e:
-            self.logger.error("Failed to retrieve recommendations for text search '%s': %s", text, str(e))
-            return f"Failed to retrieve recommendations for text search {text}: {str(e)}"
+            return response
+        except Exception as e:  # pylint: disable=broad-except
+            self.logger.error("Error: Failed to retrieve recommendations for text search '%s': %s", text, str(e))
+            return f"Error: Failed to retrieve recommendations for text search {text}: {str(e)}"
 
     async def get_recommendations_statistics(
         self,
@@ -658,28 +619,32 @@ If you don't have this role, please contact your organization administrator to g
             str | list[str] | None,
             Field(
                 None,
-                description="Filter recommendations by system groups. Comma separated list of workspace names. "
-                "Example: 'workspace1,workspace2'",
+                description=(
+                    "Filter based on workspace names. Comma separated list of workspace names."
+                    "Used only when impacting=True. "
+                    "Example: 'workspace1,workspace2'"
+                ),
             ),
         ],
         tags: Annotated[
             str | list[str] | None,
             Field(
                 None,
-                description="Filter recommendations by system tags in the form namespace/key=value. "
-                "namespace: 'satellite' or 'insights-client' "
-                "Examples: ['satellite/group=database-servers', 'insights-client/security=strict'] or "
-                'JSON string format: \'["satellite/group=database-servers", "insights-client/security=strict"]\'',
+                description=(
+                    "Filter based on system tags. Accepts a single tag or a comma-separated list."
+                    "Used only when impacting=True. "
+                    "Tag format: 'namespace/key=value'. "
+                    "Example: 'satellite/group=database-servers,insights-client/security=strict'"
+                ),
             ),
         ],
-    ) -> str:
-        """
-        Show statistics of recommendations across categories and risks.
+    ) -> dict[str, Any] | str:
+        """Show statistics of recommendations across categories and risks.
 
         Call examples:
             Standard call showing all recommendations: {}
-            Statistics for a specific system group: {"tags": ["satellite/group=database-servers"]}
-            Statistics for systems tagged 'security=strict': {"tags": ["insights-client/security=strict"]}
+            Statistics for the workspace 'workspace1': {"groups": "workspace1"}
+            Statistics for systems tagged 'insights-client/security=strict': {"tags": "insights-client/security=strict"}
         """
         params: dict[str, str] = {}
 
@@ -696,13 +661,12 @@ If you don't have this role, please contact your organization administrator to g
                 tag_list = []
                 for tag in parsed_tags:
                     tag_stripped = tag.strip()
+                    # Validate tag format: should be in form namespace/key=value
                     if not tag_stripped:
                         continue
-                    # Validate tag format: should be in form namespace/key=value
                     if "/" not in tag_stripped or "=" not in tag_stripped:
-                        return (
-                            f"Error: Invalid tag format '{tag_stripped}'. Tags must be in format 'namespace/key=value'."
-                        )
+                        self.logger.error("Invalid tag format '%s', expected namespace/key=value", tag_stripped)
+                        return f"Error: Invalid tag format '{tag_stripped}', expected namespace/key=value"
                     tag_list.append(tag_stripped)
 
                 if tag_list:
@@ -710,10 +674,10 @@ If you don't have this role, please contact your organization administrator to g
 
         try:
             response = await self.insights_client.get("stats/rules/", params=params)
-            return str(response) if response else "No recommendations statistics found or empty response."
-        except (ValueError, TypeError, ConnectionError) as e:
-            self.logger.error("Failed to retrieve recommendations statistics: %s", str(e))
-            return f"Failed to retrieve recommendations statistics: {str(e)}"
+            return response
+        except Exception as e:  # pylint: disable=broad-except
+            self.logger.error("Error: Failed to retrieve recommendations statistics: %s", str(e))
+            return f"Error: Failed to retrieve recommendations statistics: {str(e)}"
 
 
 mcp_server = AdvisorMCP()
