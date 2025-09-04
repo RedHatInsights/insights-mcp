@@ -41,3 +41,6 @@
 
 ## content-sources
 - `list_repositories`: List repositories with filtering and pagination options.
+
+## rbac
+- `get_all_access`: Get access information for all applications.

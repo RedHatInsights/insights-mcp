@@ -17,10 +17,11 @@ from insights_mcp import __version__
 from insights_mcp.mcp import INSIGHTS_BASE_URL, InsightsMCP
 from insights_mcp.oauth import Middleware
 from inventory_mcp.server import mcp as InventoryMCP
+from rbac_mcp.server import mcp as RbacMCP
 from remediations_mcp.server import mcp as RemediationsMCP
 from vulnerability_mcp.server import mcp as VulnerabilityMCP
 
-MCPS: list[InsightsMCP] = [ImageBuilderMCP, VulnerabilityMCP, RemediationsMCP, AdvisorMCP, InventoryMCP, ContentSourcesMCP]
+MCPS: list[InsightsMCP] = [ImageBuilderMCP, VulnerabilityMCP, RemediationsMCP, AdvisorMCP, InventoryMCP, ContentSourcesMCP, RbacMCP]
 
 
 class InsightsMCPServer(FastMCP):

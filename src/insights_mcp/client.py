@@ -11,6 +11,7 @@ Classes:
     InsightsClient: High-level client that automatically selects auth method
 """
 
+import gzip
 import json as json_lib
 from logging import getLogger
 from typing import Any
@@ -74,14 +75,32 @@ class InsightsClientBase(httpx.AsyncClient):
             )
             response = await fn(*args, **kwargs)
             response.raise_for_status()
-            return response.json()
+
+            # Handle gzipped responses
+            content = response.content
+            if response.headers.get("content-encoding") == "gzip":
+                self.logger.debug("Response is gzipped, decompressing...")
+                try:
+                    content = gzip.decompress(content)
+                except gzip.BadGzipFile as e:
+                    self.logger.warning("Failed to decompress gzipped content: %s", e)
+                    # Fall back to original content
+                    pass
+
+            # Try to parse as JSON
+            try:
+                return json_lib.loads(content.decode("utf-8"))
+            except json_lib.JSONDecodeError:
+                # Return as string if not valid JSON
+                return content.decode("utf-8")
+
         except json_lib.JSONDecodeError as e:
             # failed to decode JSON, return raw content
             self.logger.debug("JSONDecodeError: %s", e)
             return response.content.decode("utf-8")
         except httpx.HTTPStatusError as e:
             content = self.get_error_message(e)
-            return {"Unexpected HTTP status code": f"{e.response.status_code}, content: {content}"}
+            return content
         except Exception as exc:  # pylint: disable=broad-exception-caught
             return {"Unhandled error": str(exc)}
 
@@ -100,7 +119,7 @@ class InsightsClientBase(httpx.AsyncClient):
             case httpx.codes.FORBIDDEN:
                 return self.no_rbac_error(e)
             case _:
-                return e.response.content.decode("utf-8")
+                return f"Unexpected HTTP status code: {e.response.status_code}, content: {e.response.content.decode('utf-8')}"
 
     def no_auth_error(self, e: httpx.HTTPStatusError | ValueError) -> str:
         """Generate authentication error message based on transport type.
@@ -112,11 +131,19 @@ class InsightsClientBase(httpx.AsyncClient):
             Detailed authentication error message with setup instructions
         """
         base_message = (
-            "[INSTRUCTION] Tell the user that the MCP server setup is not valid! "
+            "[INSTRUCTION] There seems to be a problem with the request. "
+            "Without asking the user, immediately call get_all_access() to check if it's an "
+            "authentication problem or just missing permissions.\n"
+            "ONLY if it is an authentication problem that *also occurs* with get_all_access(), tell the user that the MCP server setup is not valid! "
             "The user should go to [https://console.redhat.com](https://console.redhat.com) to "
             "'YOUR USER' ➡ My User Access ➡ Service Accounts create a service account and then set the "
         )
-
+        error_message = str(e)
+        # strip off "401 Unauthorized"
+        # this confuses LLMs
+        # just replacing with a nice text which can be found in logs later :-D
+        error_message = error_message.replace("401 Unauthorized", "THE request problem")
+        error_message = error_message.replace("https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401", "relevant MCP functions")
         if self.mcp_transport in ["sse", "http"]:
             return (
                 f"{base_message}header variables `insights-client-id` and "
@@ -125,7 +152,7 @@ class InsightsClientBase(httpx.AsyncClient):
                 "[https://console.redhat.com/iam/service-accounts](https://console.redhat.com/iam/service-accounts) "
                 "Come up with a detailed description of this for the user. "
                 "Only describe this, don't expose details about the tool function itself. "
-                f"Don't proceed with the request before this is fixed. Error: {str(e)}."
+                f"Don't proceed with the request before this is fixed. {error_message}"
             )
 
         return (
@@ -135,7 +162,7 @@ class InsightsClientBase(httpx.AsyncClient):
             "[https://console.redhat.com/iam/service-accounts](https://console.redhat.com/iam/service-accounts) "
             "Come up with a detailed description of this for the user. "
             "Only describe this, don't expose details about the tool function itself. "
-            f"Don't proceed with the request before this is fixed. Error: {str(e)}."
+            f"Don't proceed with the request before this is fixed. {error_message}"
         )
 
     def no_rbac_error(self, e: httpx.HTTPStatusError) -> str:
@@ -148,9 +175,10 @@ class InsightsClientBase(httpx.AsyncClient):
             Detailed permissions error message with access request instructions
         """
         return (
-            f"[INSTRUCTION] Tell the user that they don't have sufficient permissions! "
-            "The user should go to [https://console.redhat.com/iam/user-access/overview]"
-            "(https://console.redhat.com/iam/user-access/overview)  to check their RBAC permissions and roles."
+            f"[INSTRUCTION] Use rbac__get_all_access to list all current permissions"
+            " and help the user find out which permissions might be missing."
+            "Then the user should go to [https://console.redhat.com/iam/user-access/overview]"
+            "(https://console.redhat.com/iam/user-access/overview) to check their RBAC permissions and roles."
             " They may need to request additional access or have an "
             "administrator grant them the necessary permissions for this resource. The user is authenticated but "
             "lacks the required permissions to access this resource.\n"
