@@ -25,7 +25,7 @@
 
 ## advisor
 - `get_active_rules`: Get Active Advisor Recommendations for Account
-- `get_rule_from_node_id`: Find Advisor Recommendations by Knowledge Base Solutions or Articles by ID
+- `get_rule_from_node_id`: Find Advisor Recommendations using Knowledge Base solution ID or article ID
 - `get_rule_details`: Get Detailed Advisor Recommendation Information
 - `get_hosts_hitting_a_rule`: Get Systems Affected by Advisor Recommendation
 - `get_hosts_details_hitting_a_rule`: Get Detailed System Information for Advisor Recommendation

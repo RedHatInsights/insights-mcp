@@ -204,7 +204,7 @@ def start_insights_mcp_server(
             raise RuntimeError(f"Server failed to start: {start_signal}")
 
         # Additional wait for server to be fully ready
-        time.sleep(1)
+        time.sleep(3)
 
         # For HTTP transport, test connectivity with MCP init request
         if transport == "http":

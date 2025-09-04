@@ -4,3 +4,10 @@
 - List all the affected recommendations that have automated solutions available
 - Show me the details for the advisor recommendation "network_firewall_zone_drift_enabled|ENABLE_FIREWALL_ZONE_DRIFTING_WARN"
 - List all the systems affected by the advisor recommendation "network_firewall_zone_drift_enabled|ENABLE_FIREWALL_ZONE_DRIFTING_WARN"
+- Show me Advisor recommendations for systems tagged 'insights-client/security=strict'.  
+- Show me Advisor recommendations for systems in the workspace "Team A".
+- List my top 10 systems with the most recommendations, sorted by the highest number of critical hits first."
+- Show me all 'Critical' or 'Important' security recommendations that have a playbook available for remediation.
+- Show me all performance-related recommendations for my systems running RHEL 8.
+- Which of my systems have recommendations that requires a reboot?
+- Explain the risk associated with the 'Disable Transparent Huge Pages' recommendation.
