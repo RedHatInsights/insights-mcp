@@ -689,8 +689,14 @@ class ImageBuilderMCP(InsightsMCP):
             # If the identifier looks like a UUID, use it directly
             if len(compose_identifier) == 36 and compose_identifier.count("-") == 4:
                 response = await client.get(f"composes/{compose_identifier}")
+                error_intro = (
+                    "[INSTRUCTION] If there is an error that might be related to"
+                    "to the request syntax, always call get_openapi again to get the syntax"
+                    "into your context.\n"
+                )
+
                 if isinstance(response, str):
-                    return response
+                    return f"{error_intro}{response}"
 
                 if isinstance(response, list):
                     self.logger.error(
@@ -699,12 +705,12 @@ class ImageBuilderMCP(InsightsMCP):
                         compose_identifier,
                         json.dumps(response),
                     )
-                    return f"Error: Unexpected list response for {compose_identifier}"
+                    return f"{error_intro}Error: Unexpected list response for {compose_identifier}"
                 response["compose_uuid"] = compose_identifier
             else:
                 ret = (
                     f"[INSTRUCTION] Error: {compose_identifier} is not a valid compose identifier,"
-                    "please use the UUID from get_composes\n"
+                    "please use a UUID from get_composes()\n"
                 )
                 ret += "[INSTRUCTION] retry calling get_composes\n\n"
                 ret += f"[ANSWER] {compose_identifier} is not a valid compose identifier"

@@ -112,7 +112,7 @@ class TestGetComposeDetails:
             # Should return error message about invalid identifier
             assert "[INSTRUCTION] Error:" in result
             assert "is not a valid compose identifier" in result
-            assert "please use the UUID from get_composes" in result
+            assert "please use a UUID from get_composes" in result
 
     @pytest.mark.asyncio
     async def test_get_compose_details_empty_identifier(self, imagebuilder_mcp_server):
