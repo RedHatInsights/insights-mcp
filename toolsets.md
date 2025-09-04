@@ -43,4 +43,4 @@
 - `list_repositories`: List repositories with filtering and pagination options.
 
 ## rbac
-- `get_all_access`: Get access information for all applications.
+- `get_all_access`: Get access information for all Red Hat insights applications.
