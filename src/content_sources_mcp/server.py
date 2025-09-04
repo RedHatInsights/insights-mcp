@@ -85,17 +85,6 @@ class ContentSourcesMCP(InsightsMCP):
         """List repositories with filtering and pagination options.
 
         🟢 CALL IMMEDIATELY - No information gathering required.
-
-        Args:
-            limit: Maximum number of repositories to return (default: 10).
-            offset: Number of repositories to skip for pagination (default: 0).
-            name: Filter by repository name (case-insensitive).
-            url: Filter by repository URL (case-insensitive).
-            content_type: Filter by content type (e.g., 'rpm', 'ostree').
-            origin: Filter by origin (e.g., 'red_hat', 'external').
-            enabled: Filter by enabled status (True/False).
-            arch: Filter by architecture (e.g., 'x86_64', 'aarch64').
-            version: Filter by version (e.g., '8', '9').
         """
         # Use self.insights_client directly
 
