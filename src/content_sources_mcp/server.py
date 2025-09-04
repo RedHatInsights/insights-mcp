@@ -8,12 +8,10 @@ import json
 import logging
 from typing import Any
 
-from fastmcp.server.dependencies import get_http_headers
 from fastmcp.tools.tool import Tool
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from insights_mcp.client import InsightsClient
 from insights_mcp.mcp import InsightsMCP
 
 
@@ -58,55 +56,6 @@ class ContentSourcesMCP(InsightsMCP):
             instructions=general_intro,
         )
 
-        # cache the client for all users
-        self.clients = {self.insights_client.client_id: self.insights_client}
-
-    def get_client_id(self, headers: dict[str, str]) -> str:
-        """Get the client ID preferably from the headers."""
-        client_id = self.insights_client.client_id or ""
-        if self.insights_client.oauth_enabled:
-            # For OAuth, we might need to extract client_id from headers
-            client_id = headers.get("insights-client-id") or self.insights_client.client_id or ""
-        else:
-            client_id = headers.get("insights-client-id") or self.insights_client.client_id or ""
-            self.logger.debug("get_client_id request headers: %s", headers)
-
-        if not client_id:
-            raise ValueError("Client ID is required to access the Content Sources API")
-        return client_id
-
-    def get_client_secret(self, headers: dict[str, str]) -> str:
-        """Get the client secret preferably from the headers."""
-        client_secret = headers.get("insights-client-secret") or self.insights_client.client_secret
-        self.logger.debug("get_client_secret request headers: %s", headers)
-
-        if not client_secret:
-            raise ValueError("Client secret is required to access the Content Sources API")
-        return client_secret
-
-    def get_client(self, headers: dict[str, str]) -> InsightsClient:
-        """Get the InsightsClient instance for the current user."""
-        client_id = self.get_client_id(headers)
-        client = self.clients.get(client_id)
-        if not client:
-            client_secret = None
-            if not self.insights_client.oauth_enabled:
-                client_secret = self.get_client_secret(headers)
-            client = InsightsClient(
-                api_path="api/content-sources/v1.0",
-                client_id=client_id,
-                client_secret=client_secret,
-                mcp_transport=self.insights_client.mcp_transport,
-                oauth_enabled=self.insights_client.oauth_enabled,
-                proxy_url=self.insights_client.proxy_url,
-            )
-            self.clients[client_id] = client
-        return client
-
-    def no_auth_error(self, e: Exception) -> str:
-        """Generate authentication error message based on transport type."""
-        return self.insights_client.client.no_auth_error(e)
-
     def register_tools(self):
         """Register all available tools with the MCP server."""
         tool_functions = [
@@ -148,10 +97,7 @@ class ContentSourcesMCP(InsightsMCP):
             arch: Filter by architecture (e.g., 'x86_64', 'aarch64').
             version: Filter by version (e.g., '8', '9').
         """
-        try:
-            client = self.get_client(get_http_headers())
-        except ValueError as e:
-            return self.no_auth_error(e)
+        # Use self.insights_client directly
 
         params: dict[str, Any] = {}
 
@@ -174,7 +120,7 @@ class ContentSourcesMCP(InsightsMCP):
         params["offset"] = offset
 
         try:
-            response = await client.get("repositories/", params=params)
+            response = await self.insights_client.get("repositories/", params=params)
             if isinstance(response, str):
                 return response
             return json.dumps(response)
