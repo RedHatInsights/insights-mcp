@@ -320,6 +320,10 @@ class AdvisorMCP(InsightsMCP):
         """  # pylint: disable=line-too-long
 
         # Parameter validation and conversion
+
+        # Manual string-to-boolean parsing is required because some clients,
+        # like Cursor & Claude, send "true" or "false" as strings,
+        # which can cause type errors despite Pydantic's automatic conversion.
         impacting = self._parse_bool(impacting)
         incident = self._parse_bool(incident)
         has_automatic_remediation = self._parse_bool(has_automatic_remediation)
