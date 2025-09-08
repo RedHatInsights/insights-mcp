@@ -83,10 +83,23 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
     async def _init_mcp_tools(self):
         """Initialize MCP tools using LlamaIndex MCP support."""
         try:
-            mcp_client = BasicMCPClient(self.server_url)
+            # Support stdio transport by launching the server as a subprocess
+            if self.server_url == "stdio":
+                mcp_client = BasicMCPClient("python", args=["-m", "insights_mcp.server", "stdio"])
+                # For stdio we cannot fetch HTTP instructions; leave system prompt empty
+                fetch_system_prompt = False
+            else:
+                mcp_client = BasicMCPClient(self.server_url)
+                fetch_system_prompt = self.server_url.startswith("http")
+
             mcp_tool_spec = McpToolSpec(client=mcp_client)
             self.tools = await mcp_tool_spec.to_tool_list_async()
-            self.system_prompt = await self._get_system_prompt()
+
+            if fetch_system_prompt:
+                self.system_prompt = await self._get_system_prompt()
+            else:
+                self.system_prompt = ""
+
             logging.info("Initialized %d tools from MCP server", len(self.tools or []))
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.error("Failed to initialize MCP tools: %s", e)
