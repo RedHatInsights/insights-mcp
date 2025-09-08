@@ -177,7 +177,7 @@ def get_latest_release_tag() -> str:
     """Get the latest release tag from github."""
     # https://github.com/RedHatInsights/insights-mcp/releases
     # rather use the api to get the latest release tag
-    response = requests.get("https://api.github.com/repos/RedHatInsights/insights-mcp/releases/latest")
+    response = requests.get("https://api.github.com/repos/RedHatInsights/insights-mcp/releases/latest", timeout=30)
     response.raise_for_status()
     return response.json()["tag_name"]
 
@@ -201,7 +201,8 @@ def get_insights_mcp_version() -> str:
     try:
         # Use GitHub Compare API which is designed for comparing between tags/commits
         response = requests.get(
-            f"https://api.github.com/repos/RedHatInsights/insights-mcp/compare/{__version__}...{latest_release_tag}"
+            f"https://api.github.com/repos/RedHatInsights/insights-mcp/compare/{__version__}...{latest_release_tag}",
+            timeout=30,
         )
         response.raise_for_status()
         compare_data = response.json()
