@@ -385,7 +385,7 @@ class AdvisorMCP(InsightsMCP):
             int,
             Field(description="Node ID of the knowledge base article or solution. Example: 123456"),
         ],
-    ) -> dict[str, Any] | str:
+    ) -> dict[str, Any] | list[str] | str:
         """Find Advisor Recommendations related to a specific Knowledge Base article or solution.
 
         Use this when you have a Knowledge Base article or solution ID and want to find
