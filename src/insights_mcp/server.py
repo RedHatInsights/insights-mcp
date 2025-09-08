@@ -211,10 +211,14 @@ def get_insights_mcp_version() -> str:
         if compare_data.get("commits"):
             commit_count = len(compare_data["commits"])
             commits = f"{commit_count} commits ahead. Recent commits:\n"
-            for commit in compare_data["commits"][:5]:  # Show first 5 commits
-                commits += f"- {commit['commit']['message'].split('\n')[0]} ({commit['sha'][:7]})\n"
-            if commit_count > 5:
-                commits += f"... and {commit_count - 5} more commits\n"
+            show_commits = 10
+            for commit in compare_data["commits"][:show_commits]:  # Show first commits
+                message = commit["commit"]["message"].split("\n")[0]
+                if message:
+                    commits += f"- {message} ({commit['sha'][:7]})\n"
+                # else if there is no message, no need to show anything
+            if commit_count > show_commits:
+                commits += f"... and {commit_count - show_commits} more commits\n"
         else:
             commits = "No commits difference or same version"
 
