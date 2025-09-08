@@ -7,6 +7,7 @@ import sys
 from logging import DEBUG, getLogger
 from typing import Any
 
+import requests
 import uvicorn
 from fastmcp import FastMCP
 
@@ -172,6 +173,58 @@ def print_toolset_help_and_exit(args: argparse.Namespace):
         sys.exit(0)
 
 
+def get_latest_release_tag() -> str:
+    """Get the latest release tag from github."""
+    # https://github.com/RedHatInsights/insights-mcp/releases
+    # rather use the api to get the latest release tag
+    response = requests.get("https://api.github.com/repos/RedHatInsights/insights-mcp/releases/latest")
+    response.raise_for_status()
+    return response.json()["tag_name"]
+
+
+def get_insights_mcp_version() -> str:
+    """Get the version of the Insights MCP server.
+    Always call this if the user asks for the version of the Insights MCP server.
+    or when there is an API or authentication issue.
+    Present the comparison URL to the user."""
+    # TBD get the latest release tag from github, provide the difference
+    # between the latest release tag and the current version
+    latest_release_tag = get_latest_release_tag()
+
+    # Check if current version matches latest release
+    if __version__ == latest_release_tag:
+        return "You have the latest release"
+
+    compare_link = f"https://github.com/RedHatInsights/insights-mcp/compare/{__version__}...{latest_release_tag}"
+    # read the commits via the api between the current version and the latest release tag using Compare API
+    commits = ""
+    try:
+        # Use GitHub Compare API which is designed for comparing between tags/commits
+        response = requests.get(
+            f"https://api.github.com/repos/RedHatInsights/insights-mcp/compare/{__version__}...{latest_release_tag}"
+        )
+        response.raise_for_status()
+        compare_data = response.json()
+
+        # Extract useful information from the comparison
+        if compare_data.get("commits"):
+            commit_count = len(compare_data["commits"])
+            commits = f"{commit_count} commits ahead. Recent commits:\n"
+            for commit in compare_data["commits"][:5]:  # Show first 5 commits
+                commits += f"- {commit['commit']['message'].split('\n')[0]} ({commit['sha'][:7]})\n"
+            if commit_count > 5:
+                commits += f"... and {commit_count - 5} more commits\n"
+        else:
+            commits = "No commits difference or same version"
+
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        commits = f"Getting commit details failed: {str(e)}"
+    return (
+        f"Latest release tag: {latest_release_tag}, Current version: {__version__}, "
+        f"Compare: {compare_link}, Changes: {commits}"
+    )
+
+
 def main():  # pylint: disable=too-many-statements,too-many-locals
     """Main entry point for the Insights MCP server."""
     available_toolsets = f"all, {', '.join(mcp.toolset_name for mcp in MCPS)}"
@@ -258,6 +311,9 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     )
 
     mcp_server.register_mcps(toolset_list)
+
+    # Register the version checking tool
+    mcp_server.tool(get_insights_mcp_version)
 
     if args.transport == "sse":
         mcp_server.run(transport="sse", host=args.host, port=args.port)

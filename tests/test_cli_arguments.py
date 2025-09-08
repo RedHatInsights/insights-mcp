@@ -53,6 +53,9 @@ class TestCliArguments:
 
     # Expected tools for each toolset
     EXPECTED_TOOLS: Dict[str, Set[str]] = {
+        "insights-mcp": {
+            "get_insights_mcp_version",
+        },
         "image-builder": {
             "image-builder__get_openapi",
             "image-builder__create_blueprint",
@@ -124,12 +127,18 @@ class TestCliArguments:
         # Should only have image-builder tools
         image_builder_tools = {name for name in tool_names if name.startswith("image-builder__")}
         non_image_builder_tools = {name for name in tool_names if not name.startswith("image-builder__")}
+        # also remove insights-mcp tools from non_image_builder_tools
+        non_image_builder_tools = {
+            name for name in non_image_builder_tools if name not in self.EXPECTED_TOOLS["insights-mcp"]
+        }
 
         assert image_builder_tools, f"Expected image-builder tools. Available: {tool_names}"
         assert not non_image_builder_tools, f"Expected only image-builder tools, but found: {non_image_builder_tools}"
 
         # Verify specific image-builder tools are present
         expected_tools = {"image-builder__get_blueprints", "image-builder__get_composes"}
+        # insights-mcp tools are always available
+        expected_tools.update(self.EXPECTED_TOOLS["insights-mcp"])
         missing_tools = expected_tools - tool_names
         assert not missing_tools, f"Missing expected image-builder tools: {missing_tools}"
 
@@ -142,12 +151,16 @@ class TestCliArguments:
         # Should only have inventory tools
         inventory_tools = {name for name in tool_names if name.startswith("inventory__")}
         non_inventory_tools = {name for name in tool_names if not name.startswith("inventory__")}
+        # also remove insights-mcp tools from non_inventory_tools
+        non_inventory_tools = {name for name in non_inventory_tools if name not in self.EXPECTED_TOOLS["insights-mcp"]}
 
         assert inventory_tools, f"Expected inventory tools. Available: {tool_names}"
         assert not non_inventory_tools, f"Expected only inventory tools, but found: {non_inventory_tools}"
 
         # Verify specific inventory tools are present
         expected_tools = {"inventory__list_hosts", "inventory__get_host_details"}
+        # insights-mcp tools are always available
+        expected_tools.update(self.EXPECTED_TOOLS["insights-mcp"])
         missing_tools = expected_tools - tool_names
         assert not missing_tools, f"Missing expected inventory tools: {missing_tools}"
 
@@ -163,6 +176,8 @@ class TestCliArguments:
         other_tools = {
             name for name in tool_names if not name.startswith("image-builder__") and not name.startswith("inventory__")
         }
+        # also remove insights-mcp tools from other_tools
+        other_tools = {name for name in other_tools if name not in self.EXPECTED_TOOLS["insights-mcp"]}
 
         assert image_builder_tools, f"Expected image-builder tools. Available: {tool_names}"
         assert inventory_tools, f"Expected inventory tools. Available: {tool_names}"
@@ -173,6 +188,8 @@ class TestCliArguments:
             "image-builder__get_blueprints",
             "inventory__list_hosts",
         }
+        # insights-mcp tools are always available
+        expected_tools.update(self.EXPECTED_TOOLS["insights-mcp"])
         missing_tools = expected_tools - tool_names
         assert not missing_tools, f"Missing expected tools: {missing_tools}"
 
