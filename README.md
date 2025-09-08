@@ -190,10 +190,13 @@ podman run --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --interactive -
 
 #### Claude Code
 
-For instance, to use Claude Code with the STDIO server, use this command:
+Claude Code requires a slight change to the podman command, as the host environment is not
+available when it runs. The credentials must be copied into the configuration instead, which
+can be done with the following command after setting `INSIGHTS_CLIENT_ID` and
+`INSIGHTS_CLIENT_SECRET` environment variables:
 
 ```bash
-claude mcp add insights-mcp -- podman run --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --interactive --rm ghcr.io/redhatinsights/insights-mcp:latest
+claude mcp add insights-mcp -- podman run --env INSIGHTS_CLIENT_ID=$INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET=$INSIGHTS_CLIENT_SECRET --interactive --rm ghcr.io/redhatinsights/insights-mcp:latest
 ```
 
 ## Examples
