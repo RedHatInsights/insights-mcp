@@ -31,7 +31,8 @@ from tests.test_patterns import (  # pylint: disable=import-error
                 },
                 "impact": {
                     "description": "Impact level filter as comma-separated string, Example: '1,2,3'. "
-                    "Available values: 1=Low, 2=Medium, 3=High, 4=Critical.",
+                    "Accepted values: 1 (Low), 2 (Medium), 3 (High), 4 (Critical). "
+                    "Use only these exact values: 1, 2, 3, or 4.",
                     "default": None,
                     "type": None,
                     "anyOf": [{"type": "string"}, {"type": "null"}],
