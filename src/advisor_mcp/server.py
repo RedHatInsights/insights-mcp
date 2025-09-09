@@ -225,7 +225,8 @@ class AdvisorMCP(InsightsMCP):
             Field(
                 None,
                 description="Impact level filter as comma-separated string, Example: '1,2,3'. "
-                "Available values: 1=Low, 2=Medium, 3=High, 4=Critical.",
+                "Accepted values: 1 (Low), 2 (Medium), 3 (High), 4 (Critical). "
+                "Use only these exact values: 1, 2, 3, or 4.",
             ),
         ],
         likelihood: Annotated[
@@ -233,7 +234,8 @@ class AdvisorMCP(InsightsMCP):
             Field(
                 None,
                 description="Likelihood level filter as comma-separated string, Example: '1,2,3'. "
-                "Available values: 1=Low, 2=Medium, 3=High, 4=Very High.",
+                "Accepted values: 1 (Low), 2 (Medium), 3 (High), 4 (Very High). "
+                "Use only these exact values: 1, 2, 3, or 4.",
             ),
         ],
         category: Annotated[
@@ -242,7 +244,8 @@ class AdvisorMCP(InsightsMCP):
                 None,
                 description=(
                     "Recommendation category filter as comma-separated string, Example: '1,2,3'. "
-                    "Available values: 1=Availability, 2=Security, 3=Stability, 4=Performance."
+                    "Accepted values: 1 (Availability), 2 (Security), 3 (Stability), 4 (Performance). "
+                    "Use only these exact values: 1, 2, 3, or 4.",
                 ),
             ),
         ],
