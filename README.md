@@ -274,6 +274,8 @@ First check the [prerequisites](#prerequisites) section.
 First off, start the SSE server with `sse` argument:
 
 ```bash
+export INSIGHTS_CLIENT_ID=<YOUR_CLIENT_ID>
+export INSIGHTS_CLIENT_SECRET=<YOUR_CLIENT_SECRET>
 podman run --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --net host --rm ghcr.io/redhatinsights/insights-mcp:latest sse
 ```
 
@@ -303,6 +305,8 @@ For generic integration into other tools via STDIO, you should set the environme
 integration using podman:
 
 ```bash
+export INSIGHTS_CLIENT_ID=<YOUR_CLIENT_ID>
+export INSIGHTS_CLIENT_SECRET=<YOUR_CLIENT_SECRET>
 podman run --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --interactive --rm ghcr.io/redhatinsights/insights-mcp:latest
 ```
 
@@ -319,7 +323,15 @@ can be done with the following command after setting `INSIGHTS_CLIENT_ID` and
 `INSIGHTS_CLIENT_SECRET` environment variables:
 
 ```bash
+export INSIGHTS_CLIENT_ID=<YOUR_CLIENT_ID>
+export INSIGHTS_CLIENT_SECRET=<YOUR_CLIENT_SECRET>
 claude mcp add insights-mcp -- podman run --env INSIGHTS_CLIENT_ID=$INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET=$INSIGHTS_CLIENT_SECRET --interactive --rm ghcr.io/redhatinsights/insights-mcp:latest
+```
+
+or just set the variables in the command directly:
+
+```bash
+claude mcp add insights-mcp -- podman run --env INSIGHTS_CLIENT_ID=<YOUR_CLIENT_ID> --env INSIGHTS_CLIENT_SECRET=<YOUR_CLIENT_SECRET> --interactive --rm ghcr.io/redhatinsights/insights-mcp:latest
 ```
 
 ## Examples
