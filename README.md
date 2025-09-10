@@ -265,6 +265,31 @@ Just download the `insights-mcp*.dxt` file and add this in Claude Desktop with
 
 `Settings -> Extensions -> Advanced Extensions Settings -> Install Extension…`
 
+### CLine with VSCode
+
+First off, start the SSE server with `sse` argument:
+
+```bash
+podman run --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --net host --rm ghcr.io/redhatinsights/insights-mcp:latest sse
+```
+
+In the `CLine -> Manage MCP Servers` interface, add a new server name and URL:
+`http://localhost:9000/sse`. It shall create the following config:
+
+```json
+{
+  "mcpServers": {
+    "mcp-insights": {
+      "disabled": false,
+      "type": "sse",
+      "url": "http://localhost:9000/sse"
+    }
+  }
+}
+```
+
+Ensure the `type` is `sse` as CLine does not support `HTTP` transport yet.
+
 ### Generic STDIO
 
 For generic integration into other tools via STDIO, you should set the environment variables
