@@ -301,6 +301,7 @@ podman run --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --interactive -
 ```
 
 It is the MCP API what is exposed through standard input, not a chat interface.
+You need an MCP client with "agent capabilities" to connect to the insights-mcp server and really use it.
 
 #### Claude Code
 
