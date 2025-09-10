@@ -245,7 +245,6 @@ class AdvisorMCP(InsightsMCP):
                 description=(
                     "Recommendation category filter as comma-separated string, Example: '1,2,3'. "
                     "Accepted values: 1 (Availability), 2 (Security), 3 (Stability), 4 (Performance). "
-                    "Use only these exact values: 1, 2, 3, or 4.",
                 ),
             ),
         ],
