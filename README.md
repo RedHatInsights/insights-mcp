@@ -17,8 +17,10 @@ See [toolsets.md](toolsets.md) for the toolsets available in the MCP server.
 
 ### Service Account Setup
 
-1. Go to https://console.redhat.com → Click Settings (Gear Icon) →  "Service Accounts"
-2. Create a service account and set environment variables `INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET`
+1. Go to https://console.redhat.com → Click Settings (⚙️ Gear Icon) →  "Service Accounts"
+2. Create a service account and remember `Client ID` and `Client secret` for later.<br>
+   See below in the integration instructions, there they are respectively referred to as
+   `INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET`.
 
 ### Required Permissions by Toolset
 
@@ -36,7 +38,7 @@ By default, service accounts have no access. An organization administrator must 
 For detailed step-by-step instructions, see this video tutorial: [Service Account Permissions Setup](https://www.youtube.com/watch?v=UvNcmJsbg1w)
 
 1. **Log in as Organization Administrator** with User Access administrator role
-2. **Navigate to User Access Settings**: Click Settings (Gear Icon) → "User Access" → "Groups"
+2. **Navigate to User Access Settings**: Click Settings (⚙️ Gear Icon) → "User Access" → "Groups"
 3. **Assign permissions** (choose one option):
 
    **Option A - Create New Group:**
