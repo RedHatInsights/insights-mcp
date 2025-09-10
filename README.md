@@ -63,7 +63,27 @@ In both cases if you are in doubt, please disable/remove the `INSIGHTS_CLIENT_ID
 
 ## Integrations
 
+### Prerequisites
+
+Make sure you have `podman` installed.<br>
+(Docker is fine too but the commands below have to be adapted accordingly)
+
+You can install it with `sudo dnf install podman` on Fedora/RHEL/CentOS,
+or on macOS use either [Podman Desktop](https://podman-desktop.io/) or `brew install podman`.
+
+⚠️ **Note** if you use Podman on macOS, you sometimes need to set the path to `podman` explicitly.
+E.g. replace `podman` with the full path. Should be something like
+
+ * `/usr/local/bin/podman`
+ * `/opt/homebrew/bin/podman`
+ * …
+
+You can find the path by running `which podman` in your terminal.
+
 ### VSCode
+
+First check the [prerequisites](#prerequisites) section.
+
 Try this one-click installation or follow the instructions below.
 
 [![Install with Podman in VS Code](https://img.shields.io/badge/VS_Code-Install_Insights_MCP-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=insights-mcp&config=%7B%22type%22%3A%20%22stdio%22%2C%20%22command%22%3A%20%22podman%22%2C%20%22args%22%3A%20%5B%22run%22%2C%20%22--env%22%2C%20%22INSIGHTS_CLIENT_ID%22%2C%20%22--env%22%2C%20%22INSIGHTS_CLIENT_SECRET%22%2C%20%22--interactive%22%2C%20%22--rm%22%2C%20%22quay.io%2Fredhat-services-prod%2Finsights-management-tenant%2Finsights-mcp%2Finsights-mcp%3Alatest%22%5D%2C%20%22env%22%3A%20%7B%22INSIGHTS_CLIENT_ID%22%3A%20%22%24%7Binput%3Ainsights_client_id%7D%22%2C%20%22INSIGHTS_CLIENT_SECRET%22%3A%20%22%24%7Binput%3Ainsights_client_secret%7D%22%7D%7D&inputs=%5B%7B%22id%22%3A%20%22insights_client_id%22%2C%20%22type%22%3A%20%22promptString%22%2C%20%22description%22%3A%20%22Enter%20the%20Red%20Hat%20Insights%20Client%20ID%22%2C%20%22default%22%3A%20%22%22%2C%20%22password%22%3A%20true%7D%2C%20%7B%22id%22%3A%20%22insights_client_secret%22%2C%20%22type%22%3A%20%22promptString%22%2C%20%22description%22%3A%20%22Enter%20the%20Red%20Hat%20Insights%20Client%20Secret%22%2C%20%22default%22%3A%20%22%22%2C%20%22password%22%3A%20true%7D%5D)<br>
@@ -114,6 +134,8 @@ the following content.
 ```
 
 ### Cursor
+
+First check the [prerequisites](#prerequisites) section.
 
 Try this one-click installation or follow the instructions below.
 
@@ -176,6 +198,8 @@ then integrate:
 
 ### Gemini
 
+First check the [prerequisites](#prerequisites) section.
+
 To start the integration create a file `~/.gemini/settings.json` with the following command:
 
 ```
@@ -235,6 +259,8 @@ then integrate:
 
 ### Claude Desktop
 
+First check the [prerequisites](#prerequisites) section.
+
 For Claude Desktop there is an extension file in the [release section](https://github.com/RedHatInsights/insights-mcp/releases) of the project.
 
 Just download the `insights-mcp*.dxt` file and add this in Claude Desktop with
@@ -242,6 +268,8 @@ Just download the `insights-mcp*.dxt` file and add this in Claude Desktop with
 `Settings -> Extensions -> Advanced Extensions Settings -> Install Extension…`
 
 ### CLine with VSCode
+
+First check the [prerequisites](#prerequisites) section.
 
 First off, start the SSE server with `sse` argument:
 
@@ -268,6 +296,8 @@ Ensure the `type` is `sse` as CLine does not support `HTTP` transport yet.
 
 ### Generic STDIO
 
+First check the [prerequisites](#prerequisites) section.
+
 For generic integration into other tools via STDIO, you should set the environment variables
 `INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET` and use this command for an
 integration using podman:
@@ -280,6 +310,8 @@ It is the MCP API what is exposed through standard input, not a chat interface.
 You need an MCP client with "agent capabilities" to connect to the `insights-mcp` server and really use it.
 
 #### Claude Code
+
+First check the [prerequisites](#prerequisites) section.
 
 Claude Code requires a slight change to the podman command, as the host environment is not
 available when it runs. The credentials must be copied into the configuration instead, which
