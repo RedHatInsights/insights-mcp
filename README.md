@@ -170,6 +170,65 @@ then integrate:
 }
 ```
 
+### Gemini
+
+To start the integration create a file `~/.gemini/settings.json` with the following command:
+
+```
+{
+    ...
+    "mcpServers": {
+        "insights-mcp": {
+            "type": "stdio",
+            "command": "podman",
+            "args": [
+                "run",
+                "--env",
+                "INSIGHTS_CLIENT_ID=<YOUR_CLIENT_ID>",
+                "--env",
+                "INSIGHTS_CLIENT_SECRET=<YOUR_CLIENT_SECRET>",
+                "--interactive",
+                "--rm",
+                "ghcr.io/redhatinsights/insights-mcp:latest"
+            ]
+        }
+    }
+}
+```
+
+or use it via "Streamable HTTP"
+
+start the server:
+
+```
+podman run --net host --rm ghcr.io/redhatinsights/insights-mcp:latest http
+```
+
+> [!NOTE]
+> For podman machine on a mac you will need to set the host explicitly and expose the port
+>
+> ```
+>   podman run -p 8000:8000 --rm ghcr.io/redhatinsights/insights-mcp:latest http --host 0.0.0.0
+> ```
+
+then integrate:
+
+```
+{
+    ...
+    "mcpServers": {
+        "insights-mcp": {
+            "type": "http",
+            "url": "http://localhost:8000/mcp",
+            "headers": {
+                "insights-client-id": "<YOUR_CLIENT_ID>",
+                "insights-client-secret": "<YOUR_CLIENT_SECRET>"
+            }
+        }
+    }
+}
+```
+
 ### Claude Desktop
 
 For Claude Desktop there is an extension file in the [release section](https://github.com/RedHatInsights/insights-mcp/releases) of the project.
