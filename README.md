@@ -7,34 +7,6 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server to int
  * [remediations](https://docs.redhat.com/en/documentation/red_hat_insights/1-latest/html/red_hat_insights_remediations_guide/index)
  * [vulnerability](https://docs.redhat.com/en/documentation/red_hat_insights/1-latest/html/assessing_and_monitoring_security_vulnerabilities_on_rhel_systems/index)
 
-## CLI
-
-The MCP server has the following arguments:
-
-```
-usage: __main__.py [-h] [--debug] [--stage] [--toolset TOOLSET]
-                   [--toolset-help]
-                   {stdio,sse,http} ...
-
-Run Insights MCP server.
-
-positional arguments:
-  {stdio,sse,http}   Transport mode
-    stdio            Use stdio transport (default)
-    sse              Use SSE transport
-    http             Use HTTP streaming transport
-
-options:
-  -h, --help         show this help message and exit
-  --debug            Enable debug logging
-  --stage            Use stage API instead of production API
-  --toolset TOOLSET  Comma-separated list of toolsets to use. Available
-                     toolsets: all, image-builder, vulnerability,
-                     remediations, advisor, inventory, content-sources, rbac
-                     (default: all)
-  --toolset-help     Show toolset details of all toolsets
-```
-
 ## Toolsets
 
 See [toolsets.md](toolsets.md) for the toolsets available in the MCP server.
@@ -301,7 +273,7 @@ podman run --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --interactive -
 ```
 
 It is the MCP API what is exposed through standard input, not a chat interface.
-You need an MCP client with "agent capabilities" to connect to the insights-mcp server and really use it.
+You need an MCP client with "agent capabilities" to connect to the `insights-mcp` server and really use it.
 
 #### Claude Code
 
@@ -329,6 +301,11 @@ For example questions specific to each toolset please have a look at the test fi
  * [`remediations-mcp`](src/remediations_mcp/test_prompts.md)
  * [`advisor-mcp`](src/advisor_mcp/test_prompts.md)
  * [`vulnerability-mcp`](src/vulnerability_mcp/test_prompts.md)
+
+## CLI
+
+For some use cases it might be needed to use the MCP server directly from the command line.
+See [usage.md](usage.md) for the usage of the MCP server.
 
 ## Releases
 There are two container images published for this MCP server.
