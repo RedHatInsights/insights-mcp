@@ -140,7 +140,7 @@ class InsightsClientBase(httpx.AsyncClient):
             "ONLY if it is an authentication problem that *also occurs* with get_all_access(), tell the user "
             "that the MCP server setup is not valid! "
             "The user should go to [https://console.redhat.com](https://console.redhat.com) to "
-            "'YOUR USER' ➡ My User Access ➡ Service Accounts create a service account and then set the "
+            "Click Settings (⚙️ Gear Icon) ➡ Service Accounts ➡ create a service account and then set the "
         )
         error_message = str(e)
         # strip off "401 Unauthorized"
