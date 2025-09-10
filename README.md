@@ -89,7 +89,7 @@ the following content.
         }
     ],
     "servers": {
-        "insights-mcp-stdio": {
+        "insights-mcp": {
             "type": "stdio",
             "command": "podman",
             "args": [
@@ -158,7 +158,7 @@ then integrate:
 ```
 {
     "mcpServers": {
-        "insights-mcp-http": {
+        "insights-mcp": {
             "type": "http",
             "url": "http://localhost:8000/mcp",
             "headers": {
