@@ -145,6 +145,10 @@ Otherwise the tab will close after installation and you won't see the documentat
 (Note: this uses the `quay.io` container image)
 
 Cursor doesn't seem to support `inputs` you need to add your credentials in the config file.
+
+#### Cursor stdio mode
+Use this as default method.
+
 To start the integration create a file `~/.cursor/mcp.json` with
 ```
 {
@@ -171,15 +175,16 @@ To start the integration create a file `~/.cursor/mcp.json` with
 }
 ```
 
-or use it via "Streamable HTTP"
+#### Cursor "Streamable HTTP"
+Alternatively you can use it via "Streamable HTTP".
 
-start the server:
+To start the server:
 
 ```
 podman run --net host --rm ghcr.io/redhatinsights/insights-mcp:latest http
 ```
 
-then integrate:
+then add the following to your `~/.cursor/mcp.json` file:
 
 ```
 {
