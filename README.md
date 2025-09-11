@@ -84,10 +84,12 @@ You can find the path by running `which podman` in your terminal.
 
 First check the [prerequisites](#prerequisites) section.
 
-Try this one-click installation or follow the instructions below.
+**Option 1: One-click installation** (easiest)
 
 [![Install with Podman in VS Code](https://img.shields.io/badge/VS_Code-Install_Insights_MCP-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=insights-mcp&config=%7B%22type%22%3A%20%22stdio%22%2C%20%22command%22%3A%20%22podman%22%2C%20%22args%22%3A%20%5B%22run%22%2C%20%22--env%22%2C%20%22INSIGHTS_CLIENT_ID%22%2C%20%22--env%22%2C%20%22INSIGHTS_CLIENT_SECRET%22%2C%20%22--interactive%22%2C%20%22--rm%22%2C%20%22quay.io%2Fredhat-services-prod%2Finsights-management-tenant%2Finsights-mcp%2Finsights-mcp%3Alatest%22%5D%2C%20%22env%22%3A%20%7B%22INSIGHTS_CLIENT_ID%22%3A%20%22%24%7Binput%3Ainsights_client_id%7D%22%2C%20%22INSIGHTS_CLIENT_SECRET%22%3A%20%22%24%7Binput%3Ainsights_client_secret%7D%22%7D%7D&inputs=%5B%7B%22id%22%3A%20%22insights_client_id%22%2C%20%22type%22%3A%20%22promptString%22%2C%20%22description%22%3A%20%22Enter%20the%20Red%20Hat%20Insights%20Client%20ID%22%2C%20%22default%22%3A%20%22%22%2C%20%22password%22%3A%20true%7D%2C%20%7B%22id%22%3A%20%22insights_client_secret%22%2C%20%22type%22%3A%20%22promptString%22%2C%20%22description%22%3A%20%22Enter%20the%20Red%20Hat%20Insights%20Client%20Secret%22%2C%20%22default%22%3A%20%22%22%2C%20%22password%22%3A%20true%7D%5D)<br>
 (Note: this uses the `quay.io` container image)
+
+**Option 2: Manual STDIO installation**
 
 For the usage in your project, create a file called `.vscode/mcp.json` with
 the following content.
@@ -137,12 +139,14 @@ the following content.
 
 First check the [prerequisites](#prerequisites) section.
 
-Try this one-click installation or follow the instructions below.
+**Option 1: One-click installation** (easiest)
 
 ⚠️ Use **`Ctrl`/`Cmd`-click** to open in a **new tab**.<br>
 Otherwise the tab will close after installation and you won't see the documentation anymore.<br>
 [![Install with Podman in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=insights-mcp&config=eyJ0eXBlIjoic3RkaW8iLCJjb21tYW5kIjoicG9kbWFuIHJ1biAtLWVudiBJTlNJR0hUU19DTElFTlRfSUQgLS1lbnYgSU5TSUdIVFNfQ0xJRU5UX1NFQ1JFVCAtLWludGVyYWN0aXZlIC0tcm0gcXVheS5pby9yZWRoYXQtc2VydmljZXMtcHJvZC9pbnNpZ2h0cy1tYW5hZ2VtZW50LXRlbmFudC9pbnNpZ2h0cy1tY3AvaW5zaWdodHMtbWNwOmxhdGVzdCIsImVudiI6eyJJTlNJR0hUU19DTElFTlRfSUQiOiIiLCJJTlNJR0hUU19DTElFTlRfU0VDUkVUIjoiIn19)<br>
 (Note: this uses the `quay.io` container image)
+
+**Option 2: Manual STDIO installation**
 
 Cursor doesn't seem to support `inputs` you need to add your credentials in the config file.
 To start the integration create a file `~/.cursor/mcp.json` with
@@ -171,7 +175,7 @@ To start the integration create a file `~/.cursor/mcp.json` with
 }
 ```
 
-or use it via "Streamable HTTP"
+**Option 3: Manual Streamable HTTP installation** (advanced)
 
 start the server:
 
