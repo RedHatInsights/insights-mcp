@@ -200,10 +200,11 @@ then integrate:
 }
 ```
 
-### Gemini
+### Gemini CLI
 
 First check the [prerequisites](#prerequisites) section.
 
+**Option 1: Manual STDIO installation**
 To start the integration create a file `~/.gemini/settings.json` with the following command:
 
 ```
@@ -228,7 +229,7 @@ To start the integration create a file `~/.gemini/settings.json` with the follow
 }
 ```
 
-or use it via "Streamable HTTP"
+**Option 2: Manual Streamable HTTP installation** (advanced)
 
 start the server:
 
@@ -250,8 +251,7 @@ then integrate:
     ...
     "mcpServers": {
         "insights-mcp": {
-            "type": "http",
-            "url": "http://localhost:8000/mcp",
+            "httpUrl": "http://localhost:8000/mcp",
             "headers": {
                 "insights-client-id": "<YOUR_CLIENT_ID>",
                 "insights-client-secret": "<YOUR_CLIENT_SECRET>"
