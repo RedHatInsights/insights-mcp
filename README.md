@@ -338,6 +338,12 @@ or just set the variables in the command directly:
 claude mcp add insights-mcp -- podman run --env INSIGHTS_CLIENT_ID=<YOUR_CLIENT_ID> --env INSIGHTS_CLIENT_SECRET=<YOUR_CLIENT_SECRET> --interactive --rm ghcr.io/redhatinsights/insights-mcp:latest
 ```
 
+To verify setup was successful, within the Claude terminal execute the command:
+```bash
+/mcp
+```
+If successful, you should see "insights-mcp" listed under Manage MCP servers with a green checkmark connected status besides it. 
+
 ## Examples
 
 It's probably best to just ask the LLM you just attached to the MCP server to.
