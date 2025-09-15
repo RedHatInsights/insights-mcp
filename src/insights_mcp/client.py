@@ -83,7 +83,8 @@ class InsightsClientBase(httpx.AsyncClient):
                 try:
                     content = gzip.decompress(content)
                 except gzip.BadGzipFile as e:
-                    self.logger.warning("Failed to decompress gzipped content: %s", e)
+                    # for some reason it says to be gzipped but isn't
+                    self.logger.debug("Failed to decompress gzipped content: %s; continuing with original content", e)
                     # Fall back to original content
 
             # Try to parse as JSON
