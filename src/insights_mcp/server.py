@@ -235,7 +235,7 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     available_toolsets = f"all, {', '.join(mcp.toolset_name for mcp in MCPS)}"
     toolset_help = f"Comma-separated list of toolsets to use. Available toolsets: {available_toolsets} (default: all)"
 
-    parser = argparse.ArgumentParser(description="Run Insights MCP server.")
+    parser = argparse.ArgumentParser(prog="insights-mcp", description="Run Insights MCP server.")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     parser.add_argument("--stage", action="store_true", help="Use stage API instead of production API")
     parser.add_argument("--toolset", type=str, help=toolset_help)
