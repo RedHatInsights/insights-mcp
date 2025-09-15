@@ -2,9 +2,9 @@
 
 import argparse
 import asyncio
+import logging
 import os
 import sys
-from logging import DEBUG, getLogger
 from typing import Any
 
 import requests
@@ -277,13 +277,18 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
             print("hint: INSIGHTS_STAGE_PROXY_URL=http://yoursquidproxy…:3128")
             sys.exit(1)
 
-    logger = getLogger("InsightsMCPServer")
+    logger = logging.getLogger("InsightsMCPServer")
 
     if args.debug:  # FIXME: make common logging setup
-        getLogger("ImageBuilderMCP").setLevel(DEBUG)
-        getLogger("InsightsClientBase").setLevel(DEBUG)
-        getLogger("InsightsClient").setLevel(DEBUG)
-        getLogger("ImageBuilderOAuthMiddleware").setLevel(DEBUG)
+        # Configure root logger for debug output
+        logging.basicConfig(level=logging.DEBUG, format="%(name)s - %(levelname)s - %(message)s")
+
+        # Set specific logger levels
+        logging.getLogger("ImageBuilderMCP").setLevel(logging.DEBUG)
+        logging.getLogger("InsightsClientBase").setLevel(logging.DEBUG)
+        logging.getLogger("InsightsClient").setLevel(logging.DEBUG)
+        logging.getLogger("ImageBuilderOAuthMiddleware").setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
         logger.info("Debug mode enabled")
 
     oauth_enabled = os.getenv("OAUTH_ENABLED", "false").lower() == "true"
