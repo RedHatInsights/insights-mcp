@@ -342,7 +342,7 @@ To verify setup was successful, within the Claude terminal execute the command:
 ```bash
 /mcp
 ```
-If successful, you should see "insights-mcp" listed under Manage MCP servers with a green checkmark connected status besides it. 
+If successful, you should see `insights-mcp` listed under Manage MCP servers with a green check mark connected status besides it.
 
 ## Examples
 
