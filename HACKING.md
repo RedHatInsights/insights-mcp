@@ -8,6 +8,18 @@ develop the MCP server.
 
 Also checkout `make help` for the available commands.
 
+## Important notes
+* When changing some code you might want to use `make build-prod` so the container is built with
+  the upstream container tag and you don't need to change it in your MCP client (like VSCode).
+
+* Make sure you really restart VSCode or Cursor after changing the code, as their "restart" button
+  usually doesn't use the newly built container.
+
+* ⚠️ Moreover, when you start VSCode, make sure you hit the `▶️ Start` button of the MCP server,
+  **before** you start chatting! Otherwise VSCode _caches_ the tool descriptions and you will
+  end up with a chat context with the old tool descriptions!
+
+
 ### Usage
 
 See [usage.md](usage.md) for the usage of the MCP server.
