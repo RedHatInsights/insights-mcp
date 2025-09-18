@@ -139,20 +139,21 @@ wheels = [
 
 [[package]]
 name = "anthropic"
-version = "0.67.0"
+version = "0.68.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "distro" },
+    { name = "docstring-parser" },
     { name = "httpx" },
     { name = "jiter" },
     { name = "pydantic" },
     { name = "sniffio" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/09/08/ee91464cd821e6fca52d9a23be44815c95edd3c1cf1e844b2c5e85f0d57f/anthropic-0.67.0.tar.gz", hash = "sha256:d1531b210ea300c73423141d29bcee20fcd24ef9f426f6437c0a5d93fc98fb8e", size = 441639, upload-time = "2025-09-10T14:47:18.137Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/64/46/da44bf087ddaf3f7dbe4808c00c7cde466fe68c4fc9fbebdfc231f4ea205/anthropic-0.68.0.tar.gz", hash = "sha256:507e9b5f627d1b249128ff15b21855e718fa4ed8dabc787d0e68860a4b32a7a8", size = 471584, upload-time = "2025-09-17T15:20:19.509Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5c/9d/9adbda372710918cc8271d089a2ceae4d977a125f90bc3c4b456bca4f281/anthropic-0.67.0-py3-none-any.whl", hash = "sha256:f80a81ec1132c514215f33d25edeeab1c4691ad5361b391ebb70d528b0605b55", size = 317126, upload-time = "2025-09-10T14:47:16.351Z" },
+    { url = "https://files.pythonhosted.org/packages/60/32/2d7553184b05bdbec61dd600014a55b9028408aee6128b25cb6f20e3002c/anthropic-0.68.0-py3-none-any.whl", hash = "sha256:ac579ea5eca22a7165b1042e6af57c4bf556e51afae3ca80e24768d4756b78c0", size = 325199, upload-time = "2025-09-17T15:20:17.452Z" },
 ]
 
 [[package]]
@@ -202,14 +203,14 @@ wheels = [
 
 [[package]]
 name = "authlib"
-version = "1.6.3"
+version = "1.6.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5d/c6/d9a9db2e71957827e23a34322bde8091b51cb778dcc38885b84c772a1ba9/authlib-1.6.3.tar.gz", hash = "sha256:9f7a982cc395de719e4c2215c5707e7ea690ecf84f1ab126f28c053f4219e610", size = 160836, upload-time = "2025-08-26T12:13:25.206Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ce/bb/73a1f1c64ee527877f64122422dafe5b87a846ccf4ac933fe21bcbb8fee8/authlib-1.6.4.tar.gz", hash = "sha256:104b0442a43061dc8bc23b133d1d06a2b0a9c2e3e33f34c4338929e816287649", size = 164046, upload-time = "2025-09-17T09:59:23.897Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/25/2f/efa9d26dbb612b774990741fd8f13c7cf4cfd085b870e4a5af5c82eaf5f1/authlib-1.6.3-py2.py3-none-any.whl", hash = "sha256:7ea0f082edd95a03b7b72edac65ec7f8f68d703017d7e37573aee4fc603f2a48", size = 240105, upload-time = "2025-08-26T12:13:23.889Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/aa/91355b5f539caf1b94f0e66ff1e4ee39373b757fce08204981f7829ede51/authlib-1.6.4-py2.py3-none-any.whl", hash = "sha256:39313d2a2caac3ecf6d8f95fbebdfd30ae6ea6ae6a6db794d976405fdd9aa796", size = 243076, upload-time = "2025-09-17T09:59:22.259Z" },
 ]
 
 [[package]]
@@ -643,7 +644,7 @@ wheels = [
 
 [[package]]
 name = "deepeval"
-version = "3.5.1"
+version = "3.5.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -678,9 +679,9 @@ dependencies = [
     { name = "typer" },
     { name = "wheel" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3f/15/ef6f3ea88c29033beef4c6444e5d67fc6b0b929325cf9474453cc09578b4/deepeval-3.5.1.tar.gz", hash = "sha256:0764a523c16074d88cc6fdbf8fe622b28db1a9f86da834cdf51f7e22334e11ac", size = 409263, upload-time = "2025-09-16T15:12:46.274Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bc/2e/9dae24a91fee10aaa618b27b79a03b9cc2bd9c7105d45653da104a7be8cf/deepeval-3.5.2.tar.gz", hash = "sha256:961031fae7d140fafd070fe2e0346262015539734199a7234fbf7622f844e195", size = 410561, upload-time = "2025-09-17T17:38:26.463Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e3/5e/9515c86b4685abf7d38cb8177ee0603688f2f93d43e4d2336ed21e578849/deepeval-3.5.1-py3-none-any.whl", hash = "sha256:95ff308ff3b42c3a16b5fa38fcb163c113256806e38bd2eb660371c153484b3d", size = 597364, upload-time = "2025-09-16T15:12:44.19Z" },
+    { url = "https://files.pythonhosted.org/packages/79/ee/e6709da86a1eb8d3b83989cf982043872b41c21192f05c45eb8bfe777008/deepeval-3.5.2-py3-none-any.whl", hash = "sha256:f0230d68c61aae2bcc2ea0311cfdfa2b2373eab866948c8070487253e7ae57c5", size = 599187, upload-time = "2025-09-17T17:38:24.461Z" },
 ]
 
 [[package]]
@@ -751,11 +752,11 @@ wheels = [
 
 [[package]]
 name = "docutils"
-version = "0.22"
+version = "0.22.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e9/86/5b41c32ecedcfdb4c77b28b6cb14234f252075f8cdb254531727a35547dd/docutils-0.22.tar.gz", hash = "sha256:ba9d57750e92331ebe7c08a1bbf7a7f8143b86c476acd51528b042216a6aad0f", size = 2277984, upload-time = "2025-07-29T15:20:31.06Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e4/47/d869000fb74438584858acc628a364b277fc012695f0dfd513cb10f99768/docutils-0.22.1.tar.gz", hash = "sha256:d2fb50923a313532b6d41a77776d24cb459a594be9b7e4afa1fbcb5bda1893e6", size = 2291655, upload-time = "2025-09-17T17:58:45.409Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/44/57/8db39bc5f98f042e0153b1de9fb88e1a409a33cda4dd7f723c2ed71e01f6/docutils-0.22-py3-none-any.whl", hash = "sha256:4ed966a0e96a0477d852f7af31bdcb3adc049fbb35ccba358c2ea8a03287615e", size = 630709, upload-time = "2025-07-29T15:20:28.335Z" },
+    { url = "https://files.pythonhosted.org/packages/8c/dc/1948b90c5d9dbfa4d1fd3991013a042ba3ac62ebd3afdcb3fac08366e755/docutils-0.22.1-py3-none-any.whl", hash = "sha256:806e896f256a17466426544038f30cb860a99f5d4af640e36c284bfcb1824512", size = 638455, upload-time = "2025-09-17T17:58:42.498Z" },
 ]
 
 [[package]]
@@ -1620,16 +1621,16 @@ wheels = [
 
 [[package]]
 name = "llama-index-workflows"
-version = "2.2.1"
+version = "2.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "llama-index-instrumentation" },
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ee/91/ae8ea722f8a53c9d0e1968daacc0c7b13d991d278321dfacbdd6a851377a/llama_index_workflows-2.2.1.tar.gz", hash = "sha256:259290e946ecf1de3cd8cb3d07d96c4417a519a748b7b967b043131326a4bce5", size = 1283069, upload-time = "2025-09-16T15:24:33.704Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ef/6a/fba8446f50d8c58af560a60aade449ac9715d2c4abe6c238e05e6bae5b41/llama_index_workflows-2.2.2.tar.gz", hash = "sha256:8e0a8359db70918aebe3c0056eb01c8e96e0d4164f5d670cbbbf767ea4ee30ce", size = 1283391, upload-time = "2025-09-17T09:10:31.908Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5e/f9/d1883954aa0c00fe081f2c6c3f60d29c61b02f93ef8ab68c3464bc651b48/llama_index_workflows-2.2.1-py3-none-any.whl", hash = "sha256:4dbba583309de3e92e1b79e2394db6a862936fe9fbc1e654e402e56d9ee54714", size = 56054, upload-time = "2025-09-16T15:24:32.535Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/7c/5547005f253279dfa3ce943d5f7dc04b4e494959d71fa6711726a55004aa/llama_index_workflows-2.2.2-py3-none-any.whl", hash = "sha256:406c87b538457409daba790156b513f06e2d58677f3351f12d526259cbb34a51", size = 56087, upload-time = "2025-09-17T09:10:30.309Z" },
 ]
 
 [[package]]
@@ -2147,7 +2148,7 @@ wheels = [
 
 [[package]]
 name = "openai"
-version = "1.107.3"
+version = "1.108.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -2159,9 +2160,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e3/24/7fb5749bcf66b52209e3ece05cb4eaeae2102e95f8ae77589e8afaf70ba8/openai-1.107.3.tar.gz", hash = "sha256:69bb8032b05c5f00f7660e422f70f9aabc94793b9a30c5f899360ed21e46314f", size = 564194, upload-time = "2025-09-15T20:09:20.159Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/07/3c/3ea4c40c62d5f4b11690de13de35554d0d49b5e5780669fad5e83562d635/openai-1.108.0.tar.gz", hash = "sha256:e859c64e4202d7f5956f19280eee92bb281f211c41cdd5be9e63bf51a024ff72", size = 564659, upload-time = "2025-09-17T22:03:23.075Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/16/1d/58ad0084451f64a9193de48c0afd63047682ffdedb6ae1d494a203e03fd5/openai-1.107.3-py3-none-any.whl", hash = "sha256:4ca54a847235ac04c6320da70fdc06b62d71439de9ec0aa40d5690c3064d4025", size = 947600, upload-time = "2025-09-15T20:09:18.219Z" },
+    { url = "https://files.pythonhosted.org/packages/af/dc/0a007b7c5a079e13d66eecc5d521bbc67b53c135e2a3131160ef76b5db1f/openai-1.108.0-py3-none-any.whl", hash = "sha256:31f2e58230e2703f13ddbb50c285f39dacf7fca64ab19882fd8a7a0b2bccd781", size = 948114, upload-time = "2025-09-17T22:03:20.972Z" },
 ]
 
 [[package]]
