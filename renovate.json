@@ -1,10 +1,12 @@
 {
     "$schema": "https://docs.renovatebot.com/renovate-schema.json",
     "extends": [
-      "github>konflux-ci/mintmaker//config/renovate/renovate.json",
-      "schedule:earlyMondays"
+        "github>konflux-ci/mintmaker//config/renovate/renovate.json",
+        "schedule:earlyMondays"
     ],
-    "baseBranches": ["main"],
+    "baseBranchPatterns": [
+        "main"
+    ],
     "timezone": "Europe/Prague",
     "automerge": true,
     "tekton": {
