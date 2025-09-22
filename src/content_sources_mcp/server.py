@@ -56,8 +56,16 @@ class ContentSourcesMCP(InsightsMCP):
             instructions=general_intro,
         )
 
-    def register_tools(self):
-        """Register all available tools with the MCP server."""
+    def register_tools(self, readonly: bool = False):
+        """Register all available tools with the MCP server.
+
+        Args:
+            readonly: If True, only register read-only tools (default: False).
+                     All tools in this MCP are read-only, so this parameter is ignored.
+        """
+        # all tools in this MCP are read-only
+        _ = readonly
+
         tool_functions = [
             self.list_repositories,
         ]
@@ -65,9 +73,9 @@ class ContentSourcesMCP(InsightsMCP):
         for f in tool_functions:
             tool = Tool.from_function(f)
             tool.annotations = ToolAnnotations(readOnlyHint=True, openWorldHint=True)
-            description_str = f.__doc__
+            description_str = f.__doc__ or ""
             tool.description = description_str
-            tool.title = description_str.split("\n", 1)[0]
+            tool.title = description_str.split("\n", 1)[0] if description_str else ""
             self.add_tool(tool)
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments

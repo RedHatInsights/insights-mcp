@@ -28,7 +28,7 @@ mcp = InsightsMCP(
 )
 
 
-@mcp.tool()
+@mcp.tool(annotations={"readOnlyHint": True})
 async def list_hosts(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     hostname_or_id: Annotated[str, Field("", description="Filter by display_name, fqdn, or id (case-insensitive).")],
     display_name: Annotated[str, Field("", description="Filter by display name (case-insensitive).")],
@@ -95,7 +95,7 @@ async def list_hosts(  # pylint: disable=too-many-arguments,too-many-positional-
     return response
 
 
-@mcp.tool()
+@mcp.tool(annotations={"readOnlyHint": True})
 async def get_host_details(host_ids: str) -> dict[str, Any] | str:
     """Get detailed information for specific hosts by their IDs.
 
@@ -113,7 +113,7 @@ async def get_host_details(host_ids: str) -> dict[str, Any] | str:
     return response
 
 
-@mcp.tool()
+@mcp.tool(annotations={"readOnlyHint": True})
 async def get_host_system_profile(
     host_ids: Annotated[
         str,
@@ -142,7 +142,7 @@ async def get_host_system_profile(
     return response
 
 
-@mcp.tool()
+@mcp.tool(annotations={"readOnlyHint": True})
 async def get_host_tags(host_ids: str) -> dict[str, Any] | str:
     """Get tags for specific hosts.
 
@@ -155,7 +155,7 @@ async def get_host_tags(host_ids: str) -> dict[str, Any] | str:
     return response
 
 
-@mcp.tool()
+@mcp.tool(annotations={"readOnlyHint": True})
 async def find_host_by_name(hostname: str) -> dict[str, Any] | str:
     """Find a host by its hostname/display name.
 

@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
 import httpx
 import jwt
@@ -118,7 +118,7 @@ class ImageBuilderMCP(InsightsMCP):
         # TBD: purge cache after some time
         self.clients = {self.insights_client.client_id: self.insights_client}
 
-    def _get_image_types_architectures(self) -> tuple[list[str], list[str]] | None:
+    def _get_image_types_architectures(self) -> tuple[list[str], list[str]]:
         """Get the list of image types available to build images with."""
         try:
             # TBD: change openapi spec to have a proper schema-enum
@@ -138,34 +138,46 @@ class ImageBuilderMCP(InsightsMCP):
             raise ValueError("Error getting openapi for image types and architectures") from e
         return image_types, architectures
 
-    def register_tools(self):
-        """Register all available tools with the MCP server."""
+    def register_tools(self, readonly: bool = False):
+        """Register all available tools with the MCP server.
+
+        Args:
+            readonly: If True, only register read-only tools (default: False)
+        """
         image_types, architectures = self._get_image_types_architectures()
         if not image_types or not architectures:
             return
 
         # prepend generic keywords for use of many other tools
         # and register with "self.tool()"
-        tool_functions = [
-            self.get_openapi,
-            self.create_blueprint,
-            self.update_blueprint,
-            self.get_blueprints,
-            self.get_blueprint_details,
-            self.get_composes,
-            self.get_compose_details,
-            self.blueprint_compose,
-            self.get_distributions,
+        tool_functions: list[dict[str, Any]] = [
+            {"fn": self.get_openapi, "readOnlyHint": True},
+            {"fn": self.create_blueprint, "readOnlyHint": False},
+            {"fn": self.update_blueprint, "readOnlyHint": False},
+            {"fn": self.get_blueprints, "readOnlyHint": True},
+            {"fn": self.get_blueprint_details, "readOnlyHint": True},
+            {"fn": self.get_composes, "readOnlyHint": True},
+            {"fn": self.get_compose_details, "readOnlyHint": True},
+            {"fn": self.blueprint_compose, "readOnlyHint": False},
+            {"fn": self.get_distributions, "readOnlyHint": True},
         ]
 
-        for f in tool_functions:
+        for tool_def in tool_functions:
+            # Skip non-readonly tools if readonly mode is enabled
+            if readonly and not tool_def["readOnlyHint"]:
+                continue
+
+            f = tool_def["fn"]
             tool = Tool.from_function(f)
-            tool.annotations = ToolAnnotations(readOnlyHint=True, openWorldHint=True)
-            description_str = f.__doc__.format(
-                architectures=", ".join(architectures), image_types=", ".join(image_types)
+            tool.annotations = ToolAnnotations(readOnlyHint=tool_def["readOnlyHint"], openWorldHint=True)
+            doc_str = f.__doc__ or ""
+            description_str = (
+                doc_str.format(architectures=", ".join(architectures), image_types=", ".join(image_types))
+                if doc_str
+                else ""
             )
             tool.description = description_str
-            tool.title = description_str.split("\n", 1)[0]
+            tool.title = description_str.split("\n", 1)[0] if description_str else ""
             self.add_tool(tool)
 
     async def get_distributions(self) -> str:

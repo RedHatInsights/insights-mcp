@@ -38,10 +38,18 @@ class AdvisorMCP(InsightsMCP):
             ),
         )
 
-    def register_tools(self):
-        """Register all available tools with the MCP server."""
+    def register_tools(self, readonly: bool = False):
+        """Register all available tools with the MCP server.
+
+        Args:
+            readonly: If True, only register read-only tools (default: False).
+                     All tools in this MCP are read-only, so this parameter is ignored.
+        """
+        # all tools in this MCP are read-only
+        _ = readonly
+
         # Define tool configurations with tags and custom titles
-        tool_configs = {
+        tool_configs: dict[str, dict[str, Any]] = {
             "get_active_rules": {
                 "function": self.get_active_rules,
                 "tags": ("insights", "advisor", "recommendations", "rules", "issues", "health"),
@@ -139,7 +147,7 @@ class AdvisorMCP(InsightsMCP):
         for config in tool_configs.values():
             tool = Tool.from_function(config["function"])
             tool.annotations = config["annotations"]
-            tool.description = config["function"].__doc__
+            tool.description = config["function"].__doc__ or ""
             tool.name = config["function"].__name__
             tool.title = config["title"]
             # Add tags if available in the Tool class
