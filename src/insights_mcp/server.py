@@ -81,11 +81,12 @@ class InsightsMCPServer(FastMCP):
         self.oauth_enabled = oauth_enabled
         self.mcp_transport = mcp_transport
 
-    def register_mcps(self, allowed_mcps: list[str]):
+    def register_mcps(self, allowed_mcps: list[str], readonly: bool = False):
         """Register and mount allowed MCP servers.
 
         Args:
             allowed_mcps: List of MCP server names to register and mount
+            readonly: If True, only register read-only tools
         """
         for mcp in MCPS:
             if mcp.toolset_name not in allowed_mcps:
@@ -102,9 +103,9 @@ class InsightsMCPServer(FastMCP):
                 mcp_transport=self.mcp_transport,
             )
             try:
-                mcp.register_tools()
+                mcp.register_tools(readonly=readonly)
             except NotImplementedError:
-                pass  # TBD log debug message
+                pass  # Some MCPs don't implement register_tools
 
             self.mount(mcp, prefix=f"{mcp.toolset_name}_")
 
@@ -240,6 +241,7 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     parser.add_argument("--stage", action="store_true", help="Use stage API instead of production API")
     parser.add_argument("--toolset", type=str, help=toolset_help)
     parser.add_argument("--toolset-help", action="store_true", help="Show toolset details of all toolsets")
+    parser.add_argument("--readonly", action="store_true", help="Only register read-only tools")
 
     # Create subparsers for different transport modes
     subparsers = parser.add_subparsers(dest="transport", help="Transport mode")
@@ -320,7 +322,7 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
         instructions=instructions,
     )
 
-    mcp_server.register_mcps(toolset_list)
+    mcp_server.register_mcps(toolset_list, readonly=args.readonly)
 
     # Register the version checking tool
     mcp_server.tool(get_insights_mcp_version)

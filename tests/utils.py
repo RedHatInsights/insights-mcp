@@ -132,7 +132,9 @@ def get_server_url_and_port(transport: str) -> tuple[str, int]:
     return server_url, port
 
 
-def _server_worker(transport: str, port: int, toolset: str | None, server_queue: multiprocessing.Queue):
+def _server_worker(
+    transport: str, port: int, toolset: str | None, server_queue: multiprocessing.Queue, readonly: bool = False
+):
     """Start the MCP server in a separate process.
 
     This function is at module level so it can be pickled for multiprocessing.
@@ -146,6 +148,10 @@ def _server_worker(transport: str, port: int, toolset: str | None, server_queue:
             # Add toolset argument if specified
             if toolset is not None:
                 base_args.extend(["--toolset", toolset])
+
+            # Add readonly argument if specified
+            if readonly:
+                base_args.append("--readonly")
 
             # Add transport-specific arguments
             if transport == "stdio":
@@ -175,7 +181,7 @@ def _server_worker(transport: str, port: int, toolset: str | None, server_queue:
 
 
 def start_insights_mcp_server(
-    transport: str, timeout: int = 30, toolset: str | None = None
+    transport: str, timeout: int = 30, toolset: str | None = None, readonly: bool = False
 ) -> tuple[str, multiprocessing.Process]:
     """Start the insights MCP server with specified transport type.
 
@@ -183,6 +189,7 @@ def start_insights_mcp_server(
         transport: Transport type ('http', 'sse', or 'stdio')
         timeout: Timeout in seconds for server startup
         toolset: Toolset to use (e.g., 'all', 'image-builder', 'inventory', 'image-builder,inventory')
+        readonly: If True, only register read-only tools
 
     Returns:
         Tuple of (server_url, server_process)
@@ -193,7 +200,7 @@ def start_insights_mcp_server(
 
     # Start server process using module-level function for pickling compatibility
     server_process = multiprocessing.Process(
-        target=_server_worker, args=(transport, port, toolset, server_queue), daemon=True
+        target=_server_worker, args=(transport, port, toolset, server_queue, readonly), daemon=True
     )
     server_process.start()
 

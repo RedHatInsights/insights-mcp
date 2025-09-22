@@ -1,6 +1,6 @@
 ```
 usage: insights-mcp [-h] [--debug] [--stage] [--toolset TOOLSET]
-                    [--toolset-help]
+                    [--toolset-help] [--readonly]
                     {stdio,sse,http} ...
 
 Run Insights MCP server.
@@ -20,4 +20,5 @@ options:
                      remediations, advisor, inventory, content-sources, rbac
                      (default: all)
   --toolset-help     Show toolset details of all toolsets
+  --readonly         Only register read-only tools
 ```

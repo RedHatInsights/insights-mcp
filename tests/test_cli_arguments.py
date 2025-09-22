@@ -13,17 +13,18 @@ from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 from tests.utils import cleanup_server_process, start_insights_mcp_server
 
 
-def get_mcp_tools_with_toolset(transport: str, toolset: str | None = None) -> List[Any]:
+def get_mcp_tools_with_toolset(transport: str, toolset: str | None = None, readonly: bool = False) -> List[Any]:
     """Get MCP tools for a specific transport and toolset configuration.
 
     Args:
         transport: Transport type ('http', 'sse', or 'stdio')
         toolset: Toolset to use (e.g., 'all', 'image-builder', 'inventory')
+        readonly: If True, only register read-only tools
 
     Returns:
         List of MCP tools
     """
-    server_url, server_process = start_insights_mcp_server(transport, toolset=toolset)
+    server_url, server_process = start_insights_mcp_server(transport, toolset=toolset, readonly=readonly)
 
     try:
         if server_url == "stdio":
@@ -31,6 +32,8 @@ def get_mcp_tools_with_toolset(transport: str, toolset: str | None = None) -> Li
             args = ["-m", "insights_mcp.server"]
             if toolset is not None:
                 args.extend(["--toolset", toolset])
+            if readonly:
+                args.append("--readonly")
             args.append("stdio")
             client = BasicMCPClient("python", args=args)
         else:
@@ -206,4 +209,41 @@ class TestCliArguments:
         assert tool_names_default == tool_names_explicit_all, (
             f"Default toolset and explicit 'all' should have same tools. "
             f"Default: {tool_names_default}, Explicit all: {tool_names_explicit_all}"
+        )
+
+    @pytest.mark.parametrize("transport", ["stdio"])
+    def test_readonly_flag_filters_tools(self, transport: str):
+        """Test that --readonly flag filters out non-readonly tools."""
+        # Get some toolsets with readonly flag to test
+        tools = get_mcp_tools_with_toolset(transport, toolset="image-builder,vulnerability,remediations", readonly=True)
+        tool_names = {getattr(t.metadata, "name", "") for t in tools}
+
+        # Readonly tools that should be present
+        readonly_tools = {
+            "image-builder__get_openapi",
+            "image-builder__get_blueprints",
+            "image-builder__get_blueprint_details",
+            "image-builder__get_composes",
+            "image-builder__get_compose_details",
+            "image-builder__get_distributions",
+        }
+
+        # Non-readonly tools that should NOT be present
+        non_readonly_tools = {
+            "image-builder__create_blueprint",
+            "image-builder__update_blueprint",
+            "image-builder__blueprint_compose",
+        }
+
+        # insights-mcp tools are always available
+        readonly_tools.update(self.EXPECTED_TOOLS["insights-mcp"])
+
+        # Check that all readonly tools are present
+        missing_readonly = readonly_tools - tool_names
+        assert not missing_readonly, f"Missing expected readonly tools: {missing_readonly}. Available: {tool_names}"
+
+        # Check that non-readonly tools are NOT present
+        unexpected_non_readonly = non_readonly_tools & tool_names
+        assert not unexpected_non_readonly, (
+            f"Found non-readonly tools that should be filtered: {unexpected_non_readonly}"
         )
