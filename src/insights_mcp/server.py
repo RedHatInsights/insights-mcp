@@ -103,7 +103,7 @@ class InsightsMCPServer(FastMCP):
                 mcp_transport=self.mcp_transport,
             )
             try:
-                mcp.register_tools(readonly=readonly)
+                mcp.register_tools()
             except NotImplementedError:
                 pass  # Some MCPs don't implement register_tools
 

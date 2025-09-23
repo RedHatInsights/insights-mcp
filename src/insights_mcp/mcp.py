@@ -101,11 +101,8 @@ class InsightsMCP(FastMCP):
             mcp_transport=mcp_transport,
         )
 
-    def register_tools(self, readonly: bool = False):
+    def register_tools(self):
         """Register the tools for the MCP server.
-
-        Args:
-            readonly: If True, only register read-only tools (default: False)
 
         This method is implemented by the MCP server to register the tools for the MCP server.
         """

@@ -138,12 +138,8 @@ class ImageBuilderMCP(InsightsMCP):
             raise ValueError("Error getting openapi for image types and architectures") from e
         return image_types, architectures
 
-    def register_tools(self, readonly: bool = False):
-        """Register all available tools with the MCP server.
-
-        Args:
-            readonly: If True, only register read-only tools (default: False)
-        """
+    def register_tools(self):
+        """Register all available tools with the MCP server."""
         image_types, architectures = self._get_image_types_architectures()
         if not image_types or not architectures:
             return
@@ -163,10 +159,6 @@ class ImageBuilderMCP(InsightsMCP):
         ]
 
         for tool_def in tool_functions:
-            # Skip non-readonly tools if readonly mode is enabled
-            if readonly and not tool_def["readOnlyHint"]:
-                continue
-
             f = tool_def["fn"]
             tool = Tool.from_function(f)
             tool.annotations = ToolAnnotations(readOnlyHint=tool_def["readOnlyHint"], openWorldHint=True)
