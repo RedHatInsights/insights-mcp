@@ -38,15 +38,8 @@ class AdvisorMCP(InsightsMCP):
             ),
         )
 
-    def register_tools(self, readonly: bool = False):
-        """Register all available tools with the MCP server.
-
-        Args:
-            readonly: If True, only register read-only tools (default: False).
-                     All tools in this MCP are read-only, so this parameter is ignored.
-        """
-        # all tools in this MCP are read-only
-        _ = readonly
+    def register_tools(self):
+        """Register all available tools with the MCP server."""
 
         # Define tool configurations with tags and custom titles
         tool_configs: dict[str, dict[str, Any]] = {
