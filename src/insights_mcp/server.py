@@ -10,6 +10,7 @@ from typing import Any
 import requests
 import uvicorn
 from fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
 from advisor_mcp.server import mcp_server as AdvisorMCP
 from content_sources_mcp.server import mcp as ContentSourcesMCP
@@ -327,7 +328,7 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     mcp_server.register_mcps(toolset_list, readonly=args.readonly)
 
     # Register the version checking tool
-    mcp_server.tool(get_insights_mcp_version)
+    mcp_server.tool(get_insights_mcp_version, annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
 
     if args.transport == "sse":
         mcp_server.run(transport="sse", host=args.host, port=args.port)
