@@ -5,6 +5,7 @@ It handles authentication, client initialization, and provides a foundation for 
 Insights-specific MCP tools and resources.
 """
 
+import asyncio
 from typing import Any
 
 from fastmcp import FastMCP
@@ -109,3 +110,27 @@ class InsightsMCP(FastMCP):
         This method is implemented by the MCP server to register the tools for the MCP server.
         """
         raise NotImplementedError("MCP server does not implement register_tools()")
+
+    def remove_non_readonly_tools(self, readonly: bool = False):
+        """Remove tools with readOnlyHint: False from the MCP server.
+
+        Args:
+            readonly: If True, remove non-readonly tools. If False, do nothing.
+        """
+        if not readonly:
+            return
+
+        tools = asyncio.run(self._tool_manager.get_tools())
+        tools_to_remove = [
+            tool_name
+            for tool_name, tool in tools.items()
+            if (
+                hasattr(tool, "annotations")
+                and tool.annotations
+                and hasattr(tool.annotations, "readOnlyHint")
+                and tool.annotations.readOnlyHint is False
+            )
+        ]
+
+        for tool_name in tools_to_remove:
+            self.remove_tool(tool_name)

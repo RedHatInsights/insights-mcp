@@ -107,6 +107,8 @@ class InsightsMCPServer(FastMCP):
             except NotImplementedError:
                 pass  # Some MCPs don't implement register_tools
 
+            mcp.remove_non_readonly_tools(readonly=readonly)
+
             self.mount(mcp, prefix=f"{mcp.toolset_name}_")
 
 

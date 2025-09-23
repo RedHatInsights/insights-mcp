@@ -226,6 +226,13 @@ class TestCliArguments:
             "image-builder__get_composes",
             "image-builder__get_compose_details",
             "image-builder__get_distributions",
+            "vulnerability__get_openapi",
+            "vulnerability__get_cves",
+            "vulnerability__get_cve",
+            "vulnerability__get_cve_systems",
+            "vulnerability__get_system_cves",
+            "vulnerability__get_systems",
+            "vulnerability__explain_cves",
         }
 
         # Non-readonly tools that should NOT be present
@@ -233,6 +240,7 @@ class TestCliArguments:
             "image-builder__create_blueprint",
             "image-builder__update_blueprint",
             "image-builder__blueprint_compose",
+            "remediations__create_vulnerability_playbook",
         }
 
         # insights-mcp tools are always available
