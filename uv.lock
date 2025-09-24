@@ -158,7 +158,7 @@ wheels = [
 
 [[package]]
 name = "anyio"
-version = "4.10.0"
+version = "4.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
@@ -166,9 +166,9 @@ dependencies = [
     { name = "sniffio" },
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f1/b4/636b3b65173d3ce9a38ef5f0522789614e590dab6a8d505340a4efe4c567/anyio-4.10.0.tar.gz", hash = "sha256:3f3fae35c96039744587aa5b8371e7e8e603c0702999535961dd336026973ba6", size = 213252, upload-time = "2025-08-04T08:54:26.451Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c6/78/7d432127c41b50bccba979505f272c16cbcadcc33645d5fa3a738110ae75/anyio-4.11.0.tar.gz", hash = "sha256:82a8d0b81e318cc5ce71a5f1f8b5c4e63619620b63141ef8c995fa0db95a57c4", size = 219094, upload-time = "2025-09-23T09:19:12.58Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6f/12/e5e0282d673bb9746bacfb6e2dba8719989d3660cdb2ea79aee9a9651afb/anyio-4.10.0-py3-none-any.whl", hash = "sha256:60e474ac86736bbfd6f210f7a61218939c318f43f9972497381f1c5e930ed3d1", size = 107213, upload-time = "2025-08-04T08:54:24.882Z" },
+    { url = "https://files.pythonhosted.org/packages/15/b3/9b1a8074496371342ec1e796a96f99c82c945a339cd81a8e73de28b4cf9e/anyio-4.11.0-py3-none-any.whl", hash = "sha256:0287e96f4d26d4149305414d4e3bc32f0dcd0862365a4bddea19d7a1ec38c4fc", size = 109097, upload-time = "2025-09-23T09:19:10.601Z" },
 ]
 
 [[package]]
@@ -658,7 +658,7 @@ wheels = [
 
 [[package]]
 name = "deepeval"
-version = "3.5.5"
+version = "3.5.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -693,9 +693,9 @@ dependencies = [
     { name = "typer" },
     { name = "wheel" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ba/94/da4a0c1b0c34f9e5c47ff4ff642193f5001b62504d23f02ea303cab87912/deepeval-3.5.5.tar.gz", hash = "sha256:c50c8fd0d56f57814122cec39a36f387612a740f355aee2a2867a6143212e2d1", size = 424046, upload-time = "2025-09-22T18:43:59.17Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c3/86/eb1f22974e4bc357e8a3a77357868adb19071f3ef51b79bfb52bdcaef831/deepeval-3.5.6.tar.gz", hash = "sha256:5de68677bc748879e07765413aa7196ebbac1b71a07b27bf3e56175f475d61c1", size = 425608, upload-time = "2025-09-23T15:40:52.612Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/77/1a/bd738fb71c65d29e74340ed997bcb305cb31e93fac138dc76db15d252dfd/deepeval-3.5.5-py3-none-any.whl", hash = "sha256:c151107dafd68a78b7c61e9384cc1e1bcb9cfd82d66baec95f82755bead3bb91", size = 618224, upload-time = "2025-09-22T18:43:56.978Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/d0/4c1c76df2ab9e84702cbdc0b22d31fd33774f0c2c2b1481a74fb2e3e44d7/deepeval-3.5.6-py3-none-any.whl", hash = "sha256:fa6ba97aa19e6da73e6ad563ac15ad033865444e47914b13f637f6a0ae44b354", size = 619769, upload-time = "2025-09-23T15:40:50.137Z" },
 ]
 
 [[package]]
@@ -1635,16 +1635,16 @@ wheels = [
 
 [[package]]
 name = "llama-index-workflows"
-version = "2.2.2"
+version = "2.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "llama-index-instrumentation" },
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ef/6a/fba8446f50d8c58af560a60aade449ac9715d2c4abe6c238e05e6bae5b41/llama_index_workflows-2.2.2.tar.gz", hash = "sha256:8e0a8359db70918aebe3c0056eb01c8e96e0d4164f5d670cbbbf767ea4ee30ce", size = 1283391, upload-time = "2025-09-17T09:10:31.908Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8a/be/f1358bc7c0a624b6f6239fdf460060b06699d1259bdea12722ab9617fa20/llama_index_workflows-2.4.0.tar.gz", hash = "sha256:24adc797409b2b575f942ffeec687773126843d251bec4c2b9fd984acf1e6ccb", size = 1290953, upload-time = "2025-09-23T22:58:51.178Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c7/7c/5547005f253279dfa3ce943d5f7dc04b4e494959d71fa6711726a55004aa/llama_index_workflows-2.2.2-py3-none-any.whl", hash = "sha256:406c87b538457409daba790156b513f06e2d58677f3351f12d526259cbb34a51", size = 56087, upload-time = "2025-09-17T09:10:30.309Z" },
+    { url = "https://files.pythonhosted.org/packages/6d/a9/97d1e96be588d97a27ab2a966ca2c456eac06ebf2df9af36bacb07debd28/llama_index_workflows-2.4.0-py3-none-any.whl", hash = "sha256:639536d67fbb9c9d75c0789763f774231e6957397afc7368a79900b86a73d44b", size = 62109, upload-time = "2025-09-23T22:58:50.186Z" },
 ]
 
 [[package]]
@@ -2162,7 +2162,7 @@ wheels = [
 
 [[package]]
 name = "openai"
-version = "1.108.2"
+version = "1.109.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -2174,9 +2174,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8c/ff/1dc7bec988cfbab80c2b0ee61d5178915117a4f02f68777d528219e84866/openai-1.108.2.tar.gz", hash = "sha256:e6ce793e0ef8a52d343850a5411edbd5b21214f64a8d29cdca0fcb929e8e3155", size = 563898, upload-time = "2025-09-22T23:47:38.985Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/62/9f/d11cc7fb2d60af14a97dbef4e3c7b23917387995c257951fdc321d8efd0a/openai-1.109.0.tar.gz", hash = "sha256:701e26d13e3953524ba99f44cf5fbbda40eafd41ba15a8d85b76229a2693cfe5", size = 563971, upload-time = "2025-09-23T16:59:41.508Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/13/2d/1cb19289feef689206cd8995d7be6b5d76b7e8d64fd51438acecc11ee395/openai-1.108.2-py3-none-any.whl", hash = "sha256:4c7caa23845a49aebd8f65e01b35739b5b2df5e621d4666cbe55f0973fae81b7", size = 948390, upload-time = "2025-09-22T23:47:36.644Z" },
+    { url = "https://files.pythonhosted.org/packages/b8/d3/d65e318e8d3b5845afaa5960d8da779988b4cb9f4e1ca82e588fed9c6a9d/openai-1.109.0-py3-none-any.whl", hash = "sha256:8c0910bdd4ee1274d5ff0354786bdd0bc79e68c158d5d2c19e24208b412e5792", size = 948421, upload-time = "2025-09-23T16:59:39.516Z" },
 ]
 
 [[package]]
@@ -3667,7 +3667,7 @@ wheels = [
 
 [[package]]
 name = "typer"
-version = "0.19.1"
+version = "0.19.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -3675,9 +3675,9 @@ dependencies = [
     { name = "shellingham" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/03/ea/9cc57c3c627fd7a6a0907ea371019fe74c3ec00e3cf209a6864140a602ad/typer-0.19.1.tar.gz", hash = "sha256:cb881433a4b15dacc875bb0583d1a61e78497806741f9aba792abcab390c03e6", size = 104802, upload-time = "2025-09-20T08:59:22.692Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/21/ca/950278884e2ca20547ff3eb109478c6baf6b8cf219318e6bc4f666fad8e8/typer-0.19.2.tar.gz", hash = "sha256:9ad824308ded0ad06cc716434705f691d4ee0bfd0fb081839d2e426860e7fdca", size = 104755, upload-time = "2025-09-23T09:47:48.256Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1e/fa/6473c00b5eb26a2ba427813107699d3e6f4e1a4afad3f7494b17bdef3422/typer-0.19.1-py3-none-any.whl", hash = "sha256:914b2b39a1da4bafca5f30637ca26fa622a5bf9f515e5fdc772439f306d5682a", size = 46876, upload-time = "2025-09-20T08:59:21.153Z" },
+    { url = "https://files.pythonhosted.org/packages/00/22/35617eee79080a5d071d0f14ad698d325ee6b3bf824fc0467c03b30e7fa8/typer-0.19.2-py3-none-any.whl", hash = "sha256:755e7e19670ffad8283db353267cb81ef252f595aa6834a0d1ca9312d9326cb9", size = 46748, upload-time = "2025-09-23T09:47:46.777Z" },
 ]
 
 [[package]]
@@ -3746,16 +3746,16 @@ wheels = [
 
 [[package]]
 name = "uvicorn"
-version = "0.36.0"
+version = "0.37.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
     { name = "h11" },
     { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ef/5e/f0cd46063a02fd8515f0e880c37d2657845b7306c16ce6c4ffc44afd9036/uvicorn-0.36.0.tar.gz", hash = "sha256:527dc68d77819919d90a6b267be55f0e76704dca829d34aea9480be831a9b9d9", size = 80032, upload-time = "2025-09-20T01:07:14.418Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/71/57/1616c8274c3442d802621abf5deb230771c7a0fec9414cb6763900eb3868/uvicorn-0.37.0.tar.gz", hash = "sha256:4115c8add6d3fd536c8ee77f0e14a7fd2ebba939fed9b02583a97f80648f9e13", size = 80367, upload-time = "2025-09-23T13:33:47.486Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/96/06/5cc0542b47c0338c1cb676b348e24a1c29acabc81000bced518231dded6f/uvicorn-0.36.0-py3-none-any.whl", hash = "sha256:6bb4ba67f16024883af8adf13aba3a9919e415358604ce46780d3f9bdc36d731", size = 67675, upload-time = "2025-09-20T01:07:12.984Z" },
+    { url = "https://files.pythonhosted.org/packages/85/cd/584a2ceb5532af99dd09e50919e3615ba99aa127e9850eafe5f31ddfdb9a/uvicorn-0.37.0-py3-none-any.whl", hash = "sha256:913b2b88672343739927ce381ff9e2ad62541f9f8289664fa1d1d3803fa2ce6c", size = 67976, upload-time = "2025-09-23T13:33:45.842Z" },
 ]
 
 [[package]]
