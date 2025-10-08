@@ -143,7 +143,9 @@ First check the [prerequisites](#prerequisites) section.
 
 ⚠️ Use **`Ctrl`/`Cmd`-click** to open in a **new tab**.<br>
 Otherwise the tab will close after installation and you won't see the documentation anymore.<br>
-[![Install with Podman in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=insights-mcp&config=eyJ0eXBlIjoic3RkaW8iLCJjb21tYW5kIjoicG9kbWFuIHJ1biAtLWVudiBJTlNJR0hUU19DTElFTlRfSUQgLS1lbnYgSU5TSUdIVFNfQ0xJRU5UX1NFQ1JFVCAtLWludGVyYWN0aXZlIC0tcm0gcXVheS5pby9yZWRoYXQtc2VydmljZXMtcHJvZC9pbnNpZ2h0cy1tYW5hZ2VtZW50LXRlbmFudC9pbnNpZ2h0cy1tY3AvaW5zaWdodHMtbWNwOmxhdGVzdCIsImVudiI6eyJJTlNJR0hUU19DTElFTlRfSUQiOiIiLCJJTlNJR0hUU19DTElFTlRfU0VDUkVUIjoiIn19)<br>
+<a href="https://cursor.com/en/install-mcp?name=insights-mcp&config=eyJ0eXBlIjoic3RkaW8iLCJjb21tYW5kIjoicG9kbWFuIHJ1biAtLWVudiBJTlNJR0hUU19DTElFTlRfSUQgLS1lbnYgSU5TSUdIVFNfQ0xJRU5UX1NFQ1JFVCAtLWludGVyYWN0aXZlIC0tcm0gcXVheS5pby9yZWRoYXQtc2VydmljZXMtcHJvZC9pbnNpZ2h0cy1tYW5hZ2VtZW50LXRlbmFudC9pbnNpZ2h0cy1tY3AvaW5zaWdodHMtbWNwOmxhdGVzdCIsImVudiI6eyJJTlNJR0hUU19DTElFTlRfSUQiOiIiLCJJTlNJR0hUU19DTElFTlRfU0VDUkVUIjoiIn19" target="_blank">
+  <img src="https://cursor.com/deeplink/mcp-install-dark.svg" alt="Install with Podman in Cursor">
+</a><br>
 (Note: this uses the `quay.io` container image)
 
 #### Option 2: Manual STDIO installation
