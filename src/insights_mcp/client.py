@@ -13,6 +13,7 @@ Classes:
 
 import gzip
 import json as json_lib
+import os
 from logging import getLogger
 from typing import Any
 
@@ -252,7 +253,7 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
             client_secret=client_secret,
             grant_type=grant_type,
             token=token,
-            token_endpoint=TOKEN_ENDPOINT,
+            token_endpoint=os.getenv("INSIGHTS_STAGE_TOKEN_ENDPOINT", default=TOKEN_ENDPOINT),
             headers=self.headers,
             proxy=self.proxy_url,
         )
