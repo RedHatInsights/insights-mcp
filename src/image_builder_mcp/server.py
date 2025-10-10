@@ -255,7 +255,8 @@ class ImageBuilderMCP(InsightsMCP):
         if not base_url:
             raise ValueError("Insights base URL is not set, initialize the client with init_insights_client()")
         api_path = self.api_path
-        return httpx.get(f"{base_url}/{api_path}/openapi.json", timeout=60).text
+        proxy_url = self.insights_client.proxy_url
+        return httpx.get(f"{base_url}/{api_path}/openapi.json", timeout=60, proxy=proxy_url).text
 
     def no_auth_error(self, e: httpx.HTTPStatusError | ValueError) -> str:
         """Generate authentication error message based on transport type."""
