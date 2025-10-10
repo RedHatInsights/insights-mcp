@@ -101,7 +101,7 @@ class InsightsMCP(FastMCP):
             mcp_transport=mcp_transport,
         )
 
-    def register_tools(self):
+    def register_tools(self) -> None:
         """Register the tools for the MCP server.
 
         This method is implemented by the MCP server to register the tools for the MCP server.

@@ -3,7 +3,7 @@ This includes more difficult questions to the LLM
 """
 
 import pytest
-from deepeval import assert_test
+from deepeval.evaluate import assert_test
 from deepeval.metrics import GEval, ToolCorrectnessMetric
 from deepeval.test_case import LLMTestCase, LLMTestCaseParams, ToolCall
 

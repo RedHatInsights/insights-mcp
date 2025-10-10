@@ -56,7 +56,7 @@ class ContentSourcesMCP(InsightsMCP):
             instructions=general_intro,
         )
 
-    def register_tools(self):
+    def register_tools(self) -> None:
         """Register all available tools with the MCP server."""
 
         tool_functions = [
@@ -66,7 +66,7 @@ class ContentSourcesMCP(InsightsMCP):
         for f in tool_functions:
             tool = Tool.from_function(f)
             tool.annotations = ToolAnnotations(readOnlyHint=True, openWorldHint=True)
-            description_str = f.__doc__
+            description_str = f.__doc__ or ""
             tool.description = description_str
             tool.title = description_str.split("\n", 1)[0]
             self.add_tool(tool)
