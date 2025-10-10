@@ -38,7 +38,7 @@ class AdvisorMCP(InsightsMCP):
             ),
         )
 
-    def register_tools(self):
+    def register_tools(self) -> None:
         """Register all available tools with the MCP server."""
 
         # Define tool configurations with tags and custom titles

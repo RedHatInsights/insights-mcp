@@ -138,7 +138,7 @@ class ImageBuilderMCP(InsightsMCP):
             raise ValueError("Error getting openapi for image types and architectures") from e
         return image_types, architectures
 
-    def register_tools(self):
+    def register_tools(self) -> None:
         """Register all available tools with the MCP server."""
         image_types, architectures = self._get_image_types_architectures()
         if not image_types or not architectures:
