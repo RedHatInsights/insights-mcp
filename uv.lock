@@ -688,18 +688,19 @@ wheels = [
 
 [[package]]
 name = "cyclopts"
-version = "3.24.0"
+version = "4.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
-    { name = "docstring-parser", marker = "python_full_version < '4'" },
+    { name = "docstring-parser" },
     { name = "rich" },
     { name = "rich-rst" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/30/ca/7782da3b03242d5f0a16c20371dff99d4bd1fedafe26bc48ff82e42be8c9/cyclopts-3.24.0.tar.gz", hash = "sha256:de6964a041dfb3c57bf043b41e68c43548227a17de1bad246e3a0bfc5c4b7417", size = 76131, upload-time = "2025-09-08T15:40:57.75Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9a/d1/2f2b99ec5ea54ac18baadfc4a011e2a1743c1eaae1e39838ca520dcf4811/cyclopts-4.0.0.tar.gz", hash = "sha256:0dae712085e91d32cc099ea3d78f305b0100a3998b1dec693be9feb0b1be101f", size = 143546, upload-time = "2025-10-20T18:33:01.456Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f0/8b/2c95f0645c6f40211896375e6fa51f504b8ccb29c21f6ae661fe87ab044e/cyclopts-3.24.0-py3-none-any.whl", hash = "sha256:809d04cde9108617106091140c3964ee6fceb33cecdd537f7ffa360bde13ed71", size = 86154, upload-time = "2025-09-08T15:40:56.41Z" },
+    { url = "https://files.pythonhosted.org/packages/44/0e/0a22e076944600aeb06f40b7e03bbd762a42d56d43a2f5f4ab954aed9005/cyclopts-4.0.0-py3-none-any.whl", hash = "sha256:e64801a2c86b681f08323fd50110444ee961236a0bae402a66d2cc3feda33da7", size = 178837, upload-time = "2025-10-20T18:33:00.191Z" },
 ]
 
 [[package]]
@@ -1063,14 +1064,14 @@ wheels = [
 
 [[package]]
 name = "googleapis-common-protos"
-version = "1.70.0"
+version = "1.71.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "protobuf" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/39/24/33db22342cf4a2ea27c9955e6713140fedd51e8b141b5ce5260897020f1a/googleapis_common_protos-1.70.0.tar.gz", hash = "sha256:0e1b44e0ea153e6594f9f394fef15193a68aaaea2d843f83e2742717ca753257", size = 145903, upload-time = "2025-04-14T10:17:02.924Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/30/43/b25abe02db2911397819003029bef768f68a974f2ece483e6084d1a5f754/googleapis_common_protos-1.71.0.tar.gz", hash = "sha256:1aec01e574e29da63c80ba9f7bbf1ccfaacf1da877f23609fe236ca7c72a2e2e", size = 146454, upload-time = "2025-10-20T14:58:08.732Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/86/f1/62a193f0227cf15a920390abe675f386dec35f7ae3ffe6da582d3ade42c7/googleapis_common_protos-1.70.0-py3-none-any.whl", hash = "sha256:b8bfcca8c25a2bb253e0e0b0adaf8c00773e5e6af6fd92397576680b807e0fd8", size = 294530, upload-time = "2025-04-14T10:17:01.271Z" },
+    { url = "https://files.pythonhosted.org/packages/25/e8/eba9fece11d57a71e3e22ea672742c8f3cf23b35730c9e96db768b295216/googleapis_common_protos-1.71.0-py3-none-any.whl", hash = "sha256:59034a1d849dc4d18971997a72ac56246570afdd17f9369a0ff68218d50ab78c", size = 294576, upload-time = "2025-10-20T14:56:21.295Z" },
 ]
 
 [[package]]
@@ -3081,7 +3082,7 @@ wheels = [
 
 [[package]]
 name = "pylint"
-version = "4.0.1"
+version = "4.0.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "astroid" },
@@ -3093,21 +3094,21 @@ dependencies = [
     { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "tomlkit" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8c/3e/fa6b9d708486502b96ec2cd87d9266168dac8d7391a14a89738b88ae6379/pylint-4.0.1.tar.gz", hash = "sha256:06db6a1fda3cedbd7aee58f09d241e40e5f14b382fd035ed97be320f11728a84", size = 1568430, upload-time = "2025-10-15T05:40:55.071Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b6/f8/2feda2bc72654811f2596e856c33c2a98225fba717df2b55c8d6a1f5cdad/pylint-4.0.2.tar.gz", hash = "sha256:9c22dfa52781d3b79ce86ab2463940f874921a3e5707bcfc98dd0c019945014e", size = 1572401, upload-time = "2025-10-20T13:02:34.975Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/69/ee/59269b7559a1d500acdba8722b995df2aa2946a71cbeeee07648256e9dae/pylint-4.0.1-py3-none-any.whl", hash = "sha256:6077ac21d01b7361eae6ed0f38d9024c02732fdc635d9e154d4fe6063af8ac56", size = 535937, upload-time = "2025-10-15T05:40:53.052Z" },
+    { url = "https://files.pythonhosted.org/packages/1e/8b/2e814a255436fc6d604a60f1e8b8a186e05082aa3c0cabfd9330192496a2/pylint-4.0.2-py3-none-any.whl", hash = "sha256:9627ccd129893fb8ee8e8010261cb13485daca83e61a6f854a85528ee579502d", size = 536019, upload-time = "2025-10-20T13:02:32.778Z" },
 ]
 
 [[package]]
 name = "pypdf"
-version = "6.1.1"
+version = "6.1.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a6/85/4c0f12616db83c2e3ef580c3cfa98bd082e88fc8d02e136bad3bede1e3fa/pypdf-6.1.1.tar.gz", hash = "sha256:10f44d49bf2a82e54c3c5ba3cdcbb118f2a44fc57df8ce51d6fb9b1ed9bfbe8b", size = 5074507, upload-time = "2025-09-28T13:29:16.165Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ee/5e/44d36a8d42687076af98e415b02c1f1c99dcaa794212e01a3f50cd289e38/pypdf-6.1.2.tar.gz", hash = "sha256:ba49efa39c9c5d14cb84efc4b7be75fca92d7ed1d1d74546db95c2dad99ed5d3", size = 5075141, upload-time = "2025-10-19T13:45:47.266Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/07/ed/adae13756d9dabdddee483fc7712905bb5585fbf6e922b1a19aca3a29cd1/pypdf-6.1.1-py3-none-any.whl", hash = "sha256:7781f99493208a37a7d4275601d883e19af24e62a525c25844d22157c2e4cde7", size = 323455, upload-time = "2025-09-28T13:29:14.392Z" },
+    { url = "https://files.pythonhosted.org/packages/96/24/f980af86d5ebda03f7ceb7d234f060c64b2cd0f58c3a42949e15fc04e805/pypdf-6.1.2-py3-none-any.whl", hash = "sha256:207e465ee4ad078ad7c7384ea8c46bdbe9081f0081427f00d816a5ca6ccb2b1e", size = 323569, upload-time = "2025-10-19T13:45:45.275Z" },
 ]
 
 [[package]]
@@ -3192,15 +3193,15 @@ wheels = [
 
 [[package]]
 name = "pytest-subtests"
-version = "0.14.2"
+version = "0.15.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
     { name = "pytest" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/59/30/6ec8dfc678ddfd1c294212bbd7088c52d3f7fbf3f05e6d8a440c13b9741a/pytest_subtests-0.14.2.tar.gz", hash = "sha256:7154a8665fd528ee70a76d00216a44d139dc3c9c83521a0f779f7b0ad4f800de", size = 18083, upload-time = "2025-06-13T10:50:01.636Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bb/d9/20097971a8d315e011e055d512fa120fd6be3bdb8f4b3aa3e3c6bf77bebc/pytest_subtests-0.15.0.tar.gz", hash = "sha256:cb495bde05551b784b8f0b8adfaa27edb4131469a27c339b80fd8d6ba33f887c", size = 18525, upload-time = "2025-10-20T16:26:18.358Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/47/d4/9bf12e59fb882b0cf4f993871e1adbee094802224c429b00861acee1a169/pytest_subtests-0.14.2-py3-none-any.whl", hash = "sha256:8da0787c994ab372a13a0ad7d390533ad2e4385cac167b3ac501258c885d0b66", size = 9115, upload-time = "2025-06-13T10:50:00.543Z" },
+    { url = "https://files.pythonhosted.org/packages/23/64/bba465299b37448b4c1b84c7a04178399ac22d47b3dc5db1874fe55a2bd3/pytest_subtests-0.15.0-py3-none-any.whl", hash = "sha256:da2d0ce348e1f8d831d5a40d81e3aeac439fec50bd5251cbb7791402696a9493", size = 9185, upload-time = "2025-10-20T16:26:17.239Z" },
 ]
 
 [[package]]
@@ -3664,15 +3665,15 @@ wheels = [
 
 [[package]]
 name = "sentry-sdk"
-version = "2.42.0"
+version = "2.42.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c9/b2/7481156cf42b7f66cffb371e504b7ace12b4f016b8872ffcf0873ae9534b/sentry_sdk-2.42.0.tar.gz", hash = "sha256:91c69c9372fb5fb4df0ac39456ccf7286f0428b3ee1cdd389f9dd36c04e0f5c9", size = 351242, upload-time = "2025-10-15T07:41:15.577Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/31/04/ec8c1dd9250847303d98516e917978cb1c7083024770d86d657d2ccb5a70/sentry_sdk-2.42.1.tar.gz", hash = "sha256:8598cc6edcfe74cb8074ba6a7c15338cdee93d63d3eb9b9943b4b568354ad5b6", size = 354839, upload-time = "2025-10-20T12:38:40.45Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/58/4a/9810a246ec5d1df2ae066efefeecfa91d3c548fa2bd5390184e016112887/sentry_sdk-2.42.0-py2.py3-none-any.whl", hash = "sha256:1a7986e638306ff158f52dd47d9480a4055e6c289388caa90628acb2563fe7bd", size = 379496, upload-time = "2025-10-15T07:41:13.802Z" },
+    { url = "https://files.pythonhosted.org/packages/0f/cb/c21b96ff379923310b4fb2c06e8d560d801e24aeb300faa72a04776868fc/sentry_sdk-2.42.1-py2.py3-none-any.whl", hash = "sha256:f8716b50c927d3beb41bc88439dc6bcd872237b596df5b14613e2ade104aee02", size = 380952, upload-time = "2025-10-20T12:38:38.88Z" },
 ]
 
 [[package]]
@@ -3955,7 +3956,7 @@ wheels = [
 
 [[package]]
 name = "typer"
-version = "0.19.2"
+version = "0.20.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -3963,9 +3964,9 @@ dependencies = [
     { name = "shellingham" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/21/ca/950278884e2ca20547ff3eb109478c6baf6b8cf219318e6bc4f666fad8e8/typer-0.19.2.tar.gz", hash = "sha256:9ad824308ded0ad06cc716434705f691d4ee0bfd0fb081839d2e426860e7fdca", size = 104755, upload-time = "2025-09-23T09:47:48.256Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8f/28/7c85c8032b91dbe79725b6f17d2fffc595dff06a35c7a30a37bef73a1ab4/typer-0.20.0.tar.gz", hash = "sha256:1aaf6494031793e4876fb0bacfa6a912b551cf43c1e63c800df8b1a866720c37", size = 106492, upload-time = "2025-10-20T17:03:49.445Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/00/22/35617eee79080a5d071d0f14ad698d325ee6b3bf824fc0467c03b30e7fa8/typer-0.19.2-py3-none-any.whl", hash = "sha256:755e7e19670ffad8283db353267cb81ef252f595aa6834a0d1ca9312d9326cb9", size = 46748, upload-time = "2025-09-23T09:47:46.777Z" },
+    { url = "https://files.pythonhosted.org/packages/78/64/7713ffe4b5983314e9d436a90d5bd4f63b6054e2aca783a3cfc44cb95bbf/typer-0.20.0-py3-none-any.whl", hash = "sha256:5b463df6793ec1dca6213a3cf4c0f03bc6e322ac5e16e13ddd622a889489784a", size = 47028, upload-time = "2025-10-20T17:03:47.617Z" },
 ]
 
 [[package]]
