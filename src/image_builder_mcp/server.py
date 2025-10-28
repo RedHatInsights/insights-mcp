@@ -126,7 +126,18 @@ class ImageBuilderMCP(InsightsMCP):
             self.logger.info("Getting openapi")
             openapi = json.loads(self.get_openapi_synchronous())
 
+            deprecated_image_types = [
+                "edge-commit",
+                "edge-installer",
+                "rhel-edge-commit",
+                "rhel-edge-installer",
+            ]
+
             image_types = list(openapi["components"]["schemas"]["ImageTypes"]["enum"])
+
+            # remove deprecated image types - TBD remove or mark as deprecated in the openapi spec
+            image_types = [image_type for image_type in image_types if image_type not in deprecated_image_types]
+
             image_types.sort()
 
             architectures = list(openapi["components"]["schemas"]["ImageRequest"]["properties"]["architecture"]["enum"])

@@ -20,6 +20,7 @@ TEST_RHEL_INITIAL_QUESTION_PROMPT = "Can you create a RHEL 9 image for me?"
 TEST_IMAGE_BUILD_STATUS_PROMPT = "What is the status of my latest image build?"
 TEST_LLM_PAGING_PROMPT_1 = "List my latest 2 blueprints"
 TEST_LLM_PAGING_PROMPT_2 = "Can you show me the next 3 blueprints?"
+TEST_LIST_IMAGE_TYPES_PROMPT = "Which image types are available?"
 
 # Test scenarios for tool usage patterns
 # not sure why mypy needs Any here
@@ -319,3 +320,62 @@ class TestLLMIntegrationEasy:
             f"Threshold: {tool_correctness.threshold:.2f}. "
             f"Reason: {tool_correctness.reason}"
         )
+
+    @pytest.mark.parametrize("llm_config", llm_configurations, ids=[config["name"] for config in llm_configurations])
+    @pytest.mark.asyncio
+    # pylint: disable=redefined-outer-name,too-many-locals
+    async def test_list_image_types(self, test_agent, guardian_agent, llm_config, verbose_logger):
+        """Test that LLM follows behavioral rules and doesn't immediately call create_blueprint."""
+
+        prompt = TEST_LIST_IMAGE_TYPES_PROMPT
+
+        # Execute tools and capture reasoning steps and tool calls
+        response, reasoning_steps, tools_executed, _ = await test_agent.execute_with_reasoning(prompt, chat_history=[])
+
+        # Check that create_blueprint is not called immediately
+        tool_names = [tool.name for tool in tools_executed]
+        assert "image-builder__create_blueprint" not in tool_names, (
+            f"❌ BEHAVIORAL RULE VIOLATION for {llm_config['name']} "
+            f"({llm_config['MODEL_ID']}): "
+            f"LLM called image-builder__create_blueprint immediately! Tool calls: {tool_names}. "
+            f"System prompt not working correctly.\nThe prompt was: {prompt}\n"
+            f"The response was: {response}\n"
+        )
+
+        test_case = LLMTestCase(input=prompt, actual_output=response, expected_tools=[], tools_called=tools_executed)
+
+        # Define expected behavior metric using custom LLM
+        behavioral_compliance = GEval(
+            name="Behavioral Compliance",
+            criteria=(
+                "The response should list the available image types"
+                "the response must not contain edge-commit, edge-installer, rhel-edge-commit, "
+                "rhel-edge-installer or report them as deprecated image types"
+            ),
+            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT],
+            model=guardian_agent,
+        )
+
+        verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.model_id)
+
+        # Measure once to get access to explanation and avoid double LLM call
+        behavioral_compliance.measure(test_case)
+
+        # Log detailed evaluation results
+        verbose_logger.info(
+            "📊 Behavioral Compliance Score: %.2f (threshold: %.2f)",
+            behavioral_compliance.score,
+            behavioral_compliance.threshold,
+        )
+        verbose_logger.info("📝 Guardian Agent Explanation: %s", behavioral_compliance.reason)
+
+        assert behavioral_compliance.success, (
+            f"Behavioral compliance test failed. Score: {behavioral_compliance.score:.2f}, "
+            f"Threshold: {behavioral_compliance.threshold:.2f}. "
+            f"Reason: {behavioral_compliance.reason}"
+        )
+
+        verbose_logger.info("✅ Test passed for %s", prompt)
+        verbose_logger.info("Response: %s", response)
+        verbose_logger.info("Tool calls executed: %s", [tool.name for tool in tools_executed])
+        verbose_logger.info("Reasoning steps captured: %d", len(reasoning_steps))
