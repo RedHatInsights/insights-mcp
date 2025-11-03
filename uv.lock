@@ -1796,16 +1796,16 @@ wheels = [
 
 [[package]]
 name = "llama-index-workflows"
-version = "2.10.0"
+version = "2.10.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "llama-index-instrumentation" },
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e4/e1/5c77402940e379b7324b4899bf1308c1e9db5f020b4c1e7b44ad234565dc/llama_index_workflows-2.10.0.tar.gz", hash = "sha256:d6ffadff322129262136295ccdc42926714fcedfb475ce12a3a5511a58dce682", size = 5235257, upload-time = "2025-10-30T16:22:33.573Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fc/89/d20be807ba2abe14de3e65289e220894dd34aacc005adaae7b88dcdbc1c1/llama_index_workflows-2.10.2.tar.gz", hash = "sha256:34c85153195d3bbf5c3b55e5bd68f92c9d71980609a505f04f1dc98b6cc9642f", size = 5236084, upload-time = "2025-11-02T01:17:54.95Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/37/1b/f48302222eb44d671e35fc758010245daa1fbcaa342b9768966d2913821b/llama_index_workflows-2.10.0-py3-none-any.whl", hash = "sha256:6fb37a4c8a251d49b2f73ab23dd385ff2ca1d6b4d684bf284af503a11b1e61b7", size = 90472, upload-time = "2025-10-30T16:22:31.955Z" },
+    { url = "https://files.pythonhosted.org/packages/38/4f/2a69f208e068e9c809c98e122877198b0345a359ea4004c30e5d0be415a8/llama_index_workflows-2.10.2-py3-none-any.whl", hash = "sha256:3632fdb6bfab8197025b943f915bc6daef9697c201cb27a9e557884b07a5012c", size = 90714, upload-time = "2025-11-02T01:17:53.083Z" },
 ]
 
 [[package]]
@@ -2713,7 +2713,7 @@ wheels = [
 
 [[package]]
 name = "posthog"
-version = "6.7.11"
+version = "6.7.13"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "backoff" },
@@ -2723,9 +2723,9 @@ dependencies = [
     { name = "six" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cb/32/3668d5e0f8b852fad81770743ee17893854fd8e5f7cea897a0a9199b0370/posthog-6.7.11.tar.gz", hash = "sha256:62db3e97cbd95351fe081c1ea8805393293de6fabad6d2e9024bf940aca4ddbf", size = 120407, upload-time = "2025-10-28T13:06:18.335Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/37/ef/43a74ea78144a6ffacda600c0f2dbb2eb586a623973abcd8b066f3820bf3/posthog-6.7.13.tar.gz", hash = "sha256:fe31c3d2694683acdfeb2e2af148aaa3659a8c87cf1ccdc6c0d0c2dec4a55842", size = 120924, upload-time = "2025-11-02T18:58:29.532Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8c/00/bf284e0aae5dec7c217c176f291867cfac2f7bfd5692c9ce041e80986fa7/posthog-6.7.11-py3-none-any.whl", hash = "sha256:31421a88437cef2ce20f60c14ee8d298b2e765a6de0617cb95d1fcef54170749", size = 138713, upload-time = "2025-10-28T13:06:17.018Z" },
+    { url = "https://files.pythonhosted.org/packages/e7/fe/623f14bd647a5a15cb451eb992291346c81524617d977d2548820e264d24/posthog-6.7.13-py3-none-any.whl", hash = "sha256:7572dba3c0516297611399ebdc4e4db268be02922c2c896cc9c7683b13b17f30", size = 139183, upload-time = "2025-11-02T18:58:27.967Z" },
 ]
 
 [[package]]
