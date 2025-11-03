@@ -298,6 +298,9 @@ class ImageBuilderMCP(InsightsMCP):
         except Exception as e:  # pylint: disable=broad-exception-caught
             return f"Error: {str(e)} in blueprint_compose {blueprint_uuid}"
 
+        if isinstance(response, str):
+            return response
+
         response_str = "[INSTRUCTION] Use the tool get_compose_details to get the details of the compose\n"
         response_str += "like the current build status\n"
         response_str += "[ANSWER] Compose created successfully:"
