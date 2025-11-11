@@ -94,6 +94,7 @@ class Middleware(starlette.middleware.base.BaseHTTPMiddleware):  # pylint: disab
                 ],
                 "scopes_supported": [
                     "openid",
+                    "api.console",
                     "api.ocm",
                 ],
             }
