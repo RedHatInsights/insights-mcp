@@ -1,0 +1,82 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
+  "name": "io.github.redhatinsights/insights-mcp",
+  "title": "Red Hat Lightspeed MCP",
+  "description": "Model Context Protocol server for Red Hat Lightspeed - advisor, image builder, inventory, and more",
+  "version": "1.0.0",
+  "homepage": "https://github.com/RedHatInsights/insights-mcp",
+  "license": "Apache-2.0",
+  "keywords": [
+    "red-hat",
+    "insights",
+    "advisor",
+    "image-builder",
+    "inventory",
+    "remediations",
+    "vulnerability",
+    "security",
+    "systems-management",
+    "rhel"
+  ],
+  "maintainers": [
+    {
+      "name": "Florian Schüller",
+      "email": "fschulle@redhat.com"
+    }
+  ],
+  "repository": {
+    "url": "https://github.com/RedHatInsights/insights-mcp",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "insights-mcp",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/redhatinsights/insights-mcp",
+      "runtimeHint": "docker",
+      "runtimeArguments": [
+        {
+          "type": "positional",
+          "valueHint": "run",
+          "value": "run"
+        },
+        {
+          "type": "named",
+          "name": "--env",
+          "value": "INSIGHTS_CLIENT_ID"
+        },
+        {
+          "type": "named",
+          "name": "--env",
+          "value": "INSIGHTS_CLIENT_SECRET"
+        },
+        {
+          "type": "named",
+          "name": "--interactive",
+          "value": ""
+        },
+        {
+          "type": "named",
+          "name": "--rm",
+          "value": ""
+        }
+      ],
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ],
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/RedHatInsights/insights-mcp/main/claude_desktop/icon.png",
+      "mimeType": "image/png"
+    }
+  ]
+}
