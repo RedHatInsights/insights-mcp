@@ -13,7 +13,6 @@ Classes:
 
 import gzip
 import json as json_lib
-import os
 from logging import getLogger
 from typing import Any
 
@@ -24,8 +23,10 @@ from fastmcp.server.dependencies import get_http_headers
 
 from . import __version__
 
-TOKEN_ENDPOINT = "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"
-INSIGHTS_BASE_URL = "https://console.redhat.com"
+INSIGHTS_BASE_URL_PROD = "https://console.redhat.com"
+INSIGHTS_BASE_URL_STAGE = "https://console.stage.redhat.com"
+INSIGHTS_TOKEN_ENDPOINT_PROD = "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"
+INSIGHTS_TOKEN_ENDPOINT_STAGE = "https://sso.stage.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"
 USER_AGENT = f"insights-mcp/{__version__}"
 
 
@@ -141,7 +142,7 @@ class InsightsClientBase(httpx.AsyncClient):
             "if it's an authentication problem or just missing permissions.\n"
             "ONLY if it is an authentication problem that *also occurs* with get_all_access(), tell the user "
             "that the MCP server setup is not valid! "
-            "The user should go to [https://console.redhat.com](https://console.redhat.com) to "
+            f"The user should go to [{self.insights_base_url}]({self.insights_base_url}) to "
             "Click Settings (⚙️ Gear Icon) ➡ Service Accounts ➡ create a service account and then set the "
         )
         error_message = str(e)
@@ -157,7 +158,7 @@ class InsightsClientBase(httpx.AsyncClient):
                 f"{base_message}header variables `insights-client-id` and "
                 "`insights-client-secret` in your request.\n"
                 "Here is the direct link for the user's convenience: "
-                "[https://console.redhat.com/iam/service-accounts](https://console.redhat.com/iam/service-accounts) "
+                f"[{self.insights_base_url}/iam/service-accounts]({self.insights_base_url}/iam/service-accounts) "
                 "Come up with a detailed description of this for the user. "
                 "Only describe this, don't expose details about the tool function itself. "
                 f"Don't proceed with the request before this is fixed. {error_message}"
@@ -167,7 +168,7 @@ class InsightsClientBase(httpx.AsyncClient):
             f"{base_message}`INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET` "
             "in your mcp.json config.\n"
             "Here is the direct link for the user's convenience: "
-            "[https://console.redhat.com/iam/service-accounts](https://console.redhat.com/iam/service-accounts) "
+            f"[{self.insights_base_url}/iam/service-accounts]({self.insights_base_url}/iam/service-accounts) "
             "Come up with a detailed description of this for the user. "
             "Only describe this, don't expose details about the tool function itself. "
             f"Don't proceed with the request before this is fixed. {error_message}"
@@ -186,8 +187,8 @@ class InsightsClientBase(httpx.AsyncClient):
             f"[INSTRUCTION] Use get_insights_mcp_version() to check if we are on the latest release. "
             "Also use rbac__get_all_access() to list all current permissions"
             " and help the user find out which permissions might be missing."
-            "Then the user should go to [https://console.redhat.com/iam/user-access/overview]"
-            "(https://console.redhat.com/iam/user-access/overview) to check their RBAC permissions and roles."
+            f"Then the user should go to [{self.insights_base_url}/iam/user-access/overview]"
+            f"({self.insights_base_url}/iam/user-access/overview) to check their RBAC permissions and roles."
             " They may need to request additional access or have an "
             "administrator grant them the necessary permissions for this resource. The user is authenticated but "
             "lacks the required permissions to access this resource.\n"
@@ -208,7 +209,7 @@ class InsightsNoauthClient(InsightsClientBase):
 
     def __init__(
         self,
-        base_url: str = INSIGHTS_BASE_URL,
+        base_url: str = INSIGHTS_BASE_URL_PROD,
         proxy_url: str | None = None,
         mcp_transport: str | None = None,
     ):
@@ -234,13 +235,14 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
     def __init__(  # pylint: disable=too-many-arguments
         self,
         *,
-        base_url: str = INSIGHTS_BASE_URL,
+        base_url: str = INSIGHTS_BASE_URL_PROD,
         client_id: str | None = "rhsm-api",
         client_secret: str | None = None,
         refresh_token: str | None = None,
         proxy_url: str | None = None,
         oauth_enabled: bool = False,
         mcp_transport: str | None = None,
+        token_endpoint: str = INSIGHTS_TOKEN_ENDPOINT_PROD,
     ):
         InsightsClientBase.__init__(self, base_url=base_url, proxy_url=proxy_url, mcp_transport=mcp_transport)
         token_dict = {"refresh_token": refresh_token} if refresh_token else {}
@@ -253,7 +255,7 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
             client_secret=client_secret,
             grant_type=grant_type,
             token=token,
-            token_endpoint=os.getenv("INSIGHTS_STAGE_TOKEN_ENDPOINT", default=TOKEN_ENDPOINT),
+            token_endpoint=token_endpoint,
             headers=self.headers,
             proxy=self.proxy_url,
         )
@@ -317,7 +319,7 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
         self,
         *,
         api_path: str,
-        base_url: str = INSIGHTS_BASE_URL,
+        base_url: str = INSIGHTS_BASE_URL_PROD,
         client_id: str | None = "rhsm-api",
         client_secret: str | None = None,
         refresh_token: str | None = None,
@@ -325,6 +327,7 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
         proxy_url: str | None = None,
         oauth_enabled: bool = False,
         mcp_transport: str | None = None,  # TODO: get rid of mcp_transport in client
+        token_endpoint: str = INSIGHTS_TOKEN_ENDPOINT_PROD,
     ):
         self.logger = getLogger("InsightsClient")
         self.logger.info("Initializing insights client")
@@ -339,6 +342,7 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
         self.proxy_url = proxy_url
         self.oauth_enabled = oauth_enabled
         self.mcp_transport = mcp_transport
+        self.token_endpoint = token_endpoint
 
         self.client_noauth = InsightsNoauthClient(base_url=base_url, proxy_url=proxy_url, mcp_transport=mcp_transport)
         self.client = self.client_noauth
@@ -353,6 +357,7 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
                 proxy_url=proxy_url,
                 oauth_enabled=oauth_enabled,
                 mcp_transport=mcp_transport,
+                token_endpoint=token_endpoint,
             )
 
         # merge headers with client headers

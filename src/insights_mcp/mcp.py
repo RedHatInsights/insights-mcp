@@ -10,7 +10,11 @@ from typing import Any
 
 from fastmcp import FastMCP
 
-from insights_mcp.client import INSIGHTS_BASE_URL, InsightsClient
+from insights_mcp.client import (
+    INSIGHTS_BASE_URL_PROD,
+    INSIGHTS_TOKEN_ENDPOINT_PROD,
+    InsightsClient,
+)
 
 
 class InsightsMCP(FastMCP):
@@ -57,7 +61,7 @@ class InsightsMCP(FastMCP):
     def init_insights_client(  # pylint: disable=too-many-arguments
         self,
         *,
-        base_url: str = INSIGHTS_BASE_URL,
+        base_url: str = INSIGHTS_BASE_URL_PROD,
         client_id: str | None = None,
         client_secret: str | None = None,
         refresh_token: str | None = None,
@@ -65,6 +69,7 @@ class InsightsMCP(FastMCP):
         headers: dict[str, str] | None = None,
         oauth_enabled: bool = False,
         mcp_transport: str | None = None,
+        token_endpoint: str = INSIGHTS_TOKEN_ENDPOINT_PROD,
     ):
         """Initialize the authenticated Insights client.
 
@@ -99,6 +104,7 @@ class InsightsMCP(FastMCP):
             headers=self.headers,
             oauth_enabled=oauth_enabled,
             mcp_transport=mcp_transport,
+            token_endpoint=token_endpoint,
         )
 
     def register_tools(self) -> None:

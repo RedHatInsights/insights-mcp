@@ -63,6 +63,10 @@ In both cases if you are in doubt, please disable/remove the `INSIGHTS_CLIENT_ID
 
 ## Integrations
 
+### Stage usage
+
+Start `insights-mcp` with `--stage` and set `INSIGHTS_STAGE_PROXY_URL` accordingly
+
 ### Prerequisites
 
 Make sure you have `podman` installed.<br>
