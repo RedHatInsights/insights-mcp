@@ -86,6 +86,10 @@ Here is the rendered version: [Deployment Flow](docs/architecture-deployment.svg
   **before** you start chatting! Otherwise VSCode _caches_ the tool descriptions and you will
   end up with a chat context with the old tool descriptions!
 
+## Testing/local OpenID Connect (OIDC)
+
+For tests you can override `INSIGHTS_BASE_URL`, `INSIGHTS_TOKEN_ENDPOINT`.
+
 
 ### Usage
 

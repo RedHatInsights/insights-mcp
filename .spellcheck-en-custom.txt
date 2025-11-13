@@ -30,6 +30,7 @@ Middleware
 mypy
 OAuth
 OCI
+OIDC
 podman
 pre
 Pre
