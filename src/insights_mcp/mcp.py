@@ -9,6 +9,7 @@ import asyncio
 from typing import Any
 
 from fastmcp import FastMCP
+from fastmcp.server.auth import AuthProvider
 
 from insights_mcp.client import (
     INSIGHTS_BASE_URL_PROD,
@@ -68,6 +69,7 @@ class InsightsMCP(FastMCP):
         proxy_url: str | None = None,
         headers: dict[str, str] | None = None,
         oauth_enabled: bool = False,
+        oauth_provider: AuthProvider | None = None,
         mcp_transport: str | None = None,
         token_endpoint: str = INSIGHTS_TOKEN_ENDPOINT_PROD,
     ):
@@ -103,6 +105,7 @@ class InsightsMCP(FastMCP):
             proxy_url=proxy_url,
             headers=self.headers,
             oauth_enabled=oauth_enabled,
+            oauth_provider=oauth_provider,
             mcp_transport=mcp_transport,
             token_endpoint=token_endpoint,
         )
