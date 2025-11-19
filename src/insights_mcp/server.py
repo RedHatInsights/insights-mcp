@@ -10,8 +10,10 @@ from typing import Any
 import requests
 import uvicorn
 from fastmcp import FastMCP
-from fastmcp.server.auth.oidc_proxy import OIDCProxy
+from fastmcp.server.auth import AuthProvider
 from mcp.types import ToolAnnotations
+
+from insights_mcp.oauth import _init_oauth
 
 from advisor_mcp.server import mcp_server as AdvisorMCP
 from content_sources_mcp.server import mcp as ContentSourcesMCP
@@ -41,19 +43,6 @@ MCPS: list[InsightsMCP] = [
     RbacMCP,
     PlanningMCP,
 ]
-
-
-def _init_oauth(self, oauth_enabled=True):
-    auth = None
-    if oauth_enabled:
-        # Simple OIDC based protection
-        auth = OIDCProxy(
-            config_url="https://sso.redhat.com/auth/realms/redhat-external/.well-known/openid-configuration",
-            client_id=os.getenv("FASTMCP_SERVER_AUTH_SSO_CLIENT_ID"),
-            client_secret=os.getenv("FASTMCP_SERVER_AUTH_SSO_CLIENT_SECRET"),
-            base_url="http://localhost:8000",
-        )
-    return auth
 
 
 class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attributes
@@ -95,7 +84,9 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
         super().__init__(
             name=name,
             instructions=instructions,
-            debug=True,
+            # mask_error_details=False,
+            # log_level="Debug",
+            # debug=True,
             auth=_init_oauth(oauth_enabled),
             **settings,
         )
@@ -127,6 +118,7 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
                 proxy_url=self.proxy_url,
                 headers=mcp.headers,
                 oauth_enabled=self.oauth_enabled,
+                oauth_provider=self.auth,
                 mcp_transport=self.mcp_transport,
                 token_endpoint=self.token_endpoint,
             )
@@ -362,7 +354,7 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     elif args.transport == "http":
         # Force overrided the host:port for initial auth feat adding
         # mcp_server.run(transport="http", host=args.host, port=args.port)
-        mcp_server.run(transport="http", host="localhost", port=8000)
+        mcp_server.run(transport="http", host="localhost", port=8000, log_level="DEBUG")
     else:
         mcp_server.run()
 
