@@ -18,6 +18,7 @@ from logging import getLogger
 from typing import Any
 
 import httpx
+import jwt
 from authlib.integrations.httpx_client import AsyncOAuth2Client, OAuthError
 from authlib.oauth2.rfc6749 import OAuth2Token
 from fastmcp.server.dependencies import get_http_headers
@@ -214,6 +215,14 @@ class InsightsNoauthClient(InsightsClientBase):
     ):
         super().__init__(base_url=base_url, proxy_url=proxy_url, mcp_transport=mcp_transport)
 
+    async def get_org_id(self) -> str | None:
+        """Extract the organization ID from the access token.
+
+        Returns:
+            Organization ID (rh-org-id) as a string, or None if not found.
+        """
+        return None
+
 
 class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
     """HTTP client with OAuth2 authentication for Red Hat Insights APIs.
@@ -259,22 +268,8 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
         )
         self.oauth_enabled = oauth_enabled
 
-    async def make_request(self, fn, *args, **kwargs) -> dict[str, Any] | str:
-        """Make an HTTP request with OAuth2 token management.
-
-        Handles token refresh when needed and supports OAuth middleware.
-
-        Args:
-            fn: HTTP method function to call
-            *args: Positional arguments for the HTTP method
-            **kwargs: Keyword arguments for the HTTP method
-
-        Returns:
-            JSON response data or error information
-        """
-        if not self.oauth_enabled and self.refresh_token is None and self.client_secret is None:
-            return self.no_auth_error(ValueError("Client not authenticated"))
-
+    async def refresh_auth(self) -> None:
+        """Refresh the authentication token."""
         if self.oauth_enabled:  # TODO: unify client oauth and oauth middleware
             self.logger.info("OAuth is enabled, skipping token management")
             caller_headers_auth = get_http_headers().get("authorization")
@@ -291,7 +286,74 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
                     await self.fetch_token()
             except OAuthError as e:
                 raise ValueError(self.no_auth_error(e)) from e
+
+    async def make_request(self, fn, *args, **kwargs) -> dict[str, Any] | str:
+        """Make an HTTP request with OAuth2 token management.
+
+        Handles token refresh when needed and supports OAuth middleware.
+
+        Args:
+            fn: HTTP method function to call
+            *args: Positional arguments for the HTTP method
+            **kwargs: Keyword arguments for the HTTP method
+
+        Returns:
+            JSON response data or error information
+        """
+        if not self.oauth_enabled and self.refresh_token is None and self.client_secret is None:
+            return self.no_auth_error(ValueError("Client not authenticated"))
+
+        await self.refresh_auth()
+
         return await super().make_request(fn, *args, **kwargs)
+
+    async def decode_token(self) -> dict[str, Any] | None:
+        """Decode the JWT access token and return its payload.
+
+        Note: authlib's OAuth2Token does not provide JWT decoding capabilities.
+        While authlib.jose.jwt exists, it requires signature verification which
+        is not needed here since we're just reading claims. PyJWT is used instead
+        as it supports decoding without verification and is already a dependency.
+
+        Returns:
+            Decoded token payload as a dictionary, or None if token is not available or invalid.
+        """
+        await self.refresh_auth()
+        if not self.token or "access_token" not in self.token:
+            return None
+        try:
+            # Decode without verification (since we're just reading claims, not validating)
+            # In production, you might want to verify the signature
+            decoded = jwt.decode(
+                self.token["access_token"],
+                options={"verify_signature": False},
+                algorithms=["RS256"],
+            )
+            return decoded
+        except jwt.DecodeError:
+            return None
+
+    async def get_org_id(self) -> str | None:
+        """Extract the organization ID from the access token.
+
+        Returns:
+            Organization ID (rh-org-id) as a string, or None if not found.
+        """
+        payload = await self.decode_token()
+        if payload:
+            return payload.get("rh-org-id")
+        return None
+
+    async def get_user_id(self) -> str | None:
+        """Extract the user ID from the access token.
+
+        Returns:
+            User ID (rh-user-id) as a string, or None if not found.
+        """
+        payload = await self.decode_token()
+        if payload:
+            return payload.get("rh-user-id")
+        return None
 
 
 class InsightsClient:  # pylint: disable=too-many-instance-attributes
@@ -358,6 +420,11 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
         # merge headers with client headers
         if headers:
             self.client.headers.update(headers)
+
+    async def get_org_id(self) -> str | None:
+        """Get the organization ID from the user."""
+
+        return await self.client.get_org_id()
 
     async def get(
         self,
