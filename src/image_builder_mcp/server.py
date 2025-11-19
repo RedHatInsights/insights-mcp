@@ -411,7 +411,10 @@ class ImageBuilderMCP(InsightsMCP):
         3. Architecture ("Which architecture? Available: {architectures}")
         4. Image type ("What image type do you need? Available: {image_types} or take guest-image as default")
         5. Username ("Do you want to create a custom user account? If so, what username?")
-        6. For RHEL images specifically: "Do you want to enable registration for Red Hat services?"
+        6. For RHEL images specifically: use RHSM get_activation_keys and get_org_id to get the required information.
+           never use 2040324 as organization ID unless get_org_id returns it.
+           "Do you want to enable registration for Red Hat services with an activation key?"
+
         7. Any customizations ("Do you need any specific packages, services, or configurations?")
 
         🚨 CRITICAL REPOSITORY REQUIREMENT:
@@ -452,7 +455,7 @@ class ImageBuilderMCP(InsightsMCP):
         YOUR PROCESS AS THE AI ASSISTANT:
         1. If you haven't already, call get_openapi to understand the CreateBlueprintRequest structure.
            For minimal context, call `get_openapi(endpoints="POST:/blueprints")` when preparing the payload.
-        2. only for registration, call get_blueprints and get_blueprint_details to guess the "organization" value
+        2. for registration/subscription, call get_org_id and get_activation_keys for required information
         4. Ask the user for ALL the required information listed above through conversation
         5. Only after collecting all information, call this function with properly formatted data
 
