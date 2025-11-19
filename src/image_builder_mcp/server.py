@@ -167,6 +167,7 @@ class ImageBuilderMCP(InsightsMCP):
             {"fn": self.get_compose_details, "readOnlyHint": True},
             {"fn": self.blueprint_compose, "readOnlyHint": False},
             {"fn": self.get_distributions, "readOnlyHint": True},
+            {"fn": self.get_org_id, "readOnlyHint": True},
         ]
 
         for tool_def in tool_functions:
@@ -366,6 +367,31 @@ class ImageBuilderMCP(InsightsMCP):
         # avoid crashing the server so we'll stick to the broad exception catch
         except Exception as e:  # pylint: disable=broad-exception-caught
             return f"Error: {str(e)}"
+
+    async def get_org_id(self) -> str:
+        """Get the organization ID for RHEL image registration/subscription.
+
+        Purpose: Fetch the organization ID for RHEL image registration.
+
+        When to Use: Always use this tool when enabling registration for Red Hat services in a blueprint.
+
+        CRITICAL NOTE: Never assume or use placeholder organization IDs.
+        Always fetch the actual organization ID using this tool.
+
+        Returns:
+            The organization ID
+        """
+        try:
+            client = self.get_client(get_http_headers())
+        except ValueError as e:
+            return self.no_auth_error(e)
+        try:
+            org_id = await client.get_org_id()
+            if org_id:
+                return org_id
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            return f"Error: {str(e)}"
+        return "Error: No organization ID found"
 
     async def create_blueprint(
         self,
