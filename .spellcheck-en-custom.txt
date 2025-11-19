@@ -40,6 +40,8 @@ Pytest
 rbac
 RBAC
 README
+RHSM
+rhsm
 remediations
 repo
 RESTful
