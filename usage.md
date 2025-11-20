@@ -1,6 +1,6 @@
 ```
-usage: insights-mcp [-h] [--debug] [--stage] [--toolset TOOLSET]
-                    [--toolset-help] [--readonly]
+usage: insights-mcp [-h] [--debug] [--toolset TOOLSET] [--toolset-help]
+                    [--readonly]
                     {stdio,sse,http} ...
 
 Run Insights MCP server.
@@ -14,7 +14,6 @@ positional arguments:
 options:
   -h, --help         show this help message and exit
   --debug            Enable debug logging
-  --stage            Use stage API instead of production API
   --toolset TOOLSET  Comma-separated list of toolsets to use. Available
                      toolsets: all, image-builder, rhsm, vulnerability,
                      remediations, advisor, inventory, content-sources, rbac,

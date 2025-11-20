@@ -25,9 +25,7 @@ from fastmcp.server.dependencies import get_http_headers
 from . import __version__
 
 INSIGHTS_BASE_URL_PROD = "https://console.redhat.com"
-INSIGHTS_BASE_URL_STAGE = "https://console.stage.redhat.com"
 INSIGHTS_TOKEN_ENDPOINT_PROD = "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"
-INSIGHTS_TOKEN_ENDPOINT_STAGE = "https://sso.stage.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"
 USER_AGENT = f"insights-mcp/{__version__}"
 
 

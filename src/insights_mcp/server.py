@@ -18,9 +18,7 @@ from image_builder_mcp.server import mcp_server as ImageBuilderMCP
 from insights_mcp import __version__
 from insights_mcp.client import (
     INSIGHTS_BASE_URL_PROD,
-    INSIGHTS_BASE_URL_STAGE,
     INSIGHTS_TOKEN_ENDPOINT_PROD,
-    INSIGHTS_TOKEN_ENDPOINT_STAGE,
 )
 from insights_mcp.mcp import InsightsMCP
 from insights_mcp.oauth import Middleware
@@ -254,7 +252,6 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
 
     parser = argparse.ArgumentParser(prog="insights-mcp", description="Run Insights MCP server.")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
-    parser.add_argument("--stage", action="store_true", help="Use stage API instead of production API")
     parser.add_argument("--toolset", type=str, help=toolset_help)
     parser.add_argument("--toolset-help", action="store_true", help="Show toolset details of all toolsets")
     parser.add_argument("--readonly", action="store_true", help="Only register read-only tools")
@@ -287,22 +284,9 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     client_id = os.getenv("INSIGHTS_CLIENT_ID")
     client_secret = os.getenv("INSIGHTS_CLIENT_SECRET")
 
-    proxy_url = None
-    if args.stage:
-        proxy_url = os.getenv("INSIGHTS_STAGE_PROXY_URL")
-        if not proxy_url:
-            print("Please set INSIGHTS_STAGE_PROXY_URL to access the stage API", file=sys.stderr)
-            print("hint: INSIGHTS_STAGE_PROXY_URL=http://yoursquidproxy…:3128", file=sys.stderr)
-            sys.exit(1)
-
-    base_url = os.getenv(
-        "INSIGHTS_BASE_URL",
-        INSIGHTS_BASE_URL_STAGE if args.stage else INSIGHTS_BASE_URL_PROD,
-    )
-    token_endpoint = os.getenv(
-        "INSIGHTS_TOKEN_ENDPOINT",
-        INSIGHTS_TOKEN_ENDPOINT_STAGE if args.stage else INSIGHTS_TOKEN_ENDPOINT_PROD,
-    )
+    base_url = os.getenv("INSIGHTS_BASE_URL", INSIGHTS_BASE_URL_PROD)
+    token_endpoint = os.getenv("INSIGHTS_TOKEN_ENDPOINT", INSIGHTS_TOKEN_ENDPOINT_PROD)
+    proxy_url = os.getenv("INSIGHTS_PROXY_URL")
 
     logger = logging.getLogger("InsightsMCPServer")
 
