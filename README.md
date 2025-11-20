@@ -65,7 +65,11 @@ In both cases if you are in doubt, please disable/remove the `INSIGHTS_CLIENT_ID
 
 ### Stage usage
 
-Start `insights-mcp` with `--stage` and set `INSIGHTS_STAGE_PROXY_URL` accordingly
+Set the environment variables
+* `INSIGHTS_BASE_URL`
+* `INSIGHTS_TOKEN_ENDPOINT`
+* `INSIGHTS_PROXY_URL`
+accordingly.
 
 ### Prerequisites
 
