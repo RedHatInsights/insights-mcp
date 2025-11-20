@@ -22,7 +22,7 @@ build-claude-extension-dev: build ## Build Claude extension for local developmen
 
 .PHONY: lint
 lint: generate-docs ## Run linting with pre-commit
-	pre-commit run --all-files --hook-stage manual
+	uv run pre-commit run --all-files --hook-stage manual
 
 .PHONY: test
 test: ## Run tests with pytest (hides logging output)
