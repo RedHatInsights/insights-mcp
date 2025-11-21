@@ -8,6 +8,73 @@ develop the MCP server.
 
 Also checkout `make help` for the available commands.
 
+## Architecture
+
+### Application Structure
+
+The `InsightsMCPServer` acts as a unified server that mounts multiple specialized MCP toolsets. Each toolset extends `InsightsMCP` and provides tools for specific Red Hat Insights services.
+
+```mermaid
+%% title: architecture-structure
+graph TB
+    MCP[MCP Interface<br/>stdio/HTTP/SSE]
+    subgraph "InsightsMCPServer"
+        MainServer[InsightsMCPServer<br/>FastMCP]
+        MainServer -->|mounts| ImageBuilder[ImageBuilderMCP<br/>image-builder_*]
+        MainServer -->|mounts| Vulnerability[VulnerabilityMCP<br/>vulnerability_*]
+        MainServer -.->|mounts| More[other MCPs<br/>...]
+    end
+    subgraph "HTTP Client Layer"
+        InsightsClient[InsightsClient<br/>auth selection]
+        InsightsClientBase[InsightsClientBase<br/>HTTP operations]
+        InsightsClient -->|uses| InsightsClientBase
+    end
+    API[Red Hat Insights<br/>REST API]
+
+    MCP -->|connects| MainServer
+    ImageBuilder -->|uses| InsightsClient
+    Vulnerability -->|uses| InsightsClient
+    More -.->|uses| InsightsClient
+    InsightsClientBase -->|calls| API
+
+    style MainServer fill:#e1f5ff
+    style ImageBuilder fill:#fff4e1
+    style Vulnerability fill:#fff4e1
+    style More fill:#fff4e1
+    style InsightsClient fill:#f3e5f5
+    style InsightsClientBase fill:#f3e5f5
+    style MCP fill:#e8f5e9
+    style API fill:#fff3e0
+```
+
+Here is the rendered version: [Application Structure](docs/architecture-structure.svg)
+
+### Deployment Flow
+
+MCP clients (like VSCode or Cursor) communicate with the `insights-mcp` server, which in turn makes authenticated requests to Red Hat Insights REST APIs.
+
+```mermaid
+%% title: architecture-deployment
+sequenceDiagram
+    participant Client as MCP Client<br/>(VSCode/Cursor)
+    box rgb(225, 245, 255)
+    participant Server as insights-mcp<br/>Server
+    end
+    participant SSO as Red Hat SSO<br/>(OAuth2)
+    participant API as Red Hat Insights<br/>REST API
+
+    Client->>Server: MCP Protocol<br/>(stdio/HTTP/SSE)
+    Server->>SSO: Authenticate<br/>(OAuth2)
+    SSO-->>Server: Auth Token
+    Server->>API: HTTP Request<br/>(with auth token)
+    API-->>Server: JSON Response
+    Server-->>Client: MCP Response
+```
+
+Here is the rendered version: [Deployment Flow](docs/architecture-deployment.svg)
+
+**Note**: To regenerate the `SVG` diagram images, run `make generate-docs`. The diagrams are also rendered directly by GitHub when viewing this file.
+
 ## Important notes
 * When changing some code you might want to use `make build-prod` so the container is built with
   the upstream container tag and you don't need to change it in your MCP client (like VSCode).

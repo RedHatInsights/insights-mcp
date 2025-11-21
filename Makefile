@@ -22,7 +22,7 @@ build-claude-extension-dev: build ## Build Claude extension for local developmen
 
 .PHONY: lint
 lint: generate-docs ## Run linting with pre-commit
-	pre-commit run --all-files --hook-stage manual
+	uv run pre-commit run --all-files --hook-stage manual
 
 .PHONY: test
 test: ## Run tests with pytest (hides logging output)
@@ -87,7 +87,7 @@ run-stdio: build ## Run the MCP server with stdio transport
 ALL_PYTHON_FILES := $(shell find src -name "*.py")
 
 .PHONY: generate-docs
-generate-docs: usage.md toolsets.md ## Generate documentation from the MCP server
+generate-docs: usage.md toolsets.md docs/architecture-structure.svg docs/architecture-deployment.svg ## Generate documentation from the MCP server
 
 usage.md: $(ALL_PYTHON_FILES) Makefile
 	uv tool install -e .
@@ -97,3 +97,6 @@ usage.md: $(ALL_PYTHON_FILES) Makefile
 
 toolsets.md: $(ALL_PYTHON_FILES) Makefile
 	uv run python -m insights_mcp --toolset-help > $@
+
+docs/architecture-structure.svg docs/architecture-deployment.svg docs/architecture-structure.png docs/architecture-deployment.png: HACKING.md scripts/generate_diagrams.py
+	uv run python scripts/generate_diagrams.py --format svg,png
