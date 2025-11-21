@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Generate SVG diagrams from Mermaid source in HACKING.md.
+"""Generate diagrams from Mermaid source in HACKING.md.
 
 This script extracts Mermaid code blocks from HACKING.md and generates
-SVG images using Podman with the Mermaid CLI container.
+diagrams (SVG, PNG, etc.) using Podman with the Mermaid CLI container.
 """
 
+import argparse
 import os
 import re
 import shutil
@@ -64,13 +65,14 @@ def check_podman() -> bool:
     return shutil.which("podman") is not None
 
 
-def generate_svg_from_mermaid(mermaid_code: str, output_file: Path, docs_dir: Path) -> None:
-    """Generate SVG from Mermaid code using Podman with Mermaid CLI container.
+def generate_diagram_from_mermaid(mermaid_code: str, output_file: Path, docs_dir: Path, format_type: str) -> None:
+    """Generate diagram from Mermaid code using Podman with Mermaid CLI container.
 
     Args:
         mermaid_code: Mermaid diagram source code
-        output_file: Path where the SVG file should be written
+        output_file: Path where the output file should be written
         docs_dir: Directory containing docs (used for podman mount)
+        format_type: Output format (e.g., 'svg', 'png')
 
     Raises:
         subprocess.CalledProcessError: If podman command fails
@@ -86,7 +88,7 @@ def generate_svg_from_mermaid(mermaid_code: str, output_file: Path, docs_dir: Pa
     # Use official Mermaid CLI container
     container_image = "ghcr.io/mermaid-js/mermaid-cli/mermaid-cli:latest"
 
-    # Run podman to convert Mermaid to SVG
+    # Run podman to convert Mermaid to requested format
     # Mount docs_dir as both /data (for input) and /output (for output)
     docs_dir.mkdir(parents=True, exist_ok=True)
 
@@ -110,10 +112,11 @@ def generate_svg_from_mermaid(mermaid_code: str, output_file: Path, docs_dir: Pa
 
         # Post-process SVG to make box border match background color
         # This makes the border effectively invisible
-        if output_file.exists():
+        # Only apply post-processing to SVG files
+        if format_type == "svg" and output_file.exists():
             _make_box_border_match_background(output_file, rgb_color=(225, 245, 255))
     except subprocess.CalledProcessError as e:
-        error_msg = f"Failed to generate SVG: {e.stderr if e.stderr else e.stdout}"
+        error_msg = f"Failed to generate {format_type.upper()}: {e.stderr if e.stderr else e.stdout}"
         raise RuntimeError(error_msg) from e
     finally:
         # Clean up input file
@@ -172,6 +175,34 @@ def _make_box_border_match_background(svg_file: Path, rgb_color: tuple[int, int,
 
 def main():
     """Main function to generate diagrams."""
+    parser = argparse.ArgumentParser(
+        description="Generate diagrams from Mermaid source in HACKING.md",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--format",
+        type=str,
+        default="svg,png",
+        help="Comma-separated list of output formats (default: svg,png)",
+    )
+    args = parser.parse_args()
+
+    # Parse formats
+    formats = [f.strip().lower() for f in args.format.split(",") if f.strip()]
+    if not formats:
+        print("Error: At least one format must be specified", file=sys.stderr)
+        sys.exit(1)
+
+    # Validate formats
+    valid_formats = {"svg", "png"}
+    invalid_formats = set(formats) - valid_formats
+    if invalid_formats:
+        print(
+            f"Error: Invalid format(s): {', '.join(invalid_formats)}. Valid formats: {', '.join(valid_formats)}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     # Get project root directory
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
@@ -201,16 +232,17 @@ def main():
         )
         sys.exit(1)
 
-    # Generate SVG files
+    # Generate diagrams in all requested formats
     for diagram_name, mermaid_code in mermaid_blocks.items():
-        print(f"Generating {diagram_name}.svg...")
-        try:
-            svg_file = docs_dir / f"{diagram_name}.svg"
-            generate_svg_from_mermaid(mermaid_code, svg_file, docs_dir)
-            print(f"✓ Saved to {svg_file}")
-        except (FileNotFoundError, RuntimeError) as e:
-            print(f"✗ Error: {e}", file=sys.stderr)
-            sys.exit(1)
+        for format_type in formats:
+            print(f"Generating {diagram_name}.{format_type}...")
+            try:
+                output_file = docs_dir / f"{diagram_name}.{format_type}"
+                generate_diagram_from_mermaid(mermaid_code, output_file, docs_dir, format_type)
+                print(f"✓ Saved to {output_file}")
+            except (FileNotFoundError, RuntimeError) as e:
+                print(f"✗ Error: {e}", file=sys.stderr)
+                sys.exit(1)
 
 
 if __name__ == "__main__":
