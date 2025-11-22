@@ -21,10 +21,12 @@ from insights_mcp.oauth import Middleware
 from inventory_mcp.server import mcp as InventoryMCP
 from rbac_mcp.server import mcp as RbacMCP
 from remediations_mcp.server import mcp as RemediationsMCP
+from rhsm_mcp.server import mcp as RhsmMCP
 from vulnerability_mcp.server import mcp as VulnerabilityMCP
 
 MCPS: list[InsightsMCP] = [
     ImageBuilderMCP,
+    RhsmMCP,
     VulnerabilityMCP,
     RemediationsMCP,
     AdvisorMCP,

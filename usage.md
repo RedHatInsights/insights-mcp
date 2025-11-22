@@ -16,7 +16,7 @@ options:
   --debug            Enable debug logging
   --stage            Use stage API instead of production API
   --toolset TOOLSET  Comma-separated list of toolsets to use. Available
-                     toolsets: all, image-builder, vulnerability,
+                     toolsets: all, image-builder, rhsm, vulnerability,
                      remediations, advisor, inventory, content-sources, rbac
                      (default: all)
   --toolset-help     Show toolset details of all toolsets

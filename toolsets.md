@@ -10,6 +10,11 @@
 - `get_compose_details`: Get detailed information about a specific image build.
 - `blueprint_compose`: Compose an image from a blueprint UUID created with create_blueprint, get_bl…
 - `get_distributions`: Get the list of distributions available to build images with.
+- `get_org_id`: Get the organization ID for RHEL image registration/subscription.
+
+## rhsm
+- `get_activation_keys`: Get the list of activation keys available to the authenticated user.
+- `get_activation_key`: Get a specific activation key by name.
 
 ## vulnerability
 - `get_openapi`: Get Red Hat Insights Vulnerability OpenAPI specification in JSON format.
