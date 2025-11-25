@@ -6,3 +6,7 @@ __pycache__
 dictionary.dic
 test_config.json
 *.dxt
+
+# temporary mermaid cache
+/docs/input.mmd
+/docs/.cache/
