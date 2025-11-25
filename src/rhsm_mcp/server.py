@@ -19,7 +19,7 @@ mcp = InsightsMCP(
 
     Insights RHSM requires correct RBAC permissions to be able to use the tools. Ensure that your
     Service Account has at least these roles:
-    - Subscription Viewer (for read-only access)
+    - RHC User (for read-only access)
     If this permission is missing in RBAC write this in bold that this is missing.
 
     The RHSM REST API supports managing:
