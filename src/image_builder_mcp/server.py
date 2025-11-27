@@ -176,7 +176,11 @@ class ImageBuilderMCP(InsightsMCP):
             tool.annotations = ToolAnnotations(readOnlyHint=tool_def["readOnlyHint"], openWorldHint=True)
             doc_str = f.__doc__ or ""
             description_str = (
-                doc_str.format(architectures=", ".join(architectures), image_types=", ".join(image_types))
+                doc_str.format(
+                    architectures=", ".join(architectures),
+                    image_types=", ".join(image_types),
+                    base_url=self.insights_client.insights_base_url,
+                )
                 if doc_str
                 else ""
             )
@@ -246,12 +250,14 @@ class ImageBuilderMCP(InsightsMCP):
                 client_secret = self.get_client_secret(headers)
             client = InsightsClient(
                 api_path="api/image-builder/v1",
+                base_url=self.insights_client.insights_base_url,
                 client_id=client_id,
                 client_secret=client_secret,
                 mcp_transport=self.insights_client.mcp_transport,
                 oauth_enabled=self.insights_client.oauth_enabled,
                 headers={"X-ImageBuilder-ui": self.image_builder_mcp_client_id},
                 proxy_url=self.insights_client.proxy_url,
+                token_endpoint=self.insights_client.token_endpoint,
             )
             self.clients[client_id] = client
         return client
@@ -699,7 +705,7 @@ class ImageBuilderMCP(InsightsMCP):
         Ask the user if they want to get more composes and adapt "offset" accordingly.
 
         You can also provide this link so the user can check directly in the UI:
-        https://console.redhat.com/insights/image-builder
+        {base_url}/insights/image-builder
 
         Returns:
             List of composes with:

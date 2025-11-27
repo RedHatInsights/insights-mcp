@@ -16,7 +16,11 @@ from advisor_mcp.server import mcp_server as AdvisorMCP
 from content_sources_mcp.server import mcp as ContentSourcesMCP
 from image_builder_mcp.server import mcp_server as ImageBuilderMCP
 from insights_mcp import __version__
-from insights_mcp.mcp import INSIGHTS_BASE_URL, InsightsMCP
+from insights_mcp.client import (
+    INSIGHTS_BASE_URL_PROD,
+    INSIGHTS_TOKEN_ENDPOINT_PROD,
+)
+from insights_mcp.mcp import InsightsMCP
 from insights_mcp.oauth import Middleware
 from inventory_mcp.server import mcp as InventoryMCP
 from rbac_mcp.server import mcp as RbacMCP
@@ -36,7 +40,7 @@ MCPS: list[InsightsMCP] = [
 ]
 
 
-class InsightsMCPServer(FastMCP):
+class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attributes
     """Unified MCP server that mounts multiple Red Hat Insights service servers.
 
     This server acts as a container for multiple specialized MCP servers,
@@ -61,13 +65,14 @@ class InsightsMCPServer(FastMCP):
         name: str | None = None,
         instructions: str | None = None,
         *,
-        base_url: str = INSIGHTS_BASE_URL,
+        base_url: str = INSIGHTS_BASE_URL_PROD,
         client_id: str | None = None,
         client_secret: str | None = None,
         refresh_token: str | None = None,
         proxy_url: str | None = None,
         oauth_enabled: bool = False,
         mcp_transport: str | None = None,
+        token_endpoint: str = INSIGHTS_TOKEN_ENDPOINT_PROD,
         **settings: Any,
     ):
         name = name or "Red Hat Insights"
@@ -83,6 +88,7 @@ class InsightsMCPServer(FastMCP):
         self.proxy_url = proxy_url
         self.oauth_enabled = oauth_enabled
         self.mcp_transport = mcp_transport
+        self.token_endpoint = token_endpoint
 
     def register_mcps(self, allowed_mcps: list[str], readonly: bool = False):
         """Register and mount allowed MCP servers.
@@ -104,6 +110,7 @@ class InsightsMCPServer(FastMCP):
                 headers=mcp.headers,
                 oauth_enabled=self.oauth_enabled,
                 mcp_transport=self.mcp_transport,
+                token_endpoint=self.token_endpoint,
             )
             try:
                 mcp.register_tools()
@@ -243,7 +250,6 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
 
     parser = argparse.ArgumentParser(prog="insights-mcp", description="Run Insights MCP server.")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
-    parser.add_argument("--stage", action="store_true", help="Use stage API instead of production API")
     parser.add_argument("--toolset", type=str, help=toolset_help)
     parser.add_argument("--toolset-help", action="store_true", help="Show toolset details of all toolsets")
     parser.add_argument("--readonly", action="store_true", help="Only register read-only tools")
@@ -276,13 +282,9 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     client_id = os.getenv("INSIGHTS_CLIENT_ID")
     client_secret = os.getenv("INSIGHTS_CLIENT_SECRET")
 
-    proxy_url = None
-    if args.stage:
-        proxy_url = os.getenv("INSIGHTS_STAGE_PROXY_URL")
-        if not proxy_url:
-            print("Please set INSIGHTS_STAGE_PROXY_URL to access the stage API")
-            print("hint: INSIGHTS_STAGE_PROXY_URL=http://yoursquidproxy…:3128")
-            sys.exit(1)
+    base_url = os.getenv("INSIGHTS_BASE_URL", INSIGHTS_BASE_URL_PROD)
+    token_endpoint = os.getenv("INSIGHTS_TOKEN_ENDPOINT", INSIGHTS_TOKEN_ENDPOINT_PROD)
+    proxy_url = os.getenv("INSIGHTS_PROXY_URL")
 
     logger = logging.getLogger("InsightsMCPServer")
 
@@ -312,12 +314,13 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
         args.transport,
         ", ".join(toolset_list),
     )
+    logger.warning("Connecting to %s", base_url)
 
     instructions = get_instructions(toolset_list)
 
     # Create and run the MCP server
     mcp_server = InsightsMCPServer(
-        base_url=INSIGHTS_BASE_URL if not args.stage else os.getenv("INSIGHTS_BASE_URL"),
+        base_url=base_url,
         client_id=client_id,
         client_secret=client_secret,
         refresh_token=os.getenv("INSIGHTS_REFRESH_TOKEN"),
@@ -325,6 +328,7 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
         oauth_enabled=oauth_enabled,
         mcp_transport=args.transport,
         instructions=instructions,
+        token_endpoint=token_endpoint,
     )
 
     mcp_server.register_mcps(toolset_list, readonly=args.readonly)

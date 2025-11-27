@@ -14,7 +14,7 @@ from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 
 # Add imports for mock client creation
 from insights_mcp.client import InsightsClient
-from insights_mcp.mcp import INSIGHTS_BASE_URL
+from insights_mcp.mcp import INSIGHTS_BASE_URL_PROD
 
 # pylint: disable=wrong-import-position
 from .llama_index_non_iterable_bool_patch import apply_llama_index_bool_patch
@@ -175,7 +175,7 @@ def create_mock_client(client_id=TEST_CLIENT_ID, client_secret=TEST_CLIENT_SECRE
     client = Mock(spec=InsightsClient)
     client.client_id = client_id
     client.client_secret = client_secret
-    client.insights_base_url = INSIGHTS_BASE_URL
+    client.insights_base_url = INSIGHTS_BASE_URL_PROD
     if api_path:
         client.api_path = api_path
     return client
