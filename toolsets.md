@@ -49,3 +49,6 @@
 
 ## rbac
 - `get_all_access`: Get access information for all Red Hat insights applications.
+
+## planning
+- `get_upcoming_changes`: List upcoming package changes, deprecations, additions and enhancements.

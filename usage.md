@@ -17,8 +17,8 @@ options:
   --stage            Use stage API instead of production API
   --toolset TOOLSET  Comma-separated list of toolsets to use. Available
                      toolsets: all, image-builder, rhsm, vulnerability,
-                     remediations, advisor, inventory, content-sources, rbac
-                     (default: all)
+                     remediations, advisor, inventory, content-sources, rbac,
+                     planning (default: all)
   --toolset-help     Show toolset details of all toolsets
   --readonly         Only register read-only tools
 ```
