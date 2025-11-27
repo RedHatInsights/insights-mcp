@@ -59,3 +59,9 @@ Toolsets
 UUID
 UUIDs
 EPEL
+roadmap
+Roadmap
+Summarization
+summarization
+deprecations
+Deprecations
