@@ -19,6 +19,7 @@ from insights_mcp import __version__
 from insights_mcp.mcp import INSIGHTS_BASE_URL, InsightsMCP
 from insights_mcp.oauth import Middleware
 from inventory_mcp.server import mcp as InventoryMCP
+from planning_mcp.server import mcp as PlanningMCP
 from rbac_mcp.server import mcp as RbacMCP
 from remediations_mcp.server import mcp as RemediationsMCP
 from rhsm_mcp.server import mcp as RhsmMCP
@@ -33,6 +34,7 @@ MCPS: list[InsightsMCP] = [
     InventoryMCP,
     ContentSourcesMCP,
     RbacMCP,
+    PlanningMCP,
 ]
 
 
