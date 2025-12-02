@@ -46,8 +46,6 @@ class PlanningMCP(InsightsMCP):
 
         Your goal is to help users efficiently access and interpret RHEL lifecycle and
         roadmap information through the Red Hat Insights platform.
-
-        <|function_call_library|>
         """
 
         super().__init__(
