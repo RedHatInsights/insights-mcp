@@ -1,24 +1,41 @@
 .PHONY: build-prod
 build-prod: generate-docs ## Build the container image but with the upstream tag
-	podman build --build-arg INSIGHTS_MCP_VERSION=$(VERSION) --tag ghcr.io/redhatinsights/insights-mcp:latest .
+	podman build \
+	  --build-arg INSIGHTS_MCP_VERSION=$(VERSION) \
+	  --build-arg CONTAINER_BRAND=$(CONTAINER_BRAND) \
+	  --tag ghcr.io/redhatinsights/$(CONTAINER_BRAND)-mcp:latest
+
+# In some parts this is hardcoded
+# see pyproject.toml for the available script names
+# see src/insights_mcp/server.py for accepted environment variables
+VALID_CONTAINER_BRANDS := insights lightspeed
+CONTAINER_BRAND ?= insights
+
+ifeq ($(filter $(CONTAINER_BRAND),$(VALID_CONTAINER_BRANDS)),)
+  $(error invalid CONTAINER_BRAND: $(CONTAINER_BRAND). \
+Valid options are: $(VALID_CONTAINER_BRANDS))
+endif
 
 .PHONY: build
 build: generate-docs ## Build the container image
-	podman build --build-arg INSIGHTS_MCP_VERSION=$(VERSION) --tag insights-mcp .
+	podman build \
+	  --build-arg INSIGHTS_MCP_VERSION=$(VERSION) \
+	  --build-arg CONTAINER_BRAND=$(CONTAINER_BRAND) \
+	  --tag $(CONTAINER_BRAND)-mcp .
 
 # please set from outside
-CONTAINER_IMAGE ?= ghcr.io/redhatinsights/insights-mcp:latest
+CONTAINER_IMAGE ?= ghcr.io/redhatinsights/$(CONTAINER_BRAND)-mcp:latest
 TAG ?= v0.0.0-dev
 VERSION ?= $(TAG)
 
 .PHONY: build-claude-extension
 build-claude-extension: ## Build the Claude extension
 	sed "s/{{VERSION}}/$(TAG)/g; s|{{CONTAINER_IMAGE}}|$(CONTAINER_IMAGE)|g" claude_desktop/manifest.json.template > claude_desktop/manifest.json
-	zip -j insights-mcp-$(TAG).dxt claude_desktop/manifest.json claude_desktop/icon.png
+	zip -j $(CONTAINER_BRAND)-mcp-$(TAG).dxt claude_desktop/manifest.json claude_desktop/icon.png
 	rm claude_desktop/manifest.json
 
 build-claude-extension-dev: build ## Build Claude extension for local development
-	$(MAKE) build-claude-extension TAG=local-dev CONTAINER_IMAGE=localhost/insights-mcp:latest
+	$(MAKE) build-claude-extension TAG=local-dev CONTAINER_BRAND=$(CONTAINER_BRAND) CONTAINER_IMAGE=localhost/$(CONTAINER_BRAND)-mcp:latest
 
 .PHONY: lint
 lint: generate-docs ## Run linting with pre-commit
@@ -70,19 +87,19 @@ help: ## Show this help message
 .PHONY: run-sse
 run-sse: build ## Run the MCP server with SSE transport
 	# add firewall rules for fedora
-	podman run --rm --network=host --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --name insights-mcp-sse localhost/insights-mcp:latest sse
+	podman run --rm --network=host --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --name $(CONTAINER_BRAND)-mcp-sse localhost/$(CONTAINER_BRAND)-mcp:latest sse
 
 .PHONY: run-http
 run-http: build ## Run the MCP server with HTTP streaming transport
 	# add firewall rules for fedora
-	podman run --rm --network=host --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --name insights-mcp-http localhost/insights-mcp:latest http
+	podman run --rm --network=host --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --name $(CONTAINER_BRAND)-mcp-http localhost/$(CONTAINER_BRAND)-mcp:latest http
 
 # just an example command
 # doesn't really make sense
 # rather integrate this with an MCP client directly
 .PHONY: run-stdio
 run-stdio: build ## Run the MCP server with stdio transport
-	podman run --interactive --tty --rm --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --name insights-mcp-stdio localhost/insights-mcp:latest
+	podman run --interactive --tty --rm --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --name $(CONTAINER_BRAND)-mcp-stdio localhost/$(CONTAINER_BRAND)-mcp:latest
 
 ALL_PYTHON_FILES := $(shell find src -name "*.py")
 
@@ -92,7 +109,7 @@ generate-docs: usage.md toolsets.md docs/architecture-structure.svg docs/archite
 usage.md: $(ALL_PYTHON_FILES) Makefile
 	uv tool install -e .
 	echo '```' > $@
-	insights-mcp --help >> $@
+	$(CONTAINER_BRAND)-mcp --help >> $@
 	echo '```' >> $@
 
 toolsets.md: $(ALL_PYTHON_FILES) Makefile

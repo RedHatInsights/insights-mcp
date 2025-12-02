@@ -11,13 +11,13 @@ from pydantic import Field
 from insights_mcp.mcp import InsightsMCP
 
 mcp = InsightsMCP(
-    name="Red Hat Insights RHSM MCP Server",
+    name="$container_brand_long RHSM MCP Server",
     toolset_name="rhsm",
     api_path="api/rhsm/v2",
     instructions="""This server provides tools to manage Red Hat Subscription Management (RHSM) for Red Hat services.
     You can get activation keys and subscription information.
 
-    Insights RHSM requires correct RBAC permissions to be able to use the tools. Ensure that your
+    $container_brand_long RHSM requires correct RBAC permissions to be able to use the tools. Ensure that your
     Service Account has at least these roles:
     - RHC User (for read-only access)
     If this permission is missing in RBAC write this in bold that this is missing.

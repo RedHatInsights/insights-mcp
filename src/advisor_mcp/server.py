@@ -12,9 +12,9 @@ from insights_mcp.mcp import InsightsMCP
 
 
 class AdvisorMCP(InsightsMCP):
-    """MCP server for Red Hat Insights Advisor Recommendations integration.
+    """MCP server for $container_brand_long Advisor Recommendations integration.
 
-    This server provides tools for querying Red Hat Insights
+    This server provides tools for querying $container_brand_long
     Advisor Recommendations, which identify configuration issues that might negatively
     affect the availability, stability, performance, or security of your RHEL systems.
     Includes recommendation discovery, host impact analysis, and detailed information retrieval.
@@ -23,15 +23,16 @@ class AdvisorMCP(InsightsMCP):
     def __init__(self):
         self.logger = logging.getLogger("AdvisorMCP")
         super().__init__(
-            name="Advisor Recommendations MCP Server",
+            name="$container_brand_long Advisor Recommendations MCP Server",
             toolset_name="advisor",
             api_path="api/insights/v1",
             # TODO: check if role should be added to failed http responses.
             instructions=(
-                "This server provides tools to discover and inspect Red Hat Insights Advisor "
+                "This server provides tools to discover and inspect $container_brand_long Advisor "
                 "Recommendations for RHEL.\n"
                 "(A recommendation was formerly called a rule in Red Hat Insights.)\n\n"
-                "Insights Advisor requires correct RBAC permissions to be able to use the tools. Ensure that your\n"
+                "$container_brand_long Advisor requires correct RBAC permissions to be able to use the tools. "
+                "Ensure that your\n"
                 "Service Account has at least this role:\n"
                 "- RHEL Advisor viewer\n"
                 "If you don't have this role, please contact your organization administrator to get it."

@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 import pytest
 import requests
 
-from insights_mcp.server import get_insights_mcp_version, get_latest_release_tag
+from insights_mcp.server import get_latest_release_tag, get_mcp_version
 
 
 @patch("insights_mcp.server.get_latest_release_tag")
@@ -23,7 +23,7 @@ def test_version_check_with_updates_available(mock_requests_get, mock_get_latest
     mock_requests_get.return_value = mock_response
 
     # Call the function
-    result = get_insights_mcp_version()
+    result = get_mcp_version()
 
     # Verify the result contains expected information
     assert "Latest release tag: 20250905-072605-a8f7bd3a" in result
@@ -51,7 +51,7 @@ def test_version_check_same_version(mock_get_latest_release_tag, version):
 
     # Patch the __version__ to match the test parameter
     with patch("insights_mcp.server.__version__", version):
-        result = get_insights_mcp_version()
+        result = get_mcp_version()
 
     # Verify the result is the expected message
     assert result == "You have the latest release"
@@ -65,7 +65,7 @@ def test_version_check_same_version(mock_get_latest_release_tag, version):
 def test_version_check_real_github_api():
     """Test version checking with real GitHub API interaction."""
     # Call the function without mocking GitHub API
-    result = get_insights_mcp_version()
+    result = get_mcp_version()
 
     # Verify the result contains expected structure
     assert "Latest release tag:" in result
@@ -88,7 +88,7 @@ def test_version_check_real_api_same_version():
 
         # Patch the version to match the latest release
         with patch("insights_mcp.server.__version__", latest_tag):
-            result = get_insights_mcp_version()
+            result = get_mcp_version()
 
         # If versions match, should get the "latest release" message
         assert result == "You have the latest release"
