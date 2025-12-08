@@ -16,6 +16,8 @@ from fastmcp.server.auth.oidc_proxy import OIDCProxy
 from fastmcp.server.auth.providers.jwt import JWTVerifier
 from fastmcp.server.auth.auth import AccessToken
 
+from insights_mcp.config import SSO_CONFIG_URL, SSO_CLIENT_ID, SSO_CLIENT_SECRET
+
 logger = logging.getLogger("insights_mcp.oauth")
 
 
@@ -24,12 +26,13 @@ def _init_oauth(self, oauth_enabled=True):
     if oauth_enabled:
         # Simple OIDC based protection with required scope validation
         auth_args = dict(
-            config_url="https://sso.redhat.com/auth/realms/redhat-external/.well-known/openid-configuration",
-            client_id=os.getenv("FASTMCP_SERVER_AUTH_SSO_CLIENT_ID"),
-            client_secret=os.getenv("FASTMCP_SERVER_AUTH_SSO_CLIENT_SECRET"),
+            config_url=SSO_CONFIG_URL,
+            client_id=SSO_CLIENT_ID,
+            client_secret=SSO_CLIENT_SECRET,
             base_url="http://localhost:8000",
             # These scopes will be REQUIRED - tokens without all of them will be rejected
-            required_scopes=["openid", "api.console", "id.roles", "api.ocm"]
+            # required_scopes=["openid", "api.console", "id.roles", "api.ocm"]
+            required_scopes=["openid", "api.console", "api.ocm"]
         )
         auth = OIDCProxy(**auth_args)
     return auth

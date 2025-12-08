@@ -24,10 +24,9 @@ from authlib.oauth2.rfc6749 import OAuth2Token
 from fastmcp.server.auth import AuthProvider
 from fastmcp.server.dependencies import get_http_headers, get_access_token, get_http_request
 
+from insights_mcp.config import INSIGHTS_BASE_URL_PROD, INSIGHTS_TOKEN_ENDPOINT_PROD
 from . import __version__
 
-INSIGHTS_BASE_URL_PROD = "https://console.redhat.com"
-INSIGHTS_TOKEN_ENDPOINT_PROD = "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"
 USER_AGENT = f"insights-mcp/{__version__}"
 
 
@@ -363,7 +362,9 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
 
 # TODO: feat: implent auto token refresh
 # TODO: feat: handle multi user connection scenarios (test on Stage, get multiple user in Stage env)
+#    - tested on Stage, multiple users can connect to the same server, and request with different tokens
 # TODO: feat: RBAC usage for account missing some permissions (ask user to request additional access)
+#    - tested on Stage: not able to get this tested as newly created stage account are all org:admin. failed to remove related permissions.
 # TODO: feat: distinguish between user and service account connections on server start up (better flag?)
 # TODO: chore: clean up unused code adding by AI
 # TODO: Ask for code review/testing from @flo
