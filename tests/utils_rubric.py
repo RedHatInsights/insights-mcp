@@ -10,7 +10,11 @@ from functools import partial
 import yaml
 from rubric_kit.llm_judge import evaluate_rubric_with_panel
 from rubric_kit.pdf_export import export_evaluation_pdf
-from rubric_kit.processor import calculate_percentage_score, calculate_total_score, evaluate_rubric
+from rubric_kit.processor import (
+    calculate_percentage_score,
+    calculate_total_score,
+    evaluate_rubric,
+)
 
 
 def format_chat_session(user_prompt: str, response: str, tools_executed: list) -> str:
@@ -63,7 +67,7 @@ def format_chat_session(user_prompt: str, response: str, tools_executed: list) -
     return "\n".join(lines)
 
 
-def generate_report(
+def generate_report(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     results,
     rubric,
     panel_config,
@@ -93,12 +97,13 @@ def generate_report(
         report_title: Title for the report
         test_prompt: Optional test prompt to include in metadata
     """
-    # Create reports directory
-    reports_dir.mkdir(exist_ok=True)
-
-    # Generate timestamp and model name for unique filenames
+    # Generate timestamp and model name for folder naming
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     model_name = llm_config.get("name", "Unknown Model").replace(" ", "_").replace("/", "-")
+
+    # Create timestamped report folder
+    report_folder = reports_dir / f"{timestamp}_{model_name}"
+    report_folder.mkdir(parents=True, exist_ok=True)
 
     # Build self-contained output structure (same format as rubric-kit CLI)
     output_data = {
@@ -155,17 +160,23 @@ def generate_report(
     }
 
     # Write YAML file (source of truth)
-    yaml_path = reports_dir / f"evaluation_{model_name}_{timestamp}.yaml"
+    yaml_path = report_folder / "evaluation.yaml"
     with open(yaml_path, "w", encoding="utf-8") as f:
         yaml.dump(output_data, f, sort_keys=False, default_flow_style=False, allow_unicode=True)
     verbose_logger.info("📄 YAML report saved to: %s", yaml_path)
 
+    # Save chat_content to the report folder
+    chat_session_file = report_folder / "chat_content.txt"
+    with open(chat_session_file, "w", encoding="utf-8") as f:
+        f.write(chat_content)
+    verbose_logger.info("Chat session saved to: %s", chat_session_file)
+
     # Generate PDF report
-    pdf_path = reports_dir / f"evaluation_{model_name}_{timestamp}.pdf"
+    pdf_path = report_folder / "evaluation.pdf"
     try:
         export_evaluation_pdf(str(yaml_path), str(pdf_path))
         verbose_logger.info("📊 PDF report saved to: %s", pdf_path)
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         verbose_logger.warning("⚠️ PDF generation failed: %s", e)
 
 
