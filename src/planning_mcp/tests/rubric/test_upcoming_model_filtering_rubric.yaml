@@ -1,0 +1,38 @@
+# Rubric for evaluating LLM responses to RHEL upcoming changes queries
+dimensions:
+  - tool_usage:
+      description: "Evaluates whether the correct MCP tools were called"
+      grading_type: binary
+
+  - response_quality:
+      description: "Evaluates the quality and helpfulness of the response"
+      grading_type: score
+      scores:
+        0: Poor
+        1: Fair
+        2: Good
+        3: Excellent
+
+criteria:
+  - tool_correctness:
+      category: Tools
+      weight: 3
+      dimension: tool_usage
+      tool_calls:
+        respect_order: false
+        required:
+          - planning__get_upcoming_changes:
+              min_calls: 1
+              max_calls: 1
+
+  - helpful_response:
+      category: Output
+      weight: 3
+      dimension: response_quality
+      criterion: |
+        The assistant's response should:
+        1. Understand the user's intent to list all package removals from RHEL 9.2 to RHEL 10
+        2. Provide a helpful and informative summary of the package removals
+        3. Not return raw JSON as the sole content - the response should be human-readable
+        4. Include relevant context about the package removals
+        5. Include general advice about updating to RHEL 10
