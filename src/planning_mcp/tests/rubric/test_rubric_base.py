@@ -153,6 +153,8 @@ def create_rubric_test_class(
     @pytest.mark.skipif(should_skip_llm_matrix_tests(), reason="No LLM configurations available")
     @pytest.mark.parametrize("llm_config", LLM_CONFIGURATIONS, ids=lambda c: c.get("name", "Unknown Model"))
     class ConfiguredRubricTest(BaseRubricTest):
+        """Dynamically configured rubric test class created by the factory function."""
+
         TEST_PROMPT = test_prompt
         REPORT_TITLE = report_title
         RUBRIC_PATH = rubric_path
