@@ -361,16 +361,27 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
         return None
 
 # Done: feat: implent auto token refresh
-#    - MCP client - MCP Inspector - on token expire, no auto refresh token actions seen;
+#    - MCP client - MCP Inspector - on token expire, seems mcp inspector don't do auto token refresh;
 #    - MCP client - Cursor - on token expire, token got auto refreshed, so connection got kept;
 # Done: feat: handle multi user connection scenarios (test on Stage, get multiple user in Stage env)
 #    - tested on Stage, multiple users can connect to the same server, and request with different tokens
 # Done: feat: RBAC usage for account missing some permissions (ask user to request additional access)
-#    - tested on Stage: not able to get this fully tested as newly created stage account are all org:admin. failed to remove related permissions.
 #    - current test shows models call rbac__get_all_access for access check, which is same as Service Account auth way. so RBAC is working.
+# Done: chore: clean up unused code adding by AI
 # TODO: feat: distinguish between user and service account connections on server start up (better flag?)
-# TODO: chore: clean up unused code adding by AI
 # TODO: Ask for code review/testing from peers
+# WIP: feat: test on integeration with each MCP server module
+#  * The known works ones are:
+#    - get_insights_mcp_version()
+#    - rbac__get_all_access()
+#    - inventory__list_hosts()
+#    - vulnerability__get_cves()
+#    - advisor__get_active_rules()
+#    - content-sources__list_repositories()
+#    - planning__get_upcoming_changes()
+#    - rhsm__get_activation_keys() - though return [] data on insights-mcp-xxw-test2 account;
+#  * The known not working ones are:
+#    - image_builder__get_org_id() - because image build is using client in a specail way; to make this work.
 class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
     """HTTP client for Red Hat Insights APIs using FastMCP OAuth proxy authentication.
 
