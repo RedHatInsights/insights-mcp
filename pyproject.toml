@@ -43,6 +43,9 @@ dev = [
     "llama-index-tools-mcp",
     "llama-index-llms-openai",
 ]
+planning = [
+    "rubric-kit==0.1.2",
+]
 
 [project.scripts]
 insights-mcp = "insights_mcp.server:main"

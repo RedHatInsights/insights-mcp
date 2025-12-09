@@ -11,3 +11,9 @@ test_config.json
 # temporary mermaid cache
 /docs/input.mmd
 /docs/.cache/
+
+# Rubric-kit reports
+reports/
+
+# Precommit hooks
+.mypy_cache

@@ -11,6 +11,8 @@ from planning_mcp.server import PlanningMCP
 from tests.conftest import (  # pylint: disable=import-error
     mcp_server_url,
     mcp_tools,
+    test_agent,
+    verbose_logger,
 )
 
 
@@ -29,4 +31,6 @@ __all__ = [
     "mcp_server_url",
     "mcp_tools",
     "planning_mcp_server",
+    "test_agent",
+    "verbose_logger",
 ]
