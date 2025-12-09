@@ -30,7 +30,7 @@ def _init_oauth(self, oauth_enabled=True):
             client_id=SSO_CLIENT_ID,
             client_secret=SSO_CLIENT_SECRET,
             base_url="http://localhost:8000",
-            timeout_seconds=10,  # Increase timeout from default 5s to 10s
+            timeout_seconds=20,  # Increase timeout from default 5s to 20s
             # These scopes will be REQUIRED - tokens without all of them will be rejected
             # required_scopes=["openid", "api.console", "id.roles", "api.ocm"]
             required_scopes=["openid", "api.console", "api.ocm"]
