@@ -1,0 +1,23 @@
+judge_panel:
+  judges:
+    - name: primary
+      model: gemini-3-pro-preview
+      api_key: ${GEMINI_API_KEY}
+      base_url: https://generativelanguage.googleapis.com/v1beta/openai/
+    - name: secondary
+      model: gemini-2.5-pro
+      api_key: ${GEMINI_API_KEY}
+      base_url: https://generativelanguage.googleapis.com/v1beta/openai/
+    - name: tertiary
+      model: gemini-2.5-flash
+      api_key: ${GEMINI_API_KEY}
+      base_url: https://generativelanguage.googleapis.com/v1beta/openai/
+
+  execution:
+    mode: parallel  # Options: sequential, parallel, batched
+    timeout: 60       # Timeout per judge in seconds
+
+  consensus:
+    mode: quorum           # Options: quorum, majority, unanimous
+    threshold: 2           # Required for quorum mode (2 out of 3)
+    on_no_consensus: fail  # Options: fail (conservative), median, most_common
