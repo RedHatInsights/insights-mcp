@@ -360,14 +360,17 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
             return payload.get("rh-user-id")
         return None
 
-# TODO: feat: implent auto token refresh
-# TODO: feat: handle multi user connection scenarios (test on Stage, get multiple user in Stage env)
+# Done: feat: implent auto token refresh
+#    - MCP client - MCP Inspector - on token expire, no auto refresh token actions seen;
+#    - MCP client - Cursor - on token expire, token got auto refreshed, so connection got kept;
+# Done: feat: handle multi user connection scenarios (test on Stage, get multiple user in Stage env)
 #    - tested on Stage, multiple users can connect to the same server, and request with different tokens
-# TODO: feat: RBAC usage for account missing some permissions (ask user to request additional access)
-#    - tested on Stage: not able to get this tested as newly created stage account are all org:admin. failed to remove related permissions.
+# Done: feat: RBAC usage for account missing some permissions (ask user to request additional access)
+#    - tested on Stage: not able to get this fully tested as newly created stage account are all org:admin. failed to remove related permissions.
+#    - current test shows models call rbac__get_all_access for access check, which is same as Service Account auth way. so RBAC is working.
 # TODO: feat: distinguish between user and service account connections on server start up (better flag?)
 # TODO: chore: clean up unused code adding by AI
-# TODO: Ask for code review/testing from @flo
+# TODO: Ask for code review/testing from peers
 class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
     """HTTP client for Red Hat Insights APIs using FastMCP OAuth proxy authentication.
 
@@ -408,7 +411,6 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
         proxy_url: str | None = None,
         mcp_transport: str | None = None,
         oauth_provider: AuthProvider | None = None,
-        # token_endpoint: str = INSIGHTS_TOKEN_ENDPOINT_PROD,
     ):
         """Initialize the FastMCP OAuth proxy client.
 
@@ -419,17 +421,17 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
 
         InsightsClientBase.__init__(self, base_url=base_url, proxy_url=proxy_url, mcp_transport=mcp_transport)
 
-        # Note: this token will be reset on each make_request call by the _extract_access_token_from_request method
-        token = OAuth2Token({})
-        grant_type = "client_credentials"
-
         AsyncOAuth2Client.__init__(
             self,
-            grant_type=grant_type,
-            token=token,
+            grant_type="client_credentials",
+            token=OAuth2Token({}),
             headers=self.headers,
             proxy=self.proxy_url,
         )
+
+        # Note: this self.token will be reset on each make_request call by the _extract_access_token_from_request method
+        self.token = OAuth2Token({})
+
         self.oauth_provider = oauth_provider
         self.logger = getLogger("InsightsOAuthProxyClient")
 
