@@ -5,7 +5,6 @@ import logging
 from typing import Annotated, Any
 
 from fastmcp.tools.tool import Tool
-from fastmcp.server.dependencies import get_access_token, get_http_headers
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
@@ -38,130 +37,6 @@ class AdvisorMCP(InsightsMCP):
                 "If you don't have this role, please contact your organization administrator to get it."
             ),
         )
-
-    async def log_request_and_token_info(self, tool_name: str) -> dict[str, Any]:
-        """Helper method to log request headers and extract token information for any MCP tool.
-        
-        This demonstrates the complete flow of:
-        1. Extracting FastMCP access token from request
-        2. Logging request headers (with security masking)
-        3. Accessing Red Hat SSO claims and scopes
-        4. Using enhanced OAuth client for token exchange debugging
-        
-        Args:
-            tool_name: Name of the MCP tool being called
-            
-        Returns:
-            Dictionary containing extracted token and request information
-        """
-        info = {
-            "tool_name": tool_name,
-            "request_headers": {},
-            "access_token_info": {},
-            "redhat_sso_claims": {},
-            "enhanced_client_debug": {},
-        }
-        
-        self.logger.info("=== MCP Tool Call: %s ===", tool_name)
-        
-        # 1. Extract and log request headers
-        try:
-            request_headers = get_http_headers()
-            info["request_headers"] = {}
-            
-            self.logger.info("Request headers received:")
-            for header_name, header_value in request_headers.items():
-                # Security: mask sensitive headers but keep them in debug info
-                if header_name.lower() in ['authorization', 'x-api-key', 'bearer']:
-                    if len(header_value) > 20:
-                        masked_value = f"{header_value[:10]}...{header_value[-6:]}"
-                    else:
-                        masked_value = "***MASKED***"
-                    self.logger.info("  %s: %s", header_name, masked_value)
-                    info["request_headers"][header_name] = masked_value
-                else:
-                    self.logger.info("  %s: %s", header_name, header_value)
-                    info["request_headers"][header_name] = header_value
-                
-
-        except Exception as e:
-            self.logger.warning("Failed to get request headers: %s", e)
-            info["request_headers"]["error"] = str(e)
-
-        # 2. Extract FastMCP access token
-        try:
-            access_token = get_access_token()
-            if access_token:
-                info["access_token_info"] = {
-                    "client_id": access_token.client_id,
-                    "scopes": access_token.scopes,
-                    "expires_at": access_token.expires_at,
-                    "token_length": len(access_token.token),
-                }
-                
-                self.logger.info("FastMCP Access token extracted:")
-                self.logger.info("  Client ID: %s", access_token.client_id)
-                self.logger.info("  Scopes: %s", access_token.scopes)
-                self.logger.info("  Expires at: %s", access_token.expires_at)
-                
-                # 3. Extract Red Hat SSO claims if available
-                if hasattr(access_token, 'claims') and access_token.claims:
-                    claims = access_token.claims
-                    redhat_claims = {
-                        "issuer": claims.get('iss'),
-                        "subject": claims.get('sub'),
-                        "org_id": claims.get('org_id'),
-                        "account_id": claims.get('account_id'),
-                        "username": claims.get('preferred_username'),
-                        "email": claims.get('email'),
-                        "realm_roles": claims.get('realm_access', {}).get('roles', []),
-                        "resource_access": list(claims.get('resource_access', {}).keys()),
-                        "groups": claims.get('groups', []),
-                    }
-                    info["redhat_sso_claims"] = redhat_claims
-                    
-                    self.logger.info("Red Hat SSO claims:")
-                    for key, value in redhat_claims.items():
-                        if value:  # Only log non-empty values
-                            self.logger.info("  %s: %s", key, value)
-                            
-            else:
-                self.logger.warning("No access token found in request")
-                info["access_token_info"]["error"] = "No token found"
-                
-        except Exception as e:
-            self.logger.error("Failed to extract access token: %s", e)
-            info["access_token_info"]["error"] = str(e)
-
-        # 4. Get enhanced OAuth client debug info (shows token exchange process)
-        try:
-            if hasattr(self.insights_client, 'client') and hasattr(self.insights_client.client, 'debug_token_info'):
-                debug_info = await self.insights_client.client.debug_token_info()
-                info["enhanced_client_debug"] = debug_info
-                
-                self.logger.info("Enhanced OAuth client debug info:")
-                self.logger.info("  OAuth enabled: %s", debug_info.get('oauth_enabled'))
-                self.logger.info("  FastMCP token present: %s", debug_info.get('fastmcp_token_present'))
-                self.logger.info("  Is Red Hat token: %s", debug_info.get('is_redhat_token'))
-                self.logger.info("  Current auth header set: %s", 
-                               'Yes' if debug_info.get('current_auth_header', 'Not set') != 'Not set' else 'No')
-                
-                # Log FastMCP payload details if available
-                fastmcp_payload = debug_info.get('fastmcp_payload')
-                if fastmcp_payload:
-                    self.logger.info("  FastMCP token details:")
-                    self.logger.info("    Issuer: %s", fastmcp_payload.get('iss'))
-                    self.logger.info("    Audience: %s", fastmcp_payload.get('aud'))
-                    self.logger.info("    Organization: %s", 
-                                   fastmcp_payload.get('org_id') or fastmcp_payload.get('rh-org-id'))
-                    
-        except Exception as e:
-            self.logger.debug("Enhanced client debug not available: %s", e)
-            info["enhanced_client_debug"]["error"] = str(e)
-        
-        self.logger.debug("The returned info: %s", info)
-        self.logger.info("=== End Request/Token Logging ===")
-        return info
 
     def register_tools(self) -> None:
         """Register all available tools with the MCP server."""
@@ -447,32 +322,6 @@ class AdvisorMCP(InsightsMCP):
             }
         """  # pylint: disable=line-too-long
 
-        # ================================================================
-        # REQUEST LOGGING AND TOKEN EXTRACTION EXAMPLE
-        # ================================================================
-        
-        # Use the helper method to log request headers and extract token information
-        token_info = await self.log_request_and_token_info("get_active_rules")
-        
-        # Log tool-specific parameters
-        self.logger.info("Tool parameters:")
-        self.logger.info("  impacting: %s", impacting)
-        self.logger.info("  limit: %d, offset: %d", limit, offset)
-        self.logger.info("  filters: impact=%s, likelihood=%s, category=%s", impact, likelihood, category)
-        if groups:
-            self.logger.info("  groups: %s", groups)
-        if tags:
-            self.logger.info("  tags: %s", tags)
-        
-        # Example: Use extracted token information for business logic
-        if token_info.get("redhat_sso_claims", {}).get("org_id"):
-            org_id = token_info["redhat_sso_claims"]["org_id"]
-            self.logger.info("Processing request for Red Hat organization: %s", org_id)
-        
-        # ================================================================
-        # ORIGINAL TOOL LOGIC CONTINUES BELOW  
-        # ================================================================
-
         # Parameter validation and conversion
 
         # Manual string-to-boolean parsing is required because some clients,
@@ -574,18 +423,6 @@ class AdvisorMCP(InsightsMCP):
         Call Examples:
             Standard call: {"rule_id": "xfs_with_md_raid_hang|XFS_WITH_MD_RAID_HANG_ISSUE_DEFAULT_KERNEL"}
         """
-        
-        # Example: Use the helper method in any tool for consistent logging
-        # (This is optional - you can choose which tools need detailed logging)
-        token_info = await self.log_request_and_token_info("get_rule_details")
-        
-        # Example: Access extracted information for authorization/business logic
-        if token_info.get("access_token_info", {}).get("scopes"):
-            required_scopes = {"api.insights", "api.console"}
-            user_scopes = set(token_info["access_token_info"]["scopes"])
-            if not required_scopes.intersection(user_scopes):
-                self.logger.warning("User may lack required scopes for detailed rule access")
-        
         if not rule_id or not isinstance(rule_id, str) or "|" not in rule_id:
             return "Error: Recommendation ID must be a non-empty string in format rule_name|ERROR_KEY."
 
