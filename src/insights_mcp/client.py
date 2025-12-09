@@ -430,7 +430,7 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
         )
 
         # Note: this self.token will be reset on each make_request call by the _extract_access_token_from_request method
-        self.token = OAuth2Token({})
+        self.token = None  # OAuth2Token({})
 
         self.oauth_provider = oauth_provider
         self.logger = getLogger("InsightsOAuthProxyClient")
@@ -457,13 +457,22 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
         """
         self.logger.debug("Starting OAuth proxy token exchange")
 
+        # Important: Reset the token to None, to avoid using the previous token
+        self.token = None
+
         # Get access_token from fastmcp request context
-        fastmcp_token = await self._extract_access_token_from_request()
-        if not fastmcp_token:
-            self.logger.error("No FastMCP access token found in request")
+        await self._extract_access_token_from_request()
+        if not self.token:
+            self.logger.error("No access token found in request")
             raise ValueError(self.no_auth_error(ValueError("No access token in request")))
 
-        self.logger.debug("Successfully configured Red Hat SSO token for API authentication")
+        # # Get access_token from fastmcp request context
+        # access_token = await self._extract_access_token_from_request()
+        # if not access_token:
+        #     self.logger.error("No access token found in request")
+        #     raise ValueError(self.no_auth_error(ValueError("No access token in request")))
+
+        self.logger.debug("Successfully retrived SSO token for Insights API authentication")
 
     async def log_request_and_token_info(self, operation_name: str) -> dict[str, Any]:
         """Log comprehensive token and request information for debugging OAuth proxy operations.
@@ -606,9 +615,6 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
             Each request starts with a clean token state to ensure proper
             token extraction from the current MCP request context.
         """
-        # Important: Reset the token to an empty token, to avoid using the previous token
-        self.token = OAuth2Token({})
-
         # Generate operation description for logging
         method_name = getattr(fn, '__name__', 'unknown_method')
         url = kwargs.get('url', args[0] if args else 'unknown_url')
@@ -718,79 +724,60 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
         except Exception as e:
             self.logger.debug("Failed to get access token from FastMCP dependencies: %s", e)
 
-    # Not used yet, will be removed if not needed
-    async def get_fastmcp_token_claims(self) -> dict[str, Any] | None:
-        """Extract and decode JWT claims from the current FastMCP token.
+    # TODO: to test with image_builder__get_org_id() mcp call
+    async def get_org_id(self) -> str | None:
+        """Extract Red Hat organization ID from the current request token.
 
-        Convenience method to decode the JWT payload from the FastMCP token
-        without signature verification, allowing access to user identity,
-        organization, and authorization claims.
+        Provides compatibility with other Insights client implementations by extracting
+        the organization ID required for Red Hat multi-tenant services. This method
+        ensures the token is properly extracted from the current request context before
+        attempting to retrieve the organization ID.
+
+        The method uses a two-tier approach for maximum compatibility:
+        1. Primary: Extracts org_id from pre-parsed token claims (most efficient)
+        2. Fallback: Decodes the JWT token directly to access org_id claims
 
         Returns:
-            dict: JWT payload containing claims such as:
-                - iss: Token issuer (FastMCP server)
-                - sub: Subject (user identifier)
-                - org_id/rh-org-id: Red Hat organization ID
-                - account_id: Red Hat account ID
-                - preferred_username: User's username
-                - email: User's email address
-                - realm_access: Keycloak realm roles
-                - resource_access: Application-specific roles
-                - exp: Token expiration timestamp
-                - iat: Token issued at timestamp
-            None: If no token is available or decoding fails
+            str: Red Hat organization ID if found in the authentication token
+            None: This method raises ValueError instead of returning None
+
+        Raises:
+            ValueError: If no access token is available in the request context
+            ValueError: If org_id is not found in the token claims
 
         Note:
-            This method currently marked as unused and may be removed if not needed.
-            JWT signature verification is skipped as FastMCP has already validated
-            the token. Use this method for accessing user/org context in tools.
+            The organization ID is essential for Red Hat multi-tenant services to ensure
+            users only access resources within their organization. This method implements
+            the same interface as other Insights client classes for consistency.
         """
         try:
-            fastmcp_token = await self._extract_access_token_from_request()
-            if not fastmcp_token:
-                return None
+            # Retrive token on this request
+            await self.refresh_auth()
+            if not self.token:
+                self.logger.error("No access token found for this `get_org_id()` request")
+                raise ValueError(self.no_auth_error(ValueError("No access token in request")))
 
-            # Decode without verification (FastMCP already verified it)
+            # Main method: Try to get org_id from token claims directly
+            claims = self.token.get("claims")
+            if claims:
+                org_id = claims.get("org_id") or claims.get("rh-org-id")
+                if org_id:
+                    return org_id
+
+            # Fallback method: Decode JWT token to get org_id
             payload = jwt.decode(
-                fastmcp_token,
+                self.token.get("access_token"),
                 options={"verify_signature": False, "verify_exp": False},
                 algorithms=["HS256", "RS256"]
             )
-            return payload
+            claims = payload.get('claims')
+            if claims:
+                return claims.get("org_id") or claims.get("rh-org-id")
 
         except Exception as e:
-            self.logger.debug("Failed to decode FastMCP token claims: %s", e)
-            return None
+            self.logger.error("No org_id found in token claims")
+            raise ValueError(self.no_auth_error(ValueError("No org_id in token claims")))
 
-    # TODO: to implement for compatibility with other clients
-    async def get_org_id(self) -> str | None:
-        """Extract Red Hat organization ID from the current authentication token.
-
-        Attempts to retrieve the organization ID using multiple fallback strategies
-        to ensure compatibility with different token formats and authentication flows.
-
-        Extraction strategy:
-        1. First attempts to extract from FastMCP token JWT claims (org_id, rh-org-id)
-        2. Falls back to parent class method (decodes OAuth2 token if available)
-
-        Returns:
-            str: Red Hat organization ID if found in any token source
-            None: If organization ID is not available in any token
-
-        Note:
-            This method is currently marked as unused and may be removed if not needed.
-            The organization ID is essential for multi-tenant Red Hat services to
-            ensure users only access resources within their organization.
-        """
-        # Try FastMCP token first
-        claims = await self.get_fastmcp_token_claims()
-        if claims:
-            org_id = claims.get("org_id") or claims.get("rh-org-id")
-            if org_id:
-                return org_id
-
-        # Fallback to parent method (which decodes the exchanged Red Hat token)
-        return await super().get_org_id()
 
 # Example usage patterns for the different client types:
 #
