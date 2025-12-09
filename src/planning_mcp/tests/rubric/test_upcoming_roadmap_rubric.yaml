@@ -34,4 +34,4 @@ criteria:
         1. Understand the user's intent to learn about RHEL 10 upcoming changes
         2. Provide a helpful and informative summary of the changes
         3. Not return raw JSON as the sole content - the response should be human-readable
-        4. Include relevant context about deprecations, additions, or enhancements
+        4. Include relevant context about deprecations and additions
