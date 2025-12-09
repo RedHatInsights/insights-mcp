@@ -66,3 +66,4 @@ repos:
           - llama-index-core
           - llama-index-tools-mcp
           - llama-index-llms-openai
+          - rubric-kit==0.1.2
