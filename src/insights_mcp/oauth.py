@@ -30,6 +30,7 @@ def _init_oauth(self, oauth_enabled=True):
             client_id=SSO_CLIENT_ID,
             client_secret=SSO_CLIENT_SECRET,
             base_url="http://localhost:8000",
+            timeout_seconds=10,  # Increase timeout from default 5s to 10s
             # These scopes will be REQUIRED - tokens without all of them will be rejected
             # required_scopes=["openid", "api.console", "id.roles", "api.ocm"]
             required_scopes=["openid", "api.console", "api.ocm"]
@@ -136,10 +137,11 @@ def _init_oauth_with_custom_verifier(self, oauth_enabled=True):
 
         # Simple OIDC proxy with custom verifier
         auth_args = dict(
-            config_url="https://sso.redhat.com/auth/realms/redhat-external/.well-known/openid-configuration",
-            client_id=os.getenv("FASTMCP_SERVER_AUTH_SSO_CLIENT_ID") or FASTMCP_SERVER_AUTH_SSO_CLIENT_ID,
-            client_secret=os.getenv("FASTMCP_SERVER_AUTH_SSO_CLIENT_SECRET") or FASTMCP_SERVER_AUTH_SSO_CLIENT_SECRET,
+            config_url=SSO_CONFIG_URL,
+            client_id=SSO_CLIENT_ID,
+            client_secret=SSO_CLIENT_SECRET,
             base_url="http://localhost:8000",
+            timeout_seconds=10,  # Increase timeout from default 5s to 10s
             token_verifier=custom_verifier,  # Use our custom verifier
         )
         auth = OIDCProxy(**auth_args)
