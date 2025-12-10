@@ -23,8 +23,16 @@ from tests.test_patterns import (
             "List upcoming package changes, deprecations, additions and enhancements.",
             {},
         ),
+        (
+            "planning__get_appstreams_lifecycle",
+            "Get Application Streams lifecycle information.",
+            {},
+        ),
     ],
-    ids=["planning__get_upcoming_changes"],
+    ids=[
+        "planning__get_upcoming_changes",
+        "planning__get_appstreams_lifecycle",
+    ],
 )
 def test_mcp_tools_include_descriptions_and_annotations(
     mcp_tools,
@@ -38,12 +46,26 @@ def test_mcp_tools_include_descriptions_and_annotations(
 
 
 @pytest.mark.parametrize("mcp_server_url", ["http", "sse"], indirect=True)
-def test_transport_types_with_get_upcoming_changes(mcp_tools, request):
-    """Test that http and sse transport types can start and expose get_upcoming_changes tool."""
-    assert_transport_types_expose_tool(mcp_tools, request, "planning__get_upcoming_changes")
+@pytest.mark.parametrize(
+    "tool_name",
+    [
+        "planning__get_upcoming_changes",
+        "planning__get_appstreams_lifecycle",
+    ],
+)
+def test_transport_types_with_planning_tools(mcp_tools, request, tool_name: str):
+    """Test that http and sse transport types can start and expose planning tools."""
+    assert_transport_types_expose_tool(mcp_tools, request, tool_name)
 
 
 @pytest.mark.parametrize("mcp_server_url", ["stdio"], indirect=True)
-def test_stdio_transport_with_get_upcoming_changes(mcp_tools):
-    """Test stdio transport with get_upcoming_changes using BasicMCPClient subprocess."""
-    assert_stdio_transport_exposes_tool(mcp_tools, "planning__get_upcoming_changes")
+@pytest.mark.parametrize(
+    "tool_name",
+    [
+        "planning__get_upcoming_changes",
+        "planning__get_appstreams_lifecycle",
+    ],
+)
+def test_stdio_transport_with_planning_tools(mcp_tools, tool_name: str):
+    """Test stdio transport with planning tools using BasicMCPClient subprocess."""
+    assert_stdio_transport_exposes_tool(mcp_tools, tool_name)

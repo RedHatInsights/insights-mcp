@@ -52,3 +52,4 @@
 
 ## planning
 - `get_upcoming_changes`: List upcoming package changes, deprecations, additions and enhancements.
+- `get_appstreams_lifecycle`: Get Application Streams lifecycle information.
