@@ -368,7 +368,7 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
 # Done: feat: RBAC usage for account missing some permissions (ask user to request additional access)
 #    - current test shows models call rbac__get_all_access for access check, which is same as Service Account auth way. so RBAC is working.
 # Done: chore: clean up unused code adding by AI
-# WIP: feat: distinguish between user and service account connections on server start up (better flag?)
+# Done: feat: distinguish between user and service account connections on server start up (better flag?)
 # TODO: Ask for code review/testing from peers
 # Done: feat: test on integeration with each MCP server module
 #  * The known works ones are:
@@ -441,7 +441,8 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
             proxy=self.proxy_url,
         )
 
-        # Note: this self.token will be reset on each make_request call by the _extract_access_token_from_request method
+        # Note: this self.token will be reset on each make_request call by the
+        #   _extract_access_token_from_request() method, which is called by refresh_auth().
         self.token = None  # OAuth2Token({})
 
         self.oauth_provider = oauth_provider
@@ -477,12 +478,6 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
         if not self.token:
             self.logger.error("No access token found in request")
             raise ValueError(self.no_auth_error(ValueError("No access token in request")))
-
-        # # Get access_token from fastmcp request context
-        # access_token = await self._extract_access_token_from_request()
-        # if not access_token:
-        #     self.logger.error("No access token found in request")
-        #     raise ValueError(self.no_auth_error(ValueError("No access token in request")))
 
         self.logger.debug("Successfully retrived SSO token for Insights API authentication")
 
@@ -525,14 +520,14 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
             "enhanced_client_debug": {},
         }
 
-        self.logger.info("=== OAuth Proxy Request: %s ===", operation_name)
+        self.logger.debug("=== OAuth Proxy Request: %s ===", operation_name)
 
         # 1. Extract and log request headers
         try:
             request_headers = get_http_headers()
             info["request_headers"] = {}
 
-            self.logger.info("Request headers received:")
+            self.logger.debug("Request headers received:")
             for header_name, header_value in request_headers.items():
                 # Security: mask sensitive headers but keep them in debug info
                 if header_name.lower() in ['authorization', 'x-api-key', 'bearer']:
@@ -540,10 +535,10 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
                         masked_value = f"{header_value[:10]}...{header_value[-6:]}"
                     else:
                         masked_value = "***MASKED***"
-                    self.logger.info("  %s: %s", header_name, masked_value)
+                    self.logger.debug("  %s: %s", header_name, masked_value)
                     info["request_headers"][header_name] = masked_value
                 else:
-                    self.logger.info("  %s: %s", header_name, header_value)
+                    self.logger.debug("  %s: %s", header_name, header_value)
                     info["request_headers"][header_name] = header_value
 
         except Exception as e:
@@ -561,10 +556,10 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
                     "token_length": len(access_token.get("access_token")),
                 }
 
-                self.logger.info("FastMCP Access token extracted:")
-                self.logger.info("  Client ID: %s", access_token.get("client_id"))
-                self.logger.info("  Scopes: %s", access_token.get("scopes"))
-                self.logger.info("  Expires at: %s", access_token.get("expires_at"))
+                self.logger.debug("FastMCP Access token extracted:")
+                self.logger.debug("  Client ID: %s", access_token.get("client_id"))
+                self.logger.debug("  Scopes: %s", access_token.get("scopes"))
+                self.logger.debug("  Expires at: %s", access_token.get("expires_at"))
 
                 # 3. Extract Red Hat SSO claims if available
                 claims = access_token.get("claims")
@@ -582,10 +577,10 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
                     }
                     info["redhat_sso_claims"] = claims_dict
 
-                    self.logger.info("Red Hat SSO claims:")
+                    self.logger.debug("Red Hat SSO claims:")
                     for key, value in claims_dict.items():
                         if value:  # Only log non-empty values
-                            self.logger.info("  %s: %s", key, value)
+                            self.logger.debug("  %s: %s", key, value)
 
             else:
                 self.logger.warning("No access token found in request")
@@ -597,7 +592,7 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
 
 
         self.logger.debug("OAuth proxy request info: %s", info)
-        self.logger.info("=== End OAuth Proxy Request Logging ===")
+        self.logger.debug("=== End OAuth Proxy Request Logging ===")
         return info
 
     async def make_request(self, fn, *args, **kwargs) -> dict[str, Any] | str:
@@ -640,6 +635,7 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
             self.logger.error("Token exchange failed for %s: %s", operation_name, e)
             raise
 
+        # TODO: This log block is for debugging purposes, comment it out in production.
         # Log comprehensive request and token information
         try:
             request_info = await self.log_request_and_token_info(operation_name)
@@ -659,9 +655,9 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
                     self.logger.warning("Access token has expired (expires_at: %s, current: %s)",
                                       expires_at, current_time)
                 elif (expires_at - current_time) < 300:  # Less than 5 minutes remaining
-                    self.logger.info("Access token expires soon (in %d seconds)", expires_at - current_time)
+                    self.logger.debug("Access token expires soon (in %d seconds)", expires_at - current_time)
                 else:
-                    self.logger.info("Access token is valid (expires_at: %s, current: %s), expire in %d seconds",
+                    self.logger.debug("Access token is valid (expires_at: %s, current: %s), expire in %d seconds",
                                       expires_at, current_time, expires_at - current_time)
 
         except Exception as e:
@@ -669,9 +665,9 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
 
         # Execute the actual HTTP request
         try:
-            self.logger.info("Executing %s request", operation_name)
+            self.logger.debug("Executing %s request", operation_name)
             result = await super().make_request(fn, *args, **kwargs)
-            self.logger.info("Successfully completed %s request", operation_name)
+            self.logger.debug("Successfully completed %s request", operation_name)
             return result
 
         except Exception as e:
@@ -721,13 +717,11 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
                                 access_token_obj.expires_at)
 
                 access_token_dict = access_token_obj.model_dump()
-                self.logger.debug("AccessToken dictionary: %s", access_token_dict)
                 # Customize the AccessToken dictionary for OAuth2Token
                 access_token_dict["access_token"] = access_token_obj.token
 
                 # Store the AccessToken object for later use in the make_request lifecycle
                 self.token = OAuth2Token(access_token_dict)
-                self.logger.debug("self.token OAuth2Token object stored: %s", self.token)
 
                 return self.token
             else:

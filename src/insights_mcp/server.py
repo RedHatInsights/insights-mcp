@@ -298,21 +298,30 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     if args.transport is None:
         args.transport = "stdio"
 
+    # ==== Start of Logging Configuration ====
     logger = logging.getLogger("InsightsMCPServer")
     logger.info("Starting Insights MCP server with args: %s", args)
 
-    # ==== Start of Debug Mode Setup ====
-    if args.debug:  # FIXME: make common logging setup
-        # Configure root logger for debug output
-        logging.basicConfig(level=logging.DEBUG, format="%(name)s - %(levelname)s - %(message)s")
-
-        # Set specific logger levels
+    # Always configure basic logging (no longer conditional on --debug)
+    log_level = logging.DEBUG if args.debug else logging.INFO
+    # Enhanced log format with timestamp and line number
+    log_format = "%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(name)s - %(message)s"
+    logging.basicConfig(
+        level=log_level,
+        format=log_format,
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=[logging.StreamHandler()]
+    )
+    # Set specific logger levels
+    logger.setLevel(log_level)
+    if args.debug:
+        # Additional debug configuration for specific components
         logging.getLogger("ImageBuilderMCP").setLevel(logging.DEBUG)
         logging.getLogger("InsightsClientBase").setLevel(logging.DEBUG)
         logging.getLogger("InsightsClient").setLevel(logging.DEBUG)
         logging.getLogger("ImageBuilderOAuthMiddleware").setLevel(logging.DEBUG)
-        logger.setLevel(logging.DEBUG)
         logger.info("Debug mode enabled")
+    # ==== End of Logging Configuration ====
 
     # ==== Start of Config Setup ====
     mcp_server_config = {
