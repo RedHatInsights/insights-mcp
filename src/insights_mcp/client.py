@@ -370,7 +370,7 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
 # Done: chore: clean up unused code adding by AI
 # TODO: feat: distinguish between user and service account connections on server start up (better flag?)
 # TODO: Ask for code review/testing from peers
-# WIP: feat: test on integeration with each MCP server module
+# Done: feat: test on integeration with each MCP server module
 #  * The known works ones are:
 #    - get_insights_mcp_version()
 #    - rbac__get_all_access()
@@ -380,8 +380,9 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
 #    - content-sources__list_repositories()
 #    - planning__get_upcoming_changes()
 #    - rhsm__get_activation_keys() - though return [] data on insights-mcp-xxw-test2 account;
+#    - image_builder__get_org_id() - because image build is using client in a specail way; fixed and work now;
 #  * The known not working ones are:
-#    - image_builder__get_org_id() - because image build is using client in a specail way; to make this work.
+#    - N/A
 class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
     """HTTP client for Red Hat Insights APIs using FastMCP OAuth proxy authentication.
 
@@ -735,60 +736,72 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
         except Exception as e:
             self.logger.debug("Failed to get access token from FastMCP dependencies: %s", e)
 
-    # TODO: to test with image_builder__get_org_id() mcp call
     async def get_org_id(self) -> str | None:
         """Extract Red Hat organization ID from the current request token.
 
-        Provides compatibility with other Insights client implementations by extracting
-        the organization ID required for Red Hat multi-tenant services. This method
-        ensures the token is properly extracted from the current request context before
-        attempting to retrieve the organization ID.
+        Retrieves the organization ID from the authentication token using a comprehensive
+        two-tier extraction strategy. This method ensures tokens are properly refreshed
+        from the current MCP request context and provides robust fallback mechanisms
+        for accessing organization claims.
 
-        The method uses a two-tier approach for maximum compatibility:
-        1. Primary: Extracts org_id from pre-parsed token claims (most efficient)
-        2. Fallback: Decodes the JWT token directly to access org_id claims
+        Process:
+        1. Calls refresh_auth() to extract/refresh token from current request context
+        2. Validates that authentication token is available
+        3. Primary: Attempts to extract org_id from pre-parsed token claims
+        4. Fallback: Decodes JWT token directly if pre-parsed claims unavailable
+        5. Extracts organization ID from claims.organization.id structure
+        6. Comprehensive error handling with detailed logging throughout
 
         Returns:
-            str: Red Hat organization ID if found in the authentication token
-            None: This method raises ValueError instead of returning None
+            str: Red Hat organization ID extracted from token claims
 
         Raises:
-            ValueError: If no access token is available in the request context
-            ValueError: If org_id is not found in the token claims
+            ValueError: If no access token can be fetched from the request context
+            ValueError: If organization ID is not found in any token claims structure
 
         Note:
-            The organization ID is essential for Red Hat multi-tenant services to ensure
-            users only access resources within their organization. This method implements
-            the same interface as other Insights client classes for consistency.
+            The organization ID is critical for Red Hat's multi-tenant architecture,
+            ensuring users only access resources within their organization. This method
+            provides interface compatibility with other Insights client implementations
+            while leveraging FastMCP's OAuth proxy authentication system.
+
+            The method expects the organization ID to be located at:
+            `claims.organization.id` in the token claims structure.
         """
         try:
+            self.logger.debug("Starting `get_org_id()` request to retrieve organization ID")
             # Retrive token on this request
             await self.refresh_auth()
             if not self.token:
                 self.logger.error("No access token found for this `get_org_id()` request")
-                raise ValueError(self.no_auth_error(ValueError("No access token in request")))
+                raise ValueError(self.no_auth_error(ValueError("No access token fetched for this `get_org_id()` request")))
 
-            # Main method: Try to get org_id from token claims directly
+            self.logger.debug("Extracting org_id from token claims")
+            # Prepare claims from token
             claims = self.token.get("claims")
+            if not claims:
+                # Fallback to decode JWT token for claims if claims are not found
+                self.logger.debug("fallback to decode JWT token for claims")
+                payload = jwt.decode(
+                    self.token.get("access_token"),
+                    options={"verify_signature": False, "verify_exp": False},
+                    algorithms=["HS256", "RS256"]
+                )
+                claims = payload.get('claims')
+            # Extract org_id from claims
             if claims:
-                org_id = claims.get("org_id") or claims.get("rh-org-id")
+                self.logger.debug("claims found in token: %s", claims)
+                org_id = claims.get("organization", {}).get("id")
                 if org_id:
+                    self.logger.debug("org_id found in token claims: %s", org_id)
                     return org_id
-
-            # Fallback method: Decode JWT token to get org_id
-            payload = jwt.decode(
-                self.token.get("access_token"),
-                options={"verify_signature": False, "verify_exp": False},
-                algorithms=["HS256", "RS256"]
-            )
-            claims = payload.get('claims')
-            if claims:
-                return claims.get("org_id") or claims.get("rh-org-id")
+            # If org_id is not found, raise an error
+            self.logger.error("No org_id found in token claims: %s", claims)
+            raise ValueError(self.no_auth_error(ValueError("No org_id found in token claims")))
 
         except Exception as e:
-            self.logger.error("No org_id found in token claims")
-            raise ValueError(self.no_auth_error(ValueError("No org_id in token claims")))
-
+            self.logger.error("No org_id found in token claims: %s", e)
+            raise ValueError(self.no_auth_error(e))
 
 # Example usage patterns for the different client types:
 #
