@@ -270,7 +270,6 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     parser.add_argument("--toolset", type=str, help=toolset_help)
     parser.add_argument("--toolset-help", action="store_true", help="Show toolset details of all toolsets")
     parser.add_argument("--readonly", action="store_true", help="Only register read-only tools")
-    parser.add_argument("--oauth-enabled", action="store_true", help="Enable SSO OAuth authentication (default: False)")
 
     # ==== Start of Transport Mode Subparsers ====
     # Create subparsers for different transport modes
@@ -315,33 +314,38 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
         logger.setLevel(logging.DEBUG)
         logger.info("Debug mode enabled")
 
-    # ==== Start of Base URL and Proxy URL Setup ====
-    base_url = config.INSIGHTS_BASE_URL
-    proxy_url = config.INSIGHTS_PROXY_URL
-
-    # ==== Start of Auth Credentials Setup ====
-    oauth_enabled = config.OAUTH_ENABLED
-    logger.info("Using argument: oauth_enabled: %s", oauth_enabled)
+    # ==== Start of Config Setup ====
+    mcp_server_config = {
+        "base_url": config.INSIGHTS_BASE_URL,
+        "proxy_url": config.INSIGHTS_PROXY_URL,
+        "oauth_enabled": config.OAUTH_ENABLED,
+    }
+    logger.info("Using config: oauth_enabled: %s", mcp_server_config["oauth_enabled"])
 
     # Set client credentials based on OAuth mode
-    if oauth_enabled:
+    if mcp_server_config.get("oauth_enabled"):
         # OAuth mode - credentials managed by FastMCP OAuth proxy
-        client_id = getattr(config, 'SSO_CLIENT_ID', None)
-        client_secret = getattr(config, 'SSO_CLIENT_SECRET', None)
-        if not client_id or not client_secret:
-            logger.error("SSO client ID and secret are required for SSO OAuth authentication")
+        mcp_server_config.update({
+            "client_id": getattr(config, 'SSO_CLIENT_ID', None),
+            "client_secret": getattr(config, 'SSO_CLIENT_SECRET', None),
+        })
+        if not all(mcp_server_config.get(k) for k in ("client_id", "client_secret")):
+            logger.error("SSO Client ID and secret are required for SSO OAuth authentication")
             sys.exit(1)
+        logger.info("Using SSO Client ID: %s", mcp_server_config["client_id"])
     else:
         # Traditional mode - use service account credentials
-        client_id = getattr(config, 'INSIGHTS_CLIENT_ID', None)
-        client_secret = getattr(config, 'INSIGHTS_CLIENT_SECRET', None)
-        refresh_token = getattr(config, 'INSIGHTS_REFRESH_TOKEN', None)
-        token_endpoint = config.SSO_TOKEN_ENDPOINT
-        if not client_id or not client_secret or not refresh_token:
+        mcp_server_config.update({
+            "client_id": getattr(config, 'INSIGHTS_CLIENT_ID', None),
+            "client_secret": getattr(config, 'INSIGHTS_CLIENT_SECRET', None),
+            "refresh_token": getattr(config, 'INSIGHTS_REFRESH_TOKEN', None),
+            "token_endpoint": config.SSO_TOKEN_ENDPOINT,
+        })
+        if not any(mcp_server_config.get(k) for k in ("client_id", "client_secret", "refresh_token")):
             logger.error("Service account credentials are required for Insights authentication")
             sys.exit(1)
+        logger.info("Using Insights Client ID: %s", mcp_server_config["client_id"])
 
-    # ==== Start of Toolset Setup ====
     toolset = args.toolset or config.INSIGHTS_MCP_TOOLSET
 
     if toolset == "all":
@@ -355,38 +359,25 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
         args.transport,
         ", ".join(toolset_list),
     )
-    logger.info("Connecting to %s", base_url)
-    if proxy_url:
-        logger.info(">>> Using proxy URL: %s", proxy_url)
-    logger.debug(">>> Using arguments: %s", args)
+    logger.info("Connecting to %s", mcp_server_config["base_url"])
+    if mcp_server_config["proxy_url"]:
+        logger.info(">>> Using proxy URL: %s", mcp_server_config["proxy_url"])
 
-    instructions = get_instructions(toolset_list)
+    mcp_server_config["instructions"] = get_instructions(toolset_list)
 
     # Note: Force overrided the host:port to a SSO registered host:port
-    mcp_host = args.host
-    mcp_port = args.port
+    mcp_server_config["mcp_host"] = args.host
+    mcp_server_config["mcp_port"] = args.port
     log_level = "DEBUG" if args.debug else "WARNING"
-    if oauth_enabled:
-        mcp_host = "localhost"
-        mcp_port = 8000
-        logger.info("Force using SSO registered mcp server host:port: %s:%s", mcp_host, mcp_port)
+    if mcp_server_config["oauth_enabled"]:
+        mcp_server_config["mcp_host"] = "localhost"
+        mcp_server_config["mcp_port"] = 8000
+        logger.info("Force using SSO registered mcp server host:port: %s:%s", mcp_server_config["mcp_host"], mcp_server_config["mcp_port"])
         logger.info(">>> The origin passed in host:port: %s:%s", args.host, args.port)
         logger.info(">>> Note: For SSO authentication, you need to register the mcp server host:port with SSO")
 
     # Create and run the MCP server
-    mcp_server = InsightsMCPServer(
-        base_url=base_url,
-        client_id=client_id,
-        client_secret=client_secret,
-        refresh_token=refresh_token,
-        proxy_url=proxy_url,
-        oauth_enabled=oauth_enabled,
-        mcp_transport=args.transport,
-        mcp_host=mcp_host,
-        mcp_port=mcp_port,
-        instructions=instructions,
-        token_endpoint=token_endpoint,
-    )
+    mcp_server = InsightsMCPServer(**mcp_server_config)
 
     mcp_server.register_mcps(toolset_list, readonly=args.readonly)
 
@@ -394,9 +385,9 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     mcp_server.tool(get_insights_mcp_version, annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
 
     if args.transport == "sse":
-        mcp_server.run(transport="sse", host=mcp_host, port=mcp_port)
+        mcp_server.run(transport="sse", host=mcp_server_config["mcp_host"], port=mcp_server_config["mcp_port"])
     elif args.transport == "http":
-        mcp_server.run(transport="http", host=mcp_host, port=mcp_port, log_level=log_level)
+        mcp_server.run(transport="http", host=mcp_server_config["mcp_host"], port=mcp_server_config["mcp_port"], log_level=log_level)
     else:
         mcp_server.run()
 

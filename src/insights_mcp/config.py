@@ -16,17 +16,16 @@ SSO_TOKEN_ENDPOINT = f"{SSO_BASE_URL}/auth/realms/redhat-external/protocol/openi
 # Authentication configuration
 OAUTH_ENABLED = os.getenv("OAUTH_ENABLED", "false").lower() == "true"
 
-if OAUTH_ENABLED:
-    # MCP server provides Dynamic Client Registration (DCR) Authentication via OAuth Proxy
-    SSO_BASE_URL = os.getenv("SSO_BASE_URL") or "https://sso.redhat.com"
-    SSO_CLIENT_ID = os.getenv("SSO_CLIENT_ID") or ""  # default to empty string if not set
-    SSO_CLIENT_SECRET = os.getenv("SSO_CLIENT_SECRET") or ""  # default to empty string if not set
+# For OAuth_ENABLED:
+# MCP server provides Dynamic Client Registration (DCR) Authentication via OAuth Proxy
+SSO_CLIENT_ID = os.getenv("SSO_CLIENT_ID") or ""  # default to empty string if not set
+SSO_CLIENT_SECRET = os.getenv("SSO_CLIENT_SECRET") or ""  # default to empty string if not set
 
-else:
-    # MCP server requires no auth on MCP Client connection
-    INSIGHTS_CLIENT_ID = os.getenv("INSIGHTS_CLIENT_ID") or ""
-    INSIGHTS_CLIENT_SECRET = os.getenv("INSIGHTS_CLIENT_SECRET") or ""
-    INSIGHTS_REFRESH_TOKEN = os.getenv("INSIGHTS_REFRESH_TOKEN") or ""
+# For OAUTH_ENABLED=False:
+# MCP server requires no auth on MCP Client connection
+INSIGHTS_CLIENT_ID = os.getenv("INSIGHTS_CLIENT_ID") or ""
+INSIGHTS_CLIENT_SECRET = os.getenv("INSIGHTS_CLIENT_SECRET") or ""
+INSIGHTS_REFRESH_TOKEN = os.getenv("INSIGHTS_REFRESH_TOKEN") or ""
 
 # Argument toolset
 INSIGHTS_MCP_TOOLSET = os.getenv("INSIGHTS_TOOLSET", "all")

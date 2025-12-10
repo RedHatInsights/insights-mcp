@@ -368,7 +368,7 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
 # Done: feat: RBAC usage for account missing some permissions (ask user to request additional access)
 #    - current test shows models call rbac__get_all_access for access check, which is same as Service Account auth way. so RBAC is working.
 # Done: chore: clean up unused code adding by AI
-# TODO: feat: distinguish between user and service account connections on server start up (better flag?)
+# WIP: feat: distinguish between user and service account connections on server start up (better flag?)
 # TODO: Ask for code review/testing from peers
 # Done: feat: test on integeration with each MCP server module
 #  * The known works ones are:
