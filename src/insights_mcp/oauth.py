@@ -12,34 +12,112 @@ import starlette.requests
 import starlette.responses
 import starlette.types
 
+from fastmcp.server.auth import AuthProvider
 from fastmcp.server.auth.oidc_proxy import OIDCProxy
-from fastmcp.server.auth.providers.jwt import JWTVerifier
-from fastmcp.server.auth.auth import AccessToken
-
-from insights_mcp.config import SSO_CONFIG_URL, SSO_CLIENT_ID, SSO_CLIENT_SECRET
+from insights_mcp import config
 
 logger = logging.getLogger("insights_mcp.oauth")
 
 
-# TODO: put this in a proper way
-def _init_oauth(self, oauth_enabled=True):
-    auth = None
-    if oauth_enabled:
-        # Simple OIDC based protection with required scope validation
-        auth_args = dict(
-            config_url=SSO_CONFIG_URL,
-            client_id=SSO_CLIENT_ID,
-            client_secret=SSO_CLIENT_SECRET,
-            base_url="http://localhost:8000",
-            timeout_seconds=20,  # Increase timeout from default 5s to 20s
-            # These scopes will be REQUIRED - tokens without all of them will be rejected
-            # required_scopes=["openid", "api.console", "id.roles", "api.ocm"]
-            required_scopes=["openid", "api.console", "api.ocm"]
+def init_oauth_provider(
+    client_id: str | None = None,
+    client_secret: str | None = None,
+    mcp_host: str | None = None,
+    mcp_port: int | None = None,
+) -> AuthProvider | None:
+    """Initialize OAuth authentication provider for FastMCP server integration.
+
+    Creates an OIDCProxy instance configured for Red Hat Single Sign-On (RH-SSO)
+    authentication. This provider acts as a transparent proxy to the upstream
+    Red Hat SSO OIDC Authorization Server, handling Dynamic Client Registration
+    and forwarding OAuth flows for MCP clients.
+
+    The provider implements the complete OAuth2/OIDC flow:
+    1. Dynamic Client Registration (DCR) for MCP clients
+    2. Authorization code flow with PKCE support
+    3. Token validation and refresh capabilities
+    4. Scope-based access control with required scopes enforcement
+
+    Args:
+        client_id: OAuth2 client ID registered with Red Hat SSO.
+                  If None, uses SSO_CLIENT_ID from configuration.
+        client_secret: OAuth2 client secret for the registered client.
+                      If None, uses SSO_CLIENT_SECRET from configuration.
+        mcp_host: Hostname where the MCP server will be accessible to clients.
+                 Used for OAuth callback URL construction.
+        mcp_port: Port where the MCP server will listen for client connections.
+                 Used for OAuth callback URL construction.
+
+    Returns:
+        AuthProvider: Configured OIDCProxy instance ready for FastMCP integration.
+        None: If OAuth authentication is disabled or configuration is invalid.
+
+    Raises:
+        ValueError: If required configuration parameters are missing or invalid.
+        ConnectionError: If unable to connect to Red Hat SSO configuration endpoint.
+
+    Note:
+        The provider enforces these required OAuth scopes:
+        - "openid": Standard OIDC identity scope
+        - "api.console": Access to Red Hat Console APIs
+        - "api.ocm": Access to OpenShift Cluster Manager APIs
+
+        Tokens without ALL required scopes will be rejected during authentication.
+
+    Example:
+        ```python
+        # Initialize with explicit parameters
+        auth_provider = init_oauth_provider(
+            client_id="my-sso-client",
+            client_secret="my-sso-secret",
+            mcp_host="localhost",
+            mcp_port=8000
         )
-        auth = OIDCProxy(**auth_args)
-    return auth
+
+        # Initialize using configuration defaults
+        auth_provider = init_oauth_provider()
+
+        # Use with FastMCP server
+        mcp_server = FastMCP(
+            name="My Insights Server",
+            auth=auth_provider
+        )
+        ```
+    """
+     # Construct base URL for OAuth callbacks and metadata endpoints
+    base_url = (
+        f"http://{mcp_host}:{mcp_port}"
+        if mcp_host and mcp_port
+        else "http://localhost:8000"
+    )
+    logger.debug("Initializing OAuth provider with base_url: %s", base_url)
+
+    # Configure OIDC proxy with Red Hat SSO settings
+    auth_args = {
+        "config_url": config.SSO_CONFIG_URL,
+        "client_id": client_id or config.SSO_CLIENT_ID,
+        "client_secret": client_secret or config.SSO_CLIENT_SECRET,
+        "base_url": base_url,
+        # Required scopes - tokens missing any of these will be rejected
+        "required_scopes": ["openid", "api.console", "api.ocm"],
+        "timeout_seconds": config.SSO_OAUTH_TIMEOUT_SECONDS,
+    }
+
+    logger.debug("Creating OIDCProxy with config: %s", {
+        k: v if k not in ["client_secret"] else "***REDACTED***"
+        for k, v in auth_args.items()
+    })
+
+    try:
+        oauth_provider = OIDCProxy(**auth_args)
+        logger.info("Successfully initialized OAuth provider for %s", base_url)
+        return oauth_provider
+    except Exception as e:
+        logger.error("Failed to initialize OAuth provider: %s", e)
+        raise
 
 
+# Not used anymore, to remove later.
 class Middleware(starlette.middleware.base.BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
     """
     This middleware implements the OAuth metadata and registration endpoints that MCP clients

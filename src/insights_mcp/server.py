@@ -13,18 +13,14 @@ from fastmcp import FastMCP
 from fastmcp.server.auth import AuthProvider
 from mcp.types import ToolAnnotations
 
-from insights_mcp.oauth import _init_oauth
+from insights_mcp import config
+from insights_mcp.oauth import init_oauth_provider
 
 from advisor_mcp.server import mcp_server as AdvisorMCP
 from content_sources_mcp.server import mcp as ContentSourcesMCP
 from image_builder_mcp.server import mcp_server as ImageBuilderMCP
 from insights_mcp import __version__
-from insights_mcp.client import (
-    INSIGHTS_BASE_URL_PROD,
-    INSIGHTS_TOKEN_ENDPOINT_PROD,
-)
 from insights_mcp.mcp import InsightsMCP
-from insights_mcp.oauth import Middleware
 from inventory_mcp.server import mcp as InventoryMCP
 from planning_mcp.server import mcp as PlanningMCP
 from rbac_mcp.server import mcp as RbacMCP
@@ -62,6 +58,9 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
         proxy_url: Optional proxy URL for requests
         oauth_enabled: Whether OAuth authentication is enabled
         mcp_transport: MCP transport type for error handling
+        mcp_host: MCP server host for authentication
+        mcp_port: MCP server port for authentication
+        token_endpoint: Token endpoint for authentication
         **settings: Additional settings passed to parent class
     """
 
@@ -70,24 +69,32 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
         name: str | None = None,
         instructions: str | None = None,
         *,
-        base_url: str = INSIGHTS_BASE_URL_PROD,
+        base_url: str | None = None,
         client_id: str | None = None,
         client_secret: str | None = None,
         refresh_token: str | None = None,
         proxy_url: str | None = None,
         oauth_enabled: bool = False,
         mcp_transport: str | None = None,
-        token_endpoint: str = INSIGHTS_TOKEN_ENDPOINT_PROD,
+        mcp_host: str | None = None,
+        mcp_port: int | None = None,
+        token_endpoint: str | None = None,
         **settings: Any,
     ):
         name = name or "Red Hat Insights"
+
+        # Initialize the OAuth provider
+        oauth_provider =  init_oauth_provider(
+            client_id=client_id,
+            client_secret=client_secret,
+            mcp_host=mcp_host,
+            mcp_port=mcp_port,
+        ) if oauth_enabled else None
+
         super().__init__(
             name=name,
             instructions=instructions,
-            # mask_error_details=False,
-            # log_level="Debug",
-            # debug=True,
-            auth=_init_oauth(oauth_enabled),
+            auth=oauth_provider,
             **settings,
         )
         self.base_url = base_url
@@ -263,7 +270,9 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     parser.add_argument("--toolset", type=str, help=toolset_help)
     parser.add_argument("--toolset-help", action="store_true", help="Show toolset details of all toolsets")
     parser.add_argument("--readonly", action="store_true", help="Only register read-only tools")
+    parser.add_argument("--oauth-enabled", action="store_true", help="Enable SSO OAuth authentication (default: False)")
 
+    # ==== Start of Transport Mode Subparsers ====
     # Create subparsers for different transport modes
     subparsers = parser.add_subparsers(dest="transport", help="Transport mode")
 
@@ -279,26 +288,21 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     http_parser = subparsers.add_parser("http", help="Use HTTP streaming transport")
     http_parser.add_argument("--host", default="127.0.0.1", help="Host for HTTP transport (default: 127.0.0.1)")
     http_parser.add_argument("--port", type=int, default=8000, help="Port for HTTP transport (default: 8000)")
+    # ==== End of Transport Mode Subparsers ====
 
     args = parser.parse_args()
 
+    # ==== Print Toolset Help info if the case is --toolset-help ====
     print_toolset_help_and_exit(args)
 
     # Default to stdio if no subcommand is provided
     if args.transport is None:
         args.transport = "stdio"
 
-    # Get credentials from environment variables or user input
-    client_id = os.getenv("INSIGHTS_CLIENT_ID")
-    client_secret = os.getenv("INSIGHTS_CLIENT_SECRET")
-
-    base_url = os.getenv("INSIGHTS_BASE_URL", INSIGHTS_BASE_URL_PROD)
-    token_endpoint = os.getenv("INSIGHTS_TOKEN_ENDPOINT", INSIGHTS_TOKEN_ENDPOINT_PROD)
-    proxy_url = os.getenv("INSIGHTS_PROXY_URL")
-
     logger = logging.getLogger("InsightsMCPServer")
-    logger.debug("Using arguments: %s", args)
+    logger.info("Starting Insights MCP server with args: %s", args)
 
+    # ==== Start of Debug Mode Setup ====
     if args.debug:  # FIXME: make common logging setup
         # Configure root logger for debug output
         logging.basicConfig(level=logging.DEBUG, format="%(name)s - %(levelname)s - %(message)s")
@@ -311,35 +315,75 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
         logger.setLevel(logging.DEBUG)
         logger.info("Debug mode enabled")
 
-    oauth_enabled = os.getenv("OAUTH_ENABLED", "false").lower() == "true"
-    logger.debug("Using argument: oauth_enabled: %s", oauth_enabled)
-    logger.debug("Using argument: proxy_url: %s", proxy_url)
-    toolset = args.toolset or os.getenv("INSIGHTS_TOOLSET", "all")
+    # ==== Start of Base URL and Proxy URL Setup ====
+    base_url = config.INSIGHTS_BASE_URL
+    proxy_url = config.INSIGHTS_PROXY_URL
+
+    # ==== Start of Auth Credentials Setup ====
+    oauth_enabled = config.OAUTH_ENABLED
+    logger.info("Using argument: oauth_enabled: %s", oauth_enabled)
+
+    # Set client credentials based on OAuth mode
+    if oauth_enabled:
+        # OAuth mode - credentials managed by FastMCP OAuth proxy
+        client_id = getattr(config, 'SSO_CLIENT_ID', None)
+        client_secret = getattr(config, 'SSO_CLIENT_SECRET', None)
+        if not client_id or not client_secret:
+            logger.error("SSO client ID and secret are required for SSO OAuth authentication")
+            sys.exit(1)
+    else:
+        # Traditional mode - use service account credentials
+        client_id = getattr(config, 'INSIGHTS_CLIENT_ID', None)
+        client_secret = getattr(config, 'INSIGHTS_CLIENT_SECRET', None)
+        refresh_token = getattr(config, 'INSIGHTS_REFRESH_TOKEN', None)
+        token_endpoint = config.SSO_TOKEN_ENDPOINT
+        if not client_id or not client_secret or not refresh_token:
+            logger.error("Service account credentials are required for Insights authentication")
+            sys.exit(1)
+
+    # ==== Start of Toolset Setup ====
+    toolset = args.toolset or config.INSIGHTS_MCP_TOOLSET
 
     if toolset == "all":
         toolset_list = [mcp.toolset_name for mcp in MCPS]
     else:
         toolset_list = [t.strip() for t in toolset.split(",")]
 
-    logger.warning(
+    logger.info(
         "Starting Insights MCP %s (%s) with toolsets: %s",
         __version__,
         args.transport,
         ", ".join(toolset_list),
     )
-    logger.warning("Connecting to %s", base_url)
+    logger.info("Connecting to %s", base_url)
+    if proxy_url:
+        logger.info(">>> Using proxy URL: %s", proxy_url)
+    logger.debug(">>> Using arguments: %s", args)
 
     instructions = get_instructions(toolset_list)
+
+    # Note: Force overrided the host:port to a SSO registered host:port
+    mcp_host = args.host
+    mcp_port = args.port
+    log_level = "DEBUG" if args.debug else "WARNING"
+    if oauth_enabled:
+        mcp_host = "localhost"
+        mcp_port = 8000
+        logger.info("Force using SSO registered mcp server host:port: %s:%s", mcp_host, mcp_port)
+        logger.info(">>> The origin passed in host:port: %s:%s", args.host, args.port)
+        logger.info(">>> Note: For SSO authentication, you need to register the mcp server host:port with SSO")
 
     # Create and run the MCP server
     mcp_server = InsightsMCPServer(
         base_url=base_url,
         client_id=client_id,
         client_secret=client_secret,
-        refresh_token=os.getenv("INSIGHTS_REFRESH_TOKEN"),
+        refresh_token=refresh_token,
         proxy_url=proxy_url,
         oauth_enabled=oauth_enabled,
         mcp_transport=args.transport,
+        mcp_host=mcp_host,
+        mcp_port=mcp_port,
         instructions=instructions,
         token_endpoint=token_endpoint,
     )
@@ -350,11 +394,9 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     mcp_server.tool(get_insights_mcp_version, annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
 
     if args.transport == "sse":
-        mcp_server.run(transport="sse", host=args.host, port=args.port)
+        mcp_server.run(transport="sse", host=mcp_host, port=mcp_port)
     elif args.transport == "http":
-        # Force overrided the host:port for initial auth feat adding
-        # mcp_server.run(transport="http", host=args.host, port=args.port)
-        mcp_server.run(transport="http", host="localhost", port=8000, log_level="DEBUG")
+        mcp_server.run(transport="http", host=mcp_host, port=mcp_port, log_level=log_level)
     else:
         mcp_server.run()
 
