@@ -85,3 +85,17 @@ toml
 toolset
 toolsets
 verifier
+EPEL
+roadmap
+Roadmap
+Summarization
+summarization
+deprecations
+Deprecations
+Lifecycle
+lifecycle
+Appstream
+appstreams
+Appstreams
+js
+postgresql

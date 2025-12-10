@@ -31,3 +31,37 @@ This file contains test prompts to validate the Planning MCP toolset integration
 **Expected Behavior:**
 - Should call `planning__get_upcoming_changes` with no parameters.
 - The model should group and summarize changes relevant to RHEL 8 and RHEL 9, focusing on timelines and potential impact, and may provide light planning context if helpful.
+
+## Tool: get_appstreams_lifecycle
+
+### Test 1: List all upcoming changes
+**Prompt:** "What versions of Node.js are available across RHEL 8, 9, and 10?"
+
+**Expected Behavior:**
+- Should call `planning__get_appstreams_lifecycle` with:
+  ```json
+  { "mode": "streams", "application_stream_name": "Node.js" }
+  ```
+- Should return a list of Node.js application streams across supported RHEL versions.
+
+### Test 2: Detailed Lifecycle (raw mode, major scope)
+**Prompt:** "Show me the detailed lifecycle of all modules available on RHEL 9."
+
+**Expected Behavior:**
+- Should call `planning__get_appstreams_lifecycle` with:
+  ```json
+  { "mode": "raw", "major": 9 }
+  ```
+- Should return the full raw lifecycle dataset for RHEL 9.
+- The output may be grouped or formatted, but raw lifecycle rows must remain available.
+
+
+### Test 3: Specific Package / Major Validation
+**Prompt:** "Is the 'postgresql' package supported on RHEL 8, and when does it expire?"
+
+**Expected Behavior:**
+- Should call `planning__get_appstreams_lifecycle` with:
+  ```json
+  { "mode": "raw", "major": 8, "name": "postgresql" }
+  ```
+- Should extract lifecycle status and end-of-life date from the results.
