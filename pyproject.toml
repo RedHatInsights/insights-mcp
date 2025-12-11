@@ -22,9 +22,9 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
+    "fastmcp>=2.13.3",
     "requests",
     "PyJWT",
-    "fastmcp",
 ]
 
 [project.optional-dependencies]
@@ -92,9 +92,6 @@ indent-style = "space"
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
 testpaths = ["tests", "src"]
-
-[tool.uv.sources]
-fastmcp = { path = "../fastmcp", editable = true }
 
 [dependency-groups]
 dev = [
