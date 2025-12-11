@@ -15,6 +15,7 @@ from pydantic import Field
 
 from insights_mcp.mcp import InsightsMCP
 from planning_mcp.tools.appstreams import get_appstreams_lifecycle as _get_appstreams_lifecycle
+from planning_mcp.tools.rhel_lifecycle import get_rhel_lifecycle as _get_rhel_lifecycle
 from planning_mcp.tools.upcoming import get_upcoming_changes as _get_upcoming_changes
 
 
@@ -65,8 +66,8 @@ class PlanningMCP(InsightsMCP):
         tool_functions: list[Callable[..., Any]] = [
             self.get_upcoming_changes,
             self.get_appstreams_lifecycle,
+            self.get_rhel_lifecycle,
             # Future tools to add here:
-            # self.get_rhel_lifecycle,
             # self.get_relevant_rhel_lifecycle,
             # self.get_relevant_appstreams,
             # self.get_relevant_upcoming_changes,
@@ -227,6 +228,41 @@ class PlanningMCP(InsightsMCP):
             kind=_kind,
             logger=self.logger,
         )
+
+    async def get_rhel_lifecycle(self) -> str:
+        """Returns life cycle dates for all RHEL majors and minors.
+
+        🟢 CALL IMMEDIATELY - No information gathering required.
+
+        Use this tool when the user asks for RHEL versions and lifecycle timelines, including major versions,
+        minor versions, or extended support types (EUS/E4S/ELS).
+
+        For "major-only" versions and timelines (for example, "RHEL 8 lifecycle overview"), call this tool and then
+        focus on rows where minor is null. Filtering is performed by you, not the MCP tool.
+
+        For a specific minor (for example, "RHEL 9.2 EUS lifecycle"), call this tool and then
+        focus on entries matching the requested major and minor. Interpretation of date windows or version
+        selection is done by you.
+
+        When the user mentions dates or "expiring within N days", call this tool and interpret
+        the start_date / end_date values to identify relevant versions. Interpretation of date windows or version
+        selection is done by you.
+
+        Returns:
+            dict: A response object containing:
+                    - data: A list of RHEL lifecycle records
+                        - name (str): System name
+                        - start_date (str): Start date of support
+                        - end_date (str): End date of standard support
+                        - support_status (str): Status of support, e.g. retired, upcoming_release, supported
+                        - display_name (str): How the system should be presented to the customer
+                        - major (int): Major system version
+                        - minor (int): Minor system version
+                        - end_date_e4s (str | null): End date of Update Services for SAP Solutions support
+                        - end_date_els (str | null): End date of Extended Life-cycle Support
+                        - end_date_eus (str | null): End date of Extended Update Support
+        """
+        return await _get_rhel_lifecycle(self.insights_client, self.logger)
 
 
 # Instance used by the unified Insights MCP server (`insights_mcp.server`).

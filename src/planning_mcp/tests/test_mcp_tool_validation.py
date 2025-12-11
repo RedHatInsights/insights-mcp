@@ -28,10 +28,16 @@ from tests.test_patterns import (
             "Get Application Streams lifecycle information.",
             {},
         ),
+        (
+            "planning__get_rhel_lifecycle",
+            "Returns life cycle dates for all RHEL majors and minors.",
+            {},
+        ),
     ],
     ids=[
         "planning__get_upcoming_changes",
         "planning__get_appstreams_lifecycle",
+        "planning__get_rhel_lifecycle",
     ],
 )
 def test_mcp_tools_include_descriptions_and_annotations(
@@ -51,6 +57,7 @@ def test_mcp_tools_include_descriptions_and_annotations(
     [
         "planning__get_upcoming_changes",
         "planning__get_appstreams_lifecycle",
+        "planning__get_rhel_lifecycle",
     ],
 )
 def test_transport_types_with_planning_tools(mcp_tools, request, tool_name: str):
@@ -64,6 +71,7 @@ def test_transport_types_with_planning_tools(mcp_tools, request, tool_name: str)
     [
         "planning__get_upcoming_changes",
         "planning__get_appstreams_lifecycle",
+        "planning__get_rhel_lifecycle",
     ],
 )
 def test_stdio_transport_with_planning_tools(mcp_tools, tool_name: str):
