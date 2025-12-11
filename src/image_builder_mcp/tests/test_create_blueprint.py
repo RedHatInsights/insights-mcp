@@ -66,7 +66,7 @@ class TestCreateBlueprint:
     ):
         """Test create_blueprint with watermark disabled via environment variable."""
         # Setup mocks
-        with setup_imagebuilder_watermark_disabled():
+        with setup_imagebuilder_watermark_disabled(imagebuilder_mcp_server, imagebuilder_mock_client):
             imagebuilder_mock_client.post.return_value = mock_api_response
             imagebuilder_mcp_server.clients[TEST_CLIENT_ID] = imagebuilder_mock_client
 

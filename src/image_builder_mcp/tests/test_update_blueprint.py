@@ -90,7 +90,7 @@ class TestUpdateBlueprint:
         """Test update_blueprint with watermark disabled via environment variable."""
         # Setup mocks
         with (
-            setup_imagebuilder_watermark_disabled(),
+            setup_imagebuilder_watermark_disabled(imagebuilder_mcp_server, imagebuilder_mock_client),
             setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response),
         ):
             # Call the method
