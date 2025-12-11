@@ -13,6 +13,7 @@ Classes:
 
 import gzip
 import json as json_lib
+import time
 from logging import getLogger
 from typing import Any
 
@@ -22,7 +23,7 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client, OAuthError
 from authlib.oauth2.rfc6749 import OAuth2Token
 
 from fastmcp.server.auth import AuthProvider
-from fastmcp.server.dependencies import get_http_headers, get_access_token, get_http_request
+from fastmcp.server.dependencies import get_http_headers, get_access_token
 
 from insights_mcp.config import INSIGHTS_BASE_URL_PROD, INSIGHTS_TOKEN_ENDPOINT_PROD
 from . import __version__
@@ -519,7 +520,7 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
                     self.logger.debug("  %s: %s", header_name, header_value)
                     info["request_headers"][header_name] = header_value
 
-        except Exception as e:
+        except (RuntimeError, KeyError, AttributeError) as e:
             self.logger.warning("Failed to get request headers: %s", e)
             info["request_headers"]["error"] = str(e)
 
@@ -564,7 +565,7 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
                 self.logger.warning("No access token found in request")
                 info["access_token_info"]["error"] = "No token found"
 
-        except Exception as e:
+        except (KeyError, TypeError, AttributeError) as e:
             self.logger.error("Failed to extract access token: %s", e)
             info["access_token_info"]["error"] = str(e)
 
@@ -626,7 +627,6 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
             # Check token freshness for security-sensitive operations
             token_info = request_info.get("access_token_info", {})
             if token_info.get("expires_at"):
-                import time
                 current_time = int(time.time())
                 expires_at = token_info["expires_at"]
                 if expires_at < current_time:
@@ -635,10 +635,14 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
                 elif (expires_at - current_time) < 300:  # Less than 5 minutes remaining
                     self.logger.debug("Access token expires soon (in %d seconds)", expires_at - current_time)
                 else:
-                    self.logger.debug("Access token is valid (expires_at: %s, current: %s), expire in %d seconds",
-                                      expires_at, current_time, expires_at - current_time)
+                    self.logger.debug(
+                        "Access token is valid (expires_at: %s, current: %s), expire in %d seconds",
+                        expires_at,
+                        current_time,
+                        expires_at - current_time,
+                    )
 
-        except Exception as e:
+        except (RuntimeError, KeyError, AttributeError) as e:
             self.logger.warning("Failed to log request information: %s", e)
 
         # Execute the actual HTTP request
@@ -678,7 +682,6 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
         """
         self.logger.debug("Extracting FastMCP access token from request")
 
-        # Method 1: Get AccessToken object from FastMCP dependencies (preferred)
         try:
             access_token_obj = get_access_token()
             if access_token_obj and access_token_obj.token:
@@ -702,11 +705,13 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
                 self.token = OAuth2Token(access_token_dict)
 
                 return self.token
-            else:
-                self.logger.debug("AccessToken object found but no token present")
 
-        except Exception as e:
+            self.logger.debug("AccessToken object found but no token present")
+            return None
+
+        except (RuntimeError, AttributeError, KeyError) as e:
             self.logger.debug("Failed to get access token from FastMCP dependencies: %s", e)
+            return None
 
     async def get_org_id(self) -> str | None:
         """Extract Red Hat organization ID from the current request token.
@@ -745,8 +750,9 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
             # Retrive token on this request
             await self.refresh_auth()
             if not self.token:
-                self.logger.error("No access token found for this `get_org_id()` request")
-                raise ValueError(self.no_auth_error(ValueError("No access token fetched for this `get_org_id()` request")))
+                error_message = "No access token found for this `get_org_id()` request"
+                self.logger.error(error_message)
+                raise ValueError(self.no_auth_error(ValueError(error_message)))
 
             self.logger.debug("Extracting org_id from token claims")
             # Prepare claims from token
@@ -769,11 +775,12 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
                     return org_id
             # If org_id is not found, raise an error
             self.logger.error("No org_id found in token claims: %s", claims)
-            raise ValueError(self.no_auth_error(ValueError("No org_id found in token claims")))
+            error = ValueError("No org_id found in token claims")
+            raise ValueError(self.no_auth_error(error)) from error
 
-        except Exception as e:
+        except ValueError as e:
             self.logger.error("No org_id found in token claims: %s", e)
-            raise ValueError(self.no_auth_error(e))
+            raise ValueError(self.no_auth_error(e)) from e
 
 
 class InsightsClient:  # pylint: disable=too-many-instance-attributes

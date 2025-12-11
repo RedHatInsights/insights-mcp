@@ -3,7 +3,6 @@ This module contains the Starlette middleware that implemnts OAuth authorization
 """
 
 import logging
-import os
 
 import httpx
 import starlette.middleware

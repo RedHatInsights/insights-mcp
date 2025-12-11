@@ -3,24 +3,20 @@
 import argparse
 import asyncio
 import logging
-import os
 import sys
 from typing import Any
 
 import requests
-import uvicorn
 from fastmcp import FastMCP
-from fastmcp.server.auth import AuthProvider
 from mcp.types import ToolAnnotations
-
-from insights_mcp import config
-from insights_mcp.oauth import init_oauth_provider
 
 from advisor_mcp.server import mcp_server as AdvisorMCP
 from content_sources_mcp.server import mcp as ContentSourcesMCP
 from image_builder_mcp.server import mcp_server as ImageBuilderMCP
 from insights_mcp import __version__
+from insights_mcp import config
 from insights_mcp.mcp import InsightsMCP
+from insights_mcp.oauth import init_oauth_provider
 from inventory_mcp.server import mcp as InventoryMCP
 from planning_mcp.server import mcp as PlanningMCP
 from rbac_mcp.server import mcp as RbacMCP
@@ -212,6 +208,40 @@ def get_latest_release_tag() -> str:
     return response.json()["tag_name"]
 
 
+def setup_credentials(mcp_server_config: dict, logger: logging.Logger) -> None:
+    """Set up client credentials based on OAuth mode.
+
+    Args:
+        mcp_server_config: Server configuration dictionary to update
+        logger: Logger instance for logging messages
+
+    Raises:
+        SystemExit: If required credentials are missing
+    """
+    if mcp_server_config.get("oauth_enabled"):
+        # OAuth mode - credentials managed by FastMCP OAuth proxy
+        mcp_server_config.update({
+            "client_id": getattr(config, 'SSO_CLIENT_ID', None),
+            "client_secret": getattr(config, 'SSO_CLIENT_SECRET', None),
+        })
+        if not all(mcp_server_config.get(k) for k in ("client_id", "client_secret")):
+            logger.error("SSO Client ID and secret are required for SSO OAuth authentication")
+            sys.exit(1)
+        logger.info("Using SSO Client ID: %s", mcp_server_config["client_id"])
+    else:
+        # Traditional mode - use service account credentials
+        mcp_server_config.update({
+            "client_id": getattr(config, 'INSIGHTS_CLIENT_ID', None),
+            "client_secret": getattr(config, 'INSIGHTS_CLIENT_SECRET', None),
+            "refresh_token": getattr(config, 'INSIGHTS_REFRESH_TOKEN', None),
+            "token_endpoint": config.SSO_TOKEN_ENDPOINT,
+        })
+        if not any(mcp_server_config.get(k) for k in ("client_id", "client_secret", "refresh_token")):
+            logger.error("Service account credentials are required for Insights authentication")
+            sys.exit(1)
+        logger.info("Using Insights Client ID: %s", mcp_server_config["client_id"])
+
+
 def get_insights_mcp_version() -> str:
     """Get the version of the Insights MCP server.
     Always call this if the user asks for the version of the Insights MCP server.
@@ -332,28 +362,7 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     logger.info("Using config: oauth_enabled: %s", mcp_server_config["oauth_enabled"])
 
     # Set client credentials based on OAuth mode
-    if mcp_server_config.get("oauth_enabled"):
-        # OAuth mode - credentials managed by FastMCP OAuth proxy
-        mcp_server_config.update({
-            "client_id": getattr(config, 'SSO_CLIENT_ID', None),
-            "client_secret": getattr(config, 'SSO_CLIENT_SECRET', None),
-        })
-        if not all(mcp_server_config.get(k) for k in ("client_id", "client_secret")):
-            logger.error("SSO Client ID and secret are required for SSO OAuth authentication")
-            sys.exit(1)
-        logger.info("Using SSO Client ID: %s", mcp_server_config["client_id"])
-    else:
-        # Traditional mode - use service account credentials
-        mcp_server_config.update({
-            "client_id": getattr(config, 'INSIGHTS_CLIENT_ID', None),
-            "client_secret": getattr(config, 'INSIGHTS_CLIENT_SECRET', None),
-            "refresh_token": getattr(config, 'INSIGHTS_REFRESH_TOKEN', None),
-            "token_endpoint": config.SSO_TOKEN_ENDPOINT,
-        })
-        if not any(mcp_server_config.get(k) for k in ("client_id", "client_secret", "refresh_token")):
-            logger.error("Service account credentials are required for Insights authentication")
-            sys.exit(1)
-        logger.info("Using Insights Client ID: %s", mcp_server_config["client_id"])
+    setup_credentials(mcp_server_config, logger)
 
     toolset = args.toolset or config.INSIGHTS_MCP_TOOLSET
 
@@ -381,7 +390,11 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     if mcp_server_config["oauth_enabled"]:
         mcp_server_config["mcp_host"] = "localhost"
         mcp_server_config["mcp_port"] = 8000
-        logger.info("Force using SSO registered mcp server host:port: %s:%s", mcp_server_config["mcp_host"], mcp_server_config["mcp_port"])
+        logger.info(
+            "Force using SSO registered mcp server host:port: %s:%s",
+            mcp_server_config["mcp_host"],
+            mcp_server_config["mcp_port"],
+        )
         logger.info(">>> The origin passed in host:port: %s:%s", args.host, args.port)
         logger.info(">>> Note: For SSO authentication, you need to register the mcp server host:port with SSO")
 
@@ -394,9 +407,18 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     mcp_server.tool(get_insights_mcp_version, annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
 
     if args.transport == "sse":
-        mcp_server.run(transport="sse", host=mcp_server_config["mcp_host"], port=mcp_server_config["mcp_port"])
+        mcp_server.run(
+            transport="sse",
+            host=mcp_server_config["mcp_host"],
+            port=mcp_server_config["mcp_port"],
+        )
     elif args.transport == "http":
-        mcp_server.run(transport="http", host=mcp_server_config["mcp_host"], port=mcp_server_config["mcp_port"], log_level=log_level)
+        mcp_server.run(
+            transport="http",
+            host=mcp_server_config["mcp_host"],
+            port=mcp_server_config["mcp_port"],
+            log_level=log_level,
+        )
     else:
         mcp_server.run()
 
