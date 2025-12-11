@@ -87,15 +87,12 @@ class TestGetDistributions:
         # Setup mocks
         with patch.object(image_builder_mcp, "get_http_headers") as mock_headers:
             mock_headers.return_value = {}  # No auth headers
-            # Mock get_client to raise ValueError
-            with patch.object(imagebuilder_mcp_server, "get_client") as mock_get_client:
-                mock_get_client.side_effect = ValueError("Client ID is required")
+            # Call the method
+            result = await imagebuilder_mcp_server.get_distributions()
 
-                # Call the method
-                result = await imagebuilder_mcp_server.get_distributions()
-
-                # Should return authentication error
-                assert "Client ID is required" in result or "authentication" in result.lower()
+            # Should return authentication error
+            assert "[INSTRUCTION] There seems to be a problem with the request." in result
+            assert "authentication problem" in result
 
     @pytest.mark.asyncio
     async def test_get_distributions_no_parameters(
