@@ -360,29 +360,7 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
             return payload.get("rh-user-id")
         return None
 
-# Done: feat: implent auto token refresh
-#    - MCP client - MCP Inspector - on token expire, seems mcp inspector don't do auto token refresh;
-#    - MCP client - Cursor - on token expire, token got auto refreshed, so connection got kept;
-# Done: feat: handle multi user connection scenarios (test on Stage, get multiple user in Stage env)
-#    - tested on Stage, multiple users can connect to the same server, and request with different tokens
-# Done: feat: RBAC usage for account missing some permissions (ask user to request additional access)
-#    - current test shows models call rbac__get_all_access for access check, which is same as Service Account auth way. so RBAC is working.
-# Done: chore: clean up unused code adding by AI
-# Done: feat: distinguish between user and service account connections on server start up (better flag?)
-# TODO: Ask for code review/testing from peers
-# Done: feat: test on integeration with each MCP server module
-#  * The known works ones are:
-#    - get_insights_mcp_version()
-#    - rbac__get_all_access()
-#    - inventory__list_hosts()
-#    - vulnerability__get_cves()
-#    - advisor__get_active_rules()
-#    - content-sources__list_repositories()
-#    - planning__get_upcoming_changes()
-#    - rhsm__get_activation_keys() - though return [] data on insights-mcp-xxw-test2 account;
-#    - image_builder__get_org_id() - because image build is using client in a specail way; fixed and work now;
-#  * The known not working ones are:
-#    - N/A
+
 class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
     """HTTP client for Red Hat Insights APIs using FastMCP OAuth proxy authentication.
 
@@ -796,34 +774,6 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
         except Exception as e:
             self.logger.error("No org_id found in token claims: %s", e)
             raise ValueError(self.no_auth_error(e))
-
-# Example usage patterns for the different client types:
-#
-# 1. FastMCP OAuth Proxy (recommended for MCP tools):
-#    client = InsightsOAuthProxyClient(
-#        base_url="https://console.redhat.com",
-#        mcp_transport="http"
-#    )
-#
-# 2. Service Account Authentication:
-#    client = InsightsOAuth2Client(
-#        base_url="https://console.redhat.com",
-#        client_id="my-service-account",
-#        client_secret="my-secret",
-#        oauth_enabled=False
-#    )
-#
-# 3. High-level client (auto-selects based on parameters):
-#    # For FastMCP proxy:
-#    client = InsightsClient(
-#        api_path="api/insights/v1",
-#        oauth_enabled=True
-#    )
-#    # For service account:
-#    client = InsightsClient(
-#        api_path="api/insights/v1",
-#        client_secret="my-secret"
-#    )
 
 
 class InsightsClient:  # pylint: disable=too-many-instance-attributes
