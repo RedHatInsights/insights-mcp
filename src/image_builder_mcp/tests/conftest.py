@@ -9,7 +9,6 @@ from unittest.mock import patch
 import pytest
 
 from image_builder_mcp import ImageBuilderMCP
-from image_builder_mcp import server as image_builder_mcp
 
 # Import directly from tests since pytest now knows where to find packages
 from tests.conftest import (
@@ -50,6 +49,7 @@ def setup_imagebuilder_mock(mcp_server, mock_client, mock_response=None, side_ef
     """Context manager for setting up ImageBuilder mock patterns.
     Uses self.insights_client directly from InsightsMCP base class
     """
+    # pylint: disable=duplicate-code  # Similar mock setup patterns across toolsets
     # Set up mock responses
     if side_effect:
         mock_client.get.side_effect = side_effect
@@ -74,6 +74,8 @@ def setup_imagebuilder_watermark_disabled(mcp_server, mock_client):
     ):
         yield None  # No headers needed for image builder architecture
 
+
+# pylint: disable=duplicate-code  # Test fixture patterns are similar across toolsets
 # Make the fixtures available for import
 __all__ = [
     "assert_api_error_result",

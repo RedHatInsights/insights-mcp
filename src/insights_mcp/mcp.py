@@ -96,7 +96,8 @@ class InsightsMCP(FastMCP):
         if headers is not None:
             self.headers.update(headers)
 
-        self.insights_client = InsightsClient(  # pylint: disable=duplicate-code
+        # pylint: disable=duplicate-code
+        self.insights_client = InsightsClient(
             api_path=self.api_path,
             base_url=base_url,
             client_id=client_id,

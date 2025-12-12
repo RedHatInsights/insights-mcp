@@ -6,7 +6,6 @@ import os
 from typing import Annotated, Any, Optional
 
 import httpx
-from fastmcp.server.dependencies import get_http_headers  # For test mocking
 from fastmcp.tools.tool import Tool
 from mcp.types import ToolAnnotations
 from pydantic import Field

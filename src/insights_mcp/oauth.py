@@ -10,9 +10,9 @@ import starlette.middleware.base
 import starlette.requests
 import starlette.responses
 import starlette.types
-
 from fastmcp.server.auth import AuthProvider
 from fastmcp.server.auth.oidc_proxy import OIDCProxy
+
 from insights_mcp import config
 
 logger = logging.getLogger("insights_mcp.oauth")
@@ -83,12 +83,8 @@ def init_oauth_provider(
         )
         ```
     """
-     # Construct base URL for OAuth callbacks and metadata endpoints
-    base_url = (
-        f"http://{mcp_host}:{mcp_port}"
-        if mcp_host and mcp_port
-        else "http://localhost:8000"
-    )
+    # Construct base URL for OAuth callbacks and metadata endpoints
+    base_url = f"http://{mcp_host}:{mcp_port}" if mcp_host and mcp_port else "http://localhost:8000"
     logger.debug("Initializing OAuth provider with base_url: %s", base_url)
 
     # Configure OIDC proxy with Red Hat SSO settings
@@ -102,13 +98,13 @@ def init_oauth_provider(
         "timeout_seconds": config.SSO_OAUTH_TIMEOUT_SECONDS,
     }
 
-    logger.debug("Creating OIDCProxy with config: %s", {
-        k: v if k not in ["client_secret"] else "***REDACTED***"
-        for k, v in auth_args.items()
-    })
+    logger.debug(
+        "Creating OIDCProxy with config: %s",
+        {k: v if k not in ["client_secret"] else "***REDACTED***" for k, v in auth_args.items()},
+    )
 
     try:
-        oauth_provider = OIDCProxy(**auth_args)
+        oauth_provider = OIDCProxy(**auth_args)  # type: ignore[arg-type]
         logger.info("Successfully initialized OAuth provider for %s", base_url)
         return oauth_provider
     except Exception as e:

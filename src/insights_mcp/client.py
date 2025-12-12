@@ -21,11 +21,11 @@ import httpx
 import jwt
 from authlib.integrations.httpx_client import AsyncOAuth2Client, OAuthError
 from authlib.oauth2.rfc6749 import OAuth2Token
-
 from fastmcp.server.auth import AuthProvider
-from fastmcp.server.dependencies import get_http_headers, get_access_token
+from fastmcp.server.dependencies import get_access_token, get_http_headers
 
 from insights_mcp.config import INSIGHTS_BASE_URL_PROD, INSIGHTS_TOKEN_ENDPOINT_PROD
+
 from . import __version__
 
 USER_AGENT = f"insights-mcp/{__version__}"
@@ -504,25 +504,27 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
         # 1. Extract and log request headers
         try:
             request_headers = get_http_headers()
-            info["request_headers"] = {}
+            request_headers_dict: dict[str, str] = {}
+            info["request_headers"] = request_headers_dict
 
             self.logger.debug("Request headers received:")
             for header_name, header_value in request_headers.items():
                 # Security: mask sensitive headers but keep them in debug info
-                if header_name.lower() in ['authorization', 'x-api-key', 'bearer']:
+                if header_name.lower() in ["authorization", "x-api-key", "bearer"]:
                     if len(header_value) > 20:
                         masked_value = f"{header_value[:10]}...{header_value[-6:]}"
                     else:
                         masked_value = "***MASKED***"
                     self.logger.debug("  %s: %s", header_name, masked_value)
-                    info["request_headers"][header_name] = masked_value
+                    request_headers_dict[header_name] = masked_value
                 else:
                     self.logger.debug("  %s: %s", header_name, header_value)
-                    info["request_headers"][header_name] = header_value
+                    request_headers_dict[header_name] = header_value
 
         except (RuntimeError, KeyError, AttributeError) as e:
             self.logger.warning("Failed to get request headers: %s", e)
-            info["request_headers"]["error"] = str(e)
+            error_dict: dict[str, str] = {"error": str(e)}
+            info["request_headers"] = error_dict
 
         # 2. Extract access token from the current token
         try:
@@ -544,15 +546,15 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
                 claims = access_token.get("claims")
                 if claims:
                     claims_dict = {
-                        "issuer": claims.get('iss'),
-                        "subject": claims.get('sub'),
-                        "org_id": claims.get('org_id'),
-                        "account_id": claims.get('account_id'),
-                        "username": claims.get('preferred_username'),
-                        "email": claims.get('email'),
-                        "realm_roles": claims.get('realm_access', {}).get('roles', []),
-                        "resource_access": list(claims.get('resource_access', {}).keys()),
-                        "groups": claims.get('groups', []),
+                        "issuer": claims.get("iss"),
+                        "subject": claims.get("sub"),
+                        "org_id": claims.get("org_id"),
+                        "account_id": claims.get("account_id"),
+                        "username": claims.get("preferred_username"),
+                        "email": claims.get("email"),
+                        "realm_roles": claims.get("realm_access", {}).get("roles", []),
+                        "resource_access": list(claims.get("resource_access", {}).keys()),
+                        "groups": claims.get("groups", []),
                     }
                     info["redhat_sso_claims"] = claims_dict
 
@@ -563,12 +565,11 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
 
             else:
                 self.logger.warning("No access token found in request")
-                info["access_token_info"]["error"] = "No token found"
+                info["access_token_info"] = {"error": "No token found"}
 
         except (KeyError, TypeError, AttributeError) as e:
             self.logger.error("Failed to extract access token: %s", e)
-            info["access_token_info"]["error"] = str(e)
-
+            info["access_token_info"] = {"error": str(e)}
 
         self.logger.debug("OAuth proxy request info: %s", info)
         self.logger.debug("=== End OAuth Proxy Request Logging ===")
@@ -602,8 +603,8 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
             token extraction from the current MCP request context.
         """
         # Generate operation description for logging
-        method_name = getattr(fn, '__name__', 'unknown_method')
-        url = kwargs.get('url', args[0] if args else 'unknown_url')
+        method_name = getattr(fn, "__name__", "unknown_method")
+        url = kwargs.get("url", args[0] if args else "unknown_url")
         operation_name = f"{method_name.upper()} {url}"
 
         # Always perform token exchange for proxy clients
@@ -630,8 +631,9 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
                 current_time = int(time.time())
                 expires_at = token_info["expires_at"]
                 if expires_at < current_time:
-                    self.logger.warning("Access token has expired (expires_at: %s, current: %s)",
-                                      expires_at, current_time)
+                    self.logger.warning(
+                        "Access token has expired (expires_at: %s, current: %s)", expires_at, current_time
+                    )
                 elif (expires_at - current_time) < 300:  # Less than 5 minutes remaining
                     self.logger.debug("Access token expires soon (in %d seconds)", expires_at - current_time)
                 else:
@@ -687,15 +689,16 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
             if access_token_obj and access_token_obj.token:
                 token_length = len(access_token_obj.token)
                 self.logger.debug(
-                    "Successfully retrieved access token from FastMCP dependencies (length: %d)",
-                    token_length
+                    "Successfully retrieved access token from FastMCP dependencies (length: %d)", token_length
                 )
 
                 # Log token metadata for debugging
-                self.logger.debug("Token metadata: client_id=%s, scopes=%s, expires_at=%s",
-                                access_token_obj.client_id,
-                                access_token_obj.scopes,
-                                access_token_obj.expires_at)
+                self.logger.debug(
+                    "Token metadata: client_id=%s, scopes=%s, expires_at=%s",
+                    access_token_obj.client_id,
+                    access_token_obj.scopes,
+                    access_token_obj.expires_at,
+                )
 
                 access_token_dict = access_token_obj.model_dump()
                 # Customize the AccessToken dictionary for OAuth2Token
@@ -763,9 +766,9 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
                 payload = jwt.decode(
                     self.token.get("access_token"),
                     options={"verify_signature": False, "verify_exp": False},
-                    algorithms=["HS256", "RS256"]
+                    algorithms=["HS256", "RS256"],
                 )
-                claims = payload.get('claims')
+                claims = payload.get("claims")
             # Extract org_id from claims
             if claims:
                 self.logger.debug("claims found in token: %s", claims)
@@ -847,6 +850,7 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
             )
         elif refresh_token or client_secret:
             # Use traditional OAuth2 client for service account/refresh token flows
+            # pylint: disable=duplicate-code
             self.client = InsightsOAuth2Client(
                 base_url=base_url,
                 client_id=client_id,

@@ -73,7 +73,6 @@ class TestAuthentication:
             assert "[INSTRUCTION] There seems to be a problem with the request." in result
             assert "authentication problem" in result
 
-
     @pytest.mark.asyncio
     @pytest.mark.parametrize("function_name,kwargs", AUTH_FUNCTIONS)
     async def test_function_no_auth_error_message_sse_transport(self, function_name, kwargs):

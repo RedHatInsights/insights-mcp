@@ -13,8 +13,7 @@ from mcp.types import ToolAnnotations
 from advisor_mcp.server import mcp_server as AdvisorMCP
 from content_sources_mcp.server import mcp as ContentSourcesMCP
 from image_builder_mcp.server import mcp_server as ImageBuilderMCP
-from insights_mcp import __version__
-from insights_mcp import config
+from insights_mcp import __version__, config
 from insights_mcp.mcp import InsightsMCP
 from insights_mcp.oauth import init_oauth_provider
 from inventory_mcp.server import mcp as InventoryMCP
@@ -65,7 +64,7 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
         name: str | None = None,
         instructions: str | None = None,
         *,
-        base_url: str | None = None,
+        base_url: str = config.INSIGHTS_BASE_URL_PROD,
         client_id: str | None = None,
         client_secret: str | None = None,
         refresh_token: str | None = None,
@@ -74,18 +73,22 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
         mcp_transport: str | None = None,
         mcp_host: str | None = None,
         mcp_port: int | None = None,
-        token_endpoint: str | None = None,
+        token_endpoint: str = config.INSIGHTS_TOKEN_ENDPOINT_PROD,
         **settings: Any,
     ):
         name = name or "Red Hat Insights"
 
         # Initialize the OAuth provider
-        oauth_provider =  init_oauth_provider(
-            client_id=client_id,
-            client_secret=client_secret,
-            mcp_host=mcp_host,
-            mcp_port=mcp_port,
-        ) if oauth_enabled else None
+        oauth_provider = (
+            init_oauth_provider(
+                client_id=client_id,
+                client_secret=client_secret,
+                mcp_host=mcp_host,
+                mcp_port=mcp_port,
+            )
+            if oauth_enabled
+            else None
+        )
 
         super().__init__(
             name=name,
@@ -220,10 +223,12 @@ def setup_credentials(mcp_server_config: dict, logger: logging.Logger) -> None:
     """
     if mcp_server_config.get("oauth_enabled"):
         # OAuth mode - credentials managed by FastMCP OAuth proxy
-        mcp_server_config.update({
-            "client_id": getattr(config, 'SSO_CLIENT_ID', None),
-            "client_secret": getattr(config, 'SSO_CLIENT_SECRET', None),
-        })
+        mcp_server_config.update(
+            {
+                "client_id": getattr(config, "SSO_CLIENT_ID", None),
+                "client_secret": getattr(config, "SSO_CLIENT_SECRET", None),
+            }
+        )
         if not all(mcp_server_config.get(k) for k in ("client_id", "client_secret")):
             logger.error("SSO Client ID and secret are required for SSO OAuth authentication")
             # Don't exit the program to allow the user to continue using the server without credentials
@@ -231,12 +236,14 @@ def setup_credentials(mcp_server_config: dict, logger: logging.Logger) -> None:
         logger.info("Using SSO Client ID: %s", mcp_server_config["client_id"])
     else:
         # Traditional mode - use service account credentials
-        mcp_server_config.update({
-            "client_id": getattr(config, 'INSIGHTS_CLIENT_ID', None),
-            "client_secret": getattr(config, 'INSIGHTS_CLIENT_SECRET', None),
-            "refresh_token": getattr(config, 'INSIGHTS_REFRESH_TOKEN', None),
-            "token_endpoint": config.SSO_TOKEN_ENDPOINT,
-        })
+        mcp_server_config.update(
+            {
+                "client_id": getattr(config, "INSIGHTS_CLIENT_ID", None),
+                "client_secret": getattr(config, "INSIGHTS_CLIENT_SECRET", None),
+                "refresh_token": getattr(config, "INSIGHTS_REFRESH_TOKEN", None),
+                "token_endpoint": config.SSO_TOKEN_ENDPOINT,
+            }
+        )
         if not any(mcp_server_config.get(k) for k in ("client_id", "client_secret", "refresh_token")):
             logger.error("Service account credentials are required for Insights authentication")
             # Don't exit the program to allow the user to continue using the server without credentials
@@ -339,10 +346,7 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     # Enhanced log format with timestamp and line number
     log_format = "%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(name)s - %(message)s"
     logging.basicConfig(
-        level=log_level,
-        format=log_format,
-        datefmt="%Y-%m-%d %H:%M:%S",
-        handlers=[logging.StreamHandler()]
+        level=log_level, format=log_format, datefmt="%Y-%m-%d %H:%M:%S", handlers=[logging.StreamHandler()]
     )
     # Set specific logger levels
     logger.setLevel(log_level)
@@ -390,8 +394,10 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
         mcp_server_config["mcp_host"] = args.host
         mcp_server_config["mcp_port"] = args.port
         log_level = "DEBUG" if args.debug else "WARNING"
-        if (mcp_server_config["oauth_enabled"] and
-            (args.host, args.port) not in config.SSO_AUTHORIZED_MCP_SERVER_HOST_PORTS):
+        if (
+            mcp_server_config["oauth_enabled"]
+            and (args.host, args.port) not in config.SSO_AUTHORIZED_MCP_SERVER_HOST_PORTS
+        ):
             mcp_server_config["mcp_host"] = "localhost"
             mcp_server_config["mcp_port"] = 8000
             logger.info(

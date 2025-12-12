@@ -14,7 +14,7 @@ from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 
 # Add imports for mock client creation
 from insights_mcp.client import InsightsClient
-from insights_mcp.mcp import INSIGHTS_BASE_URL_PROD
+from insights_mcp.config import INSIGHTS_BASE_URL_PROD
 
 # pylint: disable=wrong-import-position
 from .llama_index_non_iterable_bool_patch import apply_llama_index_bool_patch
