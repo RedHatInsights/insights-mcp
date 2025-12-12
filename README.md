@@ -376,7 +376,7 @@ For some use cases it might be needed to use the MCP server directly from the co
 See [usage.md](usage.md) for the usage of the MCP server.
 
 ## Releases
-There are tree container images published for this MCP server.
+There are three container images published for this MCP server.
 
  * `ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest` (new brand name)
  * `ghcr.io/redhatinsights/insights-mcp:latest`
