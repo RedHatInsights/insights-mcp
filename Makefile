@@ -9,10 +9,14 @@ ifeq ($(filter $(CONTAINER_BRAND),$(VALID_CONTAINER_BRANDS)),)
 Valid options are: $(VALID_CONTAINER_BRANDS))
 endif
 
+CONTAINER_BRAND_UPPERCASE=$(shell echo $(CONTAINER_BRAND) | tr '[:lower:]' '[:upper:]')
+
 ifeq ($(CONTAINER_BRAND),lightspeed)
   IMAGE_NAME=red-hat-lightspeed-mcp
+  CONTAINER_BRAND_TITLE_CASE=Red Hat Lightspeed
 else ifeq ($(CONTAINER_BRAND),insights)
   IMAGE_NAME=insights-mcp
+  CONTAINER_BRAND_TITLE_CASE=Insights
 else
 	$(error invalid CONTAINER_BRAND for image name: $(CONTAINER_BRAND))
 endif
@@ -38,12 +42,19 @@ VERSION ?= $(TAG)
 
 .PHONY: build-claude-extension
 build-claude-extension: ## Build the Claude extension
-	sed "s/{{VERSION}}/$(TAG)/g; s|{{CONTAINER_IMAGE}}|$(CONTAINER_IMAGE)|g" claude_desktop/manifest.json.template > claude_desktop/manifest.json
-	zip -j $(CONTAINER_BRAND)-mcp-$(TAG).dxt claude_desktop/manifest.json claude_desktop/icon.png
+	sed \
+	  -e "s/{{VERSION}}/$(TAG)/g" \
+	  -e "s/{{IMAGE_NAME}}/$(IMAGE_NAME)/g" \
+	  -e "s|{{CONTAINER_IMAGE}}|$(CONTAINER_IMAGE)|g" \
+	  -e "s|{{CONTAINER_BRAND_TITLE_CASE}}|$(CONTAINER_BRAND_TITLE_CASE)|g" \
+	  -e "s|{{CONTAINER_BRAND}}|$(CONTAINER_BRAND)|g" \
+	  -e "s|{{CONTAINER_BRAND_UPPERCASE}}|$(CONTAINER_BRAND_UPPERCASE)|g" \
+	  claude_desktop/manifest.json.template > claude_desktop/manifest.json
+	zip -j $(IMAGE_NAME)-$(TAG).dxt claude_desktop/manifest.json claude_desktop/icon.png
 	rm claude_desktop/manifest.json
 
 build-claude-extension-dev: build ## Build Claude extension for local development
-	$(MAKE) build-claude-extension TAG=local-dev CONTAINER_BRAND=$(CONTAINER_BRAND) CONTAINER_IMAGE=localhost/$(CONTAINER_BRAND)-mcp:latest
+	$(MAKE) build-claude-extension TAG=local-dev CONTAINER_BRAND=$(CONTAINER_BRAND) CONTAINER_IMAGE=localhost/$(IMAGE_NAME):latest
 
 .PHONY: lint
 lint: generate-docs ## Run linting with pre-commit
