@@ -397,7 +397,7 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     # Create and run the MCP server
     mcp_server = InsightsMCPServer(
         base_url=base_url,
-        name=container_brand_long,
+        name=f"{container_brand_long} MCP",
         client_id=client_id,
         client_secret=client_secret,
         refresh_token=os.getenv("INSIGHTS_REFRESH_TOKEN"),

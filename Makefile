@@ -1,10 +1,3 @@
-.PHONY: build-prod
-build-prod: generate-docs ## Build the container image but with the upstream tag
-	podman build \
-	  --build-arg INSIGHTS_MCP_VERSION=$(VERSION) \
-	  --build-arg CONTAINER_BRAND=$(CONTAINER_BRAND) \
-	  --tag ghcr.io/redhatinsights/$(CONTAINER_BRAND)-mcp:latest
-
 # In some parts this is hardcoded
 # see pyproject.toml for the available script names
 # see src/insights_mcp/server.py for accepted environment variables
@@ -16,15 +9,30 @@ ifeq ($(filter $(CONTAINER_BRAND),$(VALID_CONTAINER_BRANDS)),)
 Valid options are: $(VALID_CONTAINER_BRANDS))
 endif
 
+ifeq ($(CONTAINER_BRAND),lightspeed)
+  IMAGE_NAME=red-hat-lightspeed-mcp
+else ifeq ($(CONTAINER_BRAND),insights)
+  IMAGE_NAME=insights-mcp
+else
+	$(error invalid CONTAINER_BRAND for image name: $(CONTAINER_BRAND))
+endif
+
 .PHONY: build
 build: generate-docs ## Build the container image
 	podman build \
 	  --build-arg INSIGHTS_MCP_VERSION=$(VERSION) \
 	  --build-arg CONTAINER_BRAND=$(CONTAINER_BRAND) \
-	  --tag $(CONTAINER_BRAND)-mcp .
+	  --tag $(IMAGE_NAME) .
+
+.PHONY: build-prod
+build-prod: generate-docs ## Build the container image but with the upstream tag
+	podman build \
+	  --build-arg INSIGHTS_MCP_VERSION=$(VERSION) \
+	  --build-arg CONTAINER_BRAND=$(CONTAINER_BRAND) \
+	  --tag ghcr.io/redhatinsights/$(IMAGE_NAME) .
 
 # please set from outside
-CONTAINER_IMAGE ?= ghcr.io/redhatinsights/$(CONTAINER_BRAND)-mcp:latest
+CONTAINER_IMAGE ?= ghcr.io/redhatinsights/$(IMAGE_NAME):latest
 TAG ?= v0.0.0-dev
 VERSION ?= $(TAG)
 
