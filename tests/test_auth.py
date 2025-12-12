@@ -1,10 +1,6 @@
 """Test suite for authentication-related functionality."""
 
-from unittest.mock import patch
-
 import pytest
-
-import image_builder_mcp.server as image_builder_mcp
 
 # Clean import - no sys.path.insert needed with proper package structure!
 from image_builder_mcp import ImageBuilderMCP
@@ -36,18 +32,14 @@ class TestAuthentication:
         )
         mcp_server.register_tools()
 
-        # Setup mocks - no credentials
-        with patch.object(image_builder_mcp, "get_http_headers") as mock_headers:
-            mock_headers.return_value = {}
+        # Call the method
+        method = getattr(mcp_server, function_name)
+        result = await method(**kwargs)
 
-            # Call the method
-            method = getattr(mcp_server, function_name)
-            result = await method(**kwargs)
-
-            # Should return authentication error
-            # The actual implementation makes API calls and gets 401 errors when no auth is provided
-            assert "Invalid client or Invalid client credentials" in result
-            assert "[INSTRUCTION]" in result
+        # Should return authentication error
+        # The actual implementation makes API calls and gets 401 errors when no auth is provided
+        assert "Invalid client or Invalid client credentials" in result
+        assert "[INSTRUCTION]" in result
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("function_name,kwargs", AUTH_FUNCTIONS)
@@ -62,16 +54,12 @@ class TestAuthentication:
         )
         mcp_server.register_tools()
 
-        # Test default transport mode
-        with patch.object(image_builder_mcp, "get_http_headers") as mock_headers:
-            mock_headers.return_value = {}  # No auth headers
+        method = getattr(mcp_server, function_name)
+        result = await method(**kwargs)
 
-            method = getattr(mcp_server, function_name)
-            result = await method(**kwargs)
-
-            # Check for relevant parts of the no_auth_error message for default transport
-            assert "[INSTRUCTION] There seems to be a problem with the request." in result
-            assert "authentication problem" in result
+        # Check for relevant parts of the no_auth_error message for default transport
+        assert "[INSTRUCTION] There seems to be a problem with the request." in result
+        assert "authentication problem" in result
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("function_name,kwargs", AUTH_FUNCTIONS)
@@ -90,15 +78,12 @@ class TestAuthentication:
         )
         mcp_server.register_tools()
 
-        with patch.object(image_builder_mcp, "get_http_headers") as mock_headers:
-            mock_headers.return_value = {}  # No auth headers
+        method = getattr(mcp_server, function_name)
+        result = await method(**kwargs)
 
-            method = getattr(mcp_server, function_name)
-            result = await method(**kwargs)
-
-            # Check for relevant parts of the no_auth_error message for SSE transport
-            assert "[INSTRUCTION] There seems to be a problem with the request." in result
-            assert "authentication problem" in result
+        # Check for relevant parts of the no_auth_error message for SSE transport
+        assert "[INSTRUCTION] There seems to be a problem with the request." in result
+        assert "authentication problem" in result
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("function_name,kwargs", AUTH_FUNCTIONS)
@@ -117,12 +102,9 @@ class TestAuthentication:
         )
         mcp_server.register_tools()
 
-        with patch.object(image_builder_mcp, "get_http_headers") as mock_headers:
-            mock_headers.return_value = {}  # No auth headers
+        method = getattr(mcp_server, function_name)
+        result = await method(**kwargs)
 
-            method = getattr(mcp_server, function_name)
-            result = await method(**kwargs)
-
-            # Check for relevant parts of the no_auth_error message for HTTP transport
-            assert "[INSTRUCTION] There seems to be a problem with the request." in result
-            assert "authentication problem" in result
+        # Check for relevant parts of the no_auth_error message for HTTP transport
+        assert "[INSTRUCTION] There seems to be a problem with the request." in result
+        assert "authentication problem" in result

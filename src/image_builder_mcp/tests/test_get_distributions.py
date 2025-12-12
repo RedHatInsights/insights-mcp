@@ -1,11 +1,8 @@
 """Test suite for the get_distributions() method."""
 
 import json
-from unittest.mock import patch
 
 import pytest
-
-import image_builder_mcp.server as image_builder_mcp
 
 from .conftest import setup_imagebuilder_mock
 
@@ -84,15 +81,12 @@ class TestGetDistributions:
     @pytest.mark.asyncio
     async def test_get_distributions_auth_error(self, imagebuilder_mcp_server):
         """Test get_distributions when authentication fails."""
-        # Setup mocks
-        with patch.object(image_builder_mcp, "get_http_headers") as mock_headers:
-            mock_headers.return_value = {}  # No auth headers
-            # Call the method
-            result = await imagebuilder_mcp_server.get_distributions()
+        # Call the method
+        result = await imagebuilder_mcp_server.get_distributions()
 
-            # Should return authentication error
-            assert "[INSTRUCTION] There seems to be a problem with the request." in result
-            assert "authentication problem" in result
+        # Should return authentication error
+        assert "[INSTRUCTION] There seems to be a problem with the request." in result
+        assert "authentication problem" in result
 
     @pytest.mark.asyncio
     async def test_get_distributions_no_parameters(
