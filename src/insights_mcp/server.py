@@ -289,7 +289,7 @@ def get_container_brand() -> tuple[str, str]:
     container_brand = os.getenv("CONTAINER_BRAND", "insights")
     if container_brand == "insights":
         container_brand_long = "Red Hat Insights"
-    elif container_brand == "lightspeed":
+    elif container_brand == "red-hat-lightspeed":
         container_brand_long = "Red Hat Lightspeed"
     else:
         container_brand_long = container_brand.capitalize()

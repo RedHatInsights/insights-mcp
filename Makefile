@@ -1,7 +1,7 @@
 # In some parts this is hardcoded
 # see pyproject.toml for the available script names
 # see src/insights_mcp/server.py for accepted environment variables
-VALID_CONTAINER_BRANDS := insights lightspeed
+VALID_CONTAINER_BRANDS := insights red-hat-lightspeed
 CONTAINER_BRAND ?= insights
 
 ifeq ($(filter $(CONTAINER_BRAND),$(VALID_CONTAINER_BRANDS)),)
@@ -9,17 +9,18 @@ ifeq ($(filter $(CONTAINER_BRAND),$(VALID_CONTAINER_BRANDS)),)
 Valid options are: $(VALID_CONTAINER_BRANDS))
 endif
 
-CONTAINER_BRAND_UPPERCASE=$(shell echo $(CONTAINER_BRAND) | tr '[:lower:]' '[:upper:]')
+IMAGE_NAME := $(CONTAINER_BRAND)-mcp
 
-ifeq ($(CONTAINER_BRAND),lightspeed)
-  IMAGE_NAME=red-hat-lightspeed-mcp
-  CONTAINER_BRAND_TITLE_CASE=Red Hat Lightspeed
-else ifeq ($(CONTAINER_BRAND),insights)
-  IMAGE_NAME=insights-mcp
-  CONTAINER_BRAND_TITLE_CASE=Insights
+ifeq ($(CONTAINER_BRAND),insights)
+  CONTAINER_BRAND_TITLE_CASE := Red Hat Insights
+  CONTAINER_BRAND_UPPERCASE := INSIGHTS
+else ifeq ($(CONTAINER_BRAND),red-hat-lightspeed)
+  CONTAINER_BRAND_TITLE_CASE := Red Hat Lightspeed
+  CONTAINER_BRAND_UPPERCASE := LIGHTSPEED
 else
 	$(error invalid CONTAINER_BRAND for image name: $(CONTAINER_BRAND))
 endif
+SCRIPT_NAME ?= $(IMAGE_NAME)
 
 .PHONY: build
 build: generate-docs ## Build the container image
@@ -128,7 +129,7 @@ generate-docs: usage.md toolsets.md docs/architecture-structure.svg docs/archite
 usage.md: $(ALL_PYTHON_FILES) Makefile
 	uv tool install -e .
 	echo '```' > $@
-	$(CONTAINER_BRAND)-mcp --help >> $@
+	$(SCRIPT_NAME) --help >> $@
 	echo '```' >> $@
 
 toolsets.md: $(ALL_PYTHON_FILES) Makefile

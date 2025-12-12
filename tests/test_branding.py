@@ -9,7 +9,7 @@ from tests.test_cli_arguments import get_mcp_tools_with_toolset
     ("brand", "expected_brand_long"),
     [
         ("insights", "Red Hat Insights"),
-        ("lightspeed", "Red Hat Lightspeed"),
+        ("red-hat-lightspeed", "Red Hat Lightspeed"),
     ],
 )
 def test_get_mcp_version_description_uses_container_brand(
