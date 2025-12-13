@@ -10,13 +10,14 @@ from typing import Any
 from insights_mcp.mcp import InsightsMCP
 
 mcp = InsightsMCP(
-    name="Insights Remediations MCP Server",
+    name="$container_brand_long Remediations MCP Server",
     toolset_name="remediations",
     api_path="api/remediations/v1",
     instructions="""
-    This server provides tools to create Ansible Remediation Playbooks to fix systems connected to Insights.
-    You can create playbooks for different issues, such as vulnerability mitigation
-    or applying InsightsAdvisor recommendations.
+    This server provides tools to create Ansible Remediation Playbooks to fix systems connected
+    to $container_brand_long.
+    You can create playbooks for different issues, such as vulnerability mitigation or applying
+    $container_brand_long Advisor recommendations.
 
     [INSTRUCTION] Be communicative. Ask user if they want to get a link to the playbook or to get the YAML content.
     Playbooks in YAML format MUST be returned as is without any changes.
@@ -38,7 +39,8 @@ async def create_vulnerability_playbook(playbook_name: str, cves: list[str], uui
     ```
     Inform user that they can't see the playbook with user other than Service Account used to create it.
     This limitation is reported at https://issues.redhat.com/browse/RHINENG-20235.
-    Therefore to download the playbook, user needs to authenticate with Insights with their Red Hat Service Account.
+    Therefore to download the playbook, user needs to authenticate with $container_brand_long with their
+    Red Hat Service Account.
 
     Args:
         playbook_name: Name of the playbook. Example: "Remediation Playbook"

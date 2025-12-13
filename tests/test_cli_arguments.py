@@ -57,7 +57,7 @@ class TestCliArguments:
     # Expected tools for each toolset
     EXPECTED_TOOLS: Dict[str, Set[str]] = {
         "insights-mcp": {
-            "get_insights_mcp_version",
+            "get_mcp_version",
         },
         "image-builder": {
             "image-builder__get_openapi",

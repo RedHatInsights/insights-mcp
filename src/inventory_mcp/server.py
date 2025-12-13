@@ -14,14 +14,14 @@ from insights_mcp.mcp import InsightsMCP
 # https://github.com/RedHatInsights/insights-host-inventory/tree/master/swagger
 
 mcp = InsightsMCP(
-    name="Insights Inventory MCP Server",
+    name="$container_brand_long Inventory MCP Server",
     toolset_name="inventory",
     api_path="api/inventory/v1",
     instructions="""
-    This server provides tools to get host inventory data for systems connected to Insights.
+    This server provides tools to get host inventory data for systems connected to $container_brand_long.
     You can get information about connected systems, their operating systems, installed packages, etc.
 
-    Insights Host Inventory requires correct RBAC permissions to be able to use the tools. Ensure that your
+    $container_brand_long Host Inventory requires correct RBAC permissions to be able to use the tools. Ensure that your
     Service Account has at least this role:
     - Inventory Hosts viewer
     """,

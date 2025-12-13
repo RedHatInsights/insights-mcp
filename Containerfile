@@ -4,6 +4,9 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal AS builder
 # Allow version to be set at build time
 ARG INSIGHTS_MCP_VERSION
 
+ARG CONTAINER_BRAND=insights
+ENV CONTAINER_BRAND=${CONTAINER_BRAND}
+
 # Set up a working directory
 WORKDIR /app
 
@@ -32,6 +35,9 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal
 # Inherit version from build stage
 ARG INSIGHTS_MCP_VERSION
 ENV INSIGHTS_MCP_VERSION=${INSIGHTS_MCP_VERSION}
+
+ARG CONTAINER_BRAND=insights
+ENV CONTAINER_BRAND=${CONTAINER_BRAND}
 
 RUN microdnf install -y --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
     python312 && \

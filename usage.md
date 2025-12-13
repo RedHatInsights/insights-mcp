@@ -3,7 +3,7 @@ usage: insights-mcp [-h] [--debug] [--toolset TOOLSET] [--toolset-help]
                     [--readonly]
                     {stdio,sse,http} ...
 
-Run Insights MCP server.
+Red Hat Insights MCP server.
 
 positional arguments:
   {stdio,sse,http}   Transport mode

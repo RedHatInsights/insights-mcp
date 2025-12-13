@@ -1,9 +1,9 @@
 {
   "dxt_version": "0.2",
-  "name": "insights-mcp",
-  "display_name": "Insights MCP",
+  "name": "{{IMAGE_NAME}}",
+  "display_name": "{{CONTAINER_BRAND_TITLE_CASE}} MCP",
   "version": "{{VERSION}}",
-  "description": "Interact with Red Hat Insights services like the hosted image builder.\n_REQUIRES_ `podman` to be installed!",
+  "description": "Interact with {{CONTAINER_BRAND_TITLE_CASE}} services like the hosted image builder.\n_REQUIRES_ `podman` to be installed!",
   "author": {
     "name": "Florian Schüller",
     "email": "florian.schueller@redhat.com"
@@ -18,29 +18,29 @@
       "args": [
             "run",
             "--env",
-            "INSIGHTS_CLIENT_ID",
+            "{{CONTAINER_BRAND_UPPERCASE}}_CLIENT_ID",
             "--env",
-            "INSIGHTS_CLIENT_SECRET",
+            "{{CONTAINER_BRAND_UPPERCASE}}_CLIENT_SECRET",
             "--interactive",
             "--rm",
             "{{CONTAINER_IMAGE}}"
       ],
       "env": {
-            "INSIGHTS_CLIENT_ID": "${user_config.INSIGHTS_CLIENT_ID}",
-            "INSIGHTS_CLIENT_SECRET": "${user_config.INSIGHTS_CLIENT_SECRET}"
+            "{{CONTAINER_BRAND_UPPERCASE}}_CLIENT_ID": "${user_config.{{CONTAINER_BRAND_UPPERCASE}}_CLIENT_ID}",
+            "{{CONTAINER_BRAND_UPPERCASE}}_CLIENT_SECRET": "${user_config.{{CONTAINER_BRAND_UPPERCASE}}_CLIENT_SECRET}"
       }
     }
   },
   "tools_generated": true,
   "user_config": {
-    "INSIGHTS_CLIENT_ID": {
+    "{{CONTAINER_BRAND_UPPERCASE}}_CLIENT_ID": {
       "type": "string",
       "title": "console.redhat.com client ID",
       "description": "Client ID of a service account of console.redhat.com",
       "required": true,
       "sensitive": true
     },
-    "INSIGHTS_CLIENT_SECRET": {
+    "{{CONTAINER_BRAND_UPPERCASE}}_CLIENT_SECRET": {
       "type": "string",
       "title": "console.redhat.com client secret",
       "description": "Client secret of a service account of console.redhat.com",
