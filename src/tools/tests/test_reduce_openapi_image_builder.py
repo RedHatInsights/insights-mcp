@@ -17,6 +17,7 @@ from tools.reduce_openapi import OpenAPIReducer
 
 @pytest.mark.parametrize("endpoint_spec", ["POST:/blueprints"])
 def test_reduce_openapi_for_post_blueprints(verbose_logger, endpoint_spec: str):
+    # pylint: disable=too-many-locals  # Test validation requires multiple variables
     # Download the live Image Builder OpenAPI (does not require authentication)
     url = "https://console.redhat.com/api/image-builder/v1/openapi.json"
     response = httpx.get(url, timeout=60)
