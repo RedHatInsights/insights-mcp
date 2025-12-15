@@ -91,3 +91,4 @@ appstreams
 Appstreams
 js
 postgresql
+nodejs

@@ -54,3 +54,4 @@
 - `get_upcoming_changes`: List upcoming package changes, deprecations, additions and enhancements.
 - `get_appstreams_lifecycle`: Get Application Streams lifecycle information.
 - `get_rhel_lifecycle`: Returns life cycle dates for all RHEL majors and minors.
+- `get_relevant_upcoming_changes`: List relevant upcoming package changes, deprecations, additions and enhancements.
