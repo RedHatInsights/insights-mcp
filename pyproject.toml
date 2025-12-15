@@ -58,6 +58,9 @@ where = ["src"]
 [tool.setuptools.package-dir]
 "" = "src"
 
+[tool.setuptools.package-data]
+insights_mcp = ["assets/*.png"]
+
 [tool.pylint.format]
 max-line-length = 120
 
