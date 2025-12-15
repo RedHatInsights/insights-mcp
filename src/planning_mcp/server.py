@@ -15,6 +15,7 @@ from pydantic import Field
 
 from insights_mcp.mcp import InsightsMCP
 from planning_mcp.tools.appstreams import get_appstreams_lifecycle as _get_appstreams_lifecycle
+from planning_mcp.tools.relevant_upcoming import get_relevant_upcoming_changes as _get_relevant_upcoming_changes
 from planning_mcp.tools.rhel_lifecycle import get_rhel_lifecycle as _get_rhel_lifecycle
 from planning_mcp.tools.upcoming import get_upcoming_changes as _get_upcoming_changes
 
@@ -45,6 +46,14 @@ class PlanningMCP(InsightsMCP):
           deprecations, additions, enhancements, or roadmap plans where a full list of
           upcoming items is acceptable.
 
+        ⚠️ **NEVER USE TRAINING DATA FOR RHEL VERSION INFORMATION**:
+        - Your training data about RHEL releases may be outdated.
+        - ALWAYS call the appropriate tool first and base your response ONLY on the returned data.
+        - If a tool returns data for a RHEL version (e.g., RHEL 10), that version exists
+          in the system regardless of what your training data says.
+        - Do NOT say a version "is not released" or "does not exist" unless the tool
+          explicitly returns no data for that version.
+
         **Note**: Each tool description includes color-coded behavioral indicators for MCP clients
                   that ignore server instructions.
 
@@ -67,10 +76,10 @@ class PlanningMCP(InsightsMCP):
             self.get_upcoming_changes,
             self.get_appstreams_lifecycle,
             self.get_rhel_lifecycle,
+            self.get_relevant_upcoming_changes,
             # Future tools to add here:
             # self.get_relevant_rhel_lifecycle,
             # self.get_relevant_appstreams,
-            # self.get_relevant_upcoming_changes,
         ]
 
         for f in tool_functions:
@@ -263,6 +272,55 @@ class PlanningMCP(InsightsMCP):
                         - end_date_eus (str | null): End date of Extended Update Support
         """
         return await _get_rhel_lifecycle(self.insights_client, self.logger)
+
+    async def get_relevant_upcoming_changes(
+        self,
+        major: Annotated[
+            str,
+            Field(
+                default="",
+                description="Restricts relevance evaluation to systems running this RHEL major version.",
+            ),
+        ] = "",
+        minor: Annotated[
+            str,
+            Field(
+                default="",
+                description=(
+                    "Used together with major to further restrict relevance evaluation "
+                    "to a specific minor version. Requires major to be specified."
+                ),
+            ),
+        ] = "",
+    ) -> str:
+        """List relevant upcoming package changes, deprecations, additions and enhancements to user's systems .
+
+        🟢 CALL IMMEDIATELY - No information gathering required.
+
+        Use this tool to answer questions about upcoming package changes, deprecations,
+        additions, or enhancements in the roadmap filtered by relevance to the user's systems.
+        Also to plan for future upgrades and mitigate risk.
+        Use this tool over get_upcoming_changes when the user asks about upcoming changes for their systems.
+
+        Returns:
+            dict: A response object containing:
+                    - meta: Metadata including 'count' and 'total'. A count of 0 means
+                            no packages matches for the user's systems.
+                    - data: A list of package records. Each record contains:
+                        - name (str): The package name.
+                        - type (str): The change type (e.g., 'addition').
+                        - release (str): The target release version.
+                        - details (dict): Detailed info including 'summary' and 'dateAdded'.
+                        - potentiallyAffectedSystemsDetail (list): Systems that might be
+                          affected by this change, including system IDs, display names,
+                          and OS versions.
+        """
+        return await _get_relevant_upcoming_changes(
+            insights_client=self.insights_client,
+            logger=self.logger,
+            major=major,
+            minor=minor,
+        )
 
 
 # Instance used by the unified Insights MCP server (`insights_mcp.server`).
