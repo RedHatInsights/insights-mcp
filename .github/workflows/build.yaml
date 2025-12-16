@@ -37,15 +37,33 @@ jobs:
 
       - name: Build
         run: |
-          podman build --build-arg INSIGHTS_MCP_VERSION=${{ needs.generate-tag.outputs.tag }} --platform=linux/amd64,linux/arm64 --jobs=2 --manifest ib-mcp .
+          podman build --build-arg INSIGHTS_MCP_VERSION=${{ needs.generate-tag.outputs.tag }} --platform=linux/amd64,linux/arm64 --jobs=2 --manifest insights-mcp .
 
       - name: Push
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u $ --password-stdin
           REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          podman manifest push --all --format v2s2 ib-mcp docker://ghcr.io/${REPO_LOWER}:${{ needs.generate-tag.outputs.tag }}
-          podman manifest push --all --format v2s2 ib-mcp docker://ghcr.io/${REPO_LOWER}:latest
+          podman manifest push --all --format v2s2 insights-mcp docker://ghcr.io/${REPO_LOWER}:${{ needs.generate-tag.outputs.tag }}
+          podman manifest push --all --format v2s2 insights-mcp docker://ghcr.io/${REPO_LOWER}:latest
+
+      - name: Build Lightspeed image
+        run: |
+          podman build --build-arg INSIGHTS_MCP_VERSION=${{ needs.generate-tag.outputs.tag }} \
+          --build-arg CONTAINER_BRAND=red-hat-lightspeed \
+          --platform=linux/amd64,linux/arm64 \
+          --jobs=2 \
+          --manifest red-hat-lightspeed-mcp \
+          .
+
+      - name: Push Lightspeed image
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_PATH=ghcr.io/${REPO_LOWER/insights-mcp/red-hat-lightspeed-mcp}
+          podman manifest push --all --format v2s2 red-hat-lightspeed-mcp docker://${IMAGE_PATH}:${{ needs.generate-tag.outputs.tag }}
+          podman manifest push --all --format v2s2 red-hat-lightspeed-mcp docker://${IMAGE_PATH}:latest
+
 
   build-release-artifacts:
     runs-on: ubuntu-latest
@@ -59,7 +77,9 @@ jobs:
       - name: Build claude extension
         env:
           TAG: ${{ needs.generate-tag.outputs.tag }}
-        run: make build-claude-extension
+        run: |
+          make build-claude-extension CONTAINER_BRAND=insights
+          make build-claude-extension CONTAINER_BRAND=red-hat-lightspeed
 
       - name: Create release with assets
         env:
@@ -69,4 +89,5 @@ jobs:
           gh release create "$TAG" \
             --title "Release $TAG" \
             --generate-notes \
-            insights-mcp-"$TAG".dxt
+            insights-mcp-"$TAG".dxt \
+            red-hat-lightspeed-mcp-"$TAG".dxt

@@ -46,6 +46,7 @@ dev = [
 
 [project.scripts]
 insights-mcp = "insights_mcp.server:main"
+red-hat-lightspeed-mcp = "insights_mcp.server:main"
 
 [project.urls]
 Homepage = "https://github.com/RedHatInsights/insights-mcp"

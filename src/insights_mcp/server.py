@@ -5,7 +5,9 @@ import asyncio
 import base64
 import importlib.resources
 import logging
+import os
 import sys
+from string import Template
 from typing import Any
 
 import requests
@@ -36,6 +38,44 @@ MCPS: list[InsightsMCP] = [
     RbacMCP,
     PlanningMCP,
 ]
+
+
+def _format_server_tools(
+    server: FastMCP,
+    *,
+    format_kwargs: dict[str, str],
+) -> None:
+    """Format tool descriptions and titles on a FastMCP server.
+
+    This is used to apply container_brand_long formatting after tools have
+    already been registered.
+    """
+
+    tools = asyncio.run(server.get_tools())
+    for tool in tools.values():
+        for attr_name in ("description", "title"):
+            value = getattr(tool, attr_name, None)
+            if not value or not isinstance(value, str):
+                continue
+            try:
+                template = Template(value)
+                formatted = template.safe_substitute(format_kwargs)
+            except ValueError:
+                # Ignore strings with invalid Template placeholders and leave them unchanged
+                continue
+            setattr(tool, attr_name, formatted)
+
+
+def _format_all_tool_descriptions(
+    root_server: FastMCP,
+    *,
+    container_brand_long: str,
+) -> None:
+    """Format tool descriptions for the root server and all mounted MCPs."""
+    format_kwargs = {"container_brand_long": container_brand_long}
+    _format_server_tools(root_server, format_kwargs=format_kwargs)
+    for mcp in MCPS:
+        _format_server_tools(mcp, format_kwargs=format_kwargs)
 
 
 def get_icon_data_uri() -> str:
@@ -262,9 +302,9 @@ def setup_credentials(mcp_server_config: dict, logger: logging.Logger) -> None:
         logger.info("Using Insights Client ID: %s", mcp_server_config["client_id"])
 
 
-def get_insights_mcp_version() -> str:
-    """Get the version of the Insights MCP server.
-    Always call this if the user asks for the version of the Insights MCP server.
+def get_mcp_version() -> str:
+    """Get the version of the {container_brand_long} MCP server.
+    Always call this if the user asks for the version of the {container_brand_long} MCP server.
     or when there is an API or authentication issue.
     Present the comparison URL to the user."""
     # TBD get the latest release tag from github, provide the difference
@@ -310,12 +350,30 @@ def get_insights_mcp_version() -> str:
     )
 
 
+def get_container_brand() -> tuple[str, str]:
+    """Get container brand and long name."""
+    container_brand = os.getenv("CONTAINER_BRAND", "insights")
+    if container_brand == "insights":
+        container_brand_long = "Red Hat Insights"
+    elif container_brand == "red-hat-lightspeed":
+        container_brand_long = "Red Hat Lightspeed"
+    else:
+        container_brand_long = container_brand.capitalize()
+
+    return container_brand, container_brand_long
+
+
 def main():  # pylint: disable=too-many-statements,too-many-locals
     """Main entry point for the Insights MCP server."""
     available_toolsets = f"all, {', '.join(mcp.toolset_name for mcp in MCPS)}"
     toolset_help = f"Comma-separated list of toolsets to use. Available toolsets: {available_toolsets} (default: all)"
 
-    parser = argparse.ArgumentParser(prog="insights-mcp", description="Run Insights MCP server.")
+    container_brand, container_brand_long = get_container_brand()
+
+    parser = argparse.ArgumentParser(
+        prog=f"{container_brand}-mcp",
+        description=f"{container_brand_long} MCP server.",
+    )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     parser.add_argument("--toolset", type=str, help=toolset_help)
     parser.add_argument("--toolset-help", action="store_true", help="Show toolset details of all toolsets")
@@ -373,6 +431,7 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     # ==== Start of Config Setup ====
     mcp_server_config = {
         "base_url": config.INSIGHTS_BASE_URL,
+        "name": f"{container_brand_long} MCP",
         "proxy_url": config.INSIGHTS_PROXY_URL,
         "oauth_enabled": config.OAUTH_ENABLED,
     }
@@ -382,14 +441,14 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     setup_credentials(mcp_server_config, logger)
 
     toolset = args.toolset or config.INSIGHTS_MCP_TOOLSET
-
     if toolset == "all":
         toolset_list = [mcp.toolset_name for mcp in MCPS]
     else:
         toolset_list = [t.strip() for t in toolset.split(",")]
 
     logger.info(
-        "Starting Insights MCP %s (%s) with toolsets: %s",
+        "Starting %s MCP %s (%s) with toolsets: %s",
+        container_brand_long,
         __version__,
         args.transport,
         ", ".join(toolset_list),
@@ -398,7 +457,10 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     if mcp_server_config["proxy_url"]:
         logger.info(">>> Using proxy URL: %s", mcp_server_config["proxy_url"])
 
-    mcp_server_config["instructions"] = get_instructions(toolset_list)
+    instructions = get_instructions(toolset_list)
+    instructions_template = Template(instructions)
+    instructions = instructions_template.safe_substitute(container_brand_long=container_brand_long)
+    mcp_server_config["instructions"] = instructions
 
     # Note: Force overrided the host:port to a SSO registered host:port if not authorized
     if args.transport in ["sse", "http"]:
@@ -426,7 +488,15 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     mcp_server.register_mcps(toolset_list, readonly=args.readonly)
 
     # Register the version checking tool
-    mcp_server.tool(get_insights_mcp_version, annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
+    mcp_server.tool(
+        get_mcp_version,
+        annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+        description=get_mcp_version.__doc__.format(container_brand_long=container_brand_long),
+    )
+
+    # Iterate over all MCPs and their tools to format any descriptions and titles
+    # that use {container_brand_long} placeholders.
+    _format_all_tool_descriptions(mcp_server, container_brand_long=container_brand_long)
 
     if args.transport == "sse":
         mcp_server.run(

@@ -7,8 +7,11 @@ to make settings easily reusable across different modules.
 import os
 
 # Base URLs and endpoints
-INSIGHTS_BASE_URL = os.getenv("INSIGHTS_BASE_URL") or "https://console.redhat.com"
-INSIGHTS_PROXY_URL = os.getenv("INSIGHTS_PROXY_URL") or None  # Optional proxy URL for non Production environments
+INSIGHTS_BASE_URL = (
+    os.getenv("INSIGHTS_BASE_URL") or os.getenv("LIGHTSPEED_BASE_URL") or "https://console.redhat.com"
+)
+# Optional proxy URL for non Production environments
+INSIGHTS_PROXY_URL = os.getenv("INSIGHTS_PROXY_URL") or os.getenv("LIGHTSPEED_PROXY_URL") or None
 SSO_BASE_URL = os.getenv("SSO_BASE_URL") or "https://sso.redhat.com"
 SSO_CONFIG_URL = f"{SSO_BASE_URL}/auth/realms/redhat-external/.well-known/openid-configuration"
 SSO_TOKEN_ENDPOINT = f"{SSO_BASE_URL}/auth/realms/redhat-external/protocol/openid-connect/token"
@@ -25,10 +28,14 @@ SSO_CLIENT_SECRET = os.getenv("SSO_CLIENT_SECRET") or ""  # default to empty str
 # MCP server requires no auth on MCP Client connection
 INSIGHTS_CLIENT_ID = os.getenv("INSIGHTS_CLIENT_ID") or ""
 INSIGHTS_CLIENT_SECRET = os.getenv("INSIGHTS_CLIENT_SECRET") or ""
+# if non is set, fallback to lightspeed credentials
+if not INSIGHTS_CLIENT_ID and not INSIGHTS_CLIENT_SECRET:
+    INSIGHTS_CLIENT_ID = os.getenv("LIGHTSPEED_CLIENT_ID")
+    INSIGHTS_CLIENT_SECRET = os.getenv("LIGHTSPEED_CLIENT_SECRET")
 INSIGHTS_REFRESH_TOKEN = os.getenv("INSIGHTS_REFRESH_TOKEN") or ""
 
 # Argument toolset
-INSIGHTS_MCP_TOOLSET = os.getenv("INSIGHTS_TOOLSET", "all")
+INSIGHTS_MCP_TOOLSET = os.getenv("INSIGHTS_TOOLSET") or os.getenv("LIGHTSPEED_TOOLSET") or "all"
 
 SSO_OAUTH_TIMEOUT_SECONDS = int(os.getenv("SSO_OAUTH_TIMEOUT_SECONDS", "30"))
 

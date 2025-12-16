@@ -17,12 +17,12 @@
 - `get_activation_key`: Get a specific activation key by name.
 
 ## vulnerability
-- `get_openapi`: Get Red Hat Insights Vulnerability OpenAPI specification in JSON format.
+- `get_openapi`: Get $container_brand_long Vulnerability OpenAPI specification in JSON format.
 - `get_cves`: Get list of CVEs affecting the account.
 - `get_cve`: Get details about specific CVE.
 - `get_cve_systems`: Get list of systems affected by a given CVE.
 - `get_system_cves`: Get list of CVEs affecting a given system.
-- `get_systems`: Get list of systems in Insights Vulnerability inventory.
+- `get_systems`: Get list of systems in $container_brand_long Vulnerability inventory.
 - `explain_cves`: Explain why CVEs are affecting my environment.
 
 ## remediations
