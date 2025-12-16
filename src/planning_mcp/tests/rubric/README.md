@@ -77,7 +77,7 @@ LLM_CONFIGURATIONS = load_llm_configurations()  # From test_config.json
 
 | Variable                      | Description                                                                                   |
 |-------------------------------|-----------------------------------------------------------------------------------------------|
-| `GEMINI_API_KEY`              | API key for Gemini judge models. [Optional] Needed if using Gemini in `judges.yaml`.          |
+| `GEMINI_API_KEY`              | API key for Gemini judge models. [Optional] Needed if using Gemini in `judges.yaml`, see [LLM Provider Setup](https://github.com/narmaku/rubric-kit?tab=readme-ov-file#llm-provider-setup)          |
 | `GENERATE_REPORTS`            | Set to `true` to generate PDF/YAML reports after test execution.                             |
 | `DEEPEVAL_TELEMETRY_OPT_OUT`  | Set to `YES` to disable telemetry.                                                           |
 | `INSIGHTS_CLIENT_ID`          | Your Insights user client ID.                                                                |
