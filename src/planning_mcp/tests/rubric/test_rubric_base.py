@@ -27,12 +27,13 @@ from abc import ABC
 from pathlib import Path
 
 import pytest
-from rubric_kit.validator import load_judge_panel_config, load_rubric
+from rubric_kit.validator import load_judge_panel_config
 
 from tests.utils import should_skip_llm_matrix_tests
 from tests.utils_rubric import (
     check_passing_threshold,
     check_tool_correctness,
+    check_tool_input_parameters,
     evaluate_with_rubric,
     format_chat_session,
     generate_report,
@@ -40,6 +41,7 @@ from tests.utils_rubric import (
 )
 
 from .constants import LLM_CONFIGURATIONS, PANEL_PATH, PASSING_THRESHOLD, TEST_DIR
+from .utils.yaml_include import load_rubric_with_includes
 
 
 class BaseRubricTest(ABC):
@@ -62,6 +64,7 @@ class BaseRubricTest(ABC):
     # Optional attributes
     RUBRIC_PATH: Path | None = None  # Auto-derived from module name if None
     EXPECTED_TOOL: str | None = None  # Tool that must be called (checked in assertion message)
+    EXPECTED_TOOL_INPUT_PARAMETERS: dict | None = None  # Tool input parameters that must be passed down
     PASSING_THRESHOLD: float = PASSING_THRESHOLD  # Can override the default
 
     @classmethod
@@ -92,7 +95,7 @@ class BaseRubricTest(ABC):
         # Load rubric and judge panel configuration
         rubric_path = self.get_rubric_path()
         verbose_logger.info("Using rubric: %s", rubric_path)
-        rubric = load_rubric(str(rubric_path))
+        rubric = load_rubric_with_includes(str(rubric_path))
         panel_config = load_judge_panel_config(str(PANEL_PATH))
 
         # Execute the test prompt
@@ -106,36 +109,44 @@ class BaseRubricTest(ABC):
             rubric, chat_content, panel_config, verbose_logger
         )
 
-        # Generate reports
-        should_generate_reports = os.getenv("GENERATE_REPORTS", "false").lower() == "true"
-        if should_generate_reports:
-            generate_report(
-                results,
-                rubric,
-                panel_config,
-                llm_config,
-                total_score,
-                max_score,
-                percentage,
-                chat_content,
-                verbose_logger,
-                reports_dir=TEST_DIR / "reports",
-                report_title=f"{self.REPORT_TITLE} ({llm_config.get('name', 'Unknown Model')})",
-                test_prompt=self.TEST_PROMPT,
-            )
+        test_result = "Pass"
+        try:
+            # Verify the critical tool was called (if specified)
+            check_tool_correctness(results, self.EXPECTED_TOOL)
 
-        # Assert minimum passing threshold
-        check_passing_threshold(results, percentage, self.PASSING_THRESHOLD)
+            # Verify tool parameters
+            check_tool_input_parameters(tools_executed, self.EXPECTED_TOOL_INPUT_PARAMETERS)
 
-        # Verify the critical tool was called (if specified)
-        check_tool_correctness(results, self.EXPECTED_TOOL)
+            # Assert minimum passing threshold
+            check_passing_threshold(results, percentage, self.PASSING_THRESHOLD)
+        except Exception:
+            test_result = "Fail"
+            raise
+        finally:
+            # Generate reports
+            if os.getenv("GENERATE_REPORTS", "false").lower() == "true":
+                generate_report(
+                    results,
+                    rubric,
+                    panel_config,
+                    llm_config,
+                    total_score,
+                    max_score,
+                    percentage,
+                    chat_content,
+                    verbose_logger,
+                    reports_dir=TEST_DIR / "reports",
+                    report_title=f"{test_result} - {self.REPORT_TITLE} ({llm_config.get('name', 'Unknown Model')})",
+                    test_prompt=self.TEST_PROMPT,
+                )
 
 
-def create_rubric_test_class(
+def create_rubric_test_class(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     test_prompt: str,
     report_title: str,
     rubric_path: Path | None = None,
     expected_tool: str | None = None,
+    expected_tool_input_parameters: dict | None = None,
     passing_threshold: float = PASSING_THRESHOLD,
 ):
     """Factory function to create a configured LLM test class.
@@ -159,6 +170,7 @@ def create_rubric_test_class(
         REPORT_TITLE = report_title
         RUBRIC_PATH = rubric_path
         EXPECTED_TOOL = expected_tool
+        EXPECTED_TOOL_INPUT_PARAMETERS = expected_tool_input_parameters
         PASSING_THRESHOLD = passing_threshold
 
     return ConfiguredRubricTest

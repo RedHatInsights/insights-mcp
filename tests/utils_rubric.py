@@ -102,7 +102,7 @@ def generate_report(  # pylint: disable=too-many-arguments,too-many-positional-a
     model_name = llm_config.get("name", "Unknown Model").replace(" ", "_").replace("/", "-")
 
     # Create timestamped report folder
-    report_folder = reports_dir / f"{timestamp}_{model_name}"
+    report_folder = reports_dir / f"{timestamp}_{report_title.replace(' ', '_')}_{model_name}"
     report_folder.mkdir(parents=True, exist_ok=True)
 
     # Build self-contained output structure (same format as rubric-kit CLI)
@@ -170,6 +170,14 @@ def generate_report(  # pylint: disable=too-many-arguments,too-many-positional-a
     with open(chat_session_file, "w", encoding="utf-8") as f:
         f.write(chat_content)
     verbose_logger.info("Chat session saved to: %s", chat_session_file)
+
+    # Save a quick summary of the results to the report folder
+    summary_file = report_folder / "summary.txt"
+    with open(summary_file, "w", encoding="utf-8") as f:
+        f.write(f"Total score: {total_score}\n")
+        f.write(f"Max score: {max_score}\n")
+        f.write(f"Percentage: {percentage:.1f}%\n")
+    verbose_logger.info("Summary saved to: %s", summary_file)
 
     # Generate PDF report
     pdf_path = report_folder / "evaluation.pdf"
@@ -269,4 +277,22 @@ def check_tool_correctness(results, expected_tool: str):
     assert tool_result is not None, "Tool correctness criterion not found in results"
     assert tool_result["result"] == "pass", (
         f"Expected {expected_tool} to be called. Tool breakdown: {tool_result.get('tool_breakdown', 'N/A')}"
+    )
+
+
+def check_tool_input_parameters(tools_executed, expected_tool_input_parameters: dict | None):
+    """Check if the tool input parameters are correct."""
+    expected_tool_input_parameters = expected_tool_input_parameters or {}
+    # If there are no tool_input_parameters, it will fail at the assertion below so no need to check for None
+    try:
+        tool_input_parameters = tools_executed[0].input_parameters
+    except IndexError:
+        tool_input_parameters = {}
+
+    if tool_input_parameters and not expected_tool_input_parameters:
+        raise AssertionError(f"Expected no tool input parameters, but got: {tool_input_parameters}")
+
+    # If we expect tool input parameters, check if they are correct
+    assert tool_input_parameters == expected_tool_input_parameters, (
+        f"Expected tool input parameters: {expected_tool_input_parameters}, but got: {tool_input_parameters}"
     )
