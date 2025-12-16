@@ -7,9 +7,7 @@ to make settings easily reusable across different modules.
 import os
 
 # Base URLs and endpoints
-INSIGHTS_BASE_URL = (
-    os.getenv("INSIGHTS_BASE_URL") or os.getenv("LIGHTSPEED_BASE_URL") or "https://console.redhat.com"
-)
+INSIGHTS_BASE_URL = os.getenv("INSIGHTS_BASE_URL") or os.getenv("LIGHTSPEED_BASE_URL") or "https://console.redhat.com"
 # Optional proxy URL for non Production environments
 INSIGHTS_PROXY_URL = os.getenv("INSIGHTS_PROXY_URL") or os.getenv("LIGHTSPEED_PROXY_URL") or None
 SSO_BASE_URL = os.getenv("SSO_BASE_URL") or "https://sso.redhat.com"
@@ -30,8 +28,8 @@ INSIGHTS_CLIENT_ID = os.getenv("INSIGHTS_CLIENT_ID") or ""
 INSIGHTS_CLIENT_SECRET = os.getenv("INSIGHTS_CLIENT_SECRET") or ""
 # if non is set, fallback to lightspeed credentials
 if not INSIGHTS_CLIENT_ID and not INSIGHTS_CLIENT_SECRET:
-    INSIGHTS_CLIENT_ID = os.getenv("LIGHTSPEED_CLIENT_ID")
-    INSIGHTS_CLIENT_SECRET = os.getenv("LIGHTSPEED_CLIENT_SECRET")
+    INSIGHTS_CLIENT_ID = os.getenv("LIGHTSPEED_CLIENT_ID") or ""
+    INSIGHTS_CLIENT_SECRET = os.getenv("LIGHTSPEED_CLIENT_SECRET") or ""
 INSIGHTS_REFRESH_TOKEN = os.getenv("INSIGHTS_REFRESH_TOKEN") or ""
 
 # Argument toolset
