@@ -22,7 +22,7 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "fastmcp>=2.10.1",
+    "fastmcp>=2.13.3",
     "requests",
     "PyJWT",
 ]
@@ -58,6 +58,9 @@ where = ["src"]
 
 [tool.setuptools.package-dir]
 "" = "src"
+
+[tool.setuptools.package-data]
+insights_mcp = ["assets/*.png"]
 
 [tool.pylint.format]
 max-line-length = 120

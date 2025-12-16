@@ -88,7 +88,7 @@ def setup_advisor_mock(mcp_server, mock_client, mock_response=None, side_effect=
     - No get_http_headers() function
     - Uses self.insights_client directly from InsightsMCP base class
     """
-
+    # pylint: disable=duplicate-code  # Similar mock setup patterns across toolsets
     # Set up mock responses
     if side_effect:
         mock_client.get.side_effect = side_effect
@@ -105,6 +105,7 @@ def setup_advisor_mock(mcp_server, mock_client, mock_response=None, side_effect=
         yield None  # No headers needed for advisor architecture
 
 
+# pylint: disable=duplicate-code  # Test fixture patterns are similar across toolsets
 # Make the fixtures available for import
 __all__ = [
     "assert_api_error_result",

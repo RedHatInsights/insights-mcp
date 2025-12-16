@@ -9,7 +9,6 @@ from unittest.mock import patch
 import pytest
 
 from image_builder_mcp import ImageBuilderMCP
-from image_builder_mcp import server as image_builder_mcp
 
 # Import directly from tests since pytest now knows where to find packages
 from tests.conftest import (
@@ -47,26 +46,36 @@ def imagebuilder_mock_client():
 
 @contextmanager
 def setup_imagebuilder_mock(mcp_server, mock_client, mock_response=None, side_effect=None):
-    """Context manager for setting up ImageBuilder mock patterns."""
+    """Context manager for setting up ImageBuilder mock patterns.
+    Uses self.insights_client directly from InsightsMCP base class
+    """
+    # pylint: disable=duplicate-code  # Similar mock setup patterns across toolsets
+    # Set up mock responses
+    if side_effect:
+        mock_client.get.side_effect = side_effect
+        mock_client.post.side_effect = side_effect
+        mock_client.put.side_effect = side_effect
+    elif mock_response is not None:
+        mock_client.get.return_value = mock_response
+        mock_client.post.return_value = mock_response
+        mock_client.put.return_value = mock_response
 
-    with setup_mcp_mock(image_builder_mcp, mcp_server, mock_client, mock_response, side_effect) as mock_headers:
-        yield mock_headers
+    # Mock the insights_client directly on the server instance
+    with patch.object(mcp_server, "insights_client", mock_client):
+        yield None  # No headers needed for image builder architecture
 
 
 @contextmanager
-def setup_imagebuilder_watermark_disabled():
+def setup_imagebuilder_watermark_disabled(mcp_server, mock_client):
     """Context manager for disabling watermarks in ImageBuilder tests."""
     with (
-        patch.object(image_builder_mcp, "get_http_headers") as mock_headers,
+        patch.object(mcp_server, "insights_client", mock_client),
         patch.dict(os.environ, {"IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK": "true"}),
     ):
-        mock_headers.return_value = {
-            "insights-client-id": TEST_CLIENT_ID,
-            "insights-client-secret": TEST_CLIENT_SECRET,
-        }
-        yield mock_headers
+        yield None  # No headers needed for image builder architecture
 
 
+# pylint: disable=duplicate-code  # Test fixture patterns are similar across toolsets
 # Make the fixtures available for import
 __all__ = [
     "assert_api_error_result",

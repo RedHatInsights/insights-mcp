@@ -1315,7 +1315,7 @@ dev = [
 requires-dist = [
     { name = "autopep8", marker = "extra == 'dev'" },
     { name = "deepeval", marker = "extra == 'dev'" },
-    { name = "fastmcp", specifier = ">=2.10.1" },
+    { name = "fastmcp", specifier = ">=2.13.3" },
     { name = "llama-index", marker = "extra == 'dev'" },
     { name = "llama-index-core", marker = "extra == 'dev'" },
     { name = "llama-index-llms-openai", marker = "extra == 'dev'" },

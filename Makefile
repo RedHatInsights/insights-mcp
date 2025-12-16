@@ -121,6 +121,12 @@ run-http: build ## Run the MCP server with HTTP streaming transport
 run-stdio: build ## Run the MCP server with stdio transport
 	podman run --interactive --tty --rm --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --name $(CONTAINER_BRAND)-mcp-stdio localhost/$(CONTAINER_BRAND)-mcp:latest
 
+run-oauth: build ## Run the MCP server with OAuth transport
+	podman run --rm --network=host \
+	--env SSO_CLIENT_ID --env SSO_CLIENT_SECRET --env OAUTH_ENABLED=True \
+	--name insights-mcp-oauth localhost/insights-mcp:latest http \
+	--host localhost
+
 ALL_PYTHON_FILES := $(shell find src -name "*.py")
 
 .PHONY: generate-docs
