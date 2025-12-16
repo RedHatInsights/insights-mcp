@@ -1,38 +1,48 @@
 # Rubric for evaluating LLM responses to RHEL upcoming changes queries
-dimensions:
-  - tool_usage:
-      description: "Evaluates whether the correct MCP tools were called"
-      grading_type: binary
-
-  - response_quality:
-      description: "Evaluates the quality and helpfulness of the response"
-      grading_type: score
-      scores:
-        0: Poor
-        1: Fair
-        2: Good
-        3: Excellent
+dimensions: !include base_dimensions.yaml
 
 criteria:
-  - tool_correctness:
-      category: Tools
-      weight: 3
-      dimension: tool_usage
-      tool_calls:
-        respect_order: false
-        required:
-          - planning__get_upcoming_changes:
-              min_calls: 1
-              max_calls: 1
-
-  - helpful_response:
-      category: Output
-      weight: 3
-      dimension: response_quality
-      criterion: |
-        The assistant's response should:
-        1. Understand the user's intent to list all package removals from RHEL 9.2 to RHEL 10
-        2. Provide a helpful and informative summary of the package removals
-        3. Not return raw JSON as the sole content - the response should be human-readable
-        4. Include relevant context about the package removals
-        5. Include general advice about updating to RHEL 10
+  tool_correctness:
+    category: Tools
+    weight: 3
+    dimension: tool_usage
+    criterion: The assistant must call the 'planning__get_upcoming_changes' tool to
+      retrieve the package removal information.
+    tool_calls:
+      respect_order: false
+      required:
+        planning__get_upcoming_changes:
+          min_calls: 1
+          max_calls: 1
+      optional: []
+      prohibited: []
+  acknowledges_user_intent:
+    category: Output
+    weight: 2
+    dimension: response_quality
+    criterion: The response must correctly identify and confirm the user's goal to
+      list package removals from RHEL 8 to RHEL 10.
+  summarizes_package_removals:
+    category: Output
+    weight: 3
+    dimension: response_quality
+    criterion: The response must provide a helpful and informative summary of the
+      package removals, not just a raw list.
+  human_readable_format:
+    category: Output
+    weight: 3
+    dimension: response_quality
+    criterion: The response must be in a human-readable format and must not return
+      raw JSON as the sole content.
+  provides_removal_context:
+    category: Output
+    weight: 2
+    dimension: response_quality
+    criterion: The response should include relevant context about the package removals,
+      such as why packages are removed or what their replacements might be.
+  offers_upgrade_advice:
+    category: Output
+    weight: 1
+    dimension: response_quality
+    criterion: The response should include general advice or suggest next steps for
+      a user planning to update to RHEL 10.
