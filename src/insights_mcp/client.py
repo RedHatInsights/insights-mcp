@@ -24,7 +24,14 @@ from authlib.oauth2.rfc6749 import OAuth2Token
 from fastmcp.server.auth import AuthProvider
 from fastmcp.server.dependencies import get_access_token, get_http_headers
 
-from insights_mcp.config import INSIGHTS_BASE_URL_PROD, INSIGHTS_TOKEN_ENDPOINT_PROD
+from insights_mcp.config import (
+    BRAND_CLIENT_ID_ENV,
+    BRAND_CLIENT_ID_HEADER,
+    BRAND_CLIENT_SECRET_ENV,
+    BRAND_CLIENT_SECRET_HEADER,
+    INSIGHTS_BASE_URL_PROD,
+    INSIGHTS_TOKEN_ENDPOINT_PROD,
+)
 
 from . import __version__
 
@@ -156,8 +163,8 @@ class InsightsClientBase(httpx.AsyncClient):
         )
         if self.mcp_transport in ["sse", "http"]:
             return (
-                f"{base_message}header variables `insights-client-id` and "
-                "`insights-client-secret` in your request.\n"
+                f"{base_message}header variables `{BRAND_CLIENT_ID_HEADER}` and "
+                f"`{BRAND_CLIENT_SECRET_HEADER}` in your request.\n"
                 "Here is the direct link for the user's convenience: "
                 f"[{self.insights_base_url}/iam/service-accounts]({self.insights_base_url}/iam/service-accounts) "
                 "Come up with a detailed description of this for the user. "
@@ -166,7 +173,7 @@ class InsightsClientBase(httpx.AsyncClient):
             )
 
         return (
-            f"{base_message}`INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET` "
+            f"{base_message}`{BRAND_CLIENT_ID_ENV}` and `{BRAND_CLIENT_SECRET_ENV}` "
             "in your mcp.json config.\n"
             "Here is the direct link for the user's convenience: "
             f"[{self.insights_base_url}/iam/service-accounts]({self.insights_base_url}/iam/service-accounts) "

@@ -44,6 +44,16 @@ SSO_AUTHORIZED_MCP_SERVER_HOST_PORTS = [
     ("127.0.0.1", 8000),
 ]
 
+# Brand configuration for dynamic variable naming in user-facing messages
+CONTAINER_BRAND = os.getenv("CONTAINER_BRAND", "insights")
+# Strip "red-hat-" prefix if present (e.g., "red-hat-lightspeed" -> "lightspeed")
+_brand_prefix = CONTAINER_BRAND.replace("red-hat-", "")
+# Derive variable names dynamically for error messages
+BRAND_CLIENT_ID_ENV = f"{_brand_prefix.upper()}_CLIENT_ID"
+BRAND_CLIENT_SECRET_ENV = f"{_brand_prefix.upper()}_CLIENT_SECRET"
+BRAND_CLIENT_ID_HEADER = f"{_brand_prefix.lower()}-client-id"
+BRAND_CLIENT_SECRET_HEADER = f"{_brand_prefix.lower()}-client-secret"
+
 # for backward compatibility
 INSIGHTS_BASE_URL_PROD = INSIGHTS_BASE_URL
 INSIGHTS_TOKEN_ENDPOINT_PROD = SSO_TOKEN_ENDPOINT
