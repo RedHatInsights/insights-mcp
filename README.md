@@ -95,7 +95,7 @@ First check the [prerequisites](#prerequisites) section.
 
 #### Option 1: One-click installation (easiest)
 
-[![Install with Podman in VS Code](https://img.shields.io/badge/VS_Code-Install_Red_Hat_Lightspeed_MCP-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=red-hat-lightspeed-mcp&config=%7B%22type%22%3A%20%22stdio%22%2C%20%22command%22%3A%20%22podman%22%2C%20%22args%22%3A%20%5B%22run%22%2C%20%22--env%22%2C%20%22LIGHTSPEED_CLIENT_ID%22%2C%20%22--env%22%2C%20%22LIGHTSPEED_CLIENT_SECRET%22%2C%20%22--interactive%22%2C%20%22--rm%22%2C%20%22quay.io%2Fredhat-services-prod%2Finsights-management-tenant%2Fred-hat-lightspeed-mcp%2Fred-hat-lightspeed-mcp%3Alatest%22%5D%2C%20%22env%22%3A%20%7B%22LIGHTSPEED_CLIENT_ID%22%3A%20%22%24%7Binput%3Alightspeed_client_id%7D%22%2C%20%22LIGHTSPEED_CLIENT_SECRET%22%3A%20%22%24%7Binput%3Alightspeed_client_secret%7D%22%7D%7D&inputs=%5B%7B%22id%22%3A%20%22lightspeed_client_id%22%2C%20%22type%22%3A%20%22promptString%22%2C%20%22description%22%3A%20%22Enter%20the%20Red%20Hat%20Lightspeed%20Client%20ID%22%2C%20%22default%22%3A%20%22%22%2C%20%22password%22%3A%20true%7D%2C%20%7B%22id%22%3A%20%22lightspeed_client_secret%22%2C%20%22type%22%3A%20%22promptString%22%2C%20%22description%22%3A%20%22Enter%20the%20Red%20Hat%20Lightspeed%20Client%20Secret%22%2C%20%22default%22%3A%20%22%22%2C%20%22password%22%3A%20true%7D%5D)<br>
+[![Install with Podman in VS Code](https://img.shields.io/badge/VS_Code-Install_Red_Hat_Lightspeed_MCP-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=red-hat-lightspeed-mcp&config=%7B%22type%22%3A%20%22stdio%22%2C%20%22command%22%3A%20%22podman%22%2C%20%22args%22%3A%20%5B%22run%22%2C%20%22--env%22%2C%20%22LIGHTSPEED_CLIENT_ID%22%2C%20%22--env%22%2C%20%22LIGHTSPEED_CLIENT_SECRET%22%2C%20%22--interactive%22%2C%20%22--rm%22%2C%20%22quay.io%2Fredhat-services-prod%2Finsights-management-tenant%2Finsights-mcp%2Fred-hat-lightspeed-mcp%3Alatest%22%5D%2C%20%22env%22%3A%20%7B%22LIGHTSPEED_CLIENT_ID%22%3A%20%22%24%7Binput%3Alightspeed_client_id%7D%22%2C%20%22LIGHTSPEED_CLIENT_SECRET%22%3A%20%22%24%7Binput%3Alightspeed_client_secret%7D%22%7D%7D&inputs=%5B%7B%22id%22%3A%20%22lightspeed_client_id%22%2C%20%22type%22%3A%20%22promptString%22%2C%20%22description%22%3A%20%22Enter%20the%20Red%20Hat%20Lightspeed%20Client%20ID%22%2C%20%22default%22%3A%20%22%22%2C%20%22password%22%3A%20true%7D%2C%20%7B%22id%22%3A%20%22lightspeed_client_secret%22%2C%20%22type%22%3A%20%22promptString%22%2C%20%22description%22%3A%20%22Enter%20the%20Red%20Hat%20Lightspeed%20Client%20Secret%22%2C%20%22default%22%3A%20%22%22%2C%20%22password%22%3A%20true%7D%5D)<br>
 (Note: this uses the `quay.io` container image)
 
 #### Option 2: Manual STDIO installation
@@ -152,7 +152,7 @@ First check the [prerequisites](#prerequisites) section.
 
 ⚠️ Use **`Ctrl`/`Cmd`-click** to open in a **new tab**.<br>
 Otherwise the tab will close after installation and you won't see the documentation anymore.<br>
-[![Install with Podman in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=red-hat-lightspeed-mcp&config=eyJ0eXBlIjoic3RkaW8iLCJjb21tYW5kIjoicG9kbWFuIHJ1biAtLWVudiBMSUdIVFNQRUVEX0NMSUVOVF9JRCAtLWVudiBMSUdIVFNQRUVEX0NMSUVOVF9TRUNSRVQgLS1pbnRlcmFjdGl2ZSAtLXJtIHF1YXkuaW8vcmVkaGF0LXNlcnZpY2VzLXByb2QvaW5zaWdodHMtbWFuYWdlbWVudC10ZW5hbnQvaW5zaWdodHMtbWNwL2luc2lnaHRzLW1jcDpsYXRlc3QiLCJlbnYiOnsiTElHSFRTUEVFRF9DTElFTlRfSUQiOiIiLCJMSUdIVFNQRUVEX0NMSUVOVF9TRUNSRVQiOiIifX0=)<br>
+[![Install with Podman in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=red-hat-lightspeed-mcp&config=eyJ0eXBlIjoic3RkaW8iLCJjb21tYW5kIjoicG9kbWFuIHJ1biAtLWVudiBMSUdIVFNQRUVEX0NMSUVOVF9JRCAtLWVudiBMSUdIVFNQRUVEX0NMSUVOVF9TRUNSRVQgLS1pbnRlcmFjdGl2ZSAtLXJtIHF1YXkuaW8vcmVkaGF0LXNlcnZpY2VzLXByb2QvaW5zaWdodHMtbWFuYWdlbWVudC10ZW5hbnQvaW5zaWdodHMtbWNwL3JlZC1oYXQtbGlnaHRzcGVlZC1tY3A6bGF0ZXN0IiwiZW52Ijp7IkxJR0hUU1BFRURfQ0xJRU5UX0lEIjoiIiwiTElHSFRTUEVFRF9DTElFTlRfU0VDUkVUIjoiIn19)<br>
 (Note: this uses the `quay.io` container image)
 
 #### Option 2: Manual STDIO installation
@@ -376,13 +376,18 @@ For some use cases it might be needed to use the MCP server directly from the co
 See [usage.md](usage.md) for the usage of the MCP server.
 
 ## Releases
-There are three container images published for this MCP server.
+There are two container images published for this MCP server.
 
  * `ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest`
- * `quay.io/redhat-services-prod/insights-management-tenant/insights-mcp/insights-mcp:latest`
-
+ * `quay.io/redhat-services-prod/insights-management-tenant/insights-mcp/red-hat-lightspeed-mcp:latest`
 
 They are both based on `main` branch and you can use either of them.
+
+Insights-branded images are deprecated but still available for a while but might be removed in the future.
+
+ * `ghcr.io/redhatinsights/insights-mcp:latest`
+ * `quay.io/redhat-services-prod/insights-management-tenant/insights-mcp/insights-mcp:latest`
+
 
 ## Disclaimer
 
