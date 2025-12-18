@@ -5,6 +5,14 @@ import pytest
 # Clean import - no sys.path.insert needed with proper package structure!
 from image_builder_mcp import ImageBuilderMCP
 
+# Brand test cases for HTTP/SSE transports - only need to verify id header
+BRAND_HEADER_TEST_CASES = ["insights-client-id", "lightspeed-client-id"]
+BRAND_HEADER_IDS = ["insights", "red-hat-lightspeed"]
+
+# Brand test cases for stdio transport - only need to verify id env
+BRAND_ENV_TEST_CASES = ["INSIGHTS_CLIENT_ID", "LIGHTSPEED_CLIENT_ID"]
+BRAND_ENV_IDS = ["insights", "red-hat-lightspeed"]
+
 
 class TestAuthentication:
     """Test suite for authentication-related functionality."""
@@ -43,9 +51,16 @@ class TestAuthentication:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("function_name,kwargs", AUTH_FUNCTIONS)
-    async def test_function_no_auth_error_message(self, function_name, kwargs):
-        """Test that functions return the no_auth_error() message when authentication is missing."""
-        # Create MCP server without default credentials
+    @pytest.mark.parametrize("expected_id_env", BRAND_ENV_TEST_CASES, ids=BRAND_ENV_IDS)
+    async def test_function_no_auth_error_message(self, function_name, kwargs, expected_id_env, monkeypatch):
+        """Test that functions return the no_auth_error() message when authentication is missing.
+
+        Tests that the correct branded env variable names appear in the error message for stdio transport.
+        """
+        # Patch the brand env variable name in the client module
+        monkeypatch.setattr("insights_mcp.client.BRAND_CLIENT_ID_ENV", expected_id_env)
+
+        # Create MCP server without default credentials (default is stdio transport)
         mcp_server = ImageBuilderMCP()
         mcp_server.init_insights_client(
             client_id=None,
@@ -57,17 +72,24 @@ class TestAuthentication:
         method = getattr(mcp_server, function_name)
         result = await method(**kwargs)
 
-        # Check for relevant parts of the no_auth_error message for default transport
+        # Verify branded env variable name appears in error message
         assert "[INSTRUCTION] There seems to be a problem with the request." in result
         assert "authentication problem" in result
+        assert expected_id_env in result
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("function_name,kwargs", AUTH_FUNCTIONS)
-    async def test_function_no_auth_error_message_sse_transport(self, function_name, kwargs):
+    @pytest.mark.parametrize("expected_id_header", BRAND_HEADER_TEST_CASES, ids=BRAND_HEADER_IDS)
+    async def test_function_no_auth_error_message_sse_transport(
+        self, function_name, kwargs, expected_id_header, monkeypatch
+    ):
         """Test that functions return the no_auth_error() message for SSE transport.
 
-        Tests the case when authentication is missing.
+        Tests that the correct branded header name appears in the error message.
         """
+        # Patch the brand header value in the client module
+        monkeypatch.setattr("insights_mcp.client.BRAND_CLIENT_ID_HEADER", expected_id_header)
+
         # Create MCP server with SSE transport
         mcp_server = ImageBuilderMCP()
         mcp_server.init_insights_client(
@@ -81,17 +103,24 @@ class TestAuthentication:
         method = getattr(mcp_server, function_name)
         result = await method(**kwargs)
 
-        # Check for relevant parts of the no_auth_error message for SSE transport
+        # Verify branded header appears in error message
         assert "[INSTRUCTION] There seems to be a problem with the request." in result
         assert "authentication problem" in result
+        assert expected_id_header in result
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("function_name,kwargs", AUTH_FUNCTIONS)
-    async def test_function_no_auth_error_message_http_transport(self, function_name, kwargs):
+    @pytest.mark.parametrize("expected_id_header", BRAND_HEADER_TEST_CASES, ids=BRAND_HEADER_IDS)
+    async def test_function_no_auth_error_message_http_transport(
+        self, function_name, kwargs, expected_id_header, monkeypatch
+    ):
         """Test that functions return the no_auth_error() message for HTTP transport.
 
-        Tests the case when authentication is missing.
+        Tests that the correct branded header name appears in the error message.
         """
+        # Patch the brand header value in the client module
+        monkeypatch.setattr("insights_mcp.client.BRAND_CLIENT_ID_HEADER", expected_id_header)
+
         # Create MCP server with HTTP transport
         mcp_server = ImageBuilderMCP()
         mcp_server.init_insights_client(
@@ -105,6 +134,7 @@ class TestAuthentication:
         method = getattr(mcp_server, function_name)
         result = await method(**kwargs)
 
-        # Check for relevant parts of the no_auth_error message for HTTP transport
+        # Verify branded header appears in error message
         assert "[INSTRUCTION] There seems to be a problem with the request." in result
         assert "authentication problem" in result
+        assert expected_id_header in result

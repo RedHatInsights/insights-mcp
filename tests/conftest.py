@@ -188,13 +188,34 @@ def create_mock_client(client_id=TEST_CLIENT_ID, client_secret=TEST_CLIENT_SECRE
 @contextmanager
 # pylint: disable=too-many-arguments,too-many-positional-arguments
 def setup_mcp_mock(
-    server_module, mcp_server, mock_client, mock_response=None, side_effect=None, client_id=TEST_CLIENT_ID
+    server_module,
+    mcp_server,
+    mock_client,
+    mock_response=None,
+    side_effect=None,
+    client_id=TEST_CLIENT_ID,
+    brand="insights",
 ):
-    """Generic context manager for setting up MCP server mock patterns."""
+    """Generic context manager for setting up MCP server mock patterns.
+
+    Args:
+        server_module: The server module to patch get_http_headers on
+        mcp_server: The MCP server instance
+        mock_client: The mock client to use
+        mock_response: Optional response to return from client methods
+        side_effect: Optional side effect for client methods
+        client_id: Client ID to use (default: TEST_CLIENT_ID)
+        brand: Brand for header names (default: "insights"). Use "red-hat-lightspeed" for lightspeed.
+    """
+    # Derive headers from brand (same logic as config.py)
+    brand_prefix = brand.replace("red-hat-", "")
+    id_header = f"{brand_prefix.lower()}-client-id"
+    secret_header = f"{brand_prefix.lower()}-client-secret"
+
     with patch.object(server_module, "get_http_headers") as mock_headers:
         mock_headers.return_value = {
-            "insights-client-id": client_id,
-            "insights-client-secret": TEST_CLIENT_SECRET,
+            id_header: client_id,
+            secret_header: TEST_CLIENT_SECRET,
         }
 
         if side_effect:
