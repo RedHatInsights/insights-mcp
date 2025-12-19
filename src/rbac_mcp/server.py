@@ -8,6 +8,12 @@ from typing import Annotated, Any
 
 from pydantic import Field
 
+from insights_mcp.config import (
+    BRAND_CLIENT_ID_ENV,
+    BRAND_CLIENT_ID_HEADER,
+    BRAND_CLIENT_SECRET_ENV,
+    BRAND_CLIENT_SECRET_HEADER,
+)
 from insights_mcp.mcp import InsightsMCP
 
 mcp = InsightsMCP(
@@ -240,7 +246,11 @@ async def get_all_access(
     intro += " a user with organization admin role should assign proper permissions to the user.\n"
     intro += "Emphasize that the RBAC permissions are DIFFERENT between the user and a possible "
     intro += "service account which is in use by the MCP server.\n"
-    intro += "If we get a json object back explain that it's NOT a "
-    intro += "problem with INSIGHTS_CLIENT_ID or INSIGHTS_CLIENT_SECRET but only a problem with RBAC permissions.\n"
+    intro += "If we get a json object back explain that it's NOT a problem with "
+    if mcp.insights_client.mcp_transport in ["sse", "http"]:
+        intro += f"{BRAND_CLIENT_ID_HEADER} or {BRAND_CLIENT_SECRET_HEADER}"
+    else:
+        intro += f"{BRAND_CLIENT_ID_ENV} or {BRAND_CLIENT_SECRET_ENV}"
+    intro += " but only a problem with RBAC permissions.\n"
 
     return f"{intro}{response}"
