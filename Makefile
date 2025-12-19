@@ -81,6 +81,28 @@ test-coverage: ## Run tests with coverage reporting
 	@echo "Running pytest tests with coverage..."
 	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v --cov=. --cov-report=html --cov-report=term-missing
 
+# Define a reusable check function for container sanity tests
+# $(1) = image URL, $(2) = expected CONTAINER_BRAND value
+define check_container
+	@echo -e "\n----- Checking $(1)"
+	podman run --rm -ti \
+	  --entrypoint /bin/bash \
+	  --pull always \
+	  $(1) -c "env; (echo 'Checking container brand…' ; env | grep 'CONTAINER_BRAND=$(2)') \
+	     && (echo 'Checking insights mcp version…' ; env | grep 'INSIGHTS_MCP_VERSION')" || \
+	  ( echo 'FAILED $(1) seems broken'; exit 1 )
+	@echo -e "\nCheck usage output to at least contain the container brand"
+	podman run --rm -ti \
+	  $(1) --help | grep $(2)
+endef
+
+.PHONY: test-upstream-containers
+test-upstream-containers: ## Pull the upstream container images and check if they are sane
+	$(call check_container,ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest,red-hat-lightspeed)
+	$(call check_container,quay.io/redhat-services-prod/insights-management-tenant/insights-mcp/red-hat-lightspeed-mcp:latest,red-hat-lightspeed)
+	$(call check_container,ghcr.io/redhatinsights/insights-mcp:latest,insights)
+	$(call check_container,quay.io/redhat-services-prod/insights-management-tenant/insights-mcp/insights-mcp:latest,insights)
+
 .PHONY: install-test-deps
 install-test-deps: ## Install test dependencies
 	uv sync --locked --all-extras --dev
