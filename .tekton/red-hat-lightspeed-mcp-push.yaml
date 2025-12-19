@@ -28,6 +28,10 @@ spec:
     value: Containerfile
   - name: path-context
     value: .
+  - name: build-args
+    value:
+      - INSIGHTS_MCP_VERSION={{revision}}
+      - CONTAINER_BRAND=red-hat-lightspeed
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.

@@ -28,6 +28,9 @@ spec:
     value: Containerfile
   - name: path-context
     value: .
+  - name: build-args
+    value:
+      - INSIGHTS_MCP_VERSION={{revision}}
   pipelineRef:
     name: docker-build-oci-ta
   taskRunTemplate:
