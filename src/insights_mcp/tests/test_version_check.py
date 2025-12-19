@@ -5,7 +5,73 @@ from unittest.mock import Mock, patch
 import pytest
 import requests
 
-from insights_mcp.server import get_latest_release_tag, get_mcp_version
+from insights_mcp.server import extract_version_sha, get_latest_release_tag, get_mcp_version
+
+
+class TestExtractVersionSha:
+    """Tests for extract_version_sha function."""
+
+    @pytest.mark.parametrize(
+        "version,expected_sha",
+        [
+            # Date-prefixed format extracts SHA
+            ("20250905-072605-a8f7bd3a", "a8f7bd3a"),
+            ("20240101-120000-abcdef12", "abcdef12"),
+            ("20251219-235959-1234567890abcdef", "1234567890abcdef"),
+            # Plain SHA passthrough
+            ("a8f7bd3a", "a8f7bd3a"),
+            ("abcdef12", "abcdef12"),
+            ("1234567890abcdef", "1234567890abcdef"),
+            # Edge cases
+            ("0.0.0-dev", "0.0.0-dev"),
+            ("v0.1.0", "v0.1.0"),
+        ],
+    )
+    def test_extract_version_sha(self, version: str, expected_sha: str):
+        """Test SHA extraction from various version formats."""
+        assert extract_version_sha(version) == expected_sha
+
+    def test_extract_version_sha_invalid_date_format(self):
+        """Test that invalid date formats are passed through unchanged."""
+        # Missing digits in date portion
+        assert extract_version_sha("2025090-072605-a8f7bd3a") == "2025090-072605-a8f7bd3a"
+        # Missing digits in time portion
+        assert extract_version_sha("20250905-07260-a8f7bd3a") == "20250905-07260-a8f7bd3a"
+        # Extra separator
+        assert extract_version_sha("20250905-072605-extra-a8f7bd3a") == "extra-a8f7bd3a"
+
+
+# pylint: disable=too-few-public-methods
+
+
+class TestVersionComparison:
+    """Tests for version comparison using SHA extraction."""
+
+    @pytest.mark.parametrize(
+        "current_version,latest_release",
+        [
+            # Same full version string
+            ("20250905-072605-a8f7bd3a", "20250905-072605-a8f7bd3a"),
+            # Same SHA, different dates (should match)
+            ("20250905-072605-a8f7bd3a", "20251001-120000-a8f7bd3a"),
+            # Date-prefixed vs plain SHA (should match)
+            ("20250905-072605-a8f7bd3a", "a8f7bd3a"),
+            ("a8f7bd3a", "20250905-072605-a8f7bd3a"),
+            # Both plain SHAs
+            ("a8f7bd3a", "a8f7bd3a"),
+        ],
+    )
+    @patch("insights_mcp.server.get_latest_release_tag")
+    def test_version_matches_with_sha_extraction(
+        self, mock_get_latest_release_tag, current_version: str, latest_release: str
+    ):
+        """Test that versions with same SHA are detected as matching."""
+        mock_get_latest_release_tag.return_value = latest_release
+
+        with patch("insights_mcp.server.__version__", current_version):
+            result = get_mcp_version()
+
+        assert result == "You have the latest release"
 
 
 @patch("insights_mcp.server.get_latest_release_tag")
