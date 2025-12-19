@@ -64,6 +64,13 @@ jobs:
           podman manifest push --all --format v2s2 red-hat-lightspeed-mcp docker://${IMAGE_PATH}:${{ needs.generate-tag.outputs.tag }}
           podman manifest push --all --format v2s2 red-hat-lightspeed-mcp docker://${IMAGE_PATH}:latest
 
+      # Essentially this is too late as the images are already deployed at this point
+      # but might be better to catch any issues "early".
+      # also Konflux CI might not be run at this point
+      # but at least we test the "last" image with this.
+      - name: Test all deployed images
+        run: |
+          make test-upstream-containers
 
   build-release-artifacts:
     runs-on: ubuntu-latest
