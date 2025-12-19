@@ -122,7 +122,7 @@ the following content.
         }
     ],
     "servers": {
-        "red-hat-lightspeed-mcp": {
+        "lightspeed-mcp": {
             "type": "stdio",
             "command": "podman",
             "args": [
@@ -162,7 +162,7 @@ To start the integration create a file `~/.cursor/mcp.json` with
 ```
 {
   "mcpServers": {
-    "red-hat-lightspeed-mcp": {
+    "lightspeed-mcp": {
         "type": "stdio",
         "command": "podman",
         "args": [
@@ -197,7 +197,7 @@ then integrate:
 ```
 {
     "mcpServers": {
-        "red-hat-lightspeed-mcp": {
+        "lightspeed-mcp": {
             "type": "http",
             "url": "http://localhost:8000/mcp",
             "headers": {
@@ -220,7 +220,7 @@ To start the integration create a file `~/.gemini/settings.json` with the follow
 {
     ...
     "mcpServers": {
-        "red-hat-lightspeed-mcp": {
+        "lightspeed-mcp": {
             "type": "stdio",
             "command": "podman",
             "args": [
@@ -259,7 +259,7 @@ then integrate:
 {
     ...
     "mcpServers": {
-        "red-hat-lightspeed-mcp": {
+        "lightspeed-mcp": {
             "httpUrl": "http://localhost:8000/mcp",
             "headers": {
                 "lightspeed-client-id": "<YOUR_CLIENT_ID>",
@@ -298,7 +298,7 @@ In the `CLine -> Manage MCP Servers` interface, add a new server name and URL:
 ```json
 {
   "mcpServers": {
-    "mcp-red-hat-lightspeed": {
+    "lightspeed-mcp": {
       "disabled": false,
       "type": "sse",
       "url": "http://localhost:9000/sse"
