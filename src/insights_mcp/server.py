@@ -6,6 +6,7 @@ import base64
 import importlib.resources
 import logging
 import os
+import re
 import sys
 from string import Template
 from typing import Any
@@ -253,6 +254,19 @@ def print_toolset_help_and_exit(args: argparse.Namespace):
         sys.exit(0)
 
 
+def extract_version_sha(version: str) -> str:
+    """Extract the SHA component from a version string.
+
+    Handles formats:
+    - YYYYMMDD-HHMMSS-{SHA} -> returns {SHA}
+    - {SHA} -> returns {SHA} (passthrough)
+    """
+    match = re.match(r"^\d{8}-\d{6}-(.+)$", version)
+    if match:
+        return match.group(1)
+    return version
+
+
 def get_latest_release_tag() -> str:
     """Get the latest release tag from github."""
     # https://github.com/RedHatInsights/insights-mcp/releases
@@ -311,8 +325,8 @@ def get_mcp_version() -> str:
     # between the latest release tag and the current version
     latest_release_tag = get_latest_release_tag()
 
-    # Check if current version matches latest release
-    if __version__ == latest_release_tag:
+    # Check if current version matches latest release (compare SHA components only)
+    if extract_version_sha(__version__) == extract_version_sha(latest_release_tag):
         return "You have the latest release"
 
     compare_link = f"https://github.com/RedHatInsights/insights-mcp/compare/{__version__}...{latest_release_tag}"
