@@ -20,7 +20,7 @@ from content_sources_mcp.server import mcp as ContentSourcesMCP
 from image_builder_mcp.server import mcp_server as ImageBuilderMCP
 from insights_mcp import __version__, config
 from insights_mcp.mcp import InsightsMCP
-from insights_mcp.oauth import init_oauth_provider
+from insights_mcp.oauth import create_oauth_provider
 from inventory_mcp.server import mcp as InventoryMCP
 from planning_mcp.server import mcp as PlanningMCP
 from rbac_mcp.server import mcp as RbacMCP
@@ -128,9 +128,9 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
     ):
         name = name or "Red Hat Insights"
 
-        # Initialize the OAuth provider
+        # Create the OAuth provider
         oauth_provider = (
-            init_oauth_provider(
+            create_oauth_provider(
                 client_id=client_id,
                 client_secret=client_secret,
                 mcp_host=mcp_host,
