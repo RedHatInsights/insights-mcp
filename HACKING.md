@@ -321,7 +321,7 @@ The hosted MCP server implements a sophisticated OAuth proxy pattern that bridge
 
 #### OIDCProxy Implementation
 
-The `init_oauth_provider()` function in `src/insights_mcp/oauth.py` creates an `OIDCProxy` instance configured for Red Hat SSO:
+The `create_oauth_provider()` function in `src/insights_mcp/oauth.py` creates an `OIDCProxy` instance configured for Red Hat SSO:
 
 ```python
 auth_provider = OIDCProxy(
