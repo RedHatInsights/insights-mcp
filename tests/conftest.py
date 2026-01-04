@@ -244,3 +244,83 @@ def assert_empty_response(result):
 def assert_instruction_in_result(result, instruction="[INSTRUCTION]"):
     """Helper to assert instruction text in result."""
     assert instruction in result
+
+
+# ============================================================================
+# OAuth Testing Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def mock_oauth_token():
+    """Create a mock OAuth AccessToken for testing.
+
+    Returns:
+        FastMCP AccessToken with test claims for Red Hat SSO
+
+    Example:
+        >>> def test_with_oauth(mock_oauth_token):
+        ...     assert mock_oauth_token.claims["organization"]["id"] == "test-org-123"
+    """
+    from tests.oauth_utils import create_test_token
+    return create_test_token(
+        org_id="test-org-123",
+        user_id="test-user-123",
+        username="testuser",
+        account_id="test-account-456"
+    )
+
+
+@pytest.fixture
+def mock_oauth_provider():
+    """Create a mock OAuth AuthProvider for testing.
+
+    Returns:
+        Mock AuthProvider instance
+
+    Example:
+        >>> def test_with_provider(mock_oauth_provider):
+        ...     assert mock_oauth_provider.client_id == "test-sso-client"
+    """
+    from tests.oauth_utils import create_mock_oauth_provider
+    return create_mock_oauth_provider()
+
+
+@pytest.fixture
+def multi_user_tokens():
+    """Create multiple user tokens for multi-user testing.
+
+    Returns:
+        Dictionary mapping user IDs to AccessTokens
+
+    Example:
+        >>> def test_multi_user(multi_user_tokens):
+        ...     user1_token = multi_user_tokens["user-0"]
+        ...     user2_token = multi_user_tokens["user-1"]
+        ...     assert user1_token.claims["organization"]["id"] != user2_token.claims["organization"]["id"]
+    """
+    from tests.oauth_utils import create_multi_user_tokens
+    return create_multi_user_tokens(num_users=3)
+
+
+@pytest.fixture
+def mock_sso_server():
+    """Create a mock Red Hat SSO server for OAuth testing.
+
+    Provides OIDC endpoints for testing OAuth flows without real SSO.
+
+    Yields:
+        MockSSOServer instance
+
+    Example:
+        >>> def test_with_sso(mock_sso_server):
+        ...     token = mock_sso_server.issue_token(user_id="user-1", org_id="org-123")
+        ...     assert token is not None
+    """
+    from tests.oauth_utils import MockSSOServer
+
+    sso_server = MockSSOServer(port=9999)
+
+    # Start server (placeholder - would need actual server running)
+    with sso_server:
+        yield sso_server
