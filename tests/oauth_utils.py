@@ -10,13 +10,10 @@ This module provides reusable utilities for testing OAuth functionality:
 import time
 from contextlib import contextmanager
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import jwt
 from fastmcp.server.auth import AccessToken, AuthProvider
-from starlette.applications import Starlette
-from starlette.responses import JSONResponse
-from starlette.routing import Route
 
 
 def create_test_jwt(
@@ -70,14 +67,8 @@ def create_test_jwt(
         "typ": "Bearer",
         "azp": "insights-mcp",
         "scope": "openid api.console api.ocm",
-        "realm_access": {
-            "roles": ["default-roles-redhat-external"]
-        },
-        "resource_access": {
-            "insights-mcp": {
-                "roles": ["user"]
-            }
-        },
+        "realm_access": {"roles": ["default-roles-redhat-external"]},
+        "resource_access": {"insights-mcp": {"roles": ["user"]}},
     }
 
     # Merge with custom claims
@@ -85,16 +76,12 @@ def create_test_jwt(
         default_claims.update(claims)
 
     # Sign with test secret key (HS256 for simplicity in tests)
-    token = jwt.encode(
-        default_claims,
-        "test-secret-key-for-oauth-testing",
-        algorithm="HS256"
-    )
+    token = jwt.encode(default_claims, "test-secret-key-for-oauth-testing", algorithm="HS256")
 
     return token
 
 
-def create_test_token(
+def create_test_token(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     org_id: str = "test-org-123",
     user_id: str = "test-user-123",
     username: str = "testuser",
@@ -102,7 +89,7 @@ def create_test_token(
     scopes: list[str] | None = None,
     expires_at: int | None = None,
     email: str = "test@example.com",
-    **additional_claims
+    **additional_claims,
 ) -> AccessToken:
     """Create a test AccessToken for FastMCP OAuth testing.
 
@@ -136,10 +123,7 @@ def create_test_token(
 
     # Build claims dictionary matching Red Hat SSO structure
     claims = {
-        "organization": {
-            "id": org_id,
-            "name": f"Organization {org_id}"
-        },
+        "organization": {"id": org_id, "name": f"Organization {org_id}"},
         "account_id": account_id,
         "account_number": account_id.replace("test-account-", ""),
         "preferred_username": username,
@@ -148,23 +132,15 @@ def create_test_token(
         "name": f"Test User {username}",
         "given_name": "Test",
         "family_name": "User",
-        **additional_claims
+        **additional_claims,
     }
 
     # Create JWT token with these claims
-    jwt_token = create_test_jwt(
-        claims=claims,
-        expires_in=expires_at - int(time.time()),
-        subject=user_id
-    )
+    jwt_token = create_test_jwt(claims=claims, expires_in=expires_at - int(time.time()), subject=user_id)
 
     # Create FastMCP AccessToken
     return AccessToken(
-        token=jwt_token,
-        client_id="test-mcp-client",
-        scopes=scopes,
-        expires_at=expires_at,
-        claims=claims
+        token=jwt_token, client_id="test-mcp-client", scopes=scopes, expires_at=expires_at, claims=claims
     )
 
 
@@ -203,171 +179,8 @@ def create_mock_oauth_provider(
     return provider
 
 
-class MockSSOServer:
-    """Mock Red Hat SSO server for OAuth testing.
-
-    Provides a lightweight mock of Red Hat SSO OIDC endpoints:
-    - /.well-known/openid-configuration (OIDC discovery)
-    - /auth (authorization endpoint)
-    - /token (token endpoint)
-    - /jwks (JSON Web Key Set)
-
-    This allows testing OAuth flows without requiring a real SSO instance.
-
-    Example:
-        >>> with MockSSOServer(port=9999) as server:
-        ...     token = server.issue_token(user_id="user-1", org_id="org-123")
-        ...     # Use token in tests
-    """
-
-    def __init__(
-        self,
-        port: int = 9999,
-        base_url: str | None = None,
-        issuer: str | None = None,
-    ):
-        """Initialize mock SSO server.
-
-        Args:
-            port: Port to listen on
-            base_url: Base URL (default: http://localhost:{port})
-            issuer: Token issuer URL (default: base_url + /auth/realms/redhat-external)
-        """
-        self.port = port
-        self.base_url = base_url or f"http://localhost:{port}"
-        self.issuer = issuer or f"{self.base_url}/auth/realms/redhat-external"
-        self.issued_tokens: list[str] = []
-        self.app = self._create_app()
-
-    def _create_app(self) -> Starlette:
-        """Create Starlette app with mock SSO endpoints."""
-
-        async def oidc_config(request):
-            """OIDC configuration endpoint."""
-            return JSONResponse({
-                "issuer": self.issuer,
-                "authorization_endpoint": f"{self.issuer}/protocol/openid-connect/auth",
-                "token_endpoint": f"{self.issuer}/protocol/openid-connect/token",
-                "introspection_endpoint": f"{self.issuer}/protocol/openid-connect/token/introspect",
-                "userinfo_endpoint": f"{self.issuer}/protocol/openid-connect/userinfo",
-                "end_session_endpoint": f"{self.issuer}/protocol/openid-connect/logout",
-                "jwks_uri": f"{self.issuer}/protocol/openid-connect/certs",
-                "grant_types_supported": [
-                    "authorization_code",
-                    "refresh_token",
-                    "client_credentials"
-                ],
-                "response_types_supported": ["code", "token", "id_token"],
-                "subject_types_supported": ["public"],
-                "id_token_signing_alg_values_supported": ["RS256"],
-                "scopes_supported": ["openid", "email", "profile", "api.console", "api.ocm"],
-            })
-
-        async def token_endpoint(request):
-            """Token endpoint for authorization code exchange."""
-            # Parse form data
-            form_data = await request.form()
-
-            # Create mock token based on grant type
-            grant_type = form_data.get("grant_type")
-
-            if grant_type == "authorization_code":
-                code = form_data.get("code")
-                # Issue token for this code
-                token = self.issue_token(user_id=f"user-for-{code}", org_id="test-org-123")
-            elif grant_type == "refresh_token":
-                # Issue refreshed token
-                token = self.issue_token(user_id="refreshed-user", org_id="test-org-123")
-            else:
-                token = self.issue_token(user_id="test-user", org_id="test-org-123")
-
-            return JSONResponse({
-                "access_token": token,
-                "refresh_token": f"refresh-{token[:20]}",
-                "token_type": "Bearer",
-                "expires_in": 3600,
-                "scope": "openid api.console api.ocm"
-            })
-
-        async def jwks_endpoint(request):
-            """JWKS endpoint for token signature verification."""
-            # For HS256 testing, we don't need real keys
-            # In production, this would return RS256 public keys
-            return JSONResponse({
-                "keys": [
-                    {
-                        "kty": "oct",
-                        "kid": "test-key-1",
-                        "alg": "HS256",
-                        "k": "test-secret-key-for-oauth-testing"
-                    }
-                ]
-            })
-
-        routes = [
-            Route("/.well-known/openid-configuration", oidc_config),
-            Route("/auth/realms/redhat-external/.well-known/openid-configuration", oidc_config),
-            Route("/auth/realms/redhat-external/protocol/openid-connect/token", token_endpoint, methods=["POST"]),
-            Route("/auth/realms/redhat-external/protocol/openid-connect/certs", jwks_endpoint),
-        ]
-
-        return Starlette(routes=routes)
-
-    def issue_token(
-        self,
-        user_id: str = "test-user",
-        org_id: str = "test-org",
-        username: str | None = None,
-        scopes: list[str] | None = None,
-        **additional_claims
-    ) -> str:
-        """Issue a test JWT token.
-
-        Args:
-            user_id: User ID (subject)
-            org_id: Organization ID
-            username: Username (default: derived from user_id)
-            scopes: OAuth scopes
-            **additional_claims: Additional claims
-
-        Returns:
-            JWT token string
-        """
-        if username is None:
-            username = user_id.replace("test-", "").replace("-", "")
-
-        if scopes is None:
-            scopes = ["openid", "api.console", "api.ocm"]
-
-        claims = {
-            "organization": {"id": org_id},
-            "account_id": f"account-{org_id}",
-            "preferred_username": username,
-            "scope": " ".join(scopes),
-            **additional_claims
-        }
-
-        token = create_test_jwt(
-            claims=claims,
-            subject=user_id,
-            issuer=self.issuer
-        )
-
-        self.issued_tokens.append(token)
-        return token
-
-    def __enter__(self):
-        """Context manager entry."""
-        # Note: Actual server starting would require uvicorn
-        # For now, this is a placeholder for the structure
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit."""
-        self.issued_tokens.clear()
-
-
 # OAuth Testing Helpers
+
 
 def decode_test_token(token: str) -> dict[str, Any]:
     """Decode a test JWT token without signature verification.
@@ -383,11 +196,7 @@ def decode_test_token(token: str) -> dict[str, Any]:
         >>> claims = decode_test_token(token)
         >>> assert "organization" in claims
     """
-    return jwt.decode(
-        token,
-        options={"verify_signature": False, "verify_exp": False},
-        algorithms=["HS256", "RS256"]
-    )
+    return jwt.decode(token, options={"verify_signature": False, "verify_exp": False}, algorithms=["HS256", "RS256"])
 
 
 def assert_valid_test_token(token: str) -> None:
@@ -506,8 +315,6 @@ def mock_fastmcp_oauth_context(access_token: AccessToken):
         ...     retrieved = get_access_token()
         ...     assert retrieved == token
     """
-    from unittest.mock import patch
-
     # Patch both where it's imported and where it's defined
     with patch("insights_mcp.client.get_access_token", return_value=access_token):
         with patch("fastmcp.server.dependencies.get_access_token", return_value=access_token):
@@ -547,7 +354,7 @@ def create_multi_user_tokens(
             user_id=f"test-{user_id}",
             username=f"testuser{i}",
             account_id=f"account-{i:04d}",
-            email=f"user{i}@example.com"
+            email=f"user{i}@example.com",
         )
 
     return tokens
@@ -555,25 +362,8 @@ def create_multi_user_tokens(
 
 # Token Validation Helpers
 
-def assert_token_not_expired(token: AccessToken) -> None:
-    """Assert that an AccessToken is not expired.
 
-    Args:
-        token: AccessToken to check
-
-    Raises:
-        AssertionError: If token is expired
-    """
-    current_time = int(time.time())
-    assert token.expires_at > current_time, (
-        f"Token expired at {token.expires_at}, current time is {current_time}"
-    )
-
-
-def assert_token_has_required_scopes(
-    token: AccessToken,
-    required_scopes: list[str] | None = None
-) -> None:
+def assert_token_has_required_scopes(token: AccessToken, required_scopes: list[str] | None = None) -> None:
     """Assert that a token has required OAuth scopes.
 
     Args:
@@ -595,7 +385,6 @@ __all__ = [
     "create_test_jwt",
     "create_test_token",
     "create_mock_oauth_provider",
-    "MockSSOServer",
     "decode_test_token",
     "assert_valid_test_token",
     "assert_token_has_claims",
@@ -603,6 +392,5 @@ __all__ = [
     "create_oauth_test_environment",
     "mock_fastmcp_oauth_context",
     "create_multi_user_tokens",
-    "assert_token_not_expired",
-    "assert_token_has_required_scopes"
+    "assert_token_has_required_scopes",
 ]
