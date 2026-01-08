@@ -4,6 +4,10 @@ This module tests the InsightsOAuthProxyClient class which handles
 token extraction from FastMCP context and OAuth-authenticated API calls.
 """
 
+# pylint: disable=redefined-outer-name
+# Pytest fixtures are injected as function parameters, which pylint
+# incorrectly flags as redefining names from outer scope.
+
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -186,7 +190,7 @@ class TestOrgIdExtraction:
             assert org_id == "test-org-123"
 
 
-class TestTokenScopes:
+class TestTokenScopes:  # pylint: disable=too-few-public-methods
     """Test token scope handling."""
 
     @pytest.mark.asyncio
@@ -274,7 +278,7 @@ class TestLogging:
             assert "request_headers" in info
 
 
-class TestMultipleRequests:
+class TestMultipleRequests:  # pylint: disable=too-few-public-methods
     """Test behavior across multiple requests."""
 
     @pytest.mark.asyncio

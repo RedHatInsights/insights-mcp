@@ -4,6 +4,10 @@ This module tests the create_oauth_provider() function which creates
 FastMCP OIDCProxy instances for OAuth authentication.
 """
 
+# pylint: disable=redefined-outer-name
+# Pytest fixtures are injected as function parameters, which pylint
+# incorrectly flags as redefining names from outer scope.
+
 import importlib
 import os
 from unittest.mock import Mock, patch
@@ -12,6 +16,7 @@ import pytest
 
 from insights_mcp import config as config_module
 from insights_mcp.oauth import create_oauth_provider
+from tests.oauth_utils import create_oauth_test_environment
 
 # =============================================================================
 # Test Fixtures
@@ -30,8 +35,6 @@ def oauth_enabled_env():
         ...     with patch.dict(os.environ, oauth_enabled_env):
         ...         # Test OAuth-enabled code
     """
-    from tests.oauth_utils import create_oauth_test_environment
-
     return create_oauth_test_environment(
         oauth_enabled=True,
         sso_client_id="test-sso-client",
@@ -89,7 +92,7 @@ class TestCreateOAuthProviderBasic:
 
     def test_create_with_env_vars(self, oauth_enabled_env, mock_oidc_proxy, reload_config):
         """Test provider creation from environment variables."""
-        with patch.dict(os.environ, dict(SSO_OAUTH_TIMEOUT_SECONDS="60", **oauth_enabled_env)):
+        with patch.dict(os.environ, {"SSO_OAUTH_TIMEOUT_SECONDS": "60", **oauth_enabled_env}):
             reload_config()
 
             # Explicit client ID overrides environment variables
