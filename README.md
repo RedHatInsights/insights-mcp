@@ -1,6 +1,12 @@
 # Red Hat Lightspeed MCP (formerly known as Insights MCP)
 
-A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server to interact with Red Hat Lightspeed services like the
+Red Hat Lightspeed Model Context Protocol ([MCP](https://modelcontextprotocol.io)) server is a lightweight, self-hosted solution that connects LLM-based agents - such as Claude Desktop and other MCP-compatible tools - to Red Hat Lightspeed services.
+
+## Features
+ * Supports read-only operations: All toolsets can be restricted using the `--read-only` flag or via RBAC permissions.
+ * Provides natural language prompts: provides an ability to use natural language for querying Red Hat Lightspeed services
+
+## Supported Lightspeed Services
  * [advisor](https://docs.redhat.com/en/documentation/red_hat_insights/1-latest/html/assessing_rhel_configuration_issues_using_the_red_hat_insights_advisor_service/index)
  * [hosted image builder](https://osbuild.org/docs/hosted/architecture/)
  * [inventory](https://docs.redhat.com/en/documentation/red_hat_insights/1-latest/html/viewing_and_managing_system_inventory/index)
@@ -8,22 +14,20 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server to int
  * [remediations](https://docs.redhat.com/en/documentation/red_hat_insights/1-latest/html/red_hat_insights_remediations_guide/index)
  * [vulnerability](https://docs.redhat.com/en/documentation/red_hat_insights/1-latest/html/assessing_and_monitoring_security_vulnerabilities_on_rhel_systems/index)
 
-## Toolsets
+## Setup and usage
 
-See [toolsets.md](toolsets.md) for the toolsets available in the MCP server.
-
-## Authentication
+### Authentication
 
 **Note**: Authentication is only required for accessing Red Hat Lightspeed APIs. The MCP server itself does not require authentication.
 
-### Service Account Setup
+#### Service Account Setup
 
 1. Go to https://console.redhat.com → Click Settings (⚙️ Gear Icon) →  "Service Accounts"
 2. Create a service account and remember `Client ID` and `Client secret` for later.<br>
    See below in the integration instructions, there they are respectively referred to as
    `LIGHTSPEED_CLIENT_ID` and `LIGHTSPEED_CLIENT_SECRET`.
 
-### Required Permissions by Toolset
+#### Required Permissions by Toolset
 
 Different toolsets require specific roles for your service account:
 
@@ -32,9 +36,9 @@ Different toolsets require specific roles for your service account:
 - **Vulnerability tools**: `Vulnerability viewer`, `Inventory Hosts viewer`
 - **Remediation tools**: `Remediations user`
 
-### Granting Permissions to Service Accounts
+#### Granting Permissions to Service Accounts
 
-By default, service accounts have no access. An organization administrator must assign permissions:
+By default, service accounts have no access. An organization administrator must assign permissions. The MCP server will only be able to perform tasks that it has permission to perform. For example, if the user wants to allow read-only operations and deny write operations, this can be accomplished via the permissions system.
 
 For detailed step-by-step instructions, see this video tutorial: [Service Account Permissions Setup](https://www.youtube.com/watch?v=UvNcmJsbg1w)
 
@@ -54,7 +58,7 @@ For detailed step-by-step instructions, see this video tutorial: [Service Accoun
 
 Your service account will inherit all roles from the assigned group.
 
-### ⚠️ Security Remarks ⚠️
+#### ⚠️ Security Remarks ⚠️
 
 If you start this MCP server locally (with `podman` or `docker`) make sure the container is not exposed to the internet. In this scenario it's probably fine to use `LIGHTSPEED_CLIENT_ID` and `LIGHTSPEED_CLIENT_SECRET` although your MCP Client (e.g. VSCode, Cursor, etc.) can get your `LIGHTSPEED_CLIENT_ID` and `LIGHTSPEED_CLIENT_SECRET`.
 
@@ -62,15 +66,13 @@ For a deployment where you connect to this MCP server from a different machine, 
 
 In both cases if you are in doubt, please disable/remove the `LIGHTSPEED_CLIENT_ID` and `LIGHTSPEED_CLIENT_SECRET` from your account after you are done using the MCP server.
 
+
+## Technical Info
+### Toolsets
+
+See [toolsets.md](toolsets.md) for the toolsets available in the MCP server.
+
 ## Integrations
-
-### Stage usage
-
-Set the environment variables
-* `LIGHTSPEED_BASE_URL`
-* `LIGHTSPEED_SSO_BASE_URL`
-* `LIGHTSPEED_PROXY_URL`
-accordingly.
 
 ### Prerequisites
 
@@ -353,9 +355,19 @@ To verify setup was successful, within the Claude terminal execute the command:
 ```
 If successful, you should see `red-hat-lightspeed-mcp` listed under Manage MCP servers with a green check mark connected status besides it.
 
+### URL overrides
+
+If you are using a non-standard RH Lightspeed URL, set the environment variables
+* `LIGHTSPEED_BASE_URL`
+* `LIGHTSPEED_TOKEN_ENDPOINT`
+* `LIGHTSPEED_PROXY_URL`
+accordingly.
+
 ## Examples
 
-It's probably best to just ask the LLM you just attached to the MCP server to.
+This [blog post](https://developers.redhat.com/articles/2026/01/07/manage-ai-powered-inventory-using-red-hat-lightspeed#) has a few examples on how to use the RH Lightspeed MCP server.
+
+You can also ask LLM you just attached to the MCP server to.
 e.g.
 ```
 Please explain red-hat-lightspeed-mcp and what I can do with it?
