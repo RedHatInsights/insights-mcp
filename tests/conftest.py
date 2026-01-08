@@ -15,6 +15,7 @@ from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 # Add imports for mock client creation
 from insights_mcp.client import InsightsClient
 from insights_mcp.config import INSIGHTS_BASE_URL
+from tests import oauth_utils as oauth_utils_module
 
 # pylint: disable=wrong-import-position
 from .llama_index_non_iterable_bool_patch import apply_llama_index_bool_patch
@@ -262,12 +263,8 @@ def mock_oauth_token():
         >>> def test_with_oauth(mock_oauth_token):
         ...     assert mock_oauth_token.claims["organization"]["id"] == "test-org-123"
     """
-    from tests.oauth_utils import create_test_token
-    return create_test_token(
-        org_id="test-org-123",
-        user_id="test-user-123",
-        username="testuser",
-        account_id="test-account-456"
+    return oauth_utils_module.create_test_token(
+        org_id="test-org-123", user_id="test-user-123", username="testuser", account_id="test-account-456"
     )
 
 
@@ -282,8 +279,7 @@ def mock_oauth_provider():
         >>> def test_with_provider(mock_oauth_provider):
         ...     assert mock_oauth_provider.client_id == "test-sso-client"
     """
-    from tests.oauth_utils import create_mock_oauth_provider
-    return create_mock_oauth_provider()
+    return oauth_utils_module.create_mock_oauth_provider()
 
 
 @pytest.fixture
@@ -299,28 +295,4 @@ def multi_user_tokens():
         ...     user2_token = multi_user_tokens["user-1"]
         ...     assert user1_token.claims["organization"]["id"] != user2_token.claims["organization"]["id"]
     """
-    from tests.oauth_utils import create_multi_user_tokens
-    return create_multi_user_tokens(num_users=3)
-
-
-@pytest.fixture
-def mock_sso_server():
-    """Create a mock Red Hat SSO server for OAuth testing.
-
-    Provides OIDC endpoints for testing OAuth flows without real SSO.
-
-    Yields:
-        MockSSOServer instance
-
-    Example:
-        >>> def test_with_sso(mock_sso_server):
-        ...     token = mock_sso_server.issue_token(user_id="user-1", org_id="org-123")
-        ...     assert token is not None
-    """
-    from tests.oauth_utils import MockSSOServer
-
-    sso_server = MockSSOServer(port=9999)
-
-    # Start server (placeholder - would need actual server running)
-    with sso_server:
-        yield sso_server
+    return oauth_utils_module.create_multi_user_tokens(num_users=3)
