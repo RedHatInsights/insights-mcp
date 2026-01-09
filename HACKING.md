@@ -88,7 +88,7 @@ Here is the rendered version: [Deployment Flow](docs/architecture-deployment.svg
 
 ## Testing/local OpenID Connect (OIDC)
 
-For tests you can override `INSIGHTS_BASE_URL`, `INSIGHTS_TOKEN_ENDPOINT`.
+For tests you can override `INSIGHTS_BASE_URL`, `INSIGHTS_SSO_BASE_URL`.
 
 
 ### Usage
