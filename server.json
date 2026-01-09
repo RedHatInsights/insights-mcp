@@ -39,7 +39,7 @@
     },
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/redhatinsights/insights-mcp",
+      "identifier": "ghcr.io/redhatinsights/red-hat-lightspeed-mcp",
       "runtimeHint": "docker",
       "runtimeArguments": [
         {
