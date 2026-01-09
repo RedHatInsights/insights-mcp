@@ -118,6 +118,38 @@ def get_free_port() -> int:
     return port
 
 
+def is_port_listening(host: str, port: int, timeout: float = 1.0) -> bool:
+    """Check if a port is actually listening and accepting connections."""
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(timeout)
+        result = sock.connect_ex((host, port))
+        sock.close()
+        return result == 0
+    except Exception:
+        return False
+
+
+def wait_for_port(host: str, port: int, timeout: int = 30, check_interval: float = 0.5) -> bool:
+    """Wait for a port to become available for connections.
+
+    Args:
+        host: Host to check
+        port: Port to check
+        timeout: Maximum time to wait in seconds
+        check_interval: Time between checks in seconds
+
+    Returns:
+        True if port became available, False if timeout exceeded
+    """
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        if is_port_listening(host, port, timeout=check_interval):
+            return True
+        time.sleep(check_interval)
+    return False
+
+
 def get_server_url_and_port(transport: str) -> tuple[str, int]:
     """Get server URL and port for the given transport type."""
     port = get_free_port()
@@ -210,8 +242,27 @@ def start_insights_mcp_server(
         if start_signal.startswith("error:"):
             raise RuntimeError(f"Server failed to start: {start_signal}")
 
+        # Verify server process is still alive
+        if not server_process.is_alive():
+            raise ServerStartupError("Server process died immediately after starting signal")
+
+
         # Additional wait for server to be fully ready
-        time.sleep(3)
+        # Wait for port to be bound before attempting connections
+        if transport in ["http", "sse"]:
+            port_timeout = 60
+            # Wait for port to actually be listening
+            if not wait_for_port("127.0.0.1", port, timeout=port_timeout):
+                # Check if process died
+                if not server_process.is_alive():
+                    raise ServerStartupError(
+                        f"Server process died before binding to port {port}. "
+                        f"Process exit code: {server_process.exitcode}"
+                    )
+                raise ServerStartupError(
+                    f"Port {port} never became available after {port_timeout} seconds. "
+                    f"Server process is {'alive' if server_process.is_alive() else 'dead'}"
+                )
 
         # For HTTP transport, test connectivity with MCP init request
         if transport == "http":
@@ -225,10 +276,13 @@ def start_insights_mcp_server(
                         break
 
                     if attempt == max_retries - 1:
+                        # Verify process is still alive for better error message
+                        process_status = "alive" if server_process.is_alive() else "dead"
                         raise ServerConnectionError(
                             (
                                 f"Server not responding properly after {max_retries} "
-                                f"attempts: {response.status_code} - {response.text}"
+                                f"attempts: {response.status_code} - {response.text}. "
+                                f"Server process: {process_status}"
                             )
                         )
 
@@ -236,9 +290,13 @@ def start_insights_mcp_server(
 
                 except requests.exceptions.RequestException as e:
                     if attempt == max_retries - 1:
-                        raise ServerConnectionError(
-                            f"Failed to connect to server after {max_retries} attempts: {e}"
-                        ) from e
+                        # Verify process is still alive for better error message
+                        process_status = "alive" if server_process.is_alive() else "dead"
+                        error_msg = (
+                            f"Failed to connect to server after {max_retries} attempts. "
+                            f"Server process: {process_status}, Port: {port}, URL: {server_url}, Error: {e}"
+                        )
+                        raise ServerConnectionError(error_msg) from e
                     time.sleep(2)  # Wait before retry
 
                 # For SSE transport, skip connectivity test since SSE streams continuously
