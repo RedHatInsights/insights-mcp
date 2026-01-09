@@ -55,7 +55,7 @@
         {
           "type": "named",
           "name": "--env",
-          "value": "INSIGHTS_CLIENT_SECRET"
+          "value": "LIGHTSPEED_CLIENT_SECRET"
         },
         {
           "type": "named",
