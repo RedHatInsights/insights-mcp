@@ -50,7 +50,7 @@
         {
           "type": "named",
           "name": "--env",
-          "value": "INSIGHTS_CLIENT_ID"
+          "value": "LIGHTSPEED_CLIENT_ID"
         },
         {
           "type": "named",
