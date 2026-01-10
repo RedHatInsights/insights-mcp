@@ -10,7 +10,12 @@ import os
 INSIGHTS_BASE_URL = os.getenv("INSIGHTS_BASE_URL") or os.getenv("LIGHTSPEED_BASE_URL") or "https://console.redhat.com"
 # Optional proxy URL for non Production environments
 INSIGHTS_PROXY_URL = os.getenv("INSIGHTS_PROXY_URL") or os.getenv("LIGHTSPEED_PROXY_URL") or None
-SSO_BASE_URL = os.getenv("SSO_BASE_URL") or "https://sso.redhat.com"
+SSO_BASE_URL = (
+    os.getenv("INSIGHTS_SSO_BASE_URL")
+    or os.getenv("LIGHTSPEED_SSO_BASE_URL")
+    or os.getenv("SSO_BASE_URL")
+    or "https://sso.redhat.com"
+)
 SSO_CONFIG_URL = f"{SSO_BASE_URL}/auth/realms/redhat-external/.well-known/openid-configuration"
 SSO_TOKEN_ENDPOINT = f"{SSO_BASE_URL}/auth/realms/redhat-external/protocol/openid-connect/token"
 

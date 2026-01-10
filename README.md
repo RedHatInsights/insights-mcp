@@ -68,7 +68,7 @@ In both cases if you are in doubt, please disable/remove the `LIGHTSPEED_CLIENT_
 
 Set the environment variables
 * `LIGHTSPEED_BASE_URL`
-* `LIGHTSPEED_TOKEN_ENDPOINT`
+* `LIGHTSPEED_SSO_BASE_URL`
 * `LIGHTSPEED_PROXY_URL`
 accordingly.
 
