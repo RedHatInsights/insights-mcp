@@ -25,13 +25,12 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Install dependencies
-        run: uv sync --locked --all-extras --dev
-
-      - name: Run tests
+      - name: Install deps and run tests
         run: |
           env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v
-        continue-on-error: true  # Don't fail the workflow if tests fail
+          uv tool install . -e
+          make install-test-deps
+          make test
 
       - name: Install MCP Publisher
         run: |
