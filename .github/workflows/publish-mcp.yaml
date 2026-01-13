@@ -27,7 +27,6 @@ jobs:
 
       - name: Install deps and run tests
         run: |
-          env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v
           uv tool install . -e
           make install-test-deps
           make test
