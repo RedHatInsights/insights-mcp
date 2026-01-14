@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.redhatinsights/insights-mcp",
+  "name": "io.github.RedHatInsights/insights-mcp",
   "title": "Red Hat Lightspeed MCP",
   "description": "Model Context Protocol server for Red Hat Lightspeed - advisor, image builder, inventory, and more",
   "version": "1.0.0",
