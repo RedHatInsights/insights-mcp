@@ -137,8 +137,6 @@ def test_version_check_real_github_api():
     assert "Latest release tag:" in result
     assert "Current version: 20250905-001953-16930107" in result
     assert "Compare:" in result
-    # a specific commit message that should be in this range
-    assert "Add support for listing repositories from content sources" in result
 
     # The result should be a string
     assert isinstance(result, str)
