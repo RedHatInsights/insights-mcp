@@ -829,7 +829,10 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
         token_endpoint: str = INSIGHTS_TOKEN_ENDPOINT_PROD,
     ):
         self.logger = getLogger("InsightsClient")
-        self.logger.info("Initializing insights client")
+
+        # TBD: hand over toolset_name for better logging
+        self.logger.info("Initializing insights client for %s", api_path)
+
         # NOTE: probably we don't need to set all these variables,
         # but set them before refactor of ImageBuilderMCP
         self.insights_base_url = base_url

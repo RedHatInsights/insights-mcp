@@ -433,6 +433,11 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     )
     # Set specific logger levels
     logger.setLevel(log_level)
+
+    # Suppress noisy third-party loggers
+    logging.getLogger("docket.worker").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
     if args.debug:
         # Additional debug configuration for specific components
         logging.getLogger("ImageBuilderMCP").setLevel(logging.DEBUG)
