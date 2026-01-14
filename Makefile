@@ -129,19 +129,42 @@ help: ## Show this help message
 .PHONY: run-sse
 run-sse: build ## Run the MCP server with SSE transport
 	# add firewall rules for fedora
-	podman run --rm --network=host --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --name $(CONTAINER_BRAND)-mcp-sse localhost/$(CONTAINER_BRAND)-mcp:latest sse
+	# !! ONLY set INSIGHTS_* environment variables in case you need to
+	# contact another server than production
+	podman run --rm --network=host \
+	  --env INSIGHTS_PROXY_URL \
+	  --env INSIGHTS_BASE_URL \
+	  --env INSIGHTS_SSO_BASE_URL \
+	  --name $(CONTAINER_BRAND)-mcp-sse localhost/$(CONTAINER_BRAND)-mcp:latest sse
 
 .PHONY: run-http
 run-http: build ## Run the MCP server with HTTP streaming transport
 	# add firewall rules for fedora
-	podman run --rm --network=host --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --name $(CONTAINER_BRAND)-mcp-http localhost/$(CONTAINER_BRAND)-mcp:latest http
+	# !! ONLY set INSIGHTS_PROXY_URL, INSIGHTS_BASE_URL and INSIGHTS_SSO_BASE_URL
+	# environment variables in case you really need to
+	# contact another server than production
+	podman run --rm --network=host \
+	  --env INSIGHTS_PROXY_URL \
+	  --env INSIGHTS_BASE_URL \
+	  --env INSIGHTS_SSO_BASE_URL \
+	  --name $(CONTAINER_BRAND)-mcp-http \
+	   localhost/$(CONTAINER_BRAND)-mcp:latest http
 
 # just an example command
 # doesn't really make sense
 # rather integrate this with an MCP client directly
 .PHONY: run-stdio
 run-stdio: build ## Run the MCP server with stdio transport
-	podman run --interactive --tty --rm --env INSIGHTS_CLIENT_ID --env INSIGHTS_CLIENT_SECRET --name $(CONTAINER_BRAND)-mcp-stdio localhost/$(CONTAINER_BRAND)-mcp:latest
+	# !! ONLY set INSIGHTS_PROXY_URL, INSIGHTS_BASE_URL and INSIGHTS_SSO_BASE_URL
+	# environment variables in case you really need to
+	# contact another server than production
+	podman run --interactive --tty --rm \
+	  --env INSIGHTS_CLIENT_ID \
+	  --env INSIGHTS_CLIENT_SECRET \
+	  --env INSIGHTS_PROXY_URL \
+	  --env INSIGHTS_BASE_URL \
+	  --env INSIGHTS_SSO_BASE_URL \
+	  --name $(CONTAINER_BRAND)-mcp-stdio localhost/$(CONTAINER_BRAND)-mcp:latest
 
 run-oauth: build ## Run the MCP server with OAuth transport
 	podman run --rm --network=host \

@@ -8,6 +8,31 @@ develop the MCP server.
 
 Also checkout `make help` for the available commands.
 
+## Testing
+
+The majority of tests are automatically run by CI/CD pipelines or
+locally by running `make test`.
+
+Although there are tests to use the `main` code, to double check that
+especially handing over environment variables and credentials
+(in multiple ways) work, those are the use cases that should be working:
+
+### STDIO Mode (see `make run-stdio`)
+- Default configuration with credentials in environment variables
+- Custom environment: `INSIGHTS_BASE_URL`, `INSIGHTS_PROXY_URL`, and `INSIGHTS_SSO_BASE_URL` set with credentials in environment variables
+
+### Streaming HTTP Mode (see `make run-http`)
+- Default configuration with credentials in header
+- Custom environment: `INSIGHTS_BASE_URL`, `INSIGHTS_PROXY_URL`, and `INSIGHTS_SSO_BASE_URL` set with credentials in header
+
+### OAuth Mode (see `make run-oauth`)
+- `OAUTH_ENABLED=True`, `SSO_CLIENT_ID` and `SSO_CLIENT_SECRET` set, credentials via OAuth client
+- `OAUTH_ENABLED=True`, `SSO_CLIENT_ID` and `SSO_CLIENT_SECRET` set, with custom environment (`INSIGHTS_BASE_URL`, `INSIGHTS_PROXY_URL`, `INSIGHTS_SSO_BASE_URL`) and credentials via OAuth client
+
+### SSE HTTP Mode (deprecated but some MCP clients still need this, see `make run-sse`)
+- Default configuration with credentials in header
+- Custom environment: `INSIGHTS_BASE_URL` and `INSIGHTS_SSO_BASE_URL` set with credentials in header
+
 ## Architecture
 
 ### Application Structure

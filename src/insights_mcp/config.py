@@ -58,7 +58,3 @@ BRAND_CLIENT_ID_ENV = f"{_brand_prefix.upper()}_CLIENT_ID"
 BRAND_CLIENT_SECRET_ENV = f"{_brand_prefix.upper()}_CLIENT_SECRET"
 BRAND_CLIENT_ID_HEADER = f"{_brand_prefix.lower()}-client-id"
 BRAND_CLIENT_SECRET_HEADER = f"{_brand_prefix.lower()}-client-secret"
-
-# for backward compatibility
-INSIGHTS_BASE_URL_PROD = INSIGHTS_BASE_URL
-INSIGHTS_TOKEN_ENDPOINT_PROD = SSO_TOKEN_ENDPOINT
