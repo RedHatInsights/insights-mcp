@@ -10,10 +10,13 @@ Classes:
     InsightsOAuth2Client: Client with OAuth2 authentication support
     InsightsClient: High-level client that automatically selects auth method
 """
+# TBD split this file into smaller files
+# pylint: disable=too-many-lines
 
 import gzip
 import json as json_lib
 import time
+import uuid
 from logging import getLogger
 from typing import Any
 
@@ -22,16 +25,17 @@ import jwt
 from authlib.integrations.httpx_client import AsyncOAuth2Client, OAuthError
 from authlib.oauth2.rfc6749 import OAuth2Token
 from fastmcp.server.auth import AuthProvider
-from fastmcp.server.dependencies import get_access_token, get_http_headers
+from fastmcp.server.dependencies import get_access_token, get_context, get_http_headers
 
 from insights_mcp.config import (
     BRAND_CLIENT_ID_ENV,
     BRAND_CLIENT_ID_HEADER,
     BRAND_CLIENT_SECRET_ENV,
     BRAND_CLIENT_SECRET_HEADER,
-    INSIGHTS_BASE_URL_PROD,
-    INSIGHTS_TOKEN_ENDPOINT_PROD,
+    INSIGHTS_BASE_URL,
+    SSO_TOKEN_ENDPOINT,
 )
+from insights_mcp.session_cache import SessionCache
 
 from . import __version__
 
@@ -64,6 +68,8 @@ class InsightsClientBase(httpx.AsyncClient):
         self.proxy_url = proxy_url
         self.mcp_transport = mcp_transport
         self.logger = getLogger("InsightsClientBase")
+        # Will be set by subclasses to indicate if using environment credentials
+        self._using_env_credentials = False
 
     async def make_request(self, fn, *args, **kwargs) -> dict[str, Any] | str:
         """Make an HTTP request with error handling.
@@ -135,7 +141,7 @@ class InsightsClientBase(httpx.AsyncClient):
                 )
 
     def no_auth_error(self, e: httpx.HTTPStatusError | ValueError) -> str:
-        """Generate authentication error message based on transport type.
+        """Generate authentication error message based on transport type and credential source.
 
         Args:
             e: HTTP status error or value error exception
@@ -161,10 +167,12 @@ class InsightsClientBase(httpx.AsyncClient):
         error_message = error_message.replace(
             "https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401", "relevant MCP functions"
         )
-        if self.mcp_transport in ["sse", "http"]:
+
+        # For HTTP/SSE transports with NO instance credentials, use header auth message
+        if self.mcp_transport in ["sse", "http"] and not self._using_env_credentials:
             return (
-                f"{base_message}header variables `{BRAND_CLIENT_ID_HEADER}` and "
-                f"`{BRAND_CLIENT_SECRET_HEADER}` in your request.\n"
+                f"{base_message}header credentials `{BRAND_CLIENT_ID_HEADER}` and "
+                f"`{BRAND_CLIENT_SECRET_HEADER}` in your request (they are invalid or missing).\n"
                 "Here is the direct link for the user's convenience: "
                 f"[{self.insights_base_url}/iam/service-accounts]({self.insights_base_url}/iam/service-accounts) "
                 "Come up with a detailed description of this for the user. "
@@ -172,9 +180,10 @@ class InsightsClientBase(httpx.AsyncClient):
                 f"Don't proceed with the request before this is fixed. {error_message}"
             )
 
+        # For STDIO or when using environment credentials, use environment auth message
         return (
-            f"{base_message}`{BRAND_CLIENT_ID_ENV}` and `{BRAND_CLIENT_SECRET_ENV}` "
-            "in your mcp.json config.\n"
+            f"{base_message}environment credentials `{BRAND_CLIENT_ID_ENV}` and `{BRAND_CLIENT_SECRET_ENV}` "
+            "in your mcp.json config (they are invalid or missing).\n"
             "Here is the direct link for the user's convenience: "
             f"[{self.insights_base_url}/iam/service-accounts]({self.insights_base_url}/iam/service-accounts) "
             "Come up with a detailed description of this for the user. "
@@ -217,7 +226,7 @@ class InsightsNoauthClient(InsightsClientBase):
 
     def __init__(
         self,
-        base_url: str = INSIGHTS_BASE_URL_PROD,
+        base_url: str = INSIGHTS_BASE_URL,
         proxy_url: str | None = None,
         mcp_transport: str | None = None,
     ):
@@ -255,14 +264,14 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
     def __init__(  # pylint: disable=too-many-arguments
         self,
         *,
-        base_url: str = INSIGHTS_BASE_URL_PROD,
+        base_url: str = INSIGHTS_BASE_URL,
         client_id: str | None = "rhsm-api",
         client_secret: str | None = None,
         refresh_token: str | None = None,
         proxy_url: str | None = None,
         oauth_enabled: bool = False,
         mcp_transport: str | None = None,
-        token_endpoint: str = INSIGHTS_TOKEN_ENDPOINT_PROD,
+        token_endpoint: str = SSO_TOKEN_ENDPOINT,
     ):
         InsightsClientBase.__init__(self, base_url=base_url, proxy_url=proxy_url, mcp_transport=mcp_transport)
         token_dict = {"refresh_token": refresh_token} if refresh_token else {}
@@ -280,18 +289,36 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
             proxy=self.proxy_url,
         )
         self.oauth_enabled = oauth_enabled
+        # Cache whether we're using environment credentials (set once at init)
+        self._using_env_credentials = bool(client_id or client_secret)
+
+        # Verify proxy configuration after initialization
+        if proxy_url:
+            self.logger.debug("InsightsOAuth2Client initialized with proxy: %s", proxy_url)
+            # Verify httpx client has proxy configured
+            if hasattr(self, "_transport") and hasattr(self._transport, "_pool"):
+                self.logger.debug("Proxy verification: httpx transport configured")
+            elif hasattr(self, "_mounts"):
+                self.logger.debug("Proxy verification: httpx mounts configured")
+        else:
+            self.logger.debug("InsightsOAuth2Client initialized without proxy")
 
     async def refresh_auth(self) -> None:
-        """Refresh the authentication token."""
+        """Refresh the authentication token.
+
+        For SSE/HTTP transports without instance credentials, this will attempt to
+        extract credentials from request headers to support per-request authentication.
+        """
+        self.logger.debug("Starting token refresh")
         if self.oauth_enabled:  # TODO: unify client oauth and oauth middleware
-            self.logger.info("OAuth is enabled, skipping token management")
+            self.logger.debug("OAuth is enabled, skipping token management")
             caller_headers_auth = get_http_headers().get("authorization")
             if caller_headers_auth:
                 # If the request is authenticated, use the caller's authorization header
                 # This is useful for OAuth flows where the client is already authenticated
                 self.headers["authorization"] = caller_headers_auth
         elif "access_token" not in self.token or self.token.is_expired():
-            self.logger.info("Token is expired, refreshing token")
+            self.logger.debug("Token is expired, refreshing token")
             try:
                 if "refresh_token" in self.token:
                     await self.refresh_token()
@@ -299,6 +326,8 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
                     await self.fetch_token()
             except OAuthError as e:
                 raise ValueError(self.no_auth_error(e)) from e
+        else:
+            self.logger.debug("Token is valid, skipping token refresh")
 
     async def make_request(self, fn, *args, **kwargs) -> dict[str, Any] | str:
         """Make an HTTP request with OAuth2 token management.
@@ -405,7 +434,7 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
     def __init__(  # pylint: disable=too-many-arguments
         self,
         *,
-        base_url: str = INSIGHTS_BASE_URL_PROD,
+        base_url: str = INSIGHTS_BASE_URL,
         proxy_url: str | None = None,
         mcp_transport: str | None = None,
         oauth_provider: AuthProvider | None = None,
@@ -793,6 +822,381 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
             raise ValueError(self.no_auth_error(e)) from e
 
 
+class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attributes
+    """Client factory for multiuser scenarios with per-connection header credentials and session caching.
+
+    This is a factory class (uses composition, not inheritance) that creates isolated
+    InsightsOAuth2Client instances for each request. It's designed for SSE/HTTP transports
+    where multiple users make requests to the same server instance, each providing their
+    own credentials via HTTP headers.
+
+    Key behaviors:
+    - Extracts client_id and client_secret from HTTP headers on each request
+    - Uses FastMCP's session_id for per-connection token caching
+    - Caches tokens with TTL (default 5 minutes) to reduce Red Hat SSO load
+    - Creates isolated client instances per request for complete thread-safety
+    - Maintains isolation: different connections or credentials = separate cache entries
+    - Raises authentication errors immediately if header credentials are missing
+
+    This ensures proper security isolation between different users' requests while
+    providing optimal performance through intelligent caching.
+
+    Args:
+        base_url: Base URL for the Insights API
+        proxy_url: Optional proxy URL for requests
+        mcp_transport: MCP transport type for error message customization
+        token_endpoint: OAuth2 token endpoint URL
+    """
+
+    # Class-level cache shared across all instances for efficient multiuser support
+    # Uses FastMCP session_id for connection-level isolation as recommended by FastMCP docs
+    _session_cache = None  # Lazy initialization
+
+    def __init__(
+        self,
+        *,
+        base_url: str = INSIGHTS_BASE_URL,
+        proxy_url: str | None = None,
+        mcp_transport: str | None = None,
+        token_endpoint: str = SSO_TOKEN_ENDPOINT,
+    ):
+        """Initialize the headers-based client factory with session caching.
+
+        Note: This client uses FastMCP's session_id for per-connection token caching,
+        providing optimal performance while maintaining security isolation between
+        different client connections and credentials.
+        """
+        # Store configuration for creating clients
+        self.insights_base_url = base_url
+        self.proxy_url = proxy_url
+        self.mcp_transport = mcp_transport
+        self.token_endpoint = token_endpoint
+        self._using_env_credentials = False
+        self.logger = getLogger("InsightsHeadersBasedClient")
+
+        # Initialize helper client for utility methods (NOT for API requests)
+        self._helper = InsightsOAuth2Client(
+            base_url=base_url,
+            client_id=None,
+            client_secret=None,
+            refresh_token=None,
+            proxy_url=proxy_url,
+            oauth_enabled=False,
+            mcp_transport=mcp_transport,
+            token_endpoint=token_endpoint,
+        )
+
+    def get_credentials_from_headers(self) -> tuple[str | None, str | None]:
+        """Extract client credentials from HTTP headers for SSE/HTTP transports.
+
+        This method is used to support per-request authentication in multi-user scenarios
+        where credentials are provided via HTTP headers rather than environment variables.
+
+        Returns:
+            Tuple of (client_id, client_secret) or (None, None) if not available
+
+        Note:
+            - STDIO transport always returns (None, None) as it doesn't support headers
+            - SSE/HTTP transports extract from insights-client-id/insights-client-secret headers
+            - Also checks lightspeed-client-id/lightspeed-client-secret as brand aliases
+            - Client secrets are masked in debug logs for security
+        """
+        # STDIO transport doesn't support header-based credentials
+        if self.mcp_transport == "stdio":
+            return None, None
+
+        # Only extract credentials for SSE/HTTP transports
+        if self.mcp_transport not in ["sse", "http"]:
+            return None, None
+
+        try:
+            headers = get_http_headers()
+            # Try lightspeed brand headers first
+            client_id = headers.get("lightspeed-client-id")
+            client_secret = headers.get("lightspeed-client-secret")
+
+            # Fall back to insights brand headers
+            if not client_id:
+                client_id = headers.get("insights-client-id")
+            if not client_secret:
+                client_secret = headers.get("insights-client-secret")
+
+            if client_id or client_secret:
+                # Mask the secret in logs for security
+                if client_secret:
+                    masked_secret = "client_secret=***MASKED***"
+                else:
+                    masked_secret = "(no secret provided)"
+
+                self.logger.debug("Extracted credentials from headers: client_id=%s, %s", client_id, masked_secret)
+
+            return client_id, client_secret
+
+        except (RuntimeError, KeyError, AttributeError) as e:
+            # Headers not available (e.g., not in request context)
+            self.logger.debug("Failed to extract credentials from headers: %s", e)
+            return None, None
+
+    async def _get_authenticated_client(
+        self, session_id: str, client_id: str, client_secret: str
+    ) -> InsightsOAuth2Client:
+        """Get or create authenticated client with cached token.
+
+        This method combines token fetching and client creation into a single operation,
+        avoiding double instantiation. It checks the cache first, fetches a new token
+        if needed, then creates a client with the valid token.
+
+        Args:
+            session_id: FastMCP session ID for this connection
+            client_id: OAuth client ID from request headers
+            client_secret: OAuth client secret from request headers
+
+        Returns:
+            InsightsOAuth2Client with valid token, ready for API requests
+
+        Raises:
+            ValueError: If token fetch fails
+        """
+        # Ensure session cache is initialized
+        if self._session_cache is None:
+            InsightsHeadersBasedClient._session_cache = SessionCache()
+
+        # Cache is guaranteed to be initialized at this point
+        assert self._session_cache is not None  # for mypy
+
+        # Try cache first (keyed by session_id + credentials)
+        cached_token = self._session_cache.get(session_id, client_id, client_secret)
+
+        if not cached_token or cached_token.is_expired():
+            # Cache miss or expired - create client, fetch token, cache it, and return the same client
+            self.logger.debug(
+                "Fetching new OAuth token for session %s", session_id[:8] if len(session_id) >= 8 else session_id
+            )
+
+            client = InsightsOAuth2Client(
+                base_url=self.insights_base_url,
+                client_id=client_id,
+                client_secret=client_secret,
+                proxy_url=self.proxy_url,
+                mcp_transport=self.mcp_transport,
+                token_endpoint=self.token_endpoint,
+            )
+
+            try:
+                await client.fetch_token()
+                # Cache the new token for this session
+                self._session_cache.set(
+                    session_id, client_id=client_id, client_secret=client_secret, token=client.token
+                )
+                self.logger.debug(
+                    "Successfully cached new token for session %s",
+                    session_id[:8] if len(session_id) >= 8 else session_id,
+                )
+                return client  # Return without closing - caller will close it
+            except OAuthError as e:
+                await client.aclose()  # Only close on error
+                self.logger.error(
+                    "OAuth token fetch failed for session %s: %s",
+                    session_id[:8] if len(session_id) >= 8 else session_id,
+                    e,
+                )
+                raise ValueError(self._helper.no_auth_error(e)) from e
+        else:
+            # Cache hit - create new client with cached token
+            self.logger.debug(
+                "Using cached token for session %s", session_id[:8] if len(session_id) >= 8 else session_id
+            )
+
+            client = InsightsOAuth2Client(
+                base_url=self.insights_base_url,
+                client_id=client_id,
+                client_secret=client_secret,
+                proxy_url=self.proxy_url,
+                mcp_transport=self.mcp_transport,
+                token_endpoint=self.token_endpoint,
+            )
+            client.token = cached_token
+            return client
+
+    async def refresh_auth(self) -> None:
+        """Extract credentials from headers and ensure valid token in cache.
+
+        This method is maintained for compatibility with parent class API.
+        It extracts credentials and ensures a valid token exists, setting self.token.
+
+        Note: For actual request execution, use make_request() which creates
+        isolated per-request clients for thread-safety.
+
+        Raises:
+            ValueError: If no credentials are found in request headers or token fetch fails
+        """
+        self.logger.debug("Starting header-based auth with FastMCP session caching")
+
+        # Extract credentials from current request headers
+        client_id, client_secret = self.get_credentials_from_headers()
+
+        if not client_id or not client_secret:
+            error_msg = (
+                "No credentials found in request headers. "
+                f"Expected {BRAND_CLIENT_ID_HEADER} and {BRAND_CLIENT_SECRET_HEADER} headers."
+            )
+            self.logger.debug(error_msg)
+            raise ValueError(self._helper.no_auth_error(ValueError(error_msg)))
+
+        # Get FastMCP session_id for connection-level caching
+        session_id = self._get_session_id()
+
+        # Get authenticated client (fetches token if needed, creates client with cached token)
+        temp_client = await self._get_authenticated_client(session_id, client_id, client_secret)
+        try:
+            self.token = temp_client.token  # pylint: disable=attribute-defined-outside-init
+        finally:
+            await temp_client.aclose()
+
+    async def make_request(self, method_name_or_fn, *args, **kwargs) -> dict[str, Any] | str:
+        """Execute HTTP request with per-request isolated client for thread-safety.
+
+        This method creates a completely isolated InsightsOAuth2Client instance for each
+        request, eliminating all shared state and race conditions. The token is retrieved
+        from cache (or fetched if needed), then a temporary client is created with that
+        token for the duration of this single request.
+
+        Args:
+            method_name_or_fn: HTTP method name string ('get', 'post', etc.) or method name from __getattr__
+            *args: Positional arguments for the HTTP method
+            **kwargs: Keyword arguments for the HTTP method
+
+        Returns:
+            JSON response data as dict, plain text as str, or error information
+
+        Raises:
+            ValueError: If credentials are missing or authentication fails
+            httpx.HTTPStatusError: If the API request fails with HTTP error
+
+        Note:
+            Each request uses an isolated client instance, preventing race conditions
+            when multiple users make concurrent requests with different credentials.
+        """
+        # Extract credentials from current request headers
+        client_id, client_secret = self.get_credentials_from_headers()
+
+        if not client_id or not client_secret:
+            error_msg = (
+                "No credentials found in request headers. "
+                f"Expected {BRAND_CLIENT_ID_HEADER} and {BRAND_CLIENT_SECRET_HEADER} headers."
+            )
+            self.logger.debug(error_msg)
+            raise ValueError(self._helper.no_auth_error(ValueError(error_msg)))
+
+        # Get FastMCP session_id for connection-level caching
+        session_id = self._get_session_id()
+
+        # Get authenticated client (fetches token if needed, returns ready-to-use client)
+        request_client = await self._get_authenticated_client(session_id, client_id, client_secret)
+
+        try:
+            # Handle both string method names (from __getattr__) and direct calls
+            if isinstance(method_name_or_fn, str):
+                method = getattr(request_client, method_name_or_fn)
+            else:
+                # method_name_or_fn is actually a string from __getattr__, treat as method name
+                method = getattr(request_client, method_name_or_fn)
+            return await request_client.make_request(method, *args, **kwargs)
+        finally:
+            # Always clean up the request client to avoid connection leaks
+            await request_client.aclose()
+
+    def _get_session_id(self) -> str:
+        """Get FastMCP session ID for connection-level caching.
+
+        Retrieves the session_id from FastMCP's Context, which is persistent across
+        multiple requests from the same client connection. This is the FastMCP-recommended
+        approach for "session-based data storage" as documented in FastMCP's server context.
+
+        Returns:
+            Session ID from FastMCP context, or fallback ID for stdio/unknown transports
+
+        Note:
+            For HTTP/SSE transports, this returns the MCP session ID that remains constant
+            across multiple requests from the same client. For STDIO transport, it returns
+            a single session identifier since STDIO typically represents a single connection.
+        """
+        try:
+            ctx = get_context()
+            if ctx and ctx.session_id:
+                return ctx.session_id
+        except (RuntimeError, AttributeError) as e:
+            self.logger.debug("Unable to get FastMCP session_id: %s", e)
+
+        # Fallback for stdio or when context unavailable
+        if self.mcp_transport == "stdio":
+            return "stdio-single-session"
+
+        # For HTTP/SSE without context, generate from connection info
+        # This is a fallback and shouldn't normally happen in proper FastMCP setup
+        fallback_id = f"fallback-{uuid.uuid4().hex[:16]}"
+        self.logger.warning("Using fallback session ID (FastMCP context unavailable): %s", fallback_id[:16])
+        return fallback_id
+
+    def __getattr__(self, name: str):
+        """Delegate attribute access to create per-request clients.
+
+        This magic method makes InsightsHeadersBasedClient compatible with code that accesses
+        `client.get`, `client.post`, etc. as attributes (for use with make_request).
+
+        When code does `client.make_request(client.get, ...)`, this returns a callable
+        that will be used by make_request().
+
+        Args:
+            name: Attribute name being accessed
+
+        Returns:
+            Callable for HTTP methods that can be used with make_request()
+
+        Raises:
+            AttributeError: If the attribute is not an HTTP method
+        """
+        # Only delegate HTTP methods
+        if name in ("get", "post", "put", "delete", "patch"):
+            # Return a simple marker that make_request() can recognize
+            # The actual method will be retrieved from the temporary client
+            return name
+
+        # For other attributes, raise AttributeError
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
+    async def get_org_id(self) -> str | None:
+        """Extract organization ID using temporary client.
+
+        Returns:
+            Organization ID (rh-org-id) as a string, or None if not found.
+
+        Raises:
+            ValueError: If credentials are missing or authentication fails
+        """
+        # Extract credentials from current request headers
+        client_id, client_secret = self.get_credentials_from_headers()
+
+        if not client_id or not client_secret:
+            error_msg = (
+                "No credentials found in request headers. "
+                f"Expected {BRAND_CLIENT_ID_HEADER} and {BRAND_CLIENT_SECRET_HEADER} headers."
+            )
+            self.logger.debug(error_msg)
+            raise ValueError(self._helper.no_auth_error(ValueError(error_msg)))
+
+        # Get FastMCP session_id for connection-level caching
+        session_id = self._get_session_id()
+
+        # Get authenticated client (fetches token if needed, returns ready-to-use client)
+        request_client = await self._get_authenticated_client(session_id, client_id, client_secret)
+
+        try:
+            return await request_client.get_org_id()
+        finally:
+            await request_client.aclose()
+
+
 class InsightsClient:  # pylint: disable=too-many-instance-attributes
     """High-level HTTP client for Red Hat Insights APIs.
 
@@ -813,11 +1217,14 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
         mcp_transport: MCP transport type for error message customization
     """
 
+    # mypy type annotation: client is always initialized, never None
+    client: InsightsOAuthProxyClient | InsightsOAuth2Client | InsightsHeadersBasedClient
+
     def __init__(  # pylint: disable=too-many-arguments
         self,
         *,
         api_path: str,
-        base_url: str = INSIGHTS_BASE_URL_PROD,
+        base_url: str = INSIGHTS_BASE_URL,
         client_id: str | None = "rhsm-api",
         client_secret: str | None = None,
         refresh_token: str | None = None,
@@ -826,7 +1233,7 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
         oauth_enabled: bool = False,
         oauth_provider: AuthProvider | None = None,
         mcp_transport: str | None = None,  # TODO: get rid of mcp_transport in client
-        token_endpoint: str = INSIGHTS_TOKEN_ENDPOINT_PROD,
+        token_endpoint: str = SSO_TOKEN_ENDPOINT,
     ):
         self.logger = getLogger("InsightsClient")
 
@@ -848,7 +1255,6 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
         self.token_endpoint = token_endpoint
 
         self.client_noauth = InsightsNoauthClient(base_url=base_url, proxy_url=proxy_url, mcp_transport=mcp_transport)
-        self.client = self.client_noauth
 
         if oauth_enabled:
             # Use dedicated OAuth proxy client for FastMCP integration
@@ -871,10 +1277,19 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
                 mcp_transport=mcp_transport,
                 token_endpoint=token_endpoint,
             )
+        else:
+            self.client = InsightsHeadersBasedClient(
+                base_url=base_url,
+                proxy_url=proxy_url,
+                mcp_transport=mcp_transport,
+                token_endpoint=token_endpoint,
+            )
 
         # merge headers with client headers
         if headers:
-            self.client.headers.update(headers)
+            self.logger.info("Updating client headers with %s", headers)
+            if hasattr(self.client, "headers"):
+                self.client.headers.update(headers)
 
     async def get_org_id(self) -> str | None:
         """Get the organization ID from the user."""
@@ -899,9 +1314,13 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
         Returns:
             JSON response data or error information
         """
-        client = self.client_noauth if noauth else self.client
-        url = f"{self.insights_base_url}/{self.api_path}/{endpoint}"
-        return await client.make_request(client.get, url=url, params=params, **kwargs)
+        try:
+            client = self.client_noauth if noauth else self.client
+            url = f"{self.insights_base_url}/{self.api_path}/{endpoint}"
+            return await client.make_request(client.get, url=url, params=params, **kwargs)
+        except ValueError as e:
+            # Authentication or validation error - return as string for MCP client
+            return str(e)
 
     async def post(
         self,
@@ -921,9 +1340,13 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
         Returns:
             JSON response data or error information
         """
-        client = self.client_noauth if noauth else self.client
-        url = f"{self.insights_base_url}/{self.api_path}/{endpoint}"
-        return await client.make_request(client.post, url=url, json=json, **kwargs)
+        try:
+            client = self.client_noauth if noauth else self.client
+            url = f"{self.insights_base_url}/{self.api_path}/{endpoint}"
+            return await client.make_request(client.post, url=url, json=json, **kwargs)
+        except ValueError as e:
+            # Authentication or validation error - return as string for MCP client
+            return str(e)
 
     async def put(
         self,
@@ -943,6 +1366,10 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
         Returns:
             JSON response data or error information
         """
-        client = self.client_noauth if noauth else self.client
-        url = f"{self.insights_base_url}/{self.api_path}/{endpoint}"
-        return await client.make_request(client.put, url=url, json=json, **kwargs)
+        try:
+            client = self.client_noauth if noauth else self.client
+            url = f"{self.insights_base_url}/{self.api_path}/{endpoint}"
+            return await client.make_request(client.put, url=url, json=json, **kwargs)
+        except ValueError as e:
+            # Authentication or validation error - return as string for MCP client
+            return str(e)

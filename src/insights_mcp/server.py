@@ -114,7 +114,7 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
         name: str | None = None,
         instructions: str | None = None,
         *,
-        base_url: str = config.INSIGHTS_BASE_URL_PROD,
+        base_url: str = config.INSIGHTS_BASE_URL,
         client_id: str | None = None,
         client_secret: str | None = None,
         refresh_token: str | None = None,
@@ -123,7 +123,7 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
         mcp_transport: str | None = None,
         mcp_host: str | None = None,
         mcp_port: int | None = None,
-        token_endpoint: str = config.INSIGHTS_TOKEN_ENDPOINT_PROD,
+        token_endpoint: str = config.SSO_TOKEN_ENDPOINT,
         **settings: Any,
     ):
         name = name or "Red Hat Insights"
@@ -309,11 +309,31 @@ def setup_credentials(mcp_server_config: dict, logger: logging.Logger) -> None:
                 "token_endpoint": config.SSO_TOKEN_ENDPOINT,
             }
         )
-        if not any(mcp_server_config.get(k) for k in ("client_id", "client_secret", "refresh_token")):
+
+        transport = mcp_server_config.get("mcp_transport", "stdio")
+
+        if transport == "stdio" and (
+            not any(mcp_server_config.get(k) for k in ("client_id", "client_secret", "refresh_token"))
+        ):
             logger.error("Service account credentials are required for Insights authentication")
             # Don't exit the program to allow the user to continue using the server without credentials
             # sys.exit(1)
-        logger.info("Using Insights Client ID: %s", mcp_server_config["client_id"])
+
+        if mcp_server_config.get("client_id"):
+            logger.info("Using Insights Client ID: %s", mcp_server_config["client_id"])
+
+        # Warn about production usage with environment credentials for HTTP/SSE transports
+        if transport in ["http", "sse"] and (
+            mcp_server_config.get("client_id") or mcp_server_config.get("client_secret")
+        ):
+            logger.warning(
+                "WARNING: Using environment credentials with %s transport. "
+                "THIS SHOULD NOT BE USED IN PRODUCTION! "
+                "All requests will share the same credentials. "
+                "For production deployments with %s transport, use OAuth proxy mode instead.",
+                transport.upper(),
+                transport.upper(),
+            )
 
 
 def get_mcp_version() -> str:
@@ -434,17 +454,24 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     # Set specific logger levels
     logger.setLevel(log_level)
 
-    # Suppress noisy third-party loggers
-    logging.getLogger("docket.worker").setLevel(logging.WARNING)
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-
     if args.debug:
         # Additional debug configuration for specific components
         logging.getLogger("ImageBuilderMCP").setLevel(logging.DEBUG)
         logging.getLogger("InsightsClientBase").setLevel(logging.DEBUG)
         logging.getLogger("InsightsClient").setLevel(logging.DEBUG)
         logging.getLogger("ImageBuilderOAuthMiddleware").setLevel(logging.DEBUG)
+        # Suppress noisy third-party loggers - even for debug mode that's too much
+        logging.getLogger("docket.worker").setLevel(logging.INFO)
+        logging.getLogger("fakeredis").setLevel(logging.INFO)
+
         logger.info("Debug mode enabled")
+    else:
+        # Suppress noisy third-party loggers
+        logging.getLogger("docket.worker").setLevel(logging.WARNING)
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+        logging.getLogger("mcp.server.lowlevel.server").setLevel(logging.WARNING)
+        logging.getLogger("mcp.server.streamable_http_manager").setLevel(logging.WARNING)
+
     # ==== End of Logging Configuration ====
 
     # ==== Start of Config Setup ====
@@ -453,6 +480,7 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
         "name": f"{container_brand_long} MCP",
         "proxy_url": config.INSIGHTS_PROXY_URL,
         "oauth_enabled": config.OAUTH_ENABLED,
+        "mcp_transport": args.transport,
     }
     logger.info("Using config: oauth_enabled: %s", mcp_server_config["oauth_enabled"])
 
@@ -475,6 +503,8 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     logger.info("Connecting to %s", mcp_server_config["base_url"])
     if mcp_server_config["proxy_url"]:
         logger.info(">>> Using proxy URL: %s", mcp_server_config["proxy_url"])
+
+    logger.info("Authenticating against %s", config.SSO_BASE_URL)
 
     instructions = get_instructions(toolset_list)
     instructions_template = Template(instructions)
@@ -524,6 +554,9 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
             port=mcp_server_config["mcp_port"],
         )
     elif args.transport == "http":
+        logger.info(
+            "Running HTTP transport on host: %s, port: %s", mcp_server_config["mcp_host"], mcp_server_config["mcp_port"]
+        )
         mcp_server.run(
             transport="http",
             host=mcp_server_config["mcp_host"],

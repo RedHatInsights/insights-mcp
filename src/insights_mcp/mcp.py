@@ -11,11 +11,8 @@ from typing import Any
 from fastmcp import FastMCP
 from fastmcp.server.auth import AuthProvider
 
-from insights_mcp.client import (
-    INSIGHTS_BASE_URL_PROD,
-    INSIGHTS_TOKEN_ENDPOINT_PROD,
-    InsightsClient,
-)
+from insights_mcp.client import InsightsClient
+from insights_mcp.config import INSIGHTS_BASE_URL, SSO_TOKEN_ENDPOINT
 
 
 class InsightsMCP(FastMCP):
@@ -62,7 +59,7 @@ class InsightsMCP(FastMCP):
     def init_insights_client(  # pylint: disable=too-many-arguments
         self,
         *,
-        base_url: str = INSIGHTS_BASE_URL_PROD,
+        base_url: str = INSIGHTS_BASE_URL,
         client_id: str | None = None,
         client_secret: str | None = None,
         refresh_token: str | None = None,
@@ -71,7 +68,7 @@ class InsightsMCP(FastMCP):
         oauth_enabled: bool = False,
         oauth_provider: AuthProvider | None = None,
         mcp_transport: str | None = None,
-        token_endpoint: str = INSIGHTS_TOKEN_ENDPOINT_PROD,
+        token_endpoint: str = SSO_TOKEN_ENDPOINT,
     ):
         """Initialize the authenticated Insights client.
 
