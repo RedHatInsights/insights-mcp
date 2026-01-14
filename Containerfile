@@ -39,6 +39,9 @@ ENV INSIGHTS_MCP_VERSION=${INSIGHTS_MCP_VERSION}
 ARG CONTAINER_BRAND=insights
 ENV CONTAINER_BRAND=${CONTAINER_BRAND}
 
+# MCP Registry ownership verification label
+LABEL io.modelcontextprotocol.server.name="io.github.RedHatInsights/insights-mcp"
+
 RUN microdnf install -y --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
     python312 && \
     microdnf clean all
