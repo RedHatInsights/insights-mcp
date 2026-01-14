@@ -31,28 +31,6 @@
   },
   "packages": [
     {
-      "registryType": "pypi",
-      "identifier": "insights-mcp",
-      "runtimeHint": "uvx",
-      "transport": {
-        "type": "stdio"
-      },
-      "environmentVariables": [
-        {
-          "name": "LIGHTSPEED_CLIENT_ID",
-          "description": "Red Hat Lightspeed Client ID for authentication",
-          "isRequired": true,
-          "isSecret": true
-        },
-        {
-          "name": "LIGHTSPEED_CLIENT_SECRET",
-          "description": "Red Hat Lightspeed Client Secret for authentication",
-          "isRequired": true,
-          "isSecret": true
-        }
-      ]
-    },
-    {
       "registryType": "oci",
       "identifier": "ghcr.io/redhatinsights/red-hat-lightspeed-mcp",
       "runtimeHint": "docker",
