@@ -50,9 +50,20 @@ graph TB
         MainServer -.->|mounts| More[other MCPs<br/>...]
     end
     subgraph "HTTP Client Layer"
-        InsightsClient[InsightsClient<br/>auth selection]
+        InsightsClient[InsightsClient<br/>factory]
+        OAuth2Client[InsightsOAuth2Client<br/>direct OAuth]
+        HeadersClient[InsightsHeadersBasedClient<br/>multiuser auth]
+        OAuthProxyClient[InsightsOAuthProxyClient<br/>DCR proxy]
+        SessionCache[SessionCache<br/>token caching]
         InsightsClientBase[InsightsClientBase<br/>HTTP operations]
-        InsightsClient -->|uses| InsightsClientBase
+
+        InsightsClient -->|creates| OAuth2Client
+        InsightsClient -->|creates| HeadersClient
+        InsightsClient -->|creates| OAuthProxyClient
+        HeadersClient -->|uses| SessionCache
+        OAuth2Client -->|extends| InsightsClientBase
+        HeadersClient -->|uses| OAuth2Client
+        OAuthProxyClient -->|extends| InsightsClientBase
     end
     API[Red Hat Insights<br/>REST API]
 
@@ -67,6 +78,10 @@ graph TB
     style Vulnerability fill:#fff4e1
     style More fill:#fff4e1
     style InsightsClient fill:#f3e5f5
+    style OAuth2Client fill:#f3e5f5
+    style HeadersClient fill:#f3e5f5
+    style OAuthProxyClient fill:#f3e5f5
+    style SessionCache fill:#ffe5f5
     style InsightsClientBase fill:#f3e5f5
     style MCP fill:#e8f5e9
     style API fill:#fff3e0
@@ -99,6 +114,20 @@ sequenceDiagram
 Here is the rendered version: [Deployment Flow](docs/architecture-deployment.svg)
 
 **Note**: To regenerate the `SVG` diagram images, run `make generate-docs`. The diagrams are also rendered directly by GitHub when viewing this file.
+
+### Session Cache and Token Management
+
+For multiuser scenarios (SSE/HTTP transports with header-based authentication), the `SessionCache` component provides per-connection OAuth token caching to improve performance and reduce authentication overhead.
+
+**Key features:**
+- Cache key: `(session_id, credentials_hash)` ensures isolation between connections and credential sets
+- Default TTL: 15 minutes with automatic expiration
+- Periodic cleanup: Removes expired entries every 20 minutes
+- Thread-safe: Supports concurrent access from multiple requests
+
+**Implementation:** See [`src/insights_mcp/session_cache.py`](src/insights_mcp/session_cache.py)
+
+**Used by:** `InsightsHeadersBasedClient` for SSE/HTTP transports when credentials are provided via request headers rather than environment variables.
 
 ## Important notes
 * When changing some code you might want to use `make build-prod` so the container is built with
@@ -284,6 +313,11 @@ The hosted MCP server implements a sophisticated OAuth proxy pattern that bridge
 - When access tokens expire, clients send refresh requests to proxy
 - Proxy forwards refresh requests to Red Hat SSO
 - Updated tokens are returned to client
+
+**Performance Optimization:**
+- `SessionCache` reduces OAuth roundtrips by caching tokens per connection
+- Cached tokens reused across concurrent requests from same client/credentials
+- See [Session Cache documentation](#session-cache-and-token-management) for details
 
 #### OIDCProxy Implementation
 
