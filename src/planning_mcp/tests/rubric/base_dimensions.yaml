@@ -1,0 +1,24 @@
+# Common dimensions and scoring scales for rubric-based LLM evaluation.
+# Include this in rubric files with: dimensions: !include base_dimensions.yaml
+
+- tool_usage:
+    description: Evaluates whether the correct MCP tools were called
+    grading_type: binary
+
+- response_quality:
+    description: Evaluates the quality and helpfulness of the response
+    grading_type: score
+    scores:
+      0: 'Poor: The response is unhelpful, irrelevant, or fails to address the user''s
+        request. It may contain hallucinations, refuse to answer, or provide only raw,
+        unusable data like a JSON blob.'
+      1: 'Fair: The response attempts to answer the query but has significant flaws.
+        It may present a raw list of data without summarization, be poorly formatted,
+        or miss key aspects of the user''s intent. The information is present but not
+        helpful.'
+      2: 'Good: The response is helpful and accurate. It provides the core information
+        requested in a readable format and summarizes it effectively. It may lack some
+        of the deeper context or proactive advice.'
+      3: 'Excellent: The response is comprehensive, well-structured, and highly useful.
+        It fully addresses the user''s intent, provides a clear summary, includes valuable
+        context and proactive advice, and is presented in an easy-to-digest format.'

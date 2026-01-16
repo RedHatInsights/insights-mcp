@@ -1,0 +1,48 @@
+# Rubric for evaluating LLM responses to RHEL upcoming changes queries
+dimensions: !include base_dimensions.yaml
+
+criteria:
+  tool_correctness:
+    category: Tools
+    weight: 3
+    dimension: tool_usage
+    criterion: The assistant must call the 'planning__get_upcoming_changes' tool to
+      retrieve information about RHEL 10 upcoming changes.
+    tool_calls:
+      respect_order: false
+      required:
+        planning__get_upcoming_changes:
+          min_calls: 1
+          max_calls: 1
+      optional: []
+      prohibited: []
+  acknowledges_user_intent:
+    category: Output
+    weight: 2
+    dimension: response_quality
+    criterion: The response must correctly identify and confirm the user's goal to
+      learn about RHEL 10 upcoming changes.
+  summarizes_changes:
+    category: Output
+    weight: 3
+    dimension: response_quality
+    criterion: The response must provide a helpful and informative summary of the
+      upcoming changes, not just a raw list.
+  human_readable_format:
+    category: Output
+    weight: 3
+    dimension: response_quality
+    criterion: The response must be in a human-readable format and must not return
+      raw JSON as the sole content.
+  provides_change_context:
+    category: Output
+    weight: 2
+    dimension: response_quality
+    criterion: The response should include relevant context about deprecations and
+      additions, such as why changes are happening or what their implications might be.
+  offers_planning_advice:
+    category: Output
+    weight: 1
+    dimension: response_quality
+    criterion: The response should include general advice or suggest next steps for
+      a user planning to adopt RHEL 10.
