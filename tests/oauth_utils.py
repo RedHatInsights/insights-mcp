@@ -268,7 +268,7 @@ def create_oauth_test_environment(
     sso_client_id: str = "test-sso-client",
     sso_client_secret: str = "test-sso-secret",
     sso_base_url: str = "http://localhost:9999",
-) -> dict[str, str]:
+) -> dict[str, Any]:
     """Create environment variables dictionary for OAuth testing.
 
     Args:
@@ -286,11 +286,10 @@ def create_oauth_test_environment(
         ...     # Test OAuth-enabled code
     """
     return {
-        "OAUTH_ENABLED": str(oauth_enabled),
+        "OAUTH_ENABLED": oauth_enabled,
         "SSO_CLIENT_ID": sso_client_id,
         "SSO_CLIENT_SECRET": sso_client_secret,
         "SSO_BASE_URL": sso_base_url,
-        "SSO_CONFIG_URL": f"{sso_base_url}/auth/realms/redhat-external/.well-known/openid-configuration",
     }
 
 

@@ -8,13 +8,10 @@ FastMCP OIDCProxy instances for OAuth authentication.
 # Pytest fixtures are injected as function parameters, which pylint
 # incorrectly flags as redefining names from outer scope.
 
-import importlib
-import os
 from unittest.mock import Mock, patch
 
 import pytest
 
-from insights_mcp import config as config_module
 from insights_mcp.oauth import create_oauth_provider
 from tests.oauth_utils import create_oauth_test_environment
 
@@ -24,40 +21,11 @@ from tests.oauth_utils import create_oauth_test_environment
 
 
 @pytest.fixture
-def oauth_enabled_env():
-    """Environment variables for OAuth enabled mode.
-
-    Returns:
-        Dictionary of environment variables for OAUTH_ENABLED=True mode
-
-    Example:
-        >>> def test_oauth_env(oauth_enabled_env):
-        ...     with patch.dict(os.environ, oauth_enabled_env):
-        ...         # Test OAuth-enabled code
-    """
-    return create_oauth_test_environment(
-        oauth_enabled=True,
-        sso_client_id="test-sso-client",
-        sso_client_secret="test-sso-secret",
-    )
-
-
-@pytest.fixture
 def mock_oidc_proxy():
     """Mock OIDCProxy for testing."""
     with patch("insights_mcp.oauth.OIDCProxy") as mock_oidc:
         mock_oidc.return_value = Mock()
         yield mock_oidc
-
-
-@pytest.fixture
-def reload_config():
-    """Reload config module to pick up environment variable changes."""
-
-    def _reload():
-        importlib.reload(config_module)
-
-    return _reload
 
 
 class TestCreateOAuthProviderBasic:
@@ -90,23 +58,37 @@ class TestCreateOAuthProviderBasic:
         assert "config_url" in call_args
         assert "openid-configuration" in call_args["config_url"]
 
-    def test_create_with_env_vars(self, oauth_enabled_env, mock_oidc_proxy, reload_config):
+    def test_create_with_env_vars(self, mock_oidc_proxy, monkeypatch):
         """Test provider creation from environment variables."""
-        with patch.dict(os.environ, {"SSO_OAUTH_TIMEOUT_SECONDS": "60", **oauth_enabled_env}):
-            reload_config()
 
-            # Explicit client ID overrides environment variables
-            provider = create_oauth_provider(client_id="explicit-client")
+        env_vars = create_oauth_test_environment(
+            oauth_enabled=True,
+            sso_client_id="test-sso-client",
+            sso_client_secret="test-sso-secret",
+        )
+        # Patch config values in where it is used - oauth module is imported here
+        from insights_mcp.oauth import config as oauth_config  # pylint: disable=import-outside-toplevel
 
-            assert provider is not None
-            mock_oidc_proxy.assert_called_once()
+        # Use monkeypatch to set environment variables (auto-restores)
+        for key, value in env_vars.items():
+            monkeypatch.setattr(oauth_config, key, value)
+        # Set additional timeout variable
+        monkeypatch.setattr(oauth_config, "SSO_OAUTH_TIMEOUT_SECONDS", 60)
 
-            call_args = mock_oidc_proxy.call_args[1]
-            assert call_args["client_id"] == "explicit-client"
-            assert call_args["client_secret"] == "test-sso-secret"
-            # Timeout seconds
-            assert "timeout_seconds" in call_args
-            assert call_args["timeout_seconds"] == 60
+        assert oauth_config.OAUTH_ENABLED is True
+
+        # Explicit client ID overrides environment variables
+        provider = create_oauth_provider(client_id="explicit-client")
+
+        assert provider is not None
+        mock_oidc_proxy.assert_called_once()
+
+        call_args = mock_oidc_proxy.call_args[1]
+        assert call_args["client_id"] == "explicit-client"
+        assert call_args["client_secret"] == "test-sso-secret"
+        # Timeout seconds
+        assert "timeout_seconds" in call_args
+        assert call_args["timeout_seconds"] == 60
 
     @pytest.mark.parametrize(
         "host,port,expected_url",
