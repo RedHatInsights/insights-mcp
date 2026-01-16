@@ -15,6 +15,7 @@ from pydantic import Field
 
 from insights_mcp.mcp import InsightsMCP
 from planning_mcp.tools.appstreams import get_appstreams_lifecycle as _get_appstreams_lifecycle
+from planning_mcp.tools.relevant_appstreams import get_relevant_appstreams as _get_relevant_appstreams
 from planning_mcp.tools.relevant_upcoming import get_relevant_upcoming_changes as _get_relevant_upcoming_changes
 from planning_mcp.tools.rhel_lifecycle import get_rhel_lifecycle as _get_rhel_lifecycle
 from planning_mcp.tools.upcoming import get_upcoming_changes as _get_upcoming_changes
@@ -77,9 +78,9 @@ class PlanningMCP(InsightsMCP):
             self.get_appstreams_lifecycle,
             self.get_rhel_lifecycle,
             self.get_relevant_upcoming_changes,
+            self.get_relevant_appstreams,
             # Future tools to add here:
             # self.get_relevant_rhel_lifecycle,
-            # self.get_relevant_appstreams,
         ]
 
         for f in tool_functions:
@@ -320,6 +321,93 @@ class PlanningMCP(InsightsMCP):
             logger=self.logger,
             major=major,
             minor=minor,
+        )
+
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    async def get_relevant_appstreams(
+        self,
+        major: Annotated[
+            str,
+            Field(
+                default="",
+                description="Restricts relevance evaluation to systems running this RHEL major version.",
+            ),
+        ] = "",
+        minor: Annotated[
+            str,
+            Field(
+                default="",
+                description=(
+                    "Used together with major to further restrict relevance evaluation "
+                    "to a specific minor version. Requires major to be specified."
+                ),
+            ),
+        ] = "",
+        include_related: Annotated[
+            bool,
+            Field(
+                default=True,
+                description=(
+                    "If true, returns streams currently used plus related/successor streams. "
+                    "If false, returns only streams currently used in inventory."
+                ),
+            ),
+        ] = True,
+    ) -> str:
+        """Get Application Streams relevant to the requester's inventory (includes lifecycle/support dates).
+
+        🟢 CALL IMMEDIATELY - No information gathering required.
+
+        Use this tool when the user asks about Application Streams in their environment
+        (inventory, hosts, systems...), such as:
+        "Which app streams are we running on RHEL 9?"
+        "What successor app streams could we move to from our current streams?"
+
+        Use this tool over get_appstreams_lifecycle when the user asks about their
+        inventory, hosts, systems...
+
+        If the question is scoped to a specific RHEL major or minor, set major
+        (and optionally minor) so that relevance is computed only from systems on
+        that version.
+
+        If the user wants only streams currently running (what is installed/in use
+        in inventory), set include_related=false.
+        If the user asks whether newer versions exist, wants upgrade recommendations,
+        or wants successor streams to consider, set include_related=true and review
+        entries where related=true as potential candidates.
+
+        If the user needs an exhaustive catalog view of all streams available for a
+        given component (e.g., "list all Node.js streams across RHEL 8/9/10"), use
+        get_appstreams_lifecycle.
+
+        The backend computes relevance based on actual host data in the user's inventory. This tool
+        does not perform any client-side filtering; all evaluation is performed by the backend.
+
+        Returns:
+            str: A JSON-encoded response object containing:
+                 - meta: Metadata including:
+                     - count (int): Number of records returned.
+                     - total (int): Total number of matching records.
+                 - data: A list of Application Stream records relevant to the user's inventory.
+                   Each record contains:
+                     - name (str): Technical package or module name.
+                     - display_name (str): Human-friendly display name.
+                     - application_stream_name (str): Application Stream name.
+                     - stream (str): Stream identifier or version.
+                     - start_date (str | null): Planned start date (ISO format).
+                     - end_date (str | null): Planned end-of-life date (ISO format).
+                     - support_status (str): Support status (e.g. 'Supported', 'Retired').
+                     - os_major (int | null): RHEL major version.
+                     - os_minor (int | null): RHEL minor version.
+                     - related (bool): Indicates if this is a related/successor stream (true)
+                       or currently in use (false).
+        """
+        return await _get_relevant_appstreams(
+            insights_client=self.insights_client,
+            logger=self.logger,
+            major=major,
+            minor=minor,
+            include_related=include_related,
         )
 
 

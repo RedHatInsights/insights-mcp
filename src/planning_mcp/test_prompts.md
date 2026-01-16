@@ -120,3 +120,53 @@ This file contains test prompts to validate the Planning MCP toolset integration
 - Should call `planning__get_relevant_upcoming_changes` with `major=9` and `minor=2`.
 - Should return changes relevant specifically to systems running RHEL 9.2.
 - Model should explain the changes and list which of the user's RHEL 9.2 systems may be affected.
+
+## Tool: get_relevant_appstreams
+
+### Test 1: List all relevant appstreams
+**Prompt:** "What application streams are relevant to my systems, including related successor streams?"
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_appstreams` with default parameters (include_related=true).
+- Should return all application streams in use across the user's inventory, including related/successor streams.
+- Model should summarize the appstreams by application (e.g., Node.js, PostgreSQL) and highlight support status.
+
+### Test 2: Only currently-used appstreams (no related streams)
+**Prompt:** "Show me only the application streams that are actually installed on my systems, without any suggestions."
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_appstreams` with `include_related=false`.
+- Should return only the appstreams currently in use, without related or successor streams.
+- Model should present a focused list of what's actually deployed.
+
+### Test 3: Filter by RHEL major version
+**Prompt:** "What application streams are relevant to my RHEL 9 systems and any related successor streams"
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_appstreams` with `major=9` and `include_related=true` (default).
+- Should return appstreams relevant to systems running RHEL 9.x, including related streams.
+- Model should summarize the results and may highlight upgrade paths or newer versions.
+
+### Test 4: Filter by specific RHEL major.minor version
+**Prompt:** "Show me the appstreams relevant to my RHEL 9.2 systems and any related successor streams"
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_appstreams` with `major=9`, `minor=2`, and `include_related=true` (default).
+- Should return appstreams relevant specifically to systems running RHEL 9.2.
+- Model should list the streams and may identify which systems are using them.
+
+### Test 5: Identify upgrade opportunities
+**Prompt:** "Are there newer versions of the application streams I'm using that I should consider upgrading to?"
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_appstreams` with `include_related=true` (default).
+- Model should analyze the results, identify where related streams with newer versions exist.
+- Should provide recommendations for potential upgrades with support timeline context.
+
+### Test 6: Check support status for specific appstream
+**Prompt:** "Is the Node.js version in our inventory still supported, and are there newer options available?"
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_appstreams` with `include_related=true` (default).
+- Model should filter results for Node.js streams, explain support status and end dates.
+- Should highlight related/newer Node.js versions if available and provide migration guidance.
