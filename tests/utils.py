@@ -133,7 +133,11 @@ def get_server_url_and_port(transport: str) -> tuple[str, int]:
 
 
 def _server_worker(
-    transport: str, port: int, toolset: str | None, server_queue: multiprocessing.Queue, readonly: bool = False
+    transport: str,
+    port: int,
+    toolset: str | None,
+    server_queue: multiprocessing.Queue,
+    readonly: bool = False,
 ):
     """Start the MCP server in a separate process.
 
@@ -200,7 +204,9 @@ def start_insights_mcp_server(
 
     # Start server process using module-level function for pickling compatibility
     server_process = multiprocessing.Process(
-        target=_server_worker, args=(transport, port, toolset, server_queue, readonly), daemon=True
+        target=_server_worker,
+        args=(transport, port, toolset, server_queue, readonly),
+        daemon=True,
     )
     server_process.start()
 
@@ -215,6 +221,12 @@ def start_insights_mcp_server(
 
         # For HTTP transport, test connectivity with MCP init request
         if transport == "http":
+            if not server_process.is_alive():
+                raise ServerStartupError(
+                    f"Server process died before init request connection to host {server_url}."
+                    f"Process exit code: {server_process.exitcode}"
+                )
+
             max_retries = 5
             for attempt in range(max_retries):
                 try:
@@ -228,7 +240,8 @@ def start_insights_mcp_server(
                         raise ServerConnectionError(
                             (
                                 f"Server not responding properly after {max_retries} "
-                                f"attempts: {response.status_code} - {response.text}"
+                                f"attempts: {response.status_code} - {response.text}. "
+                                f"Server process: {'alive' if server_process.is_alive() else 'dead'}"
                             )
                         )
 
@@ -237,7 +250,9 @@ def start_insights_mcp_server(
                 except requests.exceptions.RequestException as e:
                     if attempt == max_retries - 1:
                         raise ServerConnectionError(
-                            f"Failed to connect to server after {max_retries} attempts: {e}"
+                            f"Failed to connect to server after {max_retries} attempts. "
+                            f"Server process: {'alive' if server_process.is_alive() else 'dead'}, "
+                            f"Port: {port}, URL: {server_url}, Error: {e}"
                         ) from e
                     time.sleep(2)  # Wait before retry
 
