@@ -16,8 +16,12 @@ SSO_BASE_URL = (
     or os.getenv("SSO_BASE_URL")
     or "https://sso.redhat.com"
 )
-SSO_CONFIG_URL = f"{SSO_BASE_URL}/auth/realms/redhat-external/.well-known/openid-configuration"
-SSO_TOKEN_ENDPOINT = f"{SSO_BASE_URL}/auth/realms/redhat-external/protocol/openid-connect/token"
+SSO_CONFIG_URL = (
+    os.getenv("SSO_CONFIG_URL") or f"{SSO_BASE_URL}/auth/realms/redhat-external/.well-known/openid-configuration"
+)
+SSO_TOKEN_ENDPOINT = (
+    os.getenv("SSO_TOKEN_ENDPOINT") or f"{SSO_BASE_URL}/auth/realms/redhat-external/protocol/openid-connect/token"
+)
 
 # Authentication configuration
 OAUTH_ENABLED = os.getenv("OAUTH_ENABLED", "false").lower() == "true"
