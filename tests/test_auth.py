@@ -1,6 +1,9 @@
 """Test suite for authentication-related functionality."""
 
+from unittest.mock import patch
+
 import pytest
+from authlib.integrations.httpx_client import OAuthError
 
 # Clean import - no sys.path.insert needed with proper package structure!
 from image_builder_mcp import ImageBuilderMCP
@@ -40,14 +43,19 @@ class TestAuthentication:
         )
         mcp_server.register_tools()
 
-        # Call the method
-        method = getattr(mcp_server, function_name)
-        result = await method(**kwargs)
+        # Mock fetch_token to simulate OAuth error without making real network calls
+        async def mock_fetch_token(*args, **kwargs):
+            raise OAuthError(error="invalid_client", description="Invalid client or Invalid client credentials")
 
-        # Should return authentication error
-        # The actual implementation makes API calls and gets 401 errors when no auth is provided
-        assert "Invalid client or Invalid client credentials" in result
-        assert "[INSTRUCTION]" in result
+        with patch.object(mcp_server.insights_client.client, "fetch_token", new=mock_fetch_token):
+            # Call the method
+            method = getattr(mcp_server, function_name)
+            result = await method(**kwargs)
+
+            # Should return authentication error
+            # The mocked implementation raises OAuthError which gets caught and formatted
+            assert "Invalid client or Invalid client credentials" in result
+            assert "[INSTRUCTION]" in result
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("function_name,kwargs", AUTH_FUNCTIONS)

@@ -121,7 +121,7 @@ class ImageBuilderMCP(InsightsMCP):
         try:
             # TBD: change openapi spec to have a proper schema-enum
             # for image types and architectures
-            self.logger.info("Getting openapi")
+            self.logger.debug("Getting openapi")
             openapi = json.loads(self.get_openapi_synchronous())
 
             deprecated_image_types = [
@@ -141,8 +141,8 @@ class ImageBuilderMCP(InsightsMCP):
             architectures = list(openapi["components"]["schemas"]["ImageRequest"]["properties"]["architecture"]["enum"])
             architectures.sort()
 
-            self.logger.info("Supported image types: %s", image_types)
-            self.logger.info("Supported architectures: %s", architectures)
+            self.logger.debug("Supported image types: %s", image_types)
+            self.logger.debug("Supported architectures: %s", architectures)
         except Exception as e:  # pylint: disable=broad-exception-caught
             raise ValueError("Error getting openapi for image types and architectures") from e
         return image_types, architectures
