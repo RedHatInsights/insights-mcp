@@ -15,6 +15,7 @@ from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 # Add imports for mock client creation
 from insights_mcp.client import InsightsClient
 from insights_mcp.config import INSIGHTS_BASE_URL_PROD
+from tests import oauth_utils as oauth_utils_module
 
 # pylint: disable=wrong-import-position
 from .llama_index_non_iterable_bool_patch import apply_llama_index_bool_patch
@@ -244,3 +245,54 @@ def assert_empty_response(result):
 def assert_instruction_in_result(result, instruction="[INSTRUCTION]"):
     """Helper to assert instruction text in result."""
     assert instruction in result
+
+
+# ============================================================================
+# OAuth Testing Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def mock_oauth_token():
+    """Create a mock OAuth AccessToken for testing.
+
+    Returns:
+        FastMCP AccessToken with test claims for Red Hat SSO
+
+    Example:
+        >>> def test_with_oauth(mock_oauth_token):
+        ...     assert mock_oauth_token.claims["organization"]["id"] == "test-org-123"
+    """
+    return oauth_utils_module.create_test_token(
+        org_id="test-org-123", user_id="test-user-123", username="testuser", account_id="test-account-456"
+    )
+
+
+@pytest.fixture
+def mock_oauth_provider():
+    """Create a mock OAuth AuthProvider for testing.
+
+    Returns:
+        Mock AuthProvider instance
+
+    Example:
+        >>> def test_with_provider(mock_oauth_provider):
+        ...     assert mock_oauth_provider.client_id == "test-sso-client"
+    """
+    return oauth_utils_module.create_mock_oauth_provider()
+
+
+@pytest.fixture
+def multi_user_tokens():
+    """Create multiple user tokens for multi-user testing.
+
+    Returns:
+        Dictionary mapping user IDs to AccessTokens
+
+    Example:
+        >>> def test_multi_user(multi_user_tokens):
+        ...     user1_token = multi_user_tokens["user-0"]
+        ...     user2_token = multi_user_tokens["user-1"]
+        ...     assert user1_token.claims["organization"]["id"] != user2_token.claims["organization"]["id"]
+    """
+    return oauth_utils_module.create_multi_user_tokens(num_users=3)

@@ -18,13 +18,13 @@ from insights_mcp import config
 logger = logging.getLogger("insights_mcp.oauth")
 
 
-def init_oauth_provider(
+def create_oauth_provider(
     client_id: str | None = None,
     client_secret: str | None = None,
     mcp_host: str | None = None,
     mcp_port: int | None = None,
 ) -> AuthProvider | None:
-    """Initialize OAuth authentication provider for FastMCP server integration.
+    """Create OAuth authentication provider for FastMCP server integration.
 
     Creates an OIDCProxy instance configured for Red Hat Single Sign-On (RH-SSO)
     authentication. This provider acts as a transparent proxy to the upstream
@@ -65,16 +65,16 @@ def init_oauth_provider(
 
     Example:
         ```python
-        # Initialize with explicit parameters
-        auth_provider = init_oauth_provider(
+        # Create with explicit parameters
+        auth_provider = create_oauth_provider(
             client_id="my-sso-client",
             client_secret="my-sso-secret",
             mcp_host="localhost",
             mcp_port=8000
         )
 
-        # Initialize using configuration defaults
-        auth_provider = init_oauth_provider()
+        # Create using configuration defaults
+        auth_provider = create_oauth_provider()
 
         # Use with FastMCP server
         mcp_server = FastMCP(
@@ -85,7 +85,7 @@ def init_oauth_provider(
     """
     # Construct base URL for OAuth callbacks and metadata endpoints
     base_url = f"http://{mcp_host}:{mcp_port}" if mcp_host and mcp_port else "http://localhost:8000"
-    logger.debug("Initializing OAuth provider with base_url: %s", base_url)
+    logger.debug("Creating OAuth provider with base_url: %s", base_url)
 
     # Configure OIDC proxy with Red Hat SSO settings
     auth_args = {
@@ -105,10 +105,10 @@ def init_oauth_provider(
 
     try:
         oauth_provider = OIDCProxy(**auth_args)  # type: ignore[arg-type]
-        logger.info("Successfully initialized OAuth provider for %s", base_url)
+        logger.info("Successfully created OAuth provider for %s", base_url)
         return oauth_provider
     except Exception as e:
-        logger.error("Failed to initialize OAuth provider: %s", e)
+        logger.error("Failed to create OAuth provider: %s", e)
         raise
 
 
