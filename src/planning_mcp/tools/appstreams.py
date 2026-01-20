@@ -7,7 +7,7 @@ from logging import Logger
 from typing import Any
 
 from insights_mcp.client import InsightsClient
-from planning_mcp.common import normalise_int as _normalise_int
+from tools.common import normalise_int as _normalise_int
 
 
 async def get_appstreams_lifecycle(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-branches

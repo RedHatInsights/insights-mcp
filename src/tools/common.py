@@ -1,4 +1,4 @@
-"""Shared functions for planning_mcp tool."""
+"""Shared functions for Insights MCP tools."""
 
 
 def normalise_int(name: str, value: int | str | None) -> int | None:

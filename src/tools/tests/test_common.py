@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from planning_mcp.common import normalise_bool, normalise_int
+from tools.common import normalise_bool, normalise_int
 
 
 @pytest.mark.parametrize(("original", "output"), (("6", 6), (7, 7), (None, None), ("  ", None), ("  0  ", 0)))
