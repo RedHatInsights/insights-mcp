@@ -8,8 +8,8 @@ from logging import Logger
 from typing import Any
 
 from insights_mcp.client import InsightsClient
-from planning_mcp.common import normalise_bool as _normalise_bool
-from planning_mcp.common import normalise_int as _normalise_int
+from tools.common import normalise_bool as _normalise_bool
+from tools.common import normalise_int as _normalise_int
 
 
 async def get_relevant_appstreams(
