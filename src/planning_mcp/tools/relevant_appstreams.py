@@ -8,6 +8,8 @@ from logging import Logger
 from typing import Any
 
 from insights_mcp.client import InsightsClient
+from planning_mcp.common import normalise_bool as _normalise_bool
+from planning_mcp.common import normalise_int as _normalise_int
 
 
 async def get_relevant_appstreams(
@@ -33,22 +35,9 @@ async def get_relevant_appstreams(
         A JSON-encoded string with the response data or an error message.
     """
     try:
-
-        def _normalise_int(name: str, value: int | str | None) -> int | None:
-            if value is None:
-                return None
-            if isinstance(value, int):
-                return value
-            s = value.strip()
-            if not s:
-                return None
-            try:
-                return int(s)
-            except ValueError as exc:
-                raise ValueError(f"Parameter '{name}' must be an integer (e.g. 8, 9, 10); got '{value}'.") from exc
-
         major_int = _normalise_int("major", major)
         minor_int = _normalise_int("minor", minor)
+        include_related_bool = _normalise_bool("include_related", include_related)
 
         if minor_int is not None and major_int is None:
             raise ValueError("The 'minor' parameter requires 'major' to be specified")
@@ -58,12 +47,13 @@ async def get_relevant_appstreams(
             params["major"] = major_int
         if minor_int is not None:
             params["minor"] = minor_int
-        # Map include_related to the backend's 'related' parameter
-        params["related"] = "true" if include_related else "false"
+        if include_related_bool is not None:
+            params["related"] = include_related_bool
 
         response: dict[str, Any] | str = await insights_client.get(
             "relevant/lifecycle/app-streams",
             params=params,
+            timeout=30,
         )
 
         # The underlying client may already return a JSON string; if so, pass it through.
