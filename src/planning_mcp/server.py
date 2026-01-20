@@ -16,6 +16,7 @@ from pydantic import Field
 from insights_mcp.mcp import InsightsMCP
 from planning_mcp.tools.appstreams import get_appstreams_lifecycle as _get_appstreams_lifecycle
 from planning_mcp.tools.relevant_appstreams import get_relevant_appstreams as _get_relevant_appstreams
+from planning_mcp.tools.relevant_rhel_lifecycle import get_relevant_rhel_lifecycle as _get_relevant_rhel_lifecycle
 from planning_mcp.tools.relevant_upcoming import get_relevant_upcoming_changes as _get_relevant_upcoming_changes
 from planning_mcp.tools.rhel_lifecycle import get_rhel_lifecycle as _get_rhel_lifecycle
 from planning_mcp.tools.upcoming import get_upcoming_changes as _get_upcoming_changes
@@ -79,8 +80,7 @@ class PlanningMCP(InsightsMCP):
             self.get_rhel_lifecycle,
             self.get_relevant_upcoming_changes,
             self.get_relevant_appstreams,
-            # Future tools to add here:
-            # self.get_relevant_rhel_lifecycle,
+            self.get_relevant_rhel_lifecycle,
         ]
 
         for f in tool_functions:
@@ -273,6 +273,89 @@ class PlanningMCP(InsightsMCP):
                         - end_date_eus (str | null): End date of Extended Update Support
         """
         return await _get_rhel_lifecycle(self.insights_client, self.logger)
+
+    async def get_relevant_rhel_lifecycle(
+        self,
+        major: Annotated[
+            str,
+            Field(
+                default="",
+                description="Restricts relevance evaluation to systems running this RHEL major version.",
+            ),
+        ] = "",
+        minor: Annotated[
+            str,
+            Field(
+                default="",
+                description=(
+                    "Used together with major to further restrict relevance evaluation "
+                    "to a specific minor version. Requires major to be specified."
+                ),
+            ),
+        ] = "",
+        include_related: Annotated[
+            str,
+            Field(
+                default="false",
+                description=(
+                    "When 'true', returns both RHEL versions observed in inventory and additional "
+                    "higher-minor or future versions of the same major that are still supported but "
+                    "not yet deployed (marked as related=true). When 'false', returns only RHEL "
+                    "versions actually observed in the requester's inventory."
+                ),
+            ),
+        ] = "false",
+    ) -> str:
+        """Returns RHEL lifecycle information for systems in the requester's inventory.
+
+        🟢 CALL IMMEDIATELY - No information gathering required.
+
+        Use this tool when the user asks about RHEL lifecycle in their own environment, for example:
+        - Which RHEL versions are we currently running, and when do they go out of support?
+        - What future RHEL 8 minor versions could we upgrade to that are still supported?
+
+        When the question is scoped to a specific RHEL major (or major/minor), set major (and optionally minor)
+        so relevance is calculated only from systems on that version.
+
+        If the user wants only what is currently running, set include_related=false
+        (default, not needed to be specified).
+
+        If the user wants upgrade options or newer streams related to what they run today, set include_related=true and
+        look at items where related=true as potential targets.
+
+        Response guidance:
+        - Summarize support status and end dates in plain language.
+        - If a version is retired or near end-of-support, call out the impact (loss of updates, risk).
+        - Provide recommended actions (e.g., plan upgrade, evaluate supported minor versions).
+
+        Returns:
+            str: A JSON-encoded response object containing:
+                 - meta: Metadata including:
+                     - count (int): Number of records returned.
+                     - total (int): Total number of matching records.
+                 - data: A list of RHEL lifecycle records relevant to the user's inventory.
+                   Each record contains:
+                     - name (str): RHEL version name.
+                     - display_name (str): Human-friendly display name.
+                     - os_major (int | null): RHEL major version.
+                     - os_minor (int | null): RHEL minor version.
+                     - start_date (str | null): Planned start date (ISO format).
+                     - end_date (str | null): Planned end-of-life date (ISO format).
+                     - support_status (str): Support status (e.g. 'Supported', 'Retired').
+                     - count (int): Number of systems running this RHEL version.
+                     - lifecycle_type (str): Type of RHEL version (e.g. 'mainline', 'extended update support (EUS)',
+                     'extended life-cycle support (ELS)', 'update services for SAP solutions (E4S)').
+                     - related (bool): True when include_related=true and the version
+                     is a suggested upgrade target.
+        """
+
+        return await _get_relevant_rhel_lifecycle(
+            insights_client=self.insights_client,
+            logger=self.logger,
+            major=major,
+            minor=minor,
+            include_related=include_related,
+        )
 
     async def get_relevant_upcoming_changes(
         self,

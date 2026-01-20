@@ -79,7 +79,8 @@ class TestPlanningGetRelevantAppstreams:
             # Backend endpoint should be invoked with related=true
             mock_get.assert_called_once_with(
                 "relevant/lifecycle/app-streams",
-                params={"related": "true"},
+                params={"related": True},
+                timeout=30,
             )
 
             # Tool returns a JSON-encoded string; parse and validate structure
@@ -131,7 +132,8 @@ class TestPlanningGetRelevantAppstreams:
             # Backend should receive the major parameter and related=true
             mock_get.assert_called_once_with(
                 "relevant/lifecycle/app-streams",
-                params={"major": 9, "related": "true"},
+                params={"major": 9, "related": True},
+                timeout=30,
             )
 
             # Validate response structure
@@ -155,7 +157,8 @@ class TestPlanningGetRelevantAppstreams:
             # Backend should receive both parameters and related=true
             mock_get.assert_called_once_with(
                 "relevant/lifecycle/app-streams",
-                params={"major": 9, "minor": 2, "related": "true"},
+                params={"major": 9, "minor": 2, "related": True},
+                timeout=30,
             )
 
             # Validate response structure
@@ -184,7 +187,8 @@ class TestPlanningGetRelevantAppstreams:
             # Backend should receive related=false
             mock_get.assert_called_once_with(
                 "relevant/lifecycle/app-streams",
-                params={"related": "false"},
+                params={"related": False},
+                timeout=30,
             )
 
             # Validate response structure
@@ -212,7 +216,8 @@ class TestPlanningGetRelevantAppstreams:
             # Backend should receive related=true
             mock_get.assert_called_once_with(
                 "relevant/lifecycle/app-streams",
-                params={"related": "true"},
+                params={"related": True},
+                timeout=30,
             )
 
             # Validate response structure

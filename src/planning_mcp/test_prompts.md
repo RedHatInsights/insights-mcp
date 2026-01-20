@@ -170,3 +170,37 @@ This file contains test prompts to validate the Planning MCP toolset integration
 - Should call `planning__get_relevant_appstreams` with `include_related=true` (default).
 - Model should filter results for Node.js streams, explain support status and end dates.
 - Should highlight related/newer Node.js versions if available and provide migration guidance.
+
+## Tool: get_relevant_rhel_lifecycle
+
+### Test 1: List all relevant RHEL lifecycle information
+**Prompt:** "What RHEL versions are currently running in my environment and when do they go out of support?"
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_rhel_lifecycle` with no parameters (defaults: `include_related=false`).
+- Should return RHEL lifecycle information for all versions observed in the user's inventory.
+- Model should summarize support status and end dates for each version found.
+
+### Test 2: Filter by RHEL major version
+**Prompt:** "Show me the lifecycle status of my RHEL 8 systems."
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_rhel_lifecycle` with `major=8`.
+- Should return lifecycle information only for RHEL 8.x systems in the user's inventory.
+- Model should summarize support timelines and highlight any versions nearing end-of-support.
+
+### Test 3: Filter by specific RHEL major.minor version
+**Prompt:** "Show me the lifecycle status of my RHEL 9.2 systems?"
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_rhel_lifecycle` with `major=9` and `minor=2`.
+- Should return lifecycle information specifically for RHEL 9.2 systems in the user's inventory.
+- Model should explain support status, end dates and any recommended actions.
+
+### Test 4: Include related versions for upgrade planning
+**Prompt:** "What RHEL 9 minor versions could I upgrade my systems to that are still supported?"
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_rhel_lifecycle` with `major=9` and `include_related=true`.
+- Should return both currently deployed RHEL 8 versions and related higher-minor versions that are still supported but not yet deployed (marked as `related=true`).
+- Model should identify upgrade targets by highlighting versions with `related=true` and compare their support timelines to currently running versions.
