@@ -246,8 +246,12 @@ def print_toolset_help_and_exit(args: argparse.Namespace):
                     display_text = f"`{tool_name}`"
 
                 # Truncate very long lines
-                if len(display_text) > 100:
-                    display_text = display_text[:97] + "…"
+                if len(display_text) > 120:
+                    last_space = display_text.rfind(" ", 100, 119)
+                    if last_space == -1:
+                        last_space = 119
+
+                    display_text = display_text[:last_space] + "…"
 
                 print(f"- {display_text}")
 
