@@ -100,3 +100,6 @@ Appstreams
 js
 postgresql
 nodejs
+SSL
+YAML
+lifecycle
