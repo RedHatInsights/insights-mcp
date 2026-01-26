@@ -33,6 +33,8 @@ from insights_mcp.config import (
     BRAND_CLIENT_SECRET_ENV,
     BRAND_CLIENT_SECRET_HEADER,
     INSIGHTS_BASE_URL,
+    INSIGHTS_PROXY_URL,
+    OAUTH_ENABLED,
     SSO_TOKEN_ENDPOINT,
 )
 from insights_mcp.session_cache import SessionCache
@@ -1229,8 +1231,8 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
         client_secret: str | None = None,
         refresh_token: str | None = None,
         headers: dict[str, str] | None = None,
-        proxy_url: str | None = None,
-        oauth_enabled: bool = False,
+        proxy_url: str | None = INSIGHTS_PROXY_URL,
+        oauth_enabled: bool = OAUTH_ENABLED,
         oauth_provider: AuthProvider | None = None,
         mcp_transport: str | None = None,  # TODO: get rid of mcp_transport in client
         token_endpoint: str = SSO_TOKEN_ENDPOINT,
