@@ -120,3 +120,87 @@ This file contains test prompts to validate the Planning MCP toolset integration
 - Should call `planning__get_relevant_upcoming_changes` with `major=9` and `minor=2`.
 - Should return changes relevant specifically to systems running RHEL 9.2.
 - Model should explain the changes and list which of the user's RHEL 9.2 systems may be affected.
+
+## Tool: get_relevant_appstreams
+
+### Test 1: List all relevant appstreams
+**Prompt:** "What application streams are relevant to my systems, including related successor streams?"
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_appstreams` with default parameters (include_related=true).
+- Should return all application streams in use across the user's inventory, including related/successor streams.
+- Model should summarize the appstreams by application (e.g., Node.js, PostgreSQL) and highlight support status.
+
+### Test 2: Only currently-used appstreams (no related streams)
+**Prompt:** "Show me only the application streams that are actually installed on my systems, without any suggestions."
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_appstreams` with `include_related=false`.
+- Should return only the appstreams currently in use, without related or successor streams.
+- Model should present a focused list of what's actually deployed.
+
+### Test 3: Filter by RHEL major version
+**Prompt:** "What application streams are relevant to my RHEL 9 systems and any related successor streams"
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_appstreams` with `major=9` and `include_related=true` (default).
+- Should return appstreams relevant to systems running RHEL 9.x, including related streams.
+- Model should summarize the results and may highlight upgrade paths or newer versions.
+
+### Test 4: Filter by specific RHEL major.minor version
+**Prompt:** "Show me the appstreams relevant to my RHEL 9.2 systems and any related successor streams"
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_appstreams` with `major=9`, `minor=2`, and `include_related=true` (default).
+- Should return appstreams relevant specifically to systems running RHEL 9.2.
+- Model should list the streams and may identify which systems are using them.
+
+### Test 5: Identify upgrade opportunities
+**Prompt:** "Are there newer versions of the application streams I'm using that I should consider upgrading to?"
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_appstreams` with `include_related=true` (default).
+- Model should analyze the results, identify where related streams with newer versions exist.
+- Should provide recommendations for potential upgrades with support timeline context.
+
+### Test 6: Check support status for specific appstream
+**Prompt:** "Is the Node.js version in our inventory still supported, and are there newer options available?"
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_appstreams` with `include_related=true` (default).
+- Model should filter results for Node.js streams, explain support status and end dates.
+- Should highlight related/newer Node.js versions if available and provide migration guidance.
+
+## Tool: get_relevant_rhel_lifecycle
+
+### Test 1: List all relevant RHEL lifecycle information
+**Prompt:** "What RHEL versions are currently running in my environment and when do they go out of support?"
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_rhel_lifecycle` with no parameters (defaults: `include_related=false`).
+- Should return RHEL lifecycle information for all versions observed in the user's inventory.
+- Model should summarize support status and end dates for each version found.
+
+### Test 2: Filter by RHEL major version
+**Prompt:** "Show me the lifecycle status of my RHEL 8 systems."
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_rhel_lifecycle` with `major=8`.
+- Should return lifecycle information only for RHEL 8.x systems in the user's inventory.
+- Model should summarize support timelines and highlight any versions nearing end-of-support.
+
+### Test 3: Filter by specific RHEL major.minor version
+**Prompt:** "Show me the lifecycle status of my RHEL 9.2 systems?"
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_rhel_lifecycle` with `major=9` and `minor=2`.
+- Should return lifecycle information specifically for RHEL 9.2 systems in the user's inventory.
+- Model should explain support status, end dates and any recommended actions.
+
+### Test 4: Include related versions for upgrade planning
+**Prompt:** "What RHEL 9 minor versions could I upgrade my systems to that are still supported?"
+
+**Expected Behavior:**
+- Should call `planning__get_relevant_rhel_lifecycle` with `major=9` and `include_related=true`.
+- Should return both currently deployed RHEL 8 versions and related higher-minor versions that are still supported but not yet deployed (marked as `related=true`).
+- Model should identify upgrade targets by highlighting versions with `related=true` and compare their support timelines to currently running versions.

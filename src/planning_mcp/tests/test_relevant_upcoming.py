@@ -130,7 +130,7 @@ class TestPlanningGetRelevantUpcomingChanges:
             result = await planning_mcp_server.get_relevant_upcoming_changes()
 
             # Backend endpoint should be invoked exactly once with no parameters
-            mock_get.assert_called_once_with("relevant/upcoming-changes", params=None)
+            mock_get.assert_called_once_with("relevant/upcoming-changes", params=None, timeout=30)
 
             # Tool returns a JSON-encoded string; parse and validate structure
             parsed = json.loads(result)
@@ -184,7 +184,7 @@ class TestPlanningGetRelevantUpcomingChanges:
             result = await planning_mcp_server.get_relevant_upcoming_changes(major=9)
 
             # Backend should receive the major parameter
-            mock_get.assert_called_once_with("relevant/upcoming-changes", params={"major": 9})
+            mock_get.assert_called_once_with("relevant/upcoming-changes", params={"major": 9}, timeout=30)
 
             # Validate response structure
             parsed = json.loads(result)
@@ -205,7 +205,7 @@ class TestPlanningGetRelevantUpcomingChanges:
             result = await planning_mcp_server.get_relevant_upcoming_changes(major=9, minor=2)
 
             # Backend should receive both parameters
-            mock_get.assert_called_once_with("relevant/upcoming-changes", params={"major": 9, "minor": 2})
+            mock_get.assert_called_once_with("relevant/upcoming-changes", params={"major": 9, "minor": 2}, timeout=30)
 
             # Validate response structure
             parsed = json.loads(result)

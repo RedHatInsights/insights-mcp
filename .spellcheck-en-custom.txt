@@ -103,3 +103,14 @@ URI
 UUID
 UUIDs
 verifier
+deprecations
+Deprecations
+Lifecycle
+lifecycle
+Appstream
+appstreams
+Appstreams
+js
+postgresql
+nodejs
+requester's
