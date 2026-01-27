@@ -12,36 +12,40 @@ Example usage:
         TEST_PROMPT = "Your test prompt here"
         REPORT_TITLE = "My Feature Test"
         EXPECTED_TOOL = "my_toolset__my_tool"  # Optional: tool that must be called
+        EXPECTED_TOOL_INPUT_PARAMETERS = {"major": '9'}  # Optional: tool input parameters that must be passed down
 
 Example factory function:
     TestMyFeature = create_llm_test_class(
         test_prompt="Your test prompt here",
         report_title="My Feature Test",
         expected_tool="my_toolset__my_tool",
+        expected_tool_input_parameters={"major": '9'},
         rubric_path="path/to/rubric.yaml"
     )
 """
 
 import os
+import subprocess
+import sys
+import tempfile
 from abc import ABC
 from pathlib import Path
 
 import pytest
-from rubric_kit.validator import load_judge_panel_config
+import yaml
 
 from tests.utils import should_skip_llm_matrix_tests
 from tests.utils_rubric import (
     check_passing_threshold,
     check_tool_correctness,
     check_tool_input_parameters,
-    evaluate_with_rubric,
     format_chat_session,
-    generate_report,
+    generate_report_folder,
     prompt_test_agent,
 )
 
 from .constants import LLM_CONFIGURATIONS, PANEL_PATH, PASSING_THRESHOLD, TEST_DIR
-from .utils.yaml_include import load_rubric_with_includes
+from .utils.yaml_include import load_yaml_with_includes
 
 
 class BaseRubricTest(ABC):
@@ -57,6 +61,8 @@ class BaseRubricTest(ABC):
         PASSING_THRESHOLD: float - Minimum passing percentage (defaults to global constant)
     """
 
+    pytestmark = pytest.mark.parametrize("mcp_server_url", ["sse"], indirect=True)
+
     # Required attributes (must be overridden by subclasses)
     TEST_PROMPT: str = NotImplemented
     REPORT_TITLE: str = NotImplemented
@@ -68,13 +74,15 @@ class BaseRubricTest(ABC):
     PASSING_THRESHOLD: float = PASSING_THRESHOLD  # Can override the default
 
     @classmethod
-    def get_rubric_path(cls) -> Path:
+    def get_rubric_path(cls, verbose_logger) -> Path:
         """Get the rubric path, auto-deriving from module name if not explicitly set."""
         if cls.RUBRIC_PATH is not None:
             return cls.RUBRIC_PATH
         # Derive from module name: test_llm_foo -> test_llm_foo_rubric.yaml
         module_name = cls.__module__.rsplit(".", 1)[-1]
-        return TEST_DIR / f"{module_name}_rubric.yaml"
+        rubric_path = TEST_DIR / f"{module_name}_rubric.yaml"
+        verbose_logger.debug("Using rubric: %s", rubric_path)
+        return rubric_path
 
     @pytest.mark.asyncio
     async def test_llm_behavior(self, test_agent, verbose_logger, llm_config):
@@ -87,58 +95,66 @@ class BaseRubricTest(ABC):
         4. Generates PDF/YAML reports
         5. Asserts minimum passing threshold and tool usage
         """
-        verbose_logger.info("Testing model: %s", llm_config["name"])
-        verbose_logger.info(
-            "Test prompt: %s", self.TEST_PROMPT[:100] + "..." if len(self.TEST_PROMPT) > 100 else self.TEST_PROMPT
-        )
-
-        # Load rubric and judge panel configuration
-        rubric_path = self.get_rubric_path()
-        verbose_logger.info("Using rubric: %s", rubric_path)
-        rubric = load_rubric_with_includes(str(rubric_path))
-        panel_config = load_judge_panel_config(str(PANEL_PATH))
-
         # Execute the test prompt
         response, tools_executed = await prompt_test_agent(test_agent, self.TEST_PROMPT, verbose_logger)
 
-        # Format the chat session for rubric-kit
-        chat_content = format_chat_session(self.TEST_PROMPT, response, tools_executed)
+        # Verify the tool was called (if specified)
+        check_tool_correctness(tools_executed, self.EXPECTED_TOOL)
 
-        # Evaluate the response with the rubric and judge panel
-        results, total_score, max_score, percentage = await evaluate_with_rubric(
-            rubric, chat_content, panel_config, verbose_logger
+        # Verify the tool input parameters (if specified)
+        check_tool_input_parameters(tools_executed, self.EXPECTED_TOOL_INPUT_PARAMETERS)
+
+        # Format the chat session for rubric-kit
+        report_folder = generate_report_folder(self.REPORT_TITLE, llm_config, TEST_DIR / "reports")
+        chat_session_path = report_folder / "chat_content.txt"
+        chat_content = format_chat_session(self.TEST_PROMPT, response, tools_executed)
+        with open(chat_session_path, "w", encoding="utf-8") as f:
+            f.write(chat_content)
+
+        # Load rubric and env configuration
+        rubric_path = self.get_rubric_path(verbose_logger)
+        rubric_data = load_yaml_with_includes(str(rubric_path))
+        env = os.environ.copy()
+        env["PATH"] = f"{Path(sys.executable).parent}{os.pathsep}{env.get('PATH', '')}"
+
+        # Evaluate the chat session with rubric-kit
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=True, encoding="utf-8") as tmp:
+            yaml.dump(rubric_data, tmp, default_flow_style=False, allow_unicode=True)
+            rubric_tmp_path = tmp.name
+            subprocess.run(
+                [
+                    "rubric-kit",
+                    "evaluate",
+                    "--from-chat-session",
+                    chat_session_path,
+                    "--rubric-file",
+                    rubric_tmp_path,
+                    "--judge-panel-config",
+                    PANEL_PATH,
+                    "--output-file",
+                    report_folder / "results.yaml",
+                ],
+                check=True,
+                env=env,
+            )
+
+        # Export the results to a PDF file
+        subprocess.run(
+            [
+                "rubric-kit",
+                "export",
+                report_folder / "results.yaml",
+                "--format",
+                "pdf",
+                "--output",
+                str(report_folder / "report.pdf"),
+            ],
+            check=True,
+            env=env,
         )
 
-        test_result = "Pass"
-        try:
-            # Verify the critical tool was called (if specified)
-            check_tool_correctness(results, self.EXPECTED_TOOL)
-
-            # Verify tool parameters
-            check_tool_input_parameters(tools_executed, self.EXPECTED_TOOL_INPUT_PARAMETERS)
-
-            # Assert minimum passing threshold
-            check_passing_threshold(results, percentage, self.PASSING_THRESHOLD)
-        except Exception:
-            test_result = "Fail"
-            raise
-        finally:
-            # Generate reports
-            if os.getenv("GENERATE_REPORTS", "false").lower() == "true":
-                generate_report(
-                    results,
-                    rubric,
-                    panel_config,
-                    llm_config,
-                    total_score,
-                    max_score,
-                    percentage,
-                    chat_content,
-                    verbose_logger,
-                    reports_dir=TEST_DIR / "reports",
-                    report_title=f"{test_result} - {self.REPORT_TITLE} ({llm_config.get('name', 'Unknown Model')})",
-                    test_prompt=self.TEST_PROMPT,
-                )
+        # Assert minimum passing threshold
+        check_passing_threshold(report_folder / "results.yaml", self.PASSING_THRESHOLD)
 
 
 def create_rubric_test_class(  # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -149,16 +165,9 @@ def create_rubric_test_class(  # pylint: disable=too-many-arguments,too-many-pos
     expected_tool_input_parameters: dict | None = None,
     passing_threshold: float = PASSING_THRESHOLD,
 ):
-    """Factory function to create a configured LLM test class.
-
+    """
+    Factory function to create a configured Rubric test class.
     This is an alternative to class inherit for simple cases.
-
-    Example:
-        TestMyFeature = create_llm_test_class(
-            test_prompt="What are the upcoming changes?",
-            report_title="My Feature Test",
-            expected_tool="planning__get_upcoming_changes"
-        )
     """
 
     @pytest.mark.skipif(should_skip_llm_matrix_tests(), reason="No LLM configurations available")
