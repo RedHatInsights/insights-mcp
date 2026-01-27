@@ -97,4 +97,6 @@ jobs:
             --title "Release $TAG" \
             --generate-notes \
             insights-mcp-"$TAG".dxt \
-            red-hat-lightspeed-mcp-"$TAG".dxt
+            insights-mcp-"$TAG".mcpb \
+            red-hat-lightspeed-mcp-"$TAG".dxt \
+            red-hat-lightspeed-mcp-"$TAG".mcpb
