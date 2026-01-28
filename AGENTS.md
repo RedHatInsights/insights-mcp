@@ -49,7 +49,7 @@ The project uses a **toolset-based architecture** where each service is implemen
 ### Transport Modes
 
 - **STDIO** (default): Direct process communication for desktop integrations
-- **HTTP**: RESTful API with streaming capabilities  
+- **HTTP**: RESTful API with streaming capabilities
 - **SSE**: Server-sent events for real-time web clients
 
 ## Development Workflow for AI Assistants
@@ -86,7 +86,7 @@ make help  # Show all available make targets
 
 **Example test implementations:**
 - `tests/` - Cross-toolset authentication, API, and pattern tests
-- `src/image_builder_mcp/tests/` - Full test suite with unit and LLM integration tests  
+- `src/image_builder_mcp/tests/` - Full test suite with unit and LLM integration tests
 - `src/vulnerability_mcp/test_prompts.md` - LLM test prompts (pattern used by most toolsets)
 
 ### Running Tests
@@ -98,7 +98,7 @@ make help  # Shows all available targets with descriptions
 
 **Key test commands (see `make help` for complete list):**
 - `make test` - Standard test run
-- `make test-verbose` - With logging output  
+- `make test-verbose` - With logging output
 - `make test-coverage` - With coverage reporting
 - `make install-test-deps` - Install test dependencies
 
@@ -156,7 +156,7 @@ uv add --dev pre-commit  # or pip install pre-commit
 ### Manual Tools
 ```bash
 pylint src/                    # Code analysis
-mypy src/                      # Type checking  
+mypy src/                      # Type checking
 autopep8 --in-place src/       # Code formatting
 ```
 
@@ -180,7 +180,7 @@ The available toolsets are listed in [toolsets.md](toolsets.md).
 
 **Example toolsets (not exhaustive):**
 - **remediations**: System remediation tools
-- **advisor**: System advisory tools  
+- **advisor**: System advisory tools
 - **vulnerability**: Security vulnerability management
 
 **Tool Naming Convention:**
@@ -195,7 +195,7 @@ The available toolsets are listed in [toolsets.md](toolsets.md).
 **Toolset Selection:**
 ```bash
 insights-mcp --toolset=image-builder              # Only image builder tools
-insights-mcp --toolset=vulnerability              # Only vulnerability tools  
+insights-mcp --toolset=vulnerability              # Only vulnerability tools
 insights-mcp --toolset=all                        # All available toolsets (default)
 insights-mcp --toolset=image-builder,vulnerability # Multiple specific toolsets
 ```
@@ -213,7 +213,7 @@ insights-mcp --toolset=image-builder,vulnerability # Multiple specific toolsets
 
 **Authentication variables are documented in [README.md](README.md)**. Development-specific variables:
 
-- `IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK=True` - Disable blueprint watermarks  
+- `IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK=True` - Disable blueprint watermarks
 - `DEEPEVAL_TELEMETRY_OPT_OUT=YES` - Disable telemetry in tests
 
 ## Security Notes for Development
@@ -263,7 +263,7 @@ make help  # Complete list with descriptions
    - Check token expiration (auto-refreshed)
    - Ensure network access to sso.redhat.com
 
-2. **Container Build Issues**  
+2. **Container Build Issues**
    - Check podman/docker installation
    - Verify container runtime permissions
    - Use `make build` for local development
@@ -283,7 +283,7 @@ make help  # Complete list with descriptions
 # Server debug mode
 image-builder-mcp --log-level DEBUG
 
-# Test with verbose output  
+# Test with verbose output
 make test-very-verbose
 
 # Container debug
