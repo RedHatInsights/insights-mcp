@@ -1,5 +1,5 @@
 {
-  "dxt_version": "0.2",
+  "{{MANIFEST_VERSION_FIELD}}": "{{MANIFEST_VERSION_VALUE}}",
   "name": "{{IMAGE_NAME}}",
   "display_name": "{{CONTAINER_BRAND_TITLE_CASE}} MCP",
   "version": "{{VERSION}}",

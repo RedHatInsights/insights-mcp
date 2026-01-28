@@ -42,7 +42,8 @@ TAG ?= v0.0.0-dev
 VERSION ?= $(TAG)
 
 .PHONY: build-claude-extension
-build-claude-extension: ## Build the Claude extension
+build-claude-extension: ## Build the Claude extension (both .dxt and .mcpb formats)
+	# Generate and package DXT format (legacy)
 	sed \
 	  -e "s/{{VERSION}}/$(TAG)/g" \
 	  -e "s/{{IMAGE_NAME}}/$(IMAGE_NAME)/g" \
@@ -50,8 +51,23 @@ build-claude-extension: ## Build the Claude extension
 	  -e "s|{{CONTAINER_BRAND_TITLE_CASE}}|$(CONTAINER_BRAND_TITLE_CASE)|g" \
 	  -e "s|{{CONTAINER_BRAND}}|$(CONTAINER_BRAND)|g" \
 	  -e "s|{{CONTAINER_BRAND_UPPERCASE}}|$(CONTAINER_BRAND_UPPERCASE)|g" \
+	  -e "s/{{MANIFEST_VERSION_FIELD}}/dxt_version/g" \
+	  -e "s/{{MANIFEST_VERSION_VALUE}}/0.2/g" \
 	  claude_desktop/manifest.json.template > claude_desktop/manifest.json
 	zip -j $(IMAGE_NAME)-$(TAG).dxt claude_desktop/manifest.json claude_desktop/icon.png
+	# Generate and package MCPB format (current)
+	sed \
+	  -e "s/{{VERSION}}/$(TAG)/g" \
+	  -e "s/{{IMAGE_NAME}}/$(IMAGE_NAME)/g" \
+	  -e "s|{{CONTAINER_IMAGE}}|$(CONTAINER_IMAGE)|g" \
+	  -e "s|{{CONTAINER_BRAND_TITLE_CASE}}|$(CONTAINER_BRAND_TITLE_CASE)|g" \
+	  -e "s|{{CONTAINER_BRAND}}|$(CONTAINER_BRAND)|g" \
+	  -e "s|{{CONTAINER_BRAND_UPPERCASE}}|$(CONTAINER_BRAND_UPPERCASE)|g" \
+	  -e "s/{{MANIFEST_VERSION_FIELD}}/manifest_version/g" \
+	  -e "s/{{MANIFEST_VERSION_VALUE}}/0.3/g" \
+	  claude_desktop/manifest.json.template > claude_desktop/manifest.json
+	zip -j $(IMAGE_NAME)-$(TAG).mcpb claude_desktop/manifest.json claude_desktop/icon.png
+	# Cleanup
 	rm claude_desktop/manifest.json
 
 build-claude-extension-dev: build ## Build Claude extension for local development

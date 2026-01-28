@@ -8,7 +8,7 @@
 - `get_blueprint_details`: Get blueprint details.
 - `get_composes`: Get a list of all image builds (composes) with their UUIDs and basic status.
 - `get_compose_details`: Get detailed information about a specific image build.
-- `blueprint_compose`: Compose an image from a blueprint UUID created with create_blueprint, get_bl…
+- `blueprint_compose`: Compose an image from a blueprint UUID created with create_blueprint, get_blueprints.
 - `get_distributions`: Get the list of distributions available to build images with.
 - `get_org_id`: Get the organization ID for RHEL image registration/subscription.
 
@@ -26,7 +26,7 @@
 - `explain_cves`: Explain why CVEs are affecting my environment.
 
 ## remediations
-- `create_vulnerability_playbook`: Create remediation playbook for given CVEs on given systems to m…
+- `create_vulnerability_playbook`: Create remediation playbook for given CVEs on given systems to mitigate…
 
 ## advisor
 - `get_active_rules`: Get Active Advisor Recommendations for Account
@@ -54,4 +54,4 @@
 - `get_upcoming_changes`: List upcoming package changes, deprecations, additions and enhancements.
 - `get_appstreams_lifecycle`: Get Application Streams lifecycle information.
 - `get_rhel_lifecycle`: Returns life cycle dates for all RHEL majors and minors.
-- `get_relevant_upcoming_changes`: List relevant upcoming package changes, deprecations, additions and enhancements.
+- `get_relevant_upcoming_changes`: List relevant upcoming package changes, deprecations, additions and enhancements to…
