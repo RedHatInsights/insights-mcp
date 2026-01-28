@@ -206,7 +206,7 @@ insights-mcp --toolset=image-builder,vulnerability # Multiple specific toolsets
 
 - **VSCode**: Uses `.vscode/mcp.json` with secure credential prompting
 - **Cursor**: Uses `~/.cursor/mcp.json`, supports both stdio and HTTP transport
-- **Claude Desktop**: Extension available in releases, installed via `.dxt` file
+- **Claude Desktop**: Extension available in releases, installed via `.mcpb` or `.dxt` file
 - **Generic STDIO**: Use container with environment variables
 
 ## Environment Variables
