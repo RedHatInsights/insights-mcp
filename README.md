@@ -279,7 +279,7 @@ First check the [prerequisites](#prerequisites) section.
 
 For Claude Desktop there is an extension file in the [release section](https://github.com/RedHatInsights/insights-mcp/releases) of the project.
 
-Just download the `red-hat-lightspeed-mcp*.dxt` file and add this in Claude Desktop with
+Just download the `red-hat-lightspeed-mcp*.mcpb` file (or `red-hat-lightspeed-mcp*.dxt` for legacy format) and add this in Claude Desktop with
 
 `Settings -> Extensions -> Advanced Extensions Settings -> Install Extension…`
 
