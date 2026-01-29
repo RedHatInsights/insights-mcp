@@ -7,6 +7,7 @@ from logging import Logger
 from typing import Any
 
 from insights_mcp.client import InsightsClient
+from tools.common import normalise_int as _normalise_int
 
 
 async def get_appstreams_lifecycle(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-branches
@@ -25,19 +26,7 @@ async def get_appstreams_lifecycle(  # pylint: disable=too-many-arguments,too-ma
             raise ValueError(f"Invalid mode '{mode}'. Expected 'raw' or 'streams'.")
 
         # Normalise major to an int (or None) – tolerate string input from MCP clients.
-        if major is None or (isinstance(major, str) and major.strip() == ""):
-            major_int = None
-        elif isinstance(major, int):
-            major_int = major
-        elif isinstance(major, str):
-            # Strip and convert; surface a clean error if it is not an integer string.
-            major_str = major.strip()
-            try:
-                major_int = int(major_str)
-            except ValueError as exc:
-                raise ValueError(f"Parameter 'major' must be an integer (e.g. 8, 9, 10); got '{major}'.") from exc
-        else:
-            raise ValueError(f"Parameter 'major' must be an integer or string; got type {type(major).__name__}.")
+        major_int = _normalise_int("major", major)
 
         params: dict[str, Any] = {}
 
