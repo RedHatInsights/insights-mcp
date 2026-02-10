@@ -57,7 +57,7 @@ def get_default_active_rules_params(**overrides):
 
 
 def get_default_hosts_details_params(rule_id=TEST_RULE_ID, **overrides):
-    """Helper function to get default parameters for get_hosts_details_hitting_a_rule with optional overrides."""
+    """Helper function to get default parameters for get_hosts_details_for_rule with optional overrides."""
     default_params = {
         "rule_id": rule_id,
         "limit": 10,

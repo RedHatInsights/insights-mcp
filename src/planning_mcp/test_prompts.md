@@ -95,13 +95,13 @@ This file contains test prompts to validate the Planning MCP toolset integration
 **Expected Behavior**
 - Should call `planning__get_rhel_lifecycle` with no parameters
 - Should recommend upgrade to newer RHEL minor version, switch support plan and upgrade to newer major version.
-## Tool: get_relevant_upcoming_changes
+## Tool: get_relevant_upcoming
 
 ### Test 1: List all relevant upcoming changes
 **Prompt:** "Show me all relevant upcoming changes for my systems."
 
 **Expected Behavior:**
-- Should call `planning__get_relevant_upcoming_changes` with no parameters (major and minor are optional).
+- Should call `planning__get_relevant_upcoming` with no parameters (major and minor are optional).
 - Should return the full list of upcoming package changes relevant to all systems in the user's inventory.
 - Model should summarize the changes and highlight potentially affected systems.
 
@@ -109,7 +109,7 @@ This file contains test prompts to validate the Planning MCP toolset integration
 **Prompt:** "What relevant upcoming changes affect my RHEL 9 systems?"
 
 **Expected Behavior:**
-- Should call `planning__get_relevant_upcoming_changes` with `major=9`.
+- Should call `planning__get_relevant_upcoming` with `major=9`.
 - Should return changes relevant to systems running RHEL 9.x.
 - Model should summarize the changes and highlight potentially affected systems.
 
@@ -117,6 +117,6 @@ This file contains test prompts to validate the Planning MCP toolset integration
 **Prompt:** "Show me relevant upcoming changes for my RHEL 9.2 systems"
 
 **Expected Behavior:**
-- Should call `planning__get_relevant_upcoming_changes` with `major=9` and `minor=2`.
+- Should call `planning__get_relevant_upcoming` with `major=9` and `minor=2`.
 - Should return changes relevant specifically to systems running RHEL 9.2.
 - Model should explain the changes and list which of the user's RHEL 9.2 systems may be affected.

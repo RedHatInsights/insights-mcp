@@ -105,7 +105,7 @@ from tests.test_patterns import (  # pylint: disable=import-error
             },
         ),
         (
-            "advisor__get_hosts_details_hitting_a_rule",
+            "advisor__get_hosts_details_for_rule",
             "Get detailed information about RHEL systems affected by a specific Advisor Recommendation.",
             {
                 "rule_id": {
@@ -142,7 +142,7 @@ from tests.test_patterns import (  # pylint: disable=import-error
             },
         ),
         (
-            "advisor__get_recommendations_statistics",
+            "advisor__get_recommendations_stats",
             "Show statistics of recommendations across categories and risks.",
             {
                 "groups": {
@@ -170,9 +170,9 @@ from tests.test_patterns import (  # pylint: disable=import-error
         "advisor__get_rule_details",
         "advisor__get_rule_from_node_id",
         "advisor__get_hosts_hitting_a_rule",
-        "advisor__get_hosts_details_hitting_a_rule",
+        "advisor__get_hosts_details_for_rule",
         "advisor__get_rule_by_text_search",
-        "advisor__get_recommendations_statistics",
+        "advisor__get_recommendations_stats",
     ],
 )
 def test_mcp_tools_include_descriptions_and_annotations(

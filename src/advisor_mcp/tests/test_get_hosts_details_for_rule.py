@@ -1,12 +1,12 @@
-"""Test suite for the get_hosts_details_hitting_a_rule() method."""
+"""Test suite for the get_hosts_details_for_rule() method."""
 
 import pytest
 
 from .conftest import TEST_RHEL_VERSION, TEST_RULE_ID, get_default_hosts_details_params, setup_advisor_mock
 
 
-class TestGetHostsDetailsHittingARule:
-    """Test suite for the get_hosts_details_hitting_a_rule() method."""
+class TestGetHostsDetailsForRule:
+    """Test suite for the get_hosts_details_for_rule() method."""
 
     @pytest.fixture
     def mock_api_response(self):
@@ -56,17 +56,17 @@ class TestGetHostsDetailsHittingARule:
         }
 
     @pytest.mark.asyncio
-    async def test_get_hosts_details_hitting_a_rule_valid_rule_id(
+    async def test_get_hosts_details_for_rule_valid_rule_id(
         self, advisor_mcp_server, advisor_mock_client, mock_api_response
     ):
-        """Test get_hosts_details_hitting_a_rule with valid rule ID."""
+        """Test get_hosts_details_for_rule with valid rule ID."""
         rule_id = TEST_RULE_ID
 
         # Setup mocks
         with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method
             params = get_default_hosts_details_params(rule_id=rule_id)
-            result = await advisor_mcp_server.get_hosts_details_hitting_a_rule(**params)
+            result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
             # Verify API was called correctly
             advisor_mock_client.get.assert_called_once_with(
@@ -77,44 +77,44 @@ class TestGetHostsDetailsHittingARule:
             assert result == mock_api_response
 
     @pytest.mark.asyncio
-    async def test_get_hosts_details_hitting_a_rule_with_pagination(
+    async def test_get_hosts_details_for_rule_with_pagination(
         self, advisor_mcp_server, advisor_mock_client, mock_api_response
     ):
-        """Test get_hosts_details_hitting_a_rule with pagination parameters."""
+        """Test get_hosts_details_for_rule with pagination parameters."""
         rule_id = TEST_RULE_ID
 
         # Setup mocks
         with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method with pagination
             params = get_default_hosts_details_params(rule_id=rule_id, limit=10, offset=5)
-            await advisor_mcp_server.get_hosts_details_hitting_a_rule(**params)
+            await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
             # Verify API was called with correct parameters
             expected_params = {"limit": 10, "offset": 5}
             advisor_mock_client.get.assert_called_once_with(f"rule/{rule_id}/systems_detail/", params=expected_params)
 
     @pytest.mark.asyncio
-    async def test_get_hosts_details_hitting_a_rule_with_rhel_version(
+    async def test_get_hosts_details_for_rule_with_rhel_version(
         self, advisor_mcp_server, advisor_mock_client, mock_api_response
     ):
-        """Test get_hosts_details_hitting_a_rule with RHEL version filter."""
+        """Test get_hosts_details_for_rule with RHEL version filter."""
         rule_id = TEST_RULE_ID
 
         # Setup mocks
         with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method with RHEL version
             params = get_default_hosts_details_params(rule_id=rule_id, rhel_version=TEST_RHEL_VERSION)
-            await advisor_mcp_server.get_hosts_details_hitting_a_rule(**params)
+            await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
             # Verify API was called with correct parameters
             expected_params = {"limit": 10, "offset": 0, "rhel_version": TEST_RHEL_VERSION}
             advisor_mock_client.get.assert_called_once_with(f"rule/{rule_id}/systems_detail/", params=expected_params)
 
     @pytest.mark.asyncio
-    async def test_get_hosts_details_hitting_a_rule_with_all_params(
+    async def test_get_hosts_details_for_rule_with_all_params(
         self, advisor_mcp_server, advisor_mock_client, mock_api_response
     ):
-        """Test get_hosts_details_hitting_a_rule with all parameters."""
+        """Test get_hosts_details_for_rule with all parameters."""
         rule_id = TEST_RULE_ID
 
         # Setup mocks
@@ -123,37 +123,37 @@ class TestGetHostsDetailsHittingARule:
             params = get_default_hosts_details_params(
                 rule_id=rule_id, limit=50, offset=20, rhel_version=TEST_RHEL_VERSION
             )
-            await advisor_mcp_server.get_hosts_details_hitting_a_rule(**params)
+            await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
             # Verify API was called with correct parameters
             expected_params = {"limit": 50, "offset": 20, "rhel_version": TEST_RHEL_VERSION}
             advisor_mock_client.get.assert_called_once_with(f"rule/{rule_id}/systems_detail/", params=expected_params)
 
     @pytest.mark.asyncio
-    async def test_get_hosts_details_hitting_a_rule_string_params(
+    async def test_get_hosts_details_for_rule_string_params(
         self, advisor_mcp_server, advisor_mock_client, mock_api_response
     ):
-        """Test get_hosts_details_hitting_a_rule with string parameters."""
+        """Test get_hosts_details_for_rule with string parameters."""
         rule_id = TEST_RULE_ID
 
         # Setup mocks
         with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method with string parameters
             params = get_default_hosts_details_params(rule_id=rule_id, limit="25", offset="10")
-            await advisor_mcp_server.get_hosts_details_hitting_a_rule(**params)
+            await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
             # Verify parameters are correctly parsed
             expected_params = {"limit": "25", "offset": "10"}
             advisor_mock_client.get.assert_called_once_with(f"rule/{rule_id}/systems_detail/", params=expected_params)
 
     @pytest.mark.asyncio
-    async def test_get_hosts_details_hitting_a_rule_invalid_rhel_version(self, advisor_mcp_server):
-        """Test get_hosts_details_hitting_a_rule with invalid RHEL version."""
+    async def test_get_hosts_details_for_rule_invalid_rhel_version(self, advisor_mcp_server):
+        """Test get_hosts_details_for_rule with invalid RHEL version."""
         rule_id = TEST_RULE_ID
 
         # Call the method with invalid RHEL version
         params = get_default_hosts_details_params(rule_id=rule_id, rhel_version="invalid.version")
-        result = await advisor_mcp_server.get_hosts_details_hitting_a_rule(**params)
+        result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
         # Should return error message
         assert "Error: Invalid RHEL version(s) 'invalid.version'" in result
@@ -167,47 +167,47 @@ class TestGetHostsDetailsHittingARule:
         ],
     )
     @pytest.mark.asyncio
-    async def test_get_hosts_details_hitting_a_rule_invalid_rule_id(self, advisor_mcp_server, rule_id, expected_error):
-        """Test get_hosts_details_hitting_a_rule with various invalid rule IDs."""
+    async def test_get_hosts_details_for_rule_invalid_rule_id(self, advisor_mcp_server, rule_id, expected_error):
+        """Test get_hosts_details_for_rule with various invalid rule IDs."""
         params = get_default_hosts_details_params(rule_id=rule_id)
-        result = await advisor_mcp_server.get_hosts_details_hitting_a_rule(**params)
+        result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
         assert result == expected_error
 
     @pytest.mark.asyncio
-    async def test_get_hosts_details_hitting_a_rule_api_error(self, advisor_mcp_server, advisor_mock_client):
-        """Test get_hosts_details_hitting_a_rule when API returns error."""
+    async def test_get_hosts_details_for_rule_api_error(self, advisor_mcp_server, advisor_mock_client):
+        """Test get_hosts_details_for_rule when API returns error."""
         rule_id = TEST_RULE_ID
 
         # Setup mocks
         with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
             # Call the method
             params = get_default_hosts_details_params(rule_id=rule_id)
-            result = await advisor_mcp_server.get_hosts_details_hitting_a_rule(**params)
+            result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
             # Should return error message
             assert f"Failed to retrieve detailed system information for recommendation {rule_id}:" in result
             assert "API Error" in result
 
     @pytest.mark.asyncio
-    async def test_get_hosts_details_hitting_a_rule_empty_response(self, advisor_mcp_server, advisor_mock_client):
-        """Test get_hosts_details_hitting_a_rule when API returns empty response."""
+    async def test_get_hosts_details_for_rule_empty_response(self, advisor_mcp_server, advisor_mock_client):
+        """Test get_hosts_details_for_rule when API returns empty response."""
         rule_id = TEST_RULE_ID
 
         # Setup mocks
         with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, None):
             # Call the method
             params = get_default_hosts_details_params(rule_id=rule_id)
-            result = await advisor_mcp_server.get_hosts_details_hitting_a_rule(**params)
+            result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
             # Should return None when API returns None
             assert result is None
 
     @pytest.mark.asyncio
-    async def test_get_hosts_details_hitting_a_rule_whitespace_rule_id(self, advisor_mcp_server):
-        """Test get_hosts_details_hitting_a_rule with whitespace-only rule ID."""
+    async def test_get_hosts_details_for_rule_whitespace_rule_id(self, advisor_mcp_server):
+        """Test get_hosts_details_for_rule with whitespace-only rule ID."""
         # Call the method with whitespace-only rule_id
         params = get_default_hosts_details_params(rule_id="   ")
-        result = await advisor_mcp_server.get_hosts_details_hitting_a_rule(**params)
+        result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
         # Should return error message
         assert result == "Error: Recommendation ID must be a non-empty string."
@@ -221,27 +221,27 @@ class TestGetHostsDetailsHittingARule:
         ],
     )
     @pytest.mark.asyncio
-    async def test_get_hosts_details_hitting_a_rule_error_handling(
+    async def test_get_hosts_details_for_rule_error_handling(
         self, advisor_mcp_server, advisor_mock_client, exception, error_message
     ):
-        """Test get_hosts_details_hitting_a_rule error handling for various exception types."""
+        """Test get_hosts_details_for_rule error handling for various exception types."""
         rule_id = TEST_RULE_ID
 
         # Setup mocks with exception
         with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, side_effect=exception):
             # Call the method
             params = get_default_hosts_details_params(rule_id=rule_id)
-            result = await advisor_mcp_server.get_hosts_details_hitting_a_rule(**params)
+            result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
             # Should return error message
             assert f"Failed to retrieve detailed system information for recommendation {rule_id}:" in result
             assert error_message in result
 
     @pytest.mark.asyncio
-    async def test_get_hosts_details_hitting_a_rule_valid_rhel_versions(
+    async def test_get_hosts_details_for_rule_valid_rhel_versions(
         self, advisor_mcp_server, advisor_mock_client, mock_api_response
     ):
-        """Test get_hosts_details_hitting_a_rule with various valid RHEL versions."""
+        """Test get_hosts_details_for_rule with various valid RHEL versions."""
         rule_id = TEST_RULE_ID
         valid_versions = ["6.0", "7.0", "8.0", "9.4", "10.0", "8.10", "9.8"]
 
@@ -253,7 +253,7 @@ class TestGetHostsDetailsHittingARule:
             with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
                 # Call the method with valid RHEL version
                 params = get_default_hosts_details_params(rule_id=rule_id, rhel_version=version)
-                result = await advisor_mcp_server.get_hosts_details_hitting_a_rule(**params)
+                result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
                 # Verify API was called with correct parameters
                 expected_params = {"limit": 10, "offset": 0, "rhel_version": version}
@@ -265,10 +265,10 @@ class TestGetHostsDetailsHittingARule:
                 assert result == mock_api_response
 
     @pytest.mark.asyncio
-    async def test_get_hosts_details_hitting_a_rule_with_multiple_rhel_versions(
+    async def test_get_hosts_details_for_rule_with_multiple_rhel_versions(
         self, advisor_mcp_server, advisor_mock_client, mock_api_response
     ):
-        """Test get_hosts_details_hitting_a_rule with multiple RHEL versions."""
+        """Test get_hosts_details_for_rule with multiple RHEL versions."""
         rule_id = TEST_RULE_ID
         rhel_versions = ["9.3", "9.4", "9.5"]
 
@@ -276,7 +276,7 @@ class TestGetHostsDetailsHittingARule:
         with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method with list of RHEL versions
             params = get_default_hosts_details_params(rule_id=rule_id, rhel_version=rhel_versions)
-            result = await advisor_mcp_server.get_hosts_details_hitting_a_rule(**params)
+            result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
             # Verify API was called correctly with comma-separated versions
             expected_params = {"limit": 10, "offset": 0, "rhel_version": "9.3,9.4,9.5"}
@@ -286,10 +286,10 @@ class TestGetHostsDetailsHittingARule:
             assert result == mock_api_response
 
     @pytest.mark.asyncio
-    async def test_get_hosts_details_hitting_a_rule_with_multiple_rhel_versions_string(
+    async def test_get_hosts_details_for_rule_with_multiple_rhel_versions_string(
         self, advisor_mcp_server, advisor_mock_client, mock_api_response
     ):
-        """Test get_hosts_details_hitting_a_rule with multiple RHEL versions as comma-separated string."""
+        """Test get_hosts_details_for_rule with multiple RHEL versions as comma-separated string."""
         rule_id = TEST_RULE_ID
         rhel_versions = "9.3,9.4,9.5"
 
@@ -297,7 +297,7 @@ class TestGetHostsDetailsHittingARule:
         with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method with comma-separated RHEL versions
             params = get_default_hosts_details_params(rule_id=rule_id, rhel_version=rhel_versions)
-            result = await advisor_mcp_server.get_hosts_details_hitting_a_rule(**params)
+            result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
             # Verify API was called correctly
             expected_params = {"limit": 10, "offset": 0, "rhel_version": "9.3,9.4,9.5"}
@@ -307,14 +307,14 @@ class TestGetHostsDetailsHittingARule:
             assert result == mock_api_response
 
     @pytest.mark.asyncio
-    async def test_get_hosts_details_hitting_a_rule_multiple_invalid_rhel_versions(self, advisor_mcp_server):
-        """Test get_hosts_details_hitting_a_rule with multiple invalid RHEL versions."""
+    async def test_get_hosts_details_for_rule_multiple_invalid_rhel_versions(self, advisor_mcp_server):
+        """Test get_hosts_details_for_rule with multiple invalid RHEL versions."""
         rule_id = TEST_RULE_ID
         invalid_versions = ["5.9", "11.0", "9.99"]
 
         # Call the method with invalid RHEL versions
         params = get_default_hosts_details_params(rule_id=rule_id, rhel_version=invalid_versions)
-        result = await advisor_mcp_server.get_hosts_details_hitting_a_rule(**params)
+        result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
         # Should return error message with all invalid versions
         assert "Error: Invalid RHEL version(s) '5.9, 11.0, 9.99'" in result

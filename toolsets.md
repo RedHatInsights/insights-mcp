@@ -26,16 +26,16 @@
 - `explain_cves`: Explain why CVEs are affecting my environment.
 
 ## remediations
-- `create_vulnerability_playbook`: Create remediation playbook for given CVEs on given systems to mitigate…
+- `create_vuln_playbook`: Create remediation playbook for given CVEs on given systems to mitigate vulnerabilities.
 
 ## advisor
 - `get_active_rules`: Get Active Advisor Recommendations for Account
 - `get_rule_from_node_id`: Find Advisor Recommendations using Knowledge Base solution ID or article ID
 - `get_rule_details`: Get Detailed Advisor Recommendation Information
 - `get_hosts_hitting_a_rule`: Get Systems Affected by Advisor Recommendation
-- `get_hosts_details_hitting_a_rule`: Get Detailed System Information for Advisor Recommendation
+- `get_hosts_details_for_rule`: Get Detailed System Information for Advisor Recommendation
 - `get_rule_by_text_search`: Find Advisor Recommendations by Text Search
-- `get_recommendations_statistics`: Get Statistics of Recommendations Across Categories and Risks
+- `get_recommendations_stats`: Get Statistics of Recommendations Across Categories and Risks
 
 ## inventory
 - `list_hosts`: List hosts with filtering and sorting options.
@@ -54,4 +54,4 @@
 - `get_upcoming_changes`: List upcoming package changes, deprecations, additions and enhancements.
 - `get_appstreams_lifecycle`: Get Application Streams lifecycle information.
 - `get_rhel_lifecycle`: Returns life cycle dates for all RHEL majors and minors.
-- `get_relevant_upcoming_changes`: List relevant upcoming package changes, deprecations, additions and enhancements to…
+- `get_relevant_upcoming`: List relevant upcoming package changes, deprecations, additions and enhancements to user's…
