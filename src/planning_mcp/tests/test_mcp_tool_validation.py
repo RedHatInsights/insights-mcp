@@ -34,8 +34,8 @@ from tests.test_patterns import (
             {},
         ),
         (
-            "planning__get_relevant_upcoming_changes",
-            "List relevant upcoming package changes, deprecations, additions and enhancements to user's systems .",
+            "planning__get_relevant_upcoming",
+            "List relevant upcoming package changes, deprecations, additions and enhancements to user's systems.",
             {},
         ),
     ],
@@ -43,7 +43,7 @@ from tests.test_patterns import (
         "planning__get_upcoming_changes",
         "planning__get_appstreams_lifecycle",
         "planning__get_rhel_lifecycle",
-        "planning__get_relevant_upcoming_changes",
+        "planning__get_relevant_upcoming",
     ],
 )
 def test_mcp_tools_include_descriptions_and_annotations(
@@ -64,7 +64,7 @@ def test_mcp_tools_include_descriptions_and_annotations(
         "planning__get_upcoming_changes",
         "planning__get_appstreams_lifecycle",
         "planning__get_rhel_lifecycle",
-        "planning__get_relevant_upcoming_changes",
+        "planning__get_relevant_upcoming",
     ],
 )
 def test_transport_types_with_planning_tools(mcp_tools, request, tool_name: str):
@@ -79,7 +79,7 @@ def test_transport_types_with_planning_tools(mcp_tools, request, tool_name: str)
         "planning__get_upcoming_changes",
         "planning__get_appstreams_lifecycle",
         "planning__get_rhel_lifecycle",
-        "planning__get_relevant_upcoming_changes",
+        "planning__get_relevant_upcoming",
     ],
 )
 def test_stdio_transport_with_planning_tools(mcp_tools, tool_name: str):

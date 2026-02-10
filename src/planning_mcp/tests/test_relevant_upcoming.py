@@ -1,4 +1,4 @@
-"""Test suite for the get_relevant_upcoming_changes() method."""
+"""Test suite for the get_relevant_upcoming() method."""
 # pylint: disable=duplicate-code
 
 import json
@@ -11,8 +11,8 @@ from tests.conftest import (
 )
 
 
-class TestPlanningGetRelevantUpcomingChanges:
-    """Test suite for the get_relevant_upcoming_changes() method."""
+class TestPlanningGetRelevantUpcoming:
+    """Test suite for the get_relevant_upcoming() method."""
 
     @pytest.fixture
     def mock_upcoming_response(self):
@@ -116,18 +116,18 @@ class TestPlanningGetRelevantUpcomingChanges:
         }
 
     @pytest.mark.asyncio
-    async def test_get_relevant_upcoming_changes_basic_functionality(
+    async def test_get_relevant_upcoming_basic_functionality(
         self,
         planning_mcp_server,
         mock_upcoming_response,
     ):
-        """Test basic functionality of get_relevant_upcoming_changes method."""
+        """Test basic functionality of get_relevant_upcoming method."""
         # Patch underlying Insights client used by Planning MCP
         with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
             mock_get.return_value = mock_upcoming_response
 
             # Call the method
-            result = await planning_mcp_server.get_relevant_upcoming_changes()
+            result = await planning_mcp_server.get_relevant_upcoming()
 
             # Backend endpoint should be invoked exactly once with no parameters
             mock_get.assert_called_once_with("relevant/upcoming-changes", params=None)
@@ -171,17 +171,17 @@ class TestPlanningGetRelevantUpcomingChanges:
             assert "trainingTicket" in details
 
     @pytest.mark.asyncio
-    async def test_get_relevant_upcoming_changes_with_major_version(
+    async def test_get_relevant_upcoming_with_major_version(
         self,
         planning_mcp_server,
         mock_upcoming_response,
     ):
-        """Test get_relevant_upcoming_changes with major version filter."""
+        """Test get_relevant_upcoming with major version filter."""
         with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
             mock_get.return_value = mock_upcoming_response
 
             # Call with major version
-            result = await planning_mcp_server.get_relevant_upcoming_changes(major=9)
+            result = await planning_mcp_server.get_relevant_upcoming(major=9)
 
             # Backend should receive the major parameter
             mock_get.assert_called_once_with("relevant/upcoming-changes", params={"major": 9})
@@ -192,17 +192,17 @@ class TestPlanningGetRelevantUpcomingChanges:
             assert "data" in parsed
 
     @pytest.mark.asyncio
-    async def test_get_relevant_upcoming_changes_with_major_and_minor(
+    async def test_get_relevant_upcoming_with_major_and_minor(
         self,
         planning_mcp_server,
         mock_upcoming_response,
     ):
-        """Test get_relevant_upcoming_changes with major and minor version filters."""
+        """Test get_relevant_upcoming with major and minor version filters."""
         with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
             mock_get.return_value = mock_upcoming_response
 
             # Call with both major and minor versions
-            result = await planning_mcp_server.get_relevant_upcoming_changes(major=9, minor=2)
+            result = await planning_mcp_server.get_relevant_upcoming(major=9, minor=2)
 
             # Backend should receive both parameters
             mock_get.assert_called_once_with("relevant/upcoming-changes", params={"major": 9, "minor": 2})
@@ -213,24 +213,24 @@ class TestPlanningGetRelevantUpcomingChanges:
             assert "data" in parsed
 
     @pytest.mark.asyncio
-    async def test_get_relevant_upcoming_changes_minor_without_major_raises_error(
+    async def test_get_relevant_upcoming_minor_without_major_raises_error(
         self,
         planning_mcp_server,
     ):
         """Test that providing minor without major returns an error."""
-        result = await planning_mcp_server.get_relevant_upcoming_changes(minor="2")
+        result = await planning_mcp_server.get_relevant_upcoming(minor="2")
 
         # The error should be returned as a string, not raised
         assert "Error: API Error" in result
         assert "The 'minor' parameter requires 'major' to be specified" in result
 
     @pytest.mark.asyncio
-    async def test_get_relevant_upcoming_changes_api_error(self, planning_mcp_server):
-        """Test get_relevant_upcoming_changes when backend raises an API error."""
+    async def test_get_relevant_upcoming_api_error(self, planning_mcp_server):
+        """Test get_relevant_upcoming when backend raises an API error."""
         with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
             mock_get.side_effect = Exception("Backend unavailable")
 
-            result = await planning_mcp_server.get_relevant_upcoming_changes()
+            result = await planning_mcp_server.get_relevant_upcoming()
 
             # Reuse common helper to validate error formatting
             assert_api_error_result(result)

@@ -187,6 +187,8 @@ To start the integration create a file `~/.cursor/mcp.json` with
 }
 ```
 
+If you see the error `Some tools have naming issues and may be filtered out.`, see [Known Issues](#known-issues).
+
 #### Option 3: Manual Streamable HTTP installation (advanced)
 
 start the server:
@@ -401,6 +403,28 @@ Insights-branded images are deprecated but still available for a while but might
  * `ghcr.io/redhatinsights/insights-mcp:latest`
  * `quay.io/redhat-services-prod/insights-management-tenant/insights-mcp/insights-mcp:latest`
 
+
+## Known Issues
+
+### Cursor
+
+When using Cursor with the MCP server, you might encounter the following error:
+
+```
+Some tools have naming issues and may be filtered out.
+
+… exceeds 60 characters…
+```
+
+Please rename your MCP server name in the MCP configuration file (`mcp.json`) to a shorter name.
+
+
+```
+{
+  "mcpServers": {
+    "red-hat-lightspeed-mcp-this-will-be-too-long": { # <--- rename this
+…
+```
 
 ## Disclaimer
 

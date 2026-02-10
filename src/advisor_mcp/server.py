@@ -100,9 +100,9 @@ class AdvisorMCP(InsightsMCP):
                     openWorldHint=False,
                 ),
             },
-            "get_hosts_details_hitting_a_rule": {
-                "function": self.get_hosts_details_hitting_a_rule,
-                "tags": ("insights", "advisor", "recommendations", "systems", "details", "impactted", "hosts"),
+            "get_hosts_details_for_rule": {
+                "function": self.get_hosts_details_for_rule,
+                "tags": ("insights", "advisor", "recommendations", "systems", "details", "impacted", "hosts"),
                 "title": "Get Detailed System Information for Advisor Recommendation",
                 "annotations": ToolAnnotations(
                     title="Get Detailed System Information for Advisor Recommendation",
@@ -124,8 +124,8 @@ class AdvisorMCP(InsightsMCP):
                     openWorldHint=False,
                 ),
             },
-            "get_recommendations_statistics": {
-                "function": self.get_recommendations_statistics,
+            "get_recommendations_stats": {
+                "function": self.get_recommendations_stats,
                 "tags": ("insights", "advisor", "statistics", "risk", "categories", "overview"),
                 "title": "Get Statistics of Recommendations Across Categories and Risks",
                 "annotations": ToolAnnotations(
@@ -469,7 +469,7 @@ class AdvisorMCP(InsightsMCP):
             self.logger.error("Error: Failed to retrieve systems for recommendation %s: %s", rule_id, str(e))
             return f"Error: Failed to retrieve systems for recommendation {rule_id}: {str(e)}"
 
-    async def get_hosts_details_hitting_a_rule(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+    async def get_hosts_details_for_rule(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
         self,
         *,
         rule_id: Annotated[
@@ -620,7 +620,7 @@ class AdvisorMCP(InsightsMCP):
             self.logger.error("Error: Failed to retrieve recommendations for text search '%s': %s", text, str(e))
             return f"Error: Failed to retrieve recommendations for text search {text}: {str(e)}"
 
-    async def get_recommendations_statistics(
+    async def get_recommendations_stats(
         self,
         *,
         groups: Annotated[

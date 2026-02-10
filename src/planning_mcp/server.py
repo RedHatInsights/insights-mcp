@@ -76,7 +76,7 @@ class PlanningMCP(InsightsMCP):
             self.get_upcoming_changes,
             self.get_appstreams_lifecycle,
             self.get_rhel_lifecycle,
-            self.get_relevant_upcoming_changes,
+            self.get_relevant_upcoming,
             # Future tools to add here:
             # self.get_relevant_rhel_lifecycle,
             # self.get_relevant_appstreams,
@@ -273,7 +273,7 @@ class PlanningMCP(InsightsMCP):
         """
         return await _get_rhel_lifecycle(self.insights_client, self.logger)
 
-    async def get_relevant_upcoming_changes(
+    async def get_relevant_upcoming(
         self,
         major: Annotated[
             str,
@@ -293,7 +293,7 @@ class PlanningMCP(InsightsMCP):
             ),
         ] = "",
     ) -> str:
-        """List relevant upcoming package changes, deprecations, additions and enhancements to user's systems .
+        """List relevant upcoming package changes, deprecations, additions and enhancements to user's systems.
 
         🟢 CALL IMMEDIATELY - No information gathering required.
 

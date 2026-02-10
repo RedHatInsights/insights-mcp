@@ -26,7 +26,7 @@ mcp = InsightsMCP(
 
 
 @mcp.tool(annotations={"readOnlyHint": False})
-async def create_vulnerability_playbook(playbook_name: str, cves: list[str], uuids: list[str]) -> dict[str, Any] | str:
+async def create_vuln_playbook(playbook_name: str, cves: list[str], uuids: list[str]) -> dict[str, Any] | str:
     """Create remediation playbook for given CVEs on given systems to mitigate vulnerabilities.
 
     Don't process the playbook. You MUST return the YAML as is.
