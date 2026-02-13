@@ -259,8 +259,8 @@ make help  # Complete list with descriptions
 ### Common Issues
 
 1. **Authentication Failures**
-   - Verify service account credentials
-   - Check token expiration (auto-refreshed)
+   - Verify service account credentials or JWT Bearer token
+   - Check token expiration (auto-refreshed for service accounts; Bearer tokens must be valid)
    - Ensure network access to sso.redhat.com
 
 2. **Container Build Issues**
