@@ -21,6 +21,11 @@ Red Hat Lightspeed Model Context Protocol ([MCP](https://modelcontextprotocol.io
 
 **Note**: Authentication is only required for accessing Red Hat Lightspeed APIs. The MCP server itself does not require authentication.
 
+There are two ways to authenticate:
+
+1. **Service Account** (client_id + client_secret) — create a service account and provide the credentials via environment variables or HTTP headers.
+2. **JWT Bearer Token** — provide a pre-existing JWT token via the `Authorization: Bearer <token>` HTTP header (SSE/HTTP transports only).
+
 #### Service Account Setup
 
 1. Go to https://console.redhat.com → Click Settings (⚙️ Gear Icon) →  "Service Accounts"
@@ -63,7 +68,7 @@ Your service account will inherit all roles from the assigned group.
 
 If you start this MCP server locally (with `podman` or `docker`) make sure the container is not exposed to the internet. In this scenario it's probably fine to use `LIGHTSPEED_CLIENT_ID` and `LIGHTSPEED_CLIENT_SECRET` although your MCP Client (e.g. VSCode, Cursor, etc.) can get your `LIGHTSPEED_CLIENT_ID` and `LIGHTSPEED_CLIENT_SECRET`.
 
-For a deployment where you connect to this MCP server from a different machine, you should consider that `LIGHTSPEED_CLIENT_ID` and `LIGHTSPEED_CLIENT_SECRET` are transferred to the MCP server and you are trusting the remote MCP server not to leak them.
+For a deployment where you connect to this MCP server from a different machine, you should consider that `LIGHTSPEED_CLIENT_ID` and `LIGHTSPEED_CLIENT_SECRET` (or your JWT Bearer token) are transferred to the MCP server and you are trusting the remote MCP server not to leak them.
 
 In both cases if you are in doubt, please disable/remove the `LIGHTSPEED_CLIENT_ID` and `LIGHTSPEED_CLIENT_SECRET` from your account after you are done using the MCP server.
 
@@ -197,7 +202,7 @@ start the server:
 podman run --net host --rm ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest http
 ```
 
-then integrate:
+then integrate using **service account credentials**:
 
 ```
 {
@@ -208,6 +213,22 @@ then integrate:
             "headers": {
                 "lightspeed-client-id": "",
                 "lightspeed-client-secret": ""
+            }
+        }
+    }
+}
+```
+
+or alternatively using a **JWT Bearer token**:
+
+```
+{
+    "mcpServers": {
+        "lightspeed-mcp": {
+            "type": "http",
+            "url": "http://localhost:8000/mcp",
+            "headers": {
+                "Authorization": "Bearer <YOUR_JWT_TOKEN>"
             }
         }
     }
@@ -258,7 +279,7 @@ podman run --net host --rm ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest 
 >   podman run -p 8000:8000 --rm ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest http --host 0.0.0.0
 > ```
 
-then integrate:
+then integrate using **service account credentials**:
 
 ```
 {
@@ -269,6 +290,22 @@ then integrate:
             "headers": {
                 "lightspeed-client-id": "<YOUR_CLIENT_ID>",
                 "lightspeed-client-secret": "<YOUR_CLIENT_SECRET>"
+            }
+        }
+    }
+}
+```
+
+or alternatively using a **JWT Bearer token**:
+
+```
+{
+    ...
+    "mcpServers": {
+        "lightspeed-mcp": {
+            "httpUrl": "http://localhost:8000/mcp",
+            "headers": {
+                "Authorization": "Bearer <YOUR_JWT_TOKEN>"
             }
         }
     }
