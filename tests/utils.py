@@ -153,9 +153,9 @@ def _server_worker(
             if toolset is not None:
                 base_args.extend(["--toolset", toolset])
 
-            # Add readonly argument if specified
-            if readonly:
-                base_args.append("--readonly")
+            # Add all-tools argument when full access is requested (default is read-only)
+            if not readonly:
+                base_args.append("--all-tools")
 
             # Add transport-specific arguments
             if transport == "stdio":

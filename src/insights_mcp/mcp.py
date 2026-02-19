@@ -115,7 +115,7 @@ class InsightsMCP(FastMCP):
         """
         raise NotImplementedError("MCP server does not implement register_tools()")
 
-    def remove_non_readonly_tools(self, readonly: bool = False):
+    def remove_non_readonly_tools(self, readonly: bool = True):
         """Remove tools with readOnlyHint: False from the MCP server.
 
         Args:

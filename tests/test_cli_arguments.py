@@ -32,8 +32,8 @@ def get_mcp_tools_with_toolset(transport: str, toolset: str | None = None, reado
             args = ["-m", "insights_mcp.server"]
             if toolset is not None:
                 args.extend(["--toolset", toolset])
-            if readonly:
-                args.append("--readonly")
+            if not readonly:
+                args.append("--all-tools")
             args.append("stdio")
             client = BasicMCPClient("python", args=args)
         else:
