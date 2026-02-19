@@ -27,7 +27,7 @@ repos:
           - PyYAML
           - types-PyYAML
           - types-requests
-          - fastmcp
+          - fastmcp>=2.13.3,<2.14
           - requests
           - PyJWT
           - deepeval
@@ -58,7 +58,7 @@ repos:
           - types-PyYAML
           - types-requests
           - pytest
-          - fastmcp
+          - fastmcp>=2.13.3,<2.14
           - requests
           - PyJWT
           - deepeval
