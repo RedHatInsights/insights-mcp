@@ -52,8 +52,8 @@ def _format_server_tools(
     already been registered.
     """
 
-    tools = asyncio.run(server.get_tools())
-    for tool in tools.values():
+    tools = asyncio.run(server.list_tools())
+    for tool in tools:
         for attr_name in ("description", "title"):
             value = getattr(tool, attr_name, None)
             if not value or not isinstance(value, str):
@@ -217,7 +217,7 @@ def print_toolset_help_and_exit(args: argparse.Namespace):
             # Get and display tools
             tools = None
             try:
-                tools = asyncio.run(mcp.get_tools())
+                tools = asyncio.run(mcp.list_tools())
             except Exception:  # pylint: disable=broad-exception-caught
                 print("  Error retrieving tools")
                 print()
@@ -228,7 +228,7 @@ def print_toolset_help_and_exit(args: argparse.Namespace):
                 print()
                 continue
 
-            for tool_name, tool in tools.items():
+            for tool in tools:
                 title = getattr(tool, "title", None)
                 description = getattr(tool, "description", None)
 
@@ -241,9 +241,9 @@ def print_toolset_help_and_exit(args: argparse.Namespace):
 
                 # Format: tool_name or tool_name: title
                 if title_part:
-                    display_text = f"`{tool_name}`: {title_part}"
+                    display_text = f"`{tool.name}`: {title_part}"
                 else:
-                    display_text = f"`{tool_name}`"
+                    display_text = f"`{tool.name}`"
 
                 # Truncate very long lines
                 if len(display_text) > 120:

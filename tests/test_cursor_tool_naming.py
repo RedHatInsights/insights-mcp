@@ -40,15 +40,15 @@ def _collect_mounted_tool_names() -> list[tuple[str, str, int]]:
             continue
 
         try:
-            tools = asyncio.run(mcp.get_tools())
+            tools = asyncio.run(mcp.list_tools())
         except Exception:  # pylint: disable=broad-exception-caught
             continue
 
         if not tools:
             continue
 
-        for tool_name, _ in tools.items():
-            full_tool_name = f"{prefix}{tool_name}"
+        for tool in tools:
+            full_tool_name = f"{prefix}{tool.name}"
             combined = f"{CURSOR_SERVER_NAME}{full_tool_name}"
             results.append((toolset_name, full_tool_name, len(combined)))
 

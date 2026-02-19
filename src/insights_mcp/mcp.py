@@ -124,10 +124,10 @@ class InsightsMCP(FastMCP):
         if not readonly:
             return
 
-        tools = asyncio.run(self._tool_manager.get_tools())
+        tools = asyncio.run(self.list_tools())
         tools_to_remove = [
-            tool_name
-            for tool_name, tool in tools.items()
+            tool.name
+            for tool in tools
             if (
                 hasattr(tool, "annotations")
                 and tool.annotations
