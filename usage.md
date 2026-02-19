@@ -1,6 +1,6 @@
 ```
 usage: insights-mcp [-h] [--debug] [--toolset TOOLSET] [--toolset-help]
-                    [--readonly]
+                    [--readonly] [--all-tools]
                     {stdio,sse,http} ...
 
 Red Hat Insights MCP server.
@@ -19,5 +19,6 @@ options:
                      remediations, advisor, inventory, content-sources, rbac,
                      planning (default: all)
   --toolset-help     Show toolset details of all toolsets
-  --readonly         Only register read-only tools
+  --readonly         Only register read-only tools (default)
+  --all-tools        Register all tools including write tools
 ```

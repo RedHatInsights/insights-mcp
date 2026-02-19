@@ -4,7 +4,7 @@ _(formerly known as Insights MCP)_
 Red Hat Lightspeed Model Context Protocol ([MCP](https://modelcontextprotocol.io)) server is a lightweight, self-hosted solution that connects LLM-based agents - such as Claude Desktop and other MCP-compatible tools - to Red Hat Lightspeed services.
 
 ## Features
- * Supports read-only operations: All toolsets can be restricted using the `--read-only` flag or via RBAC permissions.
+ * Supports read-only operations: The server runs in read-only mode by default. Use `--all-tools` to enable write tools (e.g. create blueprints, run composes). RBAC permissions can also restrict access.
  * Provides natural language prompts: provides an ability to use natural language for querying Red Hat Lightspeed services
 
 ## Supported Lightspeed Services

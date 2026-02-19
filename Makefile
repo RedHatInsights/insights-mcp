@@ -153,18 +153,24 @@ run-sse: build ## Run the MCP server with SSE transport
 	  --env INSIGHTS_SSO_BASE_URL \
 	  --name $(CONTAINER_BRAND)-mcp-sse localhost/$(CONTAINER_BRAND)-mcp:latest sse
 
-.PHONY: run-http
-run-http: build ## Run the MCP server with HTTP streaming transport
-	# add firewall rules for fedora
-	# !! ONLY set INSIGHTS_PROXY_URL, INSIGHTS_BASE_URL and INSIGHTS_SSO_BASE_URL
-	# environment variables in case you really need to
-	# contact another server than production
-	podman run --rm --network=host \
-	  --env INSIGHTS_PROXY_URL \
-	  --env INSIGHTS_BASE_URL \
-	  --env INSIGHTS_SSO_BASE_URL \
-	  --name $(CONTAINER_BRAND)-mcp-http \
-	   localhost/$(CONTAINER_BRAND)-mcp:latest http
+define run_http_cmd
+# add firewall rules for fedora
+# !! ONLY set INSIGHTS_PROXY_URL, INSIGHTS_BASE_URL and INSIGHTS_SSO_BASE_URL
+# environment variables in case you really need to
+# contact another server than production
+podman run --rm --network=host \
+  --env INSIGHTS_PROXY_URL \
+  --env INSIGHTS_BASE_URL \
+  --env INSIGHTS_SSO_BASE_URL \
+  --name $(CONTAINER_BRAND)-mcp-http \
+  localhost/$(CONTAINER_BRAND)-mcp:latest $(1) http
+endef
+
+.PHONY: run-http run-http-all-tools
+run-http: build ## Run the MCP server with HTTP transport (read-only)
+	$(call run_http_cmd,)
+run-http-all-tools: build ## Run the MCP server with HTTP transport (all tools)
+	$(call run_http_cmd,--all-tools)
 
 # just an example command
 # doesn't really make sense

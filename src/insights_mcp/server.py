@@ -157,7 +157,7 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
         self.mcp_transport = mcp_transport
         self.token_endpoint = token_endpoint
 
-    def register_mcps(self, allowed_mcps: list[str], readonly: bool = False):
+    def register_mcps(self, allowed_mcps: list[str], readonly: bool = True):
         """Register and mount allowed MCP servers.
 
         Args:
@@ -415,7 +415,19 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     parser.add_argument("--toolset", type=str, help=toolset_help)
     parser.add_argument("--toolset-help", action="store_true", help="Show toolset details of all toolsets")
-    parser.add_argument("--readonly", action="store_true", help="Only register read-only tools")
+    parser.add_argument(
+        "--readonly",
+        action="store_true",
+        dest="readonly",
+        default=True,
+        help="Only register read-only tools (default)",
+    )
+    parser.add_argument(
+        "--all-tools",
+        action="store_false",
+        dest="readonly",
+        help="Register all tools including write tools",
+    )
 
     # ==== Start of Transport Mode Subparsers ====
     # Create subparsers for different transport modes
