@@ -22,7 +22,7 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "fastmcp>=2.13.3,<2.14",
+    "fastmcp>=2.13.3",
     "requests",
     "PyJWT",
 ]
@@ -101,3 +101,10 @@ testpaths = ["tests", "src"]
 dev = [
     "pytest-subtests>=0.14.2",
 ]
+
+# redesign of fastmcp makes this necessary
+# as we want to keep our inheritance
+# e.g.
+# ImageBuilderMCP → InsightsMCP → FastMCP → AggregateProvider …
+[tool.pylint.design]
+max-parents = 8
