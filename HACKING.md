@@ -168,7 +168,7 @@ insights-mcp sse
 Set up the development environment (includes development dependencies for testing, linting, etc.):
 
 ```bash
-uv sync --all-extras --dev
+uv sync --locked --all-extras --dev
 ```
 
 Then run with `uv`:

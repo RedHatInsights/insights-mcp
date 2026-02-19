@@ -150,7 +150,7 @@ make lint    # Run all linting with pre-commit (requires pre-commit installation
 
 **Note:** The `make lint` command requires pre-commit to be installed. If you encounter "pre-commit: No such file or directory", install it first:
 ```bash
-uv add --dev pre-commit  # or pip install pre-commit
+uv pip install pre-commit
 ```
 
 ### Manual Tools
