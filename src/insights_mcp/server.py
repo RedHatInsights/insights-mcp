@@ -205,6 +205,11 @@ def print_toolset_help_and_exit(args: argparse.Namespace):
     """Print toolset help and exit."""
     if args.toolset_help:
         print("# All available toolsets")
+        print()
+        print(
+            "Tools marked as read-write **`(rw)`** are excluded by default. "
+            "Use the `--all-tools` flag when starting the server to include them."
+        )
         for mcp in MCPS:
             print(f"\n## {mcp.toolset_name}")
 
@@ -228,7 +233,11 @@ def print_toolset_help_and_exit(args: argparse.Namespace):
                 print()
                 continue
 
-            for tool in tools:
+            def _sort_key(tool: Any) -> tuple[bool, str]:
+                read_only = getattr(getattr(tool, "annotations", None), "readOnlyHint", True)
+                return (read_only is False, getattr(tool, "name", ""))  # read-only first, rw last, then by name
+
+            for tool in sorted(tools, key=_sort_key):
                 title = getattr(tool, "title", None)
                 description = getattr(tool, "description", None)
 
@@ -239,11 +248,15 @@ def print_toolset_help_and_exit(args: argparse.Namespace):
                 elif description and description.strip():
                     title_part = description.split("\n")[0].strip()
 
+                # Mark read-write tools (excluded by default unless --all-tools)
+                read_only = getattr(getattr(tool, "annotations", None), "readOnlyHint", True)
+                rw_suffix = " **`(rw)`**" if read_only is False else ""
+
                 # Format: tool_name or tool_name: title
                 if title_part:
-                    display_text = f"`{tool.name}`: {title_part}"
+                    display_text = f"`{tool.name}`{rw_suffix}: {title_part}"
                 else:
-                    display_text = f"`{tool.name}`"
+                    display_text = f"`{tool.name}`{rw_suffix}"
 
                 # Truncate very long lines
                 if len(display_text) > 120:
