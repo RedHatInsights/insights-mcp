@@ -174,7 +174,8 @@ class InsightsClientBase(httpx.AsyncClient):
         if self.mcp_transport in ["sse", "http"] and not self._using_env_credentials:
             return (
                 f"{base_message}header credentials `{BRAND_CLIENT_ID_HEADER}` and "
-                f"`{BRAND_CLIENT_SECRET_HEADER}` in your request (they are invalid or missing).\n"
+                f"`{BRAND_CLIENT_SECRET_HEADER}`, or an `Authorization: Bearer <token>` header "
+                "with a valid JWT token in your request (they are invalid or missing).\n"
                 "Here is the direct link for the user's convenience: "
                 f"[{self.insights_base_url}/iam/service-accounts]({self.insights_base_url}/iam/service-accounts) "
                 "Come up with a detailed description of this for the user. "
@@ -241,6 +242,89 @@ class InsightsNoauthClient(InsightsClientBase):
             Organization ID (rh-org-id) as a string, or None if not found.
         """
         return None
+
+
+class InsightsBearerTokenClient(InsightsClientBase):
+    """HTTP client that uses a pre-existing Bearer token for Red Hat Insights APIs.
+
+    This client uses a JWT Bearer token directly, without any OAuth2 token exchange.
+    The token is set as-is in the Authorization header for all API requests.
+
+    This is used when callers provide an Authorization: Bearer <token> header in
+    SSE/HTTP transports, allowing authentication with a pre-existing JWT token
+    instead of service account credentials.
+
+    Args:
+        bearer_token: The JWT Bearer token to use for authentication
+        base_url: Base URL for the Insights API
+        proxy_url: Optional proxy URL for requests
+        mcp_transport: MCP transport type for error message customization
+    """
+
+    def __init__(
+        self,
+        *,
+        bearer_token: str,
+        base_url: str = INSIGHTS_BASE_URL,
+        proxy_url: str | None = None,
+        mcp_transport: str | None = None,
+    ):
+        super().__init__(base_url=base_url, proxy_url=proxy_url, mcp_transport=mcp_transport)
+        self._bearer_token = bearer_token
+        self.headers["authorization"] = f"Bearer {bearer_token}"
+        self.logger = getLogger("InsightsBearerTokenClient")
+        self._using_env_credentials = False
+
+    async def make_request(self, fn, *args, **kwargs) -> dict[str, Any] | str:
+        """Make an HTTP request with the pre-set Bearer token.
+
+        No token refresh or exchange is needed -- the token is used as-is.
+
+        Args:
+            fn: HTTP method function to call (e.g., self.get, self.post)
+            *args: Positional arguments for the HTTP method
+            **kwargs: Keyword arguments for the HTTP method
+
+        Returns:
+            JSON response data or error information
+        """
+        return await super().make_request(fn, *args, **kwargs)
+
+    async def get_org_id(self) -> str | None:
+        """Extract the organization ID from the Bearer JWT token.
+
+        Decodes the JWT without verification to extract the rh-org-id claim.
+
+        Returns:
+            Organization ID (rh-org-id) as a string, or None if not found.
+        """
+        try:
+            decoded = jwt.decode(
+                self._bearer_token,
+                options={"verify_signature": False},
+                algorithms=["RS256"],
+            )
+            return decoded.get("rh-org-id")
+        except jwt.DecodeError:
+            self.logger.debug("Failed to decode bearer token JWT for org_id extraction")
+            return None
+
+    async def get_user_id(self) -> str | None:
+        """Extract the user ID from the Bearer JWT token.
+
+        Returns:
+            User ID (rh-user-id) as a string, or None if not found.
+        """
+        try:
+            decoded = jwt.decode(
+                self._bearer_token,
+                options={"verify_signature": False},
+                algorithms=["RS256"],
+            )
+            return decoded.get("rh-user-id")
+        except jwt.DecodeError:
+            self.logger.debug("Failed to decode bearer token JWT for user_id extraction")
+            return None
 
 
 class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
@@ -939,6 +1023,43 @@ class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attribute
             self.logger.debug("Failed to extract credentials from headers: %s", e)
             return None, None
 
+    def get_bearer_token_from_headers(self) -> str | None:
+        """Extract Bearer token from the Authorization HTTP header.
+
+        This method checks for an Authorization: Bearer <token> header in the
+        current HTTP request, used for SSE/HTTP transports where callers provide
+        a pre-existing JWT token instead of service account credentials.
+
+        Returns:
+            The bearer token string (without prefix) if found, None otherwise.
+
+        Note:
+            - STDIO transport always returns None as it doesn't support headers
+            - Only SSE/HTTP transports are checked
+            - The "Bearer " prefix is case-insensitive
+        """
+        if self.mcp_transport == "stdio":
+            return None
+
+        if self.mcp_transport not in ["sse", "http"]:
+            return None
+
+        try:
+            headers = get_http_headers()
+            auth_header = headers.get("authorization") or headers.get("Authorization")
+            if auth_header and auth_header.lower().startswith("bearer "):
+                token = auth_header[7:].strip()
+                if token:
+                    self.logger.debug(
+                        "Extracted Bearer token from Authorization header (length: %d)",
+                        len(token),
+                    )
+                    return token
+            return None
+        except (RuntimeError, KeyError, AttributeError) as e:
+            self.logger.debug("Failed to extract Bearer token from headers: %s", e)
+            return None
+
     async def _get_authenticated_client(
         self, session_id: str, client_id: str, client_secret: str
     ) -> InsightsOAuth2Client:
@@ -1026,6 +1147,8 @@ class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attribute
         This method is maintained for compatibility with parent class API.
         It extracts credentials and ensures a valid token exists, setting self.token.
 
+        Checks for Bearer token first, then falls back to client_id/secret headers.
+
         Note: For actual request execution, use make_request() which creates
         isolated per-request clients for thread-safety.
 
@@ -1034,13 +1157,21 @@ class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attribute
         """
         self.logger.debug("Starting header-based auth with FastMCP session caching")
 
+        # Check for Bearer token first
+        bearer_token = self.get_bearer_token_from_headers()
+        if bearer_token:
+            self.logger.debug("Bearer token found in headers, no refresh needed")
+            self.token = {"access_token": bearer_token}  # pylint: disable=attribute-defined-outside-init
+            return
+
         # Extract credentials from current request headers
         client_id, client_secret = self.get_credentials_from_headers()
 
         if not client_id or not client_secret:
             error_msg = (
                 "No credentials found in request headers. "
-                f"Expected {BRAND_CLIENT_ID_HEADER} and {BRAND_CLIENT_SECRET_HEADER} headers."
+                f"Expected `Authorization: Bearer <token>` header, or "
+                f"`{BRAND_CLIENT_ID_HEADER}` and `{BRAND_CLIENT_SECRET_HEADER}` headers."
             )
             self.logger.debug(error_msg)
             raise ValueError(self._helper.no_auth_error(ValueError(error_msg)))
@@ -1058,10 +1189,10 @@ class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attribute
     async def make_request(self, method_name_or_fn, *args, **kwargs) -> dict[str, Any] | str:
         """Execute HTTP request with per-request isolated client for thread-safety.
 
-        This method creates a completely isolated InsightsOAuth2Client instance for each
-        request, eliminating all shared state and race conditions. The token is retrieved
-        from cache (or fetched if needed), then a temporary client is created with that
-        token for the duration of this single request.
+        This method first checks for a Bearer token in the Authorization header. If found,
+        it creates an InsightsBearerTokenClient that uses the token directly. Otherwise,
+        it falls back to extracting client_id/secret from headers and creating an
+        InsightsOAuth2Client instance with cached token exchange.
 
         Args:
             method_name_or_fn: HTTP method name string ('get', 'post', etc.) or method name from __getattr__
@@ -1079,13 +1210,32 @@ class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attribute
             Each request uses an isolated client instance, preventing race conditions
             when multiple users make concurrent requests with different credentials.
         """
-        # Extract credentials from current request headers
+        # Check for Bearer token first (highest priority for header-based auth)
+        bearer_token = self.get_bearer_token_from_headers()
+        if bearer_token:
+            bearer_client = InsightsBearerTokenClient(
+                bearer_token=bearer_token,
+                base_url=self.insights_base_url,
+                proxy_url=self.proxy_url,
+                mcp_transport=self.mcp_transport,
+            )
+            try:
+                if isinstance(method_name_or_fn, str):
+                    method = getattr(bearer_client, method_name_or_fn)
+                else:
+                    method = getattr(bearer_client, method_name_or_fn)
+                return await bearer_client.make_request(method, *args, **kwargs)
+            finally:
+                await bearer_client.aclose()
+
+        # Fall back to client_id/secret from headers
         client_id, client_secret = self.get_credentials_from_headers()
 
         if not client_id or not client_secret:
             error_msg = (
                 "No credentials found in request headers. "
-                f"Expected {BRAND_CLIENT_ID_HEADER} and {BRAND_CLIENT_SECRET_HEADER} headers."
+                f"Expected `Authorization: Bearer <token>` header, or "
+                f"`{BRAND_CLIENT_ID_HEADER}` and `{BRAND_CLIENT_SECRET_HEADER}` headers."
             )
             self.logger.debug(error_msg)
             raise ValueError(self._helper.no_auth_error(ValueError(error_msg)))
@@ -1170,19 +1320,36 @@ class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attribute
     async def get_org_id(self) -> str | None:
         """Extract organization ID using temporary client.
 
+        Checks for Bearer token first, then falls back to client_id/secret headers.
+
         Returns:
             Organization ID (rh-org-id) as a string, or None if not found.
 
         Raises:
             ValueError: If credentials are missing or authentication fails
         """
-        # Extract credentials from current request headers
+        # Check for Bearer token first
+        bearer_token = self.get_bearer_token_from_headers()
+        if bearer_token:
+            bearer_client = InsightsBearerTokenClient(
+                bearer_token=bearer_token,
+                base_url=self.insights_base_url,
+                proxy_url=self.proxy_url,
+                mcp_transport=self.mcp_transport,
+            )
+            try:
+                return await bearer_client.get_org_id()
+            finally:
+                await bearer_client.aclose()
+
+        # Fall back to client_id/secret from headers
         client_id, client_secret = self.get_credentials_from_headers()
 
         if not client_id or not client_secret:
             error_msg = (
                 "No credentials found in request headers. "
-                f"Expected {BRAND_CLIENT_ID_HEADER} and {BRAND_CLIENT_SECRET_HEADER} headers."
+                f"Expected `Authorization: Bearer <token>` header, or "
+                f"`{BRAND_CLIENT_ID_HEADER}` and `{BRAND_CLIENT_SECRET_HEADER}` headers."
             )
             self.logger.debug(error_msg)
             raise ValueError(self._helper.no_auth_error(ValueError(error_msg)))

@@ -22,7 +22,8 @@ especially handing over environment variables and credentials
 - Custom environment: `INSIGHTS_BASE_URL`, `INSIGHTS_PROXY_URL`, and `INSIGHTS_SSO_BASE_URL` set with credentials in environment variables
 
 ### Streaming HTTP Mode (see `make run-http`)
-- Default configuration with credentials in header
+- Default configuration with service account credentials in header (`insights-client-id` / `insights-client-secret`)
+- Default configuration with JWT Bearer token in `Authorization: Bearer <token>` header
 - Custom environment: `INSIGHTS_BASE_URL`, `INSIGHTS_PROXY_URL`, and `INSIGHTS_SSO_BASE_URL` set with credentials in header
 
 ### OAuth Mode (see `make run-oauth`)
@@ -30,7 +31,7 @@ especially handing over environment variables and credentials
 - `OAUTH_ENABLED=True`, `SSO_CLIENT_ID` and `SSO_CLIENT_SECRET` set, with custom environment (`INSIGHTS_BASE_URL`, `INSIGHTS_PROXY_URL`, `INSIGHTS_SSO_BASE_URL`) and credentials via OAuth client
 
 ### SSE HTTP Mode (deprecated but some MCP clients still need this, see `make run-sse`)
-- Default configuration with credentials in header
+- Default configuration with service account credentials in header or JWT Bearer token
 - Custom environment: `INSIGHTS_BASE_URL` and `INSIGHTS_SSO_BASE_URL` set with credentials in header
 
 ## Architecture
@@ -53,6 +54,7 @@ graph TB
         InsightsClient[InsightsClient<br/>factory]
         OAuth2Client[InsightsOAuth2Client<br/>direct OAuth]
         HeadersClient[InsightsHeadersBasedClient<br/>multiuser auth]
+        BearerClient[InsightsBearerTokenClient<br/>JWT bearer token]
         OAuthProxyClient[InsightsOAuthProxyClient<br/>DCR proxy]
         SessionCache[SessionCache<br/>token caching]
         InsightsClientBase[InsightsClientBase<br/>HTTP operations]
@@ -61,7 +63,9 @@ graph TB
         InsightsClient -->|creates| HeadersClient
         InsightsClient -->|creates| OAuthProxyClient
         HeadersClient -->|uses| SessionCache
+        HeadersClient -->|creates| BearerClient
         OAuth2Client -->|extends| InsightsClientBase
+        BearerClient -->|extends| InsightsClientBase
         HeadersClient -->|uses| OAuth2Client
         OAuthProxyClient -->|extends| InsightsClientBase
     end
@@ -80,6 +84,7 @@ graph TB
     style InsightsClient fill:#f3e5f5
     style OAuth2Client fill:#f3e5f5
     style HeadersClient fill:#f3e5f5
+    style BearerClient fill:#f3e5f5
     style OAuthProxyClient fill:#f3e5f5
     style SessionCache fill:#ffe5f5
     style InsightsClientBase fill:#f3e5f5
@@ -127,7 +132,7 @@ For multiuser scenarios (SSE/HTTP transports with header-based authentication), 
 
 **Implementation:** See [`src/insights_mcp/session_cache.py`](src/insights_mcp/session_cache.py)
 
-**Used by:** `InsightsHeadersBasedClient` for SSE/HTTP transports when credentials are provided via request headers rather than environment variables.
+**Used by:** `InsightsHeadersBasedClient` for SSE/HTTP transports when service account credentials are provided via request headers. JWT Bearer token authentication bypasses the cache since no token exchange is needed.
 
 ## Important notes
 * When changing some code you might want to use `make build-prod` so the container is built with

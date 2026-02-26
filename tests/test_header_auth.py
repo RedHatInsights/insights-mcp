@@ -3,9 +3,10 @@
 
 from unittest.mock import MagicMock, patch
 
+import jwt as pyjwt
 import pytest
 
-from insights_mcp.client import InsightsHeadersBasedClient, InsightsOAuth2Client
+from insights_mcp.client import InsightsBearerTokenClient, InsightsHeadersBasedClient, InsightsOAuth2Client
 from insights_mcp.server import setup_credentials
 
 
@@ -314,3 +315,269 @@ class TestProductionWarning:
                 call for call in logger.warning.call_args_list if "THIS SHOULD NOT BE USED IN PRODUCTION" in str(call)
             ]
             assert len(warning_calls) == 0
+
+
+class TestBearerTokenAuthentication:
+    """Test suite for JWT Bearer token authentication functionality."""
+
+    @pytest.mark.asyncio
+    async def test_get_bearer_token_from_headers_sse_transport(self):
+        """Test that bearer token is extracted from Authorization header for SSE."""
+        client = InsightsHeadersBasedClient(mcp_transport="sse", token_endpoint="https://test.example.com/token")
+
+        with patch("insights_mcp.client.get_http_headers") as mock_headers:
+            mock_headers.return_value = {"authorization": "Bearer my-jwt-token-here"}
+
+            token = client.get_bearer_token_from_headers()
+
+            assert token == "my-jwt-token-here"
+
+    @pytest.mark.asyncio
+    async def test_get_bearer_token_from_headers_http_transport(self):
+        """Test that bearer token is extracted from Authorization header for HTTP."""
+        client = InsightsHeadersBasedClient(mcp_transport="http", token_endpoint="https://test.example.com/token")
+
+        with patch("insights_mcp.client.get_http_headers") as mock_headers:
+            mock_headers.return_value = {"authorization": "Bearer my-jwt-token-here"}
+
+            token = client.get_bearer_token_from_headers()
+
+            assert token == "my-jwt-token-here"
+
+    @pytest.mark.asyncio
+    async def test_get_bearer_token_from_headers_stdio_returns_none(self):
+        """Test that STDIO transport does not extract bearer token."""
+        client = InsightsHeadersBasedClient(mcp_transport="stdio", token_endpoint="https://test.example.com/token")
+
+        with patch("insights_mcp.client.get_http_headers") as mock_headers:
+            mock_headers.return_value = {"authorization": "Bearer my-jwt-token-here"}
+
+            token = client.get_bearer_token_from_headers()
+
+            assert token is None
+
+    @pytest.mark.asyncio
+    async def test_bearer_token_case_insensitive_prefix(self):
+        """Test that 'bearer' prefix is case-insensitive."""
+        client = InsightsHeadersBasedClient(mcp_transport="sse", token_endpoint="https://test.example.com/token")
+
+        with patch("insights_mcp.client.get_http_headers") as mock_headers:
+            mock_headers.return_value = {"authorization": "BEARER my-jwt-token-here"}
+
+            token = client.get_bearer_token_from_headers()
+
+            assert token == "my-jwt-token-here"
+
+    @pytest.mark.asyncio
+    async def test_bearer_token_priority_over_client_credentials(self):
+        """Test that bearer token takes priority over client_id/secret headers."""
+        client = InsightsHeadersBasedClient(mcp_transport="sse", token_endpoint="https://test.example.com/token")
+
+        with patch("insights_mcp.client.get_http_headers") as mock_headers:
+            mock_headers.return_value = {
+                "authorization": "Bearer my-jwt-token-here",
+                "insights-client-id": "test-id",
+                "insights-client-secret": "test-secret",
+            }
+
+            # Bearer token should be found
+            token = client.get_bearer_token_from_headers()
+            assert token == "my-jwt-token-here"
+
+    @pytest.mark.asyncio
+    async def test_no_bearer_token_falls_through_to_credentials(self):
+        """Test that missing bearer token falls through to client_id/secret."""
+        client = InsightsHeadersBasedClient(mcp_transport="sse", token_endpoint="https://test.example.com/token")
+
+        with patch("insights_mcp.client.get_http_headers") as mock_headers:
+            mock_headers.return_value = {
+                "insights-client-id": "test-id",
+                "insights-client-secret": "test-secret",
+            }
+
+            # No bearer token
+            token = client.get_bearer_token_from_headers()
+            assert token is None
+
+            # But credentials should still work
+            client_id, client_secret = client.get_credentials_from_headers()
+            assert client_id == "test-id"
+            assert client_secret == "test-secret"
+
+    @pytest.mark.asyncio
+    async def test_empty_bearer_token_returns_none(self):
+        """Test that 'Bearer ' with no token returns None."""
+        client = InsightsHeadersBasedClient(mcp_transport="sse", token_endpoint="https://test.example.com/token")
+
+        with patch("insights_mcp.client.get_http_headers") as mock_headers:
+            mock_headers.return_value = {"authorization": "Bearer "}
+
+            token = client.get_bearer_token_from_headers()
+
+            assert token is None
+
+    @pytest.mark.asyncio
+    async def test_non_bearer_auth_header_returns_none(self):
+        """Test that non-Bearer auth headers are ignored."""
+        client = InsightsHeadersBasedClient(mcp_transport="sse", token_endpoint="https://test.example.com/token")
+
+        with patch("insights_mcp.client.get_http_headers") as mock_headers:
+            mock_headers.return_value = {"authorization": "Basic dXNlcjpwYXNz"}
+
+            token = client.get_bearer_token_from_headers()
+
+            assert token is None
+
+    @pytest.mark.asyncio
+    async def test_bearer_token_error_handling(self):
+        """Test that bearer token extraction handles errors gracefully."""
+        client = InsightsHeadersBasedClient(mcp_transport="sse", token_endpoint="https://test.example.com/token")
+
+        with patch("insights_mcp.client.get_http_headers") as mock_headers:
+            mock_headers.side_effect = RuntimeError("No context available")
+
+            token = client.get_bearer_token_from_headers()
+
+            assert token is None
+
+    @pytest.mark.asyncio
+    async def test_authorization_header_capital_a(self):
+        """Test that Authorization header with capital A is also extracted."""
+        client = InsightsHeadersBasedClient(mcp_transport="sse", token_endpoint="https://test.example.com/token")
+
+        with patch("insights_mcp.client.get_http_headers") as mock_headers:
+            # Some HTTP frameworks normalize to lowercase, some don't
+            mock_headers.return_value = {"Authorization": "Bearer my-jwt-token-here"}
+
+            token = client.get_bearer_token_from_headers()
+
+            assert token == "my-jwt-token-here"
+
+
+class TestInsightsBearerTokenClient:
+    """Test suite for InsightsBearerTokenClient class."""
+
+    @pytest.mark.asyncio
+    async def test_bearer_client_sets_authorization_header(self):
+        """Test that the bearer client sets the Authorization header correctly."""
+        client = InsightsBearerTokenClient(
+            bearer_token="test-jwt-token",
+            mcp_transport="sse",
+        )
+
+        assert client.headers["authorization"] == "Bearer test-jwt-token"
+        await client.aclose()
+
+    @pytest.mark.asyncio
+    async def test_bearer_client_get_org_id_from_jwt(self):
+        """Test org_id extraction from JWT bearer token."""
+        # Create a real JWT with rh-org-id claim
+        token = pyjwt.encode({"rh-org-id": "12345"}, "secret", algorithm="HS256")
+        client = InsightsBearerTokenClient(
+            bearer_token=token,
+            mcp_transport="sse",
+        )
+
+        org_id = await client.get_org_id()
+        assert org_id == "12345"
+        await client.aclose()
+
+    @pytest.mark.asyncio
+    async def test_bearer_client_get_org_id_missing_claim(self):
+        """Test org_id extraction when claim is missing from JWT."""
+        token = pyjwt.encode({"sub": "user123"}, "secret", algorithm="HS256")
+        client = InsightsBearerTokenClient(
+            bearer_token=token,
+            mcp_transport="sse",
+        )
+
+        org_id = await client.get_org_id()
+        assert org_id is None
+        await client.aclose()
+
+    @pytest.mark.asyncio
+    async def test_bearer_client_get_org_id_invalid_jwt(self):
+        """Test org_id extraction with invalid JWT."""
+        client = InsightsBearerTokenClient(
+            bearer_token="not-a-valid-jwt",
+            mcp_transport="sse",
+        )
+
+        org_id = await client.get_org_id()
+        assert org_id is None
+        await client.aclose()
+
+    @pytest.mark.asyncio
+    async def test_bearer_client_get_user_id_from_jwt(self):
+        """Test user_id extraction from JWT bearer token."""
+        token = pyjwt.encode({"rh-user-id": "user-abc"}, "secret", algorithm="HS256")
+        client = InsightsBearerTokenClient(
+            bearer_token=token,
+            mcp_transport="sse",
+        )
+
+        user_id = await client.get_user_id()
+        assert user_id == "user-abc"
+        await client.aclose()
+
+    @pytest.mark.asyncio
+    async def test_bearer_client_using_env_credentials_is_false(self):
+        """Test that bearer client correctly reports not using env credentials."""
+        client = InsightsBearerTokenClient(
+            bearer_token="test-token",
+            mcp_transport="sse",
+        )
+
+        assert client._using_env_credentials is False
+        await client.aclose()
+
+
+class TestBearerTokenErrorMessages:
+    """Test suite for error messages mentioning Bearer token."""
+
+    @pytest.mark.asyncio
+    async def test_error_message_mentions_bearer_token_for_header_auth(self):
+        """Test that error message mentions Bearer token option for SSE without env vars."""
+        client = InsightsOAuth2Client(
+            client_id=None,
+            client_secret=None,
+            mcp_transport="sse",
+            token_endpoint="https://test.example.com/token",
+        )
+
+        error_msg = client.no_auth_error(ValueError("Missing credentials"))
+
+        # Should mention Bearer token as an alternative
+        assert "bearer" in error_msg.lower()
+        # Should still mention client_id/secret headers
+        assert "header credentials" in error_msg.lower()
+
+    @pytest.mark.asyncio
+    async def test_error_message_no_bearer_mention_for_env_credentials(self):
+        """Test that error message does NOT mention Bearer token when env vars are set."""
+        client = InsightsOAuth2Client(
+            client_id="test-id",
+            client_secret="test-secret",
+            mcp_transport="sse",
+            token_endpoint="https://test.example.com/token",
+        )
+
+        error_msg = client.no_auth_error(ValueError("Invalid credentials"))
+
+        # Should mention environment credentials, not Bearer
+        assert "environment credentials" in error_msg.lower()
+
+    @pytest.mark.asyncio
+    async def test_error_message_no_bearer_mention_for_stdio(self):
+        """Test that error message does NOT mention Bearer token for STDIO transport."""
+        client = InsightsOAuth2Client(
+            client_id=None,
+            client_secret=None,
+            mcp_transport="stdio",
+            token_endpoint="https://test.example.com/token",
+        )
+
+        error_msg = client.no_auth_error(ValueError("Missing credentials"))
+
+        # STDIO should use environment credentials message
+        assert "mcp.json config" in error_msg.lower()
