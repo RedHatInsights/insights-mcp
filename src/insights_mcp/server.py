@@ -190,7 +190,55 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
             self.mount(mcp, prefix=f"{mcp.toolset_name}_")
 
 
-def get_instructions(allowed_mcps: list[str]) -> str:
+def _get_tool_description(tool: Any) -> str:
+    """Extract first line of description or title for a tool."""
+    desc = getattr(tool, "description", None) or ""
+    title = getattr(tool, "title", None) or ""
+    text = (desc or title).strip()
+    if not text:
+        return ""
+    first_line = text.split("\n", 1)[0].strip()
+    # Truncate very long lines
+    if len(first_line) > 100:
+        last_space = first_line.rfind(" ", 80, 99)
+        first_line = first_line[: last_space + 1 if last_space != -1 else 99] + "…"
+    return first_line
+
+
+def _collect_readwrite_tools_from_temp_root(allowed_mcps: list[str]) -> dict[str, list[tuple[str, str]]]:
+    """Collect read-write tools from a temporary InsightsMCP container.
+
+    Mounts all allowed MCPS (shared for decorator-based, temp for register_tools-based),
+    then filters for readOnlyHint is False and groups by toolset.
+    """
+    temp_root = InsightsMCP(name="temp", toolset_name="temp", api_path="")
+    for mcp in MCPS:
+        if mcp.toolset_name not in allowed_mcps:
+            continue
+        try:
+            temp_sub = type(mcp)()  # type: ignore[call-arg]
+            temp_sub.register_tools()
+            temp_root.mount(temp_sub, namespace=mcp.toolset_name)
+        except (NotImplementedError, TypeError):
+            temp_root.mount(mcp, namespace=mcp.toolset_name)
+
+    tools = asyncio.run(temp_root.list_tools())
+    rw_by_toolset: dict[str, list[tuple[str, str]]] = {}
+    for tool in tools:
+        if getattr(getattr(tool, "annotations", None), "readOnlyHint", True) is False:
+            name = getattr(tool, "name", "")
+            if "_" in name:
+                toolset_name = name.split("_", 1)[0]
+                if toolset_name not in rw_by_toolset:
+                    rw_by_toolset[toolset_name] = []
+                desc = _get_tool_description(tool)
+                rw_by_toolset[toolset_name].append((name, desc))
+    for toolset_name in rw_by_toolset:
+        rw_by_toolset[toolset_name] = sorted(rw_by_toolset[toolset_name], key=lambda x: x[0])
+    return rw_by_toolset
+
+
+def get_instructions(allowed_mcps: list[str], readonly: bool = True) -> str:
     """Get instructions from MCP server."""
     instructions_parts = []
     for mcp in MCPS:
@@ -198,6 +246,26 @@ def get_instructions(allowed_mcps: list[str]) -> str:
             continue
         if hasattr(mcp, "instructions") and mcp.instructions:
             instructions_parts.append(f"## {mcp.name}\n\n{mcp.instructions}")
+
+    if readonly:
+        rw_by_toolset = _collect_readwrite_tools_from_temp_root(allowed_mcps)
+        tools_sections = []
+        for mcp in MCPS:
+            if mcp.toolset_name not in allowed_mcps:
+                continue
+            rw_tools = rw_by_toolset.get(mcp.toolset_name, [])
+            if rw_tools:
+                lines = [f"- `{name}`: {desc}" if desc else f"- `{name}`" for name, desc in rw_tools]
+                tools_sections.append(f"### {mcp.name}\n" + "\n".join(lines))
+
+        if tools_sections:
+            instructions_parts.append(
+                "## Read-write tools (currently not enabled)\n\n"
+                "Additional tools are available but not enabled in this server session. "
+                "Tell the user to restart the server with `--all-tools` to enable them:\n\n"
+                + "\n\n".join(tools_sections)
+            )
+
     return "\n\n".join(instructions_parts)
 
 
@@ -535,7 +603,7 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
 
     logger.info("Authenticating against %s", config.SSO_BASE_URL)
 
-    instructions = get_instructions(toolset_list)
+    instructions = get_instructions(toolset_list, readonly=args.readonly)
     instructions_template = Template(instructions)
     instructions = instructions_template.safe_substitute(container_brand_long=container_brand_long)
     mcp_server_config["instructions"] = instructions
