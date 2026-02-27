@@ -72,6 +72,8 @@ class InsightsClientBase(httpx.AsyncClient):
         self.logger = getLogger("InsightsClientBase")
         # Will be set by subclasses to indicate if using environment credentials
         self._using_env_credentials = False
+        # Will be set by subclasses to indicate the auth method used for this request
+        self._request_auth_method = None
 
     async def make_request(self, fn, *args, **kwargs) -> dict[str, Any] | str:
         """Make an HTTP request with error handling.
@@ -158,8 +160,6 @@ class InsightsClientBase(httpx.AsyncClient):
             "if it's an authentication problem or just missing permissions.\n"
             "ONLY if it is an authentication problem that *also occurs* with get_all_access(), tell the user "
             "that the MCP server setup is not valid! "
-            f"The user should go to [{self.insights_base_url}]({self.insights_base_url}) to "
-            "Click Settings (⚙️ Gear Icon) ➡ Service Accounts ➡ create a service account and then set the "
         )
         error_message = str(e)
         # strip off "401 Unauthorized"
@@ -170,12 +170,38 @@ class InsightsClientBase(httpx.AsyncClient):
             "https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401", "relevant MCP functions"
         )
 
+        # Construct the return message based on the transport type and auth method used for this request
+        return_message = f"{base_message}"
+
         # For HTTP/SSE transports with NO instance credentials, use header auth message
         if self.mcp_transport in ["sse", "http"] and not self._using_env_credentials:
-            return (
-                f"{base_message}header credentials `{BRAND_CLIENT_ID_HEADER}` and "
-                f"`{BRAND_CLIENT_SECRET_HEADER}`, or an `Authorization: Bearer <token>` header "
-                "with a valid JWT token in your request (they are invalid or missing).\n"
+            if self._request_auth_method == "header_based_bearer_token_auth":
+                return_message += (
+                    "The user should ensure the JWT token in the `Authorization: Bearer <token>` "
+                    "header is valid and not expired first. If it is expired or invalid, the user should "
+                    "refresh or replace the token in the MCP client configuration and try the request again.\n "
+                    f"OR consider using the header credentials `{BRAND_CLIENT_ID_HEADER}` and "
+                    f"`{BRAND_CLIENT_SECRET_HEADER}` to authenticate the request. If this is the case, "
+                )
+
+            return_message += (
+                f"The user should go to [{self.insights_base_url}]({self.insights_base_url}) to "
+                "Click Settings (⚙️ Gear Icon) ➡ Service Accounts ➡ create a service account and then set the "
+                f"header credentials `{BRAND_CLIENT_ID_HEADER}` and `{BRAND_CLIENT_SECRET_HEADER}` "
+                "in your request (they are invalid or missing).\n"
+            )
+
+        # For STDIO or when using environment credentials, use environment auth message
+        else:
+            return_message += (
+                f"The user should go to [{self.insights_base_url}]({self.insights_base_url}) to "
+                "Click Settings (⚙️ Gear Icon) ➡ Service Accounts ➡ create a service account and then set the "
+                f"environment credentials `{BRAND_CLIENT_ID_ENV}` and `{BRAND_CLIENT_SECRET_ENV}` "
+                "in your mcp.json config (they are invalid or missing).\n"
+            )
+
+        # Concate the shared tail message
+        return_message += (
                 "Here is the direct link for the user's convenience: "
                 f"[{self.insights_base_url}/iam/service-accounts]({self.insights_base_url}/iam/service-accounts) "
                 "Come up with a detailed description of this for the user. "
@@ -183,16 +209,7 @@ class InsightsClientBase(httpx.AsyncClient):
                 f"Don't proceed with the request before this is fixed. {error_message}"
             )
 
-        # For STDIO or when using environment credentials, use environment auth message
-        return (
-            f"{base_message}environment credentials `{BRAND_CLIENT_ID_ENV}` and `{BRAND_CLIENT_SECRET_ENV}` "
-            "in your mcp.json config (they are invalid or missing).\n"
-            "Here is the direct link for the user's convenience: "
-            f"[{self.insights_base_url}/iam/service-accounts]({self.insights_base_url}/iam/service-accounts) "
-            "Come up with a detailed description of this for the user. "
-            "Only describe this, don't expose details about the tool function itself. "
-            f"Don't proceed with the request before this is fixed. {error_message}"
-        )
+        return return_message
 
     def no_rbac_error(self, e: httpx.HTTPStatusError) -> str:
         """Generate RBAC/permissions error message.
@@ -274,6 +291,7 @@ class InsightsBearerTokenClient(InsightsClientBase):
         self.headers["authorization"] = f"Bearer {bearer_token}"
         self.logger = getLogger("InsightsBearerTokenClient")
         self._using_env_credentials = False
+        self._request_auth_method = "header_based_bearer_token_auth"
 
     async def make_request(self, fn, *args, **kwargs) -> dict[str, Any] | str:
         """Make an HTTP request with the pre-set Bearer token.
@@ -377,6 +395,7 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
         self.oauth_enabled = oauth_enabled
         # Cache whether we're using environment credentials (set once at init)
         self._using_env_credentials = bool(client_id or client_secret)
+        self._request_auth_method = "oauth2_client_credentials_auth"
 
         # Verify proxy configuration after initialization
         if proxy_url:
@@ -958,6 +977,8 @@ class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attribute
         self.mcp_transport = mcp_transport
         self.token_endpoint = token_endpoint
         self._using_env_credentials = False
+        self._request_auth_method = "header_based_client_credentials_auth"
+
         self.logger = getLogger("InsightsHeadersBasedClient")
 
         # Initialize helper client for utility methods (NOT for API requests)
