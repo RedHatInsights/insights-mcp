@@ -351,6 +351,29 @@ The proxy maintains minimal state for active OAuth transactions, PKCE challenges
 - **Cryptographic randomness**: Transaction IDs use secure random generation
 
 
+## Logging and Compliance
+
+### Debug Mode
+
+Debug logging (`--debug` or `INSIGHTS_MCP_DEBUG=1`) includes identifiers such as client IDs and request metadata for troubleshooting. **Do not enable debug mode in production.** Debug logs may be retained by log aggregation systems; restricting debug to development and staging supports ISO 27001 (A.5.17, A.8.11) and ISO 27018 (PII protection).
+
+### Logging and Monitoring
+
+- **Default (INFO)**: Auth events, errors, and request metadata. Client secrets and PII in SSO claims are masked.
+- **Debug**: Additional identifiers (client IDs, scopes, org_id). PII (account_id, username, email) remains masked.
+- **Retention**: Operators should configure log aggregation and retention per their policy (ISO 27001 A.8.16).
+
+### Deployment Responsibilities
+
+For cloud deployments, the shared responsibility model applies (ISO 27017):
+
+- **Red Hat**: API security, availability, authentication.
+- **Operator**: MCP server deployment, credential protection, network isolation, incident response (see [README Security & Incident Response](README.md#security--incident-response-emergency-revocation)).
+
+### AI Governance Scope
+
+The MCP server is an AI-enabling component (connects LLMs to Red Hat services). Operators using it for AI workflows should include it in their AI governance scope (e.g., ISO 42001 AIMS) and risk assessments.
+
 
 ## Pipelines as Code configuration
 To start the PipelineRun, add a new comment in a pull-request with content `/ok-to-test`
