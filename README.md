@@ -67,6 +67,17 @@ For a deployment where you connect to this MCP server from a different machine, 
 
 In both cases if you are in doubt, please disable/remove the `LIGHTSPEED_CLIENT_ID` and `LIGHTSPEED_CLIENT_SECRET` from your account after you are done using the MCP server.
 
+#### Security & Incident Response (Emergency Revocation)
+
+To ensure safe AI operations and compliance with security standards, operators must be able to rapidly sever the connected LLM's access to Red Hat Lightspeed in the event of abnormal AI behavior, unexpected data exposure, or suspected token compromise.
+
+**Emergency "Kill Switch" Procedure:**
+
+If you need to immediately revoke AI access to the toolsets, execute the following steps:
+1. **Terminate the Server:** Stop the MCP container or local process immediately (e.g., run `podman ps` to find the container, then `podman stop <container_id>`).
+2. **Revoke Credentials:** Invalidate the Red Hat Client ID used by the MCP server to authenticate with Red Hat services. Go to the "[Service Accounts](https://console.redhat.com/iam/service-accounts)" page and `Delete` or `Reset` the credentials.
+
+Additionally you can remove the MCP server entry (e.g., `lightspeed-mcp` in your client's `mcp.json`) from your local LLM client's configuration to prevent the client from attempting to restart or reconnect to the server.
 
 ## Technical Info
 ### Toolsets
