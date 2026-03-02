@@ -84,6 +84,8 @@ If you need to immediately revoke AI access to the toolsets, execute the followi
 
 Additionally you can remove the MCP server entry (e.g., `lightspeed-mcp` in your client's `mcp.json`) from your local LLM client's configuration to prevent the client from attempting to restart or reconnect to the server.
 
+If credential compromise or data exposure is suspected, assess breach notification obligations under applicable law (e.g., GDPR). For logging, debug mode, and compliance details, see [HACKING.md - Logging and Compliance](HACKING.md#logging-and-compliance).
+
 ## Technical Info
 ### Toolsets
 
