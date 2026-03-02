@@ -53,9 +53,11 @@ multiuser
 mypy
 natively
 nodejs
+GDPR
 OAuth
 OCI
 OIDC
+PII
 PKCE
 pluggable
 podman
