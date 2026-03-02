@@ -42,6 +42,7 @@ lifecycle
 Lifecycle
 Lightspeed
 LLM
+LLM's
 Makefile
 MCP
 MCPS
