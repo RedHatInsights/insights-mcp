@@ -538,11 +538,9 @@ class TestBearerTokenErrorMessages:
     @pytest.mark.asyncio
     async def test_error_message_mentions_bearer_token_for_header_auth(self):
         """Test that error message mentions Bearer token option for SSE without env vars."""
-        client = InsightsOAuth2Client(
-            client_id=None,
-            client_secret=None,
+        client = InsightsBearerTokenClient(
+            bearer_token="test-token",
             mcp_transport="sse",
-            token_endpoint="https://test.example.com/token",
         )
 
         error_msg = client.no_auth_error(ValueError("Missing credentials"))

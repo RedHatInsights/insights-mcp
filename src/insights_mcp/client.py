@@ -73,7 +73,7 @@ class InsightsClientBase(httpx.AsyncClient):
         # Will be set by subclasses to indicate if using environment credentials
         self._using_env_credentials = False
         # Will be set by subclasses to indicate the auth method used for this request
-        self._request_auth_method = None
+        self._request_auth_method: str | None = None
 
     async def make_request(self, fn, *args, **kwargs) -> dict[str, Any] | str:
         """Make an HTTP request with error handling.
@@ -202,12 +202,12 @@ class InsightsClientBase(httpx.AsyncClient):
 
         # Concate the shared tail message
         return_message += (
-                "Here is the direct link for the user's convenience: "
-                f"[{self.insights_base_url}/iam/service-accounts]({self.insights_base_url}/iam/service-accounts) "
-                "Come up with a detailed description of this for the user. "
-                "Only describe this, don't expose details about the tool function itself. "
-                f"Don't proceed with the request before this is fixed. {error_message}"
-            )
+            "Here is the direct link for the user's convenience: "
+            f"[{self.insights_base_url}/iam/service-accounts]({self.insights_base_url}/iam/service-accounts) "
+            "Come up with a detailed description of this for the user. "
+            "Only describe this, don't expose details about the tool function itself. "
+            f"Don't proceed with the request before this is fixed. {error_message}"
+        )
 
         return return_message
 
