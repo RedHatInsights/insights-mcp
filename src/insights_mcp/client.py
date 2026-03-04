@@ -43,6 +43,9 @@ from . import __version__
 
 USER_AGENT = f"insights-mcp/{__version__}"
 
+# SSO claim keys containing PII (personally identifiable information); masked in logs for ISO 27018 compliance
+_PII_CLAIM_KEYS = frozenset({"subject", "account_id", "username", "email"})
+
 
 class InsightsClientBase(httpx.AsyncClient):
     """Base HTTP client for Red Hat Insights APIs.
@@ -601,7 +604,13 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
 
         self.logger.debug("Successfully retrived SSO token for Insights API authentication")
 
-    async def log_request_and_token_info(self, operation_name: str) -> dict[str, Any]:
+    def _mask_pii_in_claims(self, claims: dict[str, Any]) -> dict[str, Any]:
+        """Mask PII in SSO claims for logging (ISO 27018)."""
+        return {k: "***MASKED***" if k in _PII_CLAIM_KEYS else v for k, v in claims.items()}
+
+    async def log_request_and_token_info(  # pylint: disable=too-many-locals
+        self, operation_name: str
+    ) -> dict[str, Any]:
         """Log comprehensive token and request information for debugging OAuth proxy operations.
 
         Provides detailed logging and analysis of the current authentication state,
@@ -628,9 +637,10 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
                 - redhat_sso_claims: Extracted Red Hat SSO user/org claims
 
         Note:
-            Sensitive information like authorization headers are masked in logs
-            for security. The method never raises exceptions to avoid disrupting
-            the main request flow, logging warnings for any extraction failures.
+            Sensitive information (authorization headers, client secrets, PII in
+            SSO claims) is masked in logs for ISO 27001/27018 compliance. The
+            method never raises exceptions to avoid disrupting the main request
+            flow, logging warnings for any extraction failures.
         """
         info = {
             "operation_name": operation_name,
@@ -697,10 +707,11 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
                         "resource_access": list(claims.get("resource_access", {}).keys()),
                         "groups": claims.get("groups", []),
                     }
-                    info["redhat_sso_claims"] = claims_dict
+                    claims_for_log = self._mask_pii_in_claims(claims_dict)
+                    info["redhat_sso_claims"] = claims_for_log
 
                     self.logger.debug("Red Hat SSO claims:")
-                    for key, value in claims_dict.items():
+                    for key, value in claims_for_log.items():
                         if value:  # Only log non-empty values
                             self.logger.debug("  %s: %s", key, value)
 
