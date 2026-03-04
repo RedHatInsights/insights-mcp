@@ -417,7 +417,7 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
         self.logger.debug("Starting token refresh")
         if self.oauth_enabled:  # TODO: unify client oauth and oauth middleware
             self.logger.debug("OAuth is enabled, skipping token management")
-            caller_headers_auth = get_http_headers().get("authorization")
+            caller_headers_auth = get_http_headers(include={"authorization"}).get("authorization")
             if caller_headers_auth:
                 # If the request is authenticated, use the caller's authorization header
                 # This is useful for OAuth flows where the client is already authenticated
@@ -644,7 +644,7 @@ class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
 
         # 1. Extract and log request headers
         try:
-            request_headers = get_http_headers()
+            request_headers = get_http_headers(include={"authorization"})
             request_headers_dict: dict[str, str] = {}
             info["request_headers"] = request_headers_dict
 
@@ -1066,7 +1066,7 @@ class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attribute
             return None
 
         try:
-            headers = get_http_headers()
+            headers = get_http_headers(include={"authorization"})
             auth_header = headers.get("authorization") or headers.get("Authorization")
             if auth_header and auth_header.lower().startswith("bearer "):
                 token = auth_header[7:].strip()
