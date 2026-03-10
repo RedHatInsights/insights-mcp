@@ -43,13 +43,18 @@ ENV CONTAINER_BRAND=${CONTAINER_BRAND}
 LABEL io.modelcontextprotocol.server.name="io.github.RedHatInsights/insights-mcp"
 
 RUN microdnf install -y --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
-    python312 && \
+    python312 shadow-utils && \
+    useradd -r -s /bin/false -d /nonexistent mcpuser && \
+    microdnf remove -y shadow-utils && \
     microdnf clean all
 
 # Copy the installed packages from the builder stage
 COPY --from=builder /usr/local/lib/python3.12/site-packages/ /usr/local/lib/python3.12/site-packages/
 COPY --from=builder /usr/local/lib64/python3.12/site-packages/ /usr/local/lib64/python3.12/site-packages/
 COPY --from=builder /usr/local/bin/ /usr/local/bin/
+
+# Drop to non-root user for runtime
+USER mcpuser
 
 # Command to run the application
 ENTRYPOINT ["python3.12", "-m", "insights_mcp"]
