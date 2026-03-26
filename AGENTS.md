@@ -290,6 +290,8 @@ make test-very-verbose
 podman run -it --rm insights-mcp /bin/bash
 ```
 
+**Note**: Debug mode logs identifiers (client IDs, etc.); do not enable in production. See [HACKING.md - Logging and Compliance](HACKING.md#logging-and-compliance).
+
 ## AI Assistant Guidelines
 
 1. **Always reference [README.md](README.md)** first for basic project information
@@ -297,5 +299,6 @@ podman run -it --rm insights-mcp /bin/bash
 3. **Testing**: Run `make test` after significant changes
 4. **Code Style**: stick to the settings in `pyproject.toml` and `.editorconfig`
 5. **Dependencies**: Check `pyproject.toml` for current dependencies
+6. **Compliance**: For logging, debug mode, and ISO alignment (27001, 27017, 27018, 42001), see [HACKING.md - Logging and Compliance](HACKING.md#logging-and-compliance)
 
 This guide supplements the README with development-specific information for AI coding assistants working on the Insights MCP project. The architecture supports multiple Red Hat Insights service toolsets through a unified server interface.
