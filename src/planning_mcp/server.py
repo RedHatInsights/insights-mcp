@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Annotated, Any, Callable
 
-from fastmcp.tools.tool import Tool
+from fastmcp.tools import Tool
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
