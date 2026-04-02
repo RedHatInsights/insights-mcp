@@ -4,7 +4,7 @@ import json
 import logging
 from typing import Annotated, Any
 
-from fastmcp.tools.tool import Tool
+from fastmcp.tools import Tool
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
