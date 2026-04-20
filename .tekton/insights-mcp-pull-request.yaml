@@ -34,6 +34,8 @@ spec:
   - name: build-args
     value:
       - INSIGHTS_MCP_VERSION={{revision}}
+  - name: skip-sast-coverity-check
+    value: "false"
   pipelineRef:
     name: docker-build-oci-ta
   taskRunTemplate:
