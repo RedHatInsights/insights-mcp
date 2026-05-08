@@ -127,6 +127,7 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
         **settings: Any,
     ):
         name = name or "Red Hat Insights"
+        server_version = __version__ if __version__ else "0.0.0-dev"
 
         # Create the OAuth provider
         oauth_provider = (
@@ -143,6 +144,7 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
         super().__init__(
             name=name,
             instructions=instructions,
+            version=server_version,
             auth=oauth_provider,
             icons=[Icon(src=get_icon_data_uri())],
             website_url="https://console.redhat.com",
