@@ -5,8 +5,9 @@ This includes more difficult questions to the LLM
 import pytest
 from deepeval.evaluate import assert_test
 from deepeval.metrics import GEval, ToolCorrectnessMetric
-from deepeval.test_case import LLMTestCase, LLMTestCaseParams, ToolCall
+from deepeval.test_case import LLMTestCase, ToolCall
 
+from tests.deepeval_eval_compat import EvalCaseParams
 from tests.utils import (
     load_llm_configurations,
     should_skip_llm_matrix_tests,
@@ -50,9 +51,9 @@ class TestLLMIntegrationHard:
                 "4. Take care that tool calls are properly part of a 'tool_call' object\n"
             ),
             evaluation_params=[
-                LLMTestCaseParams.INPUT,
-                LLMTestCaseParams.ACTUAL_OUTPUT,
-                LLMTestCaseParams.TOOLS_CALLED,
+                EvalCaseParams.INPUT,
+                EvalCaseParams.ACTUAL_OUTPUT,
+                EvalCaseParams.TOOLS_CALLED,
             ],
             model=guardian_agent,
         )
