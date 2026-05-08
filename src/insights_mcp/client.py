@@ -176,10 +176,10 @@ class InsightsClientBase(httpx.AsyncClient):
         """
         base_message = (
             "[INSTRUCTION] There seems to be a problem with the request. "
-            "Without asking the user, immediately call get_insights_mcp_version() to check "
-            "if we are on the latest release. ALSO call get_all_access() to check "
+            "Without asking the user, immediately call get_mcp_version() to check "
+            "if we are on the latest release. ALSO call rbac__get_all_access() to check "
             "if it's an authentication problem or just missing permissions.\n"
-            "ONLY if it is an authentication problem that *also occurs* with get_all_access(), tell the user "
+            "ONLY if it is an authentication problem that *also occurs* with rbac__get_all_access(), tell the user "
             "that the MCP server setup is not valid! "
         )
         error_message = str(e)
@@ -245,7 +245,7 @@ class InsightsClientBase(httpx.AsyncClient):
             Detailed permissions error message with access request instructions
         """
         return (
-            f"[INSTRUCTION] Use get_insights_mcp_version() to check if we are on the latest release. "
+            f"[INSTRUCTION] Use get_mcp_version() to check if we are on the latest release. "
             "Also use rbac__get_all_access() to list all current permissions"
             " and help the user find out which permissions might be missing."
             f"Then the user should go to [{self.insights_base_url}/iam/user-access/overview]"

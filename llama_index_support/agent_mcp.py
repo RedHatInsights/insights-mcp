@@ -274,8 +274,18 @@ class CustomLlamaIndexLLM(OpenAI):
     """Custom LlamaIndex LLM that wraps vLLM with OpenAI-compatible API."""
 
     def __init__(self, api_url: str, model_id: str, api_key: str, system_prompt: str = "", **kwargs):
+        temperature = kwargs.pop("temperature", 0.1)
+        merged_additional_kwargs = dict(kwargs.pop("additional_kwargs", None) or {})
+        # OpenAI-compat APIs (including some Gemini gateways) stream multiple tool_calls; collapsing
+        # them can merge names/ids — request at most one tool call per assistant turn unless overridden.
+        merged_additional_kwargs.setdefault("parallel_tool_calls", False)
         super().__init__(
-            model=model_id, api_key=api_key, api_base=api_url, temperature=kwargs.get("temperature", 0.1), **kwargs
+            model=model_id,
+            api_key=api_key,
+            api_base=api_url,
+            temperature=temperature,
+            additional_kwargs=merged_additional_kwargs,
+            **kwargs,
         )
         self._custom_model_id = model_id
         self._system_prompt = system_prompt
