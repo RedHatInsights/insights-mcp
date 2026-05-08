@@ -85,10 +85,9 @@ def apply_llama_index_bool_patch():
     crashes when processing boolean field_schema in _resolve_field_type().
 
     Returns:
-        bool: True if patch was applied, False if llama-index not available
+        True if patch was applied, False if llama-index not available
     """
     try:
-        # Store original method
         # pylint: disable=protected-access
         original_resolve_field_type = TypeResolutionMixin._resolve_field_type
 
@@ -107,24 +106,16 @@ def apply_llama_index_bool_patch():
             Returns:
                 Python type for the field
             """
-            # Handle boolean field_schema (for additionalProperties: true/false)
             if isinstance(field_schema, bool):
-                # JSON Schema allows boolean additionalProperties
-                # Both true and false resolve to Any since we can't represent
-                # "disallow additional properties" in Python's type system
                 return Any
 
-            # Call original method for dict field_schema
             return original_resolve_field_type(self, field_schema, defs)
 
-        # Apply the patch
-        # pylint: disable=protected-access
         TypeResolutionMixin._resolve_field_type = _patched_resolve_field_type
 
         return True
 
     except ImportError:
-        # llama-index not installed - patch not needed
         return False
 
 
@@ -133,36 +124,29 @@ def is_patch_needed():
     Check if the patch is still needed by testing the bug condition.
 
     Returns:
-        bool: True if patch is needed, False if upstream is fixed or not available
+        True if patch is needed, False if upstream is fixed or not available
     """
     try:
-        # Create test instance
         test_instance = TypeResolutionMixin()
 
         try:
-            # Test the exact bug: boolean field_schema crashes _resolve_field_type
-            # This will crash with TypeError if bug exists
             # pylint: disable=protected-access
             test_instance._resolve_field_type(True, {})
-            return False  # No crash = bug is fixed upstream
-        except TypeError as e:
-            return "argument of type 'bool' is not iterable" in str(e)
+            return False
+        except TypeError as exc:
+            return "argument of type 'bool' is not iterable" in str(exc)
         except AttributeError:
-            # _resolve_field_type doesn't exist, probably different llama-index version
             return False
 
     except ImportError:
-        # llama-index not available
         return False
 
 
-# Auto-apply patch when module is imported
 if __name__ != "__main__" and is_patch_needed():
     apply_llama_index_bool_patch()
 
 
 if __name__ == "__main__":
-    # Test/debug mode
     print("llama-index Boolean field_schema Patch")
     print("=" * 45)
 

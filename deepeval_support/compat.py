@@ -3,9 +3,6 @@
 Newer releases renamed ``LLMTestCaseParams`` to ``SingleTurnParams`` and only expose
 the legacy name via ``__getattr__``, which pylint does not treat as an importable
 symbol. Resolve at runtime without tripping static analysis on either layout.
-
-This module lives under the top-level ``tests`` package (with ``tests.utils``) so
-pytest importlib collection and ``pythonpath`` match pylint's ``tests/`` root.
 """
 
 import importlib

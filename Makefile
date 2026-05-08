@@ -78,9 +78,14 @@ lint: install-test-deps ## Run linting with pre-commit (same hooks as CI lint wo
 	uv run pre-commit run --all-files --hook-stage manual
 
 .PHONY: test
-test: install-test-deps ## Run tests with pytest (hides logging output)
+test: install-test-deps test-instrumentation ## Run tests with pytest (hides logging output)
 	@echo "Running pytest tests..."
 	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v
+
+.PHONY: test-instrumentation
+test-instrumentation: ## Non-behavioral instrumentation checks (MCP catalogs, wiring)
+	@echo "Running instrumentation_tests..."
+	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v instrumentation_tests/
 
 .PHONY: test-verbose
 test-verbose: install-test-deps ## Run tests with pytest with verbose output (shows logging output)

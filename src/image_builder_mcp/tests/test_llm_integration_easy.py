@@ -9,7 +9,7 @@ import pytest
 from deepeval.metrics import GEval, ToolCorrectnessMetric
 from deepeval.test_case import LLMTestCase, ToolCall
 
-from tests.deepeval_eval_compat import EvalCaseParams
+from deepeval_support.compat import EvalCaseParams
 from tests.utils import (
     load_llm_configurations,
     pretty_print_chat_history,

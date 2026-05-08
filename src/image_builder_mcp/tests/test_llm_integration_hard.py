@@ -7,7 +7,7 @@ from deepeval.evaluate import assert_test
 from deepeval.metrics import GEval, ToolCorrectnessMetric
 from deepeval.test_case import LLMTestCase, ToolCall
 
-from tests.deepeval_eval_compat import EvalCaseParams
+from deepeval_support.compat import EvalCaseParams
 from tests.utils import (
     load_llm_configurations,
     should_skip_llm_matrix_tests,

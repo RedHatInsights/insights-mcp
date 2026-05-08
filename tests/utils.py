@@ -11,12 +11,9 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
-from deepeval.models.base_model import DeepEvalBaseLLM
 from llama_index.core.llms import ChatMessage
-from pydantic import BaseModel
 
-# Constants
-DEFAULT_JSON_HEADERS = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
+from instrumentation_tests.mcp_jsonrpc import DEFAULT_JSON_HEADERS, create_mcp_init_request
 
 
 def should_skip_llm_tests() -> bool:
@@ -104,10 +101,6 @@ class ServerStartupError(Exception):
 
 class ServerConnectionError(Exception):
     """Exception raised when unable to connect to MCP server."""
-
-
-class MCPError(Exception):
-    """Exception raised for MCP-related errors."""
 
 
 def get_free_port() -> int:
@@ -300,66 +293,6 @@ def start_insights_mcp_server(
         raise
 
 
-def parse_mcp_response(response_text: str) -> Dict[str, Any]:
-    """Parse MCP response which could be JSON or SSE format."""
-    try:
-        return json.loads(response_text)
-    except json.JSONDecodeError as exc:
-        # Try parsing as SSE format
-        for line in response_text.split("\n"):
-            if line.startswith("data: "):
-                data_part = line[6:]  # Remove 'data: ' prefix
-                try:
-                    return json.loads(data_part)
-                except json.JSONDecodeError:
-                    continue
-        raise ValueError(f"No valid JSON found in response: {response_text}") from exc
-
-
-def make_llm_api_request(api_url: str, api_key: str, payload: Dict[str, Any]) -> str:
-    """Make HTTP request to LLM API and return response content."""
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
-
-    try:
-        response = requests.post(f"{api_url}/chat/completions", json=payload, headers=headers, timeout=60)
-        response.raise_for_status()
-
-        result = response.json()
-        return result["choices"][0]["message"]["content"]
-
-    except requests.exceptions.RequestException as e:
-        raise MCPError(f"LLM query failed: {e}") from e
-    except (KeyError, IndexError) as e:
-        raise MCPError(f"Unexpected LLM response format: {e}") from e
-
-
-def call_llm_api(
-    api_url: str, model_id: str, api_key: str, messages: List[Dict[str, str]], temperature: float = 0.1
-) -> str:
-    """Call LLM API with messages and return response content."""
-    payload = {
-        "model": model_id,
-        "messages": messages,
-        "temperature": temperature,
-    }
-
-    return make_llm_api_request(api_url, api_key, payload)
-
-
-def create_mcp_init_request() -> dict:
-    """Create standard MCP initialization request."""
-    return {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "initialize",
-        "params": {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {},
-            "clientInfo": {"name": "test-client", "version": "1.0.0"},
-        },
-    }
-
-
 def pretty_print_chat_history(
     conversation_history: List[ChatMessage], llm_name: str, verbose_logger: logging.Logger
 ) -> None:
@@ -379,81 +312,3 @@ def pretty_print_chat_history(
             verbose_logger.info(f"{llm_name} turn {i + 1}: 🔧 Tool: {turn.content}")
         else:
             verbose_logger.info(f"{llm_name} turn {i + 1}: ? {turn.role}: {turn.content}")
-
-
-class CustomVLLMModel(DeepEvalBaseLLM):
-    """Custom LLM model for deepeval that uses vLLM with OpenAI-compatible API.
-
-    Current implementation of deepeval does not support vLLM Server with api_key yet.
-    And the OpenAI class does not support custom models.
-    """
-
-    def __init__(
-        self,
-        api_url: Optional[str] = None,
-        model_id: Optional[str] = None,
-        api_key: Optional[str] = None,
-        temperature: float = 0,
-        **kwargs,
-    ):
-        if not api_url:
-            raise ValueError("api_url must be provided for CustomVLLMModel")
-        if not model_id:
-            raise ValueError("model_id must be provided for CustomVLLMModel")
-
-        self.api_url = api_url
-        self.model_id = model_id or "default"
-        self.api_key = api_key or ""
-
-        if temperature < 0:
-            raise ValueError("Temperature must be >= 0.")
-        self.temperature = temperature
-        super().__init__(self.model_id)
-
-    # pylint: disable=arguments-differ
-    def generate(  # type: ignore[override]
-        self, prompt: str, schema: Optional[BaseModel] = None
-    ) -> Any:
-        # For simple cases without schema, use shared function
-        if not schema:
-            messages = [{"role": "user", "content": prompt}]
-            return call_llm_api(self.api_url, self.model_id, self.api_key, messages, self.temperature)
-
-        # For schema validation, use shared HTTP request function
-        payload = {
-            "model": self.model_id,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": self.temperature,
-        }
-
-        content = make_llm_api_request(self.api_url, self.api_key, payload)
-
-        if schema:
-            try:
-                # remove markdown code block markers
-                content = content.replace("```json", "").replace("```", "")
-                return schema.model_validate_json(content)
-                # print(f"Model {self.model_id} replied for {payload}\ņwith {ret}")
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                error_message = (
-                    f"The LLM {self.model_id} was expected to return a valid JSON object "
-                    f"compatible with the schema {schema}. but it returned {content}."
-                    f"Error: {e}"
-                )
-                raise ValueError(error_message) from e
-
-        return content
-
-    # pylint: disable=arguments-differ
-    async def a_generate(  # type: ignore[override]
-        self, prompt: str, schema: Optional[BaseModel] = None
-    ) -> str:
-        # For simplicity, reuse sync version
-        return self.generate(prompt, schema)
-
-    def load_model(self):
-        # For API-based models, we don't need to load anything
-        return None
-
-    def get_model_name(self):
-        return f"{self.model_id} (vLLM)"

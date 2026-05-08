@@ -7,7 +7,9 @@ For now this is intended to be used with vLLM test agents.
 
 - `test_auth.py` - Authentication and OAuth tests
 - `utils.py` - Shared testing utilities and helper functions
-- `utils_agent.py` - Agent utilities for LLM testing
+- `../llama_index_support/` - LlamaIndex MCP agent (`MCPAgentWrapper`) and bool-schema patch — see ``UPSTREAM.md`` there
+- `../deepeval_support/` - DeepEval adapters (e.g. OpenAI-compat judge models) — see ``UPSTREAM.md`` there
+- `../instrumentation_tests/` - Structural MCP checks (run ``make test-instrumentation``)
 - `conftest.py` - Pytest fixtures and configuration
 
 Image Builder specific tests are located in `src/image_builder_mcp/tests/`:
@@ -50,6 +52,8 @@ The LLM integration tests support matrix testing across multiple LLM configurati
 
 ```bash
 make test
+
+make test-instrumentation
 
 # or
 make test-verbose

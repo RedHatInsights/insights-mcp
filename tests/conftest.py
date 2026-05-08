@@ -12,21 +12,22 @@ from unittest.mock import Mock, patch
 import pytest
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 
+# pylint: disable=wrong-import-position
+from deepeval_support.models import CustomVLLMModel
+
 # Add imports for mock client creation
 from insights_mcp.client import InsightsClient
 from insights_mcp.config import INSIGHTS_BASE_URL
-from tests import oauth_utils as oauth_utils_module
-
-# pylint: disable=wrong-import-position
-from .llama_index_non_iterable_bool_patch import apply_llama_index_bool_patch
+from llama_index_support.agent_mcp import MCPAgentWrapper
+from llama_index_support.non_iterable_bool_patch import apply_llama_index_bool_patch
 
 if apply_llama_index_bool_patch():
     print("✅ Patch applied successfully")
 else:
     print("❌ Failed to apply patch")
 
-from .utils import CustomVLLMModel, cleanup_server_process, load_llm_configurations, start_insights_mcp_server
-from .utils_agent import MCPAgentWrapper
+from tests import oauth_utils as oauth_utils_module
+from tests.utils import cleanup_server_process, load_llm_configurations, start_insights_mcp_server
 
 # Load LLM configurations for fixtures
 _, guardian_llm_config = load_llm_configurations()

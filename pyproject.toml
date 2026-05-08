@@ -110,6 +110,7 @@ pythonpath = ["src", "scripts", "."]
 testpaths = ["tests", "src"]
 markers = [
     "integration: tests that call external APIs (e.g. GitHub API)",
+    "instrumentation: structural MCP / wiring checks without LLM behavior assertions",
 ]
 
 [dependency-groups]

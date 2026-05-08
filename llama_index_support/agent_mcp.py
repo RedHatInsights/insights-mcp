@@ -1,17 +1,10 @@
-"""Enhanced MCP Agent implementation focused on extracting called tools and steps.
-
-This implementation removes reliance on deprecated WorkflowCheckpointer and instead:
-- Wraps tools to record invocations for validation in tests
-- Streams workflow events to optionally log step progression
-- Returns called tools for assertions and minimal reasoning steps for logs
-"""
+"""LlamaIndex MCP agent used by behavioral integration tests."""
 
 import asyncio
 import logging
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import requests
-from deepeval.test_case import ToolCall
 from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.base.llms.types import LLMMetadata
 from llama_index.core.llms import ChatMessage
@@ -20,7 +13,8 @@ from llama_index.core.workflow import Context
 from llama_index.llms.openai import OpenAI
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 
-from .utils import (
+from deepeval_support.tool_calls import tool_call_record
+from instrumentation_tests.mcp_jsonrpc import (
     DEFAULT_JSON_HEADERS,
     create_mcp_init_request,
     parse_mcp_response,
@@ -53,14 +47,11 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         self.agent: Optional[FunctionAgent] = None
         self.context: Optional[Context] = None
 
-        # Recorded data
-        self._called_tools: List[ToolCall] = []
+        self._called_tools: List[Any] = []
         self._step_names: List[str] = []
 
-        # Set up logging for debugging
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-        # Initialize LlamaIndex LLM
         self.llama_llm = CustomLlamaIndexLLM(
             api_url=api_url,
             model_id=model_id,
@@ -72,7 +63,6 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         if verbose_logger:
             self.logger = verbose_logger
 
-        # Run async initialization
         asyncio.run(self._initialize())
 
     async def _initialize(self):
@@ -83,10 +73,8 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
     async def _init_mcp_tools(self):
         """Initialize MCP tools using LlamaIndex MCP support."""
         try:
-            # Support stdio transport by launching the server as a subprocess
             if self.server_url == "stdio":
                 mcp_client = BasicMCPClient("python", args=["-m", "insights_mcp.server", "stdio"])
-                # For stdio we cannot fetch HTTP instructions; leave system prompt empty
                 fetch_system_prompt = False
             else:
                 mcp_client = BasicMCPClient(self.server_url)
@@ -101,8 +89,8 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
                 self.system_prompt = ""
 
             logging.info("Initialized %d tools from MCP server", len(self.tools or []))
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            self.logger.error("Failed to initialize MCP tools: %s", e)
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            self.logger.error("Failed to initialize MCP tools: %s", exc)
             raise
 
     async def _get_system_prompt(self) -> str:
@@ -115,8 +103,8 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
                 if isinstance(response_data, dict) and "result" in response_data:
                     return response_data["result"].get("instructions", "")
             return ""
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            self.logger.warning("Failed to get system prompt: %s", e)
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            self.logger.warning("Failed to get system prompt: %s", exc)
             return ""
 
     def _record_tool_call(self, tool_name: str, arguments: Optional[Dict[str, Any]] = None) -> None:
@@ -124,12 +112,11 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         if len(self._called_tools) > 0 and self._called_tools[-1].name == tool_name:
             return
         args = arguments or {}
-        self._called_tools.append(ToolCall(name=tool_name, input_parameters=args))
+        self._called_tools.append(tool_call_record(tool_name, args))
 
     def _wrap_one_tool(self, tool: Union[BaseTool, Callable]) -> Union[BaseTool, Callable]:
         """Monkey-patch a tool to record invocations while preserving behavior."""
         try:
-            # Resolve tool name robustly and ensure it's str for typing
             tool_name: str
             if hasattr(tool, "metadata") and getattr(tool, "metadata") is not None:
                 tool_name = str(getattr(tool.metadata, "name", "unknown"))
@@ -139,7 +126,6 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
                     str(name_attr) if name_attr is not None else (f"unknown class:{tool.__class__.__name__} {tool}")
                 )
 
-            # Prefer async path if available
             if hasattr(tool, "acall") and asyncio.iscoroutinefunction(getattr(tool, "acall")):
                 original_acall = getattr(tool, "acall")
 
@@ -150,7 +136,6 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
                 setattr(tool, "acall", wrapped_acall)
                 return tool
 
-            # Some BaseTool implementations expose __call__ as async
             if hasattr(tool, "__call__") and asyncio.iscoroutinefunction(getattr(tool, "__call__")):
                 original_call = getattr(tool, "__call__")
 
@@ -161,7 +146,6 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
                 setattr(tool, "__call__", wrapped_call)  # type: ignore
                 return tool
 
-            # Fallback: sync call path
             if hasattr(tool, "call") and callable(getattr(tool, "call")):
                 original_sync_call = getattr(tool, "call")
 
@@ -169,7 +153,6 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
                     self._record_tool_call(tool_name, kwargs)
                     return await asyncio.to_thread(original_sync_call, *args, **kwargs)
 
-                # Prefer to expose async interface to agent
                 setattr(tool, "acall", wrapped_sync)
                 return tool
 
@@ -182,30 +165,26 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
                         return await original_callable(*args, **kwargs)
                     return await asyncio.to_thread(original_callable, *args, **kwargs)
 
-                # Expose as async entrypoint commonly used by tools
                 setattr(tool, "acall", wrapped_callable)
                 return tool
 
             return tool
         except Exception:  # pylint: disable=broad-exception-caught
-            # If wrapping fails, return original tool unmodified
             return tool
 
     def _wrap_tools_for_recording(self) -> None:
         if not self.tools:
             return
         wrapped: List[Union[BaseTool, Callable]] = []
-        for t in self.tools:
-            wrapped.append(self._wrap_one_tool(t))
+        for step_tool in self.tools:
+            wrapped.append(self._wrap_one_tool(step_tool))
         self.tools = wrapped
 
     async def _setup_agent(self):
         """Setup LlamaIndex agent with MCP tools and optional verbose logging."""
-        # Reset recordings for a new session
         self._called_tools = []
         self._step_names = []
 
-        # Wrap tools first so the agent uses the wrapped versions
         self._wrap_tools_for_recording()
 
         self.agent = FunctionAgent(
@@ -219,15 +198,14 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
 
         self.logger.info("📝 Initialized workflow with event streaming for step logging")
 
-    async def execute_with_reasoning(  # pylint: disable=too-many-locals
+    async def execute_with_reasoning(
         self,
         user_msg: str,
         chat_history: Optional[List[ChatMessage]] = None,
         max_iterations: int = 10,
-    ) -> Tuple[str, List[Dict[str, Any]], List[Any], List[ChatMessage]]:  # pylint: disable=too-many-locals,too-many-arguments
+    ) -> Tuple[str, List[Dict[str, Any]], List[Any], List[ChatMessage]]:
         """Execute agent, record tool calls and steps, return response and artifacts."""
         if chat_history is None or len(chat_history) == 0:
-            # ensure system prompt is included in chat history
             if self.system_prompt:
                 chat_history = [ChatMessage(role="system", content=self.system_prompt)]
             else:
@@ -236,7 +214,6 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         if not self.agent or not self.context:
             raise ValueError("Agent or context not initialized")
 
-        # Stream events for optional step logging while the workflow runs
         self.logger.info("🎬 Starting workflow execution...")
         self.logger.info("📝 User message: %s", user_msg)
 
@@ -247,38 +224,32 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             max_iterations=max_iterations,
         )
 
-        # Consume events to capture step progression
         async def _stream_events() -> None:
             async for ev in handler.stream_events():
                 ev_name = ev.__class__.__name__
                 self._step_names.append(ev_name)
                 if self.logger and ev_name not in ["AgentStream"]:
-                    data = f"{ev}"
-                    if len(data) > 2000:
-                        data = data[:1000] + "\n<… abbreviated log …>\n" + data[-1000:]
-                    self.logger.debug("📡 Event %s: %s", ev_name, data)
+                    data_str = f"{ev}"
+                    if len(data_str) > 2000:
+                        data_str = data_str[:1000] + "\n<… abbreviated log …>\n" + data_str[-1000:]
+                    self.logger.debug("📡 Event %s: %s", ev_name, data_str)
 
-        # Run streaming in background while awaiting result
         stream_task = asyncio.create_task(_stream_events())
         try:
             response = await handler
         finally:
-            # Ensure streaming task cleaned up
             try:
                 await asyncio.wait_for(stream_task, timeout=0.5)
             except asyncio.TimeoutError:
                 stream_task.cancel()
 
-        # Build minimal reasoning steps from recorded step names
         reasoning_steps: List[Dict[str, Any]] = [
-            {"step_number": i + 1, "step_type": "event", "content": name} for i, name in enumerate(self._step_names)
+            {"step_number": idx + 1, "step_type": "event", "content": name} for idx, name in enumerate(self._step_names)
         ]
 
-        # Build updated chat history
         updated_history = chat_history + [ChatMessage(role="user", content=user_msg)]
         updated_history.append(ChatMessage(role="assistant", content=str(response)))
 
-        # Return called tools as recorded
         tools_called: List[Any] = list(self._called_tools)
 
         self.logger.info("🔍 Agent response: %s", response)
@@ -289,7 +260,6 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
 
         return str(response), reasoning_steps, tools_called, updated_history
 
-    # Backwards-compat small helpers used by tests elsewhere
     def get_all_checkpoints(self) -> Dict[str, List[Any]]:  # pylint: disable=too-few-public-methods
         """No longer uses checkpoints; returns empty mapping for compatibility."""
         return {}
@@ -299,7 +269,6 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         return []
 
 
-# Reuse the CustomLlamaIndexLLM from the original implementation
 # pylint: disable=too-few-public-methods,too-many-ancestors
 class CustomLlamaIndexLLM(OpenAI):
     """Custom LlamaIndex LLM that wraps vLLM with OpenAI-compatible API."""
@@ -321,3 +290,6 @@ class CustomLlamaIndexLLM(OpenAI):
             is_function_calling_model=True,
             model_name=self._custom_model_id,
         )
+
+
+__all__ = ["CustomLlamaIndexLLM", "MCPAgentWrapper"]
