@@ -7,7 +7,7 @@ For now this is intended to be used with vLLM test agents.
 
 - `test_auth.py` - Authentication and OAuth tests
 - `utils.py` - Shared testing utilities and helper functions
-- `../llama_index_support/` - LlamaIndex MCP agent (`MCPAgentWrapper`) and bool-schema patch — see ``UPSTREAM.md`` there
+- `../llama_index_support/` - LlamaIndex MCP agent (`MCPAgentWrapper`); MCP import shim — see ``UPSTREAM.md`` there
 - `../deepeval_support/` - DeepEval adapters (e.g. OpenAI-compat judge models) — see ``UPSTREAM.md`` there
 - `../instrumentation_tests/` - Structural MCP checks (run ``make test-instrumentation``)
 - `conftest.py` - Pytest fixtures and configuration

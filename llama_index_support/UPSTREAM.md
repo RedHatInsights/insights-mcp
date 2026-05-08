@@ -4,12 +4,16 @@ Targets:
 
 - [`run-llama/llama_index`](https://github.com/run-llama/llama_index) (`llama-index-core`, `llama-index-tools-mcp`)
 
-## Defensive MCP schema patch
+## MCP schema handling (historical bool `additionalProperties` crash)
 
-`non_iterable_bool_patch.py` works around `_resolve_field_type` assuming dict-shaped
-schemas when `additionalProperties` can be JSON Schema boolean shorthand.
+LlamaIndex used to recurse into boolean `additionalProperties` and call
+`_resolve_field_type` with a `bool`. Upstream addressed this for real schemas in PR
+[#20082](https://github.com/run-llama/llama_index/pull/20082) (shipped in
+**llama-index-tools-mcp 0.4.2**). `_resolve_field_type` itself still assumes dict-shaped
+schemas; a small optional hardening would be an `isinstance(field_schema, bool)` guard
+upstream if another call site ever passes bare booleans.
 
-Prefer removing the patch once the root cause is fixed in `tool_spec_mixins`.
+`non_iterable_bool_patch.py` only retains a deprecated no-op import check (`apply_llama_index_bool_patch`).
 
 ## MCP + Llama agents in tests
 

@@ -1,9 +1,5 @@
 """Pytest configuration and common fixtures."""
 
-# Apply defensive patch for llama-index MCP schema violation bug
-# This prevents TypeError when llama-index incorrectly generates additionalProperties: true
-# (which violates MCP specification that expects explicit object properties)
-
 import asyncio
 import logging
 from contextlib import contextmanager
@@ -19,13 +15,6 @@ from deepeval_support.models import CustomVLLMModel
 from insights_mcp.client import InsightsClient
 from insights_mcp.config import INSIGHTS_BASE_URL
 from llama_index_support.agent_mcp import MCPAgentWrapper
-from llama_index_support.non_iterable_bool_patch import apply_llama_index_bool_patch
-
-if apply_llama_index_bool_patch():
-    print("✅ Patch applied successfully")
-else:
-    print("❌ Failed to apply patch")
-
 from tests import oauth_utils as oauth_utils_module
 from tests.utils import cleanup_server_process, load_llm_configurations, start_insights_mcp_server
 

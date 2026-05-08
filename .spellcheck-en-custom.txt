@@ -10,6 +10,7 @@ autopep
 backend
 baseos
 bool
+booleans
 CDN
 Claude
 CLI
@@ -79,6 +80,7 @@ Pytest
 rbac
 RBAC
 README
+recurse
 remediatable
 remediations
 repo
