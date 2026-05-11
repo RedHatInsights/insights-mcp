@@ -106,7 +106,6 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
         mcp_host: MCP server host for authentication
         mcp_port: MCP server port for authentication
         token_endpoint: Token endpoint for authentication
-        **settings: Additional settings passed to parent class
     """
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -124,7 +123,6 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
         mcp_host: str | None = None,
         mcp_port: int | None = None,
         token_endpoint: str = config.SSO_TOKEN_ENDPOINT,
-        **settings: Any,
     ):
         name = name or "Red Hat Insights"
         server_version = __version__ if __version__ else "0.0.0-dev"
@@ -148,7 +146,6 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
             auth=oauth_provider,
             icons=[Icon(src=get_icon_data_uri())],
             website_url="https://console.redhat.com",
-            **settings,
         )
         self.base_url = base_url
         self.client_id = client_id

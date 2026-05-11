@@ -6,7 +6,6 @@ Insights-specific MCP tools and resources.
 """
 
 import asyncio
-from typing import Any
 
 from fastmcp import FastMCP
 from fastmcp.server.auth import AuthProvider
@@ -37,7 +36,6 @@ class InsightsMCP(FastMCP):
         *,
         headers: dict[str, str] | None = None,
         instructions: str | None = None,
-        **settings: Any,
     ):
         """Initialize the InsightsMCP server.
 
@@ -47,9 +45,8 @@ class InsightsMCP(FastMCP):
             api_path: API path for Insights endpoints
             headers: Optional additional HTTP headers for requests
             instructions: Optional instructions for the MCP server
-            **settings: Additional settings passed to FastMCP
         """
-        super().__init__(name=name, instructions=instructions, **settings)
+        super().__init__(name=name, instructions=instructions)
         self.api_path = api_path
         self.toolset_name = toolset_name
         self.headers = headers or {}
