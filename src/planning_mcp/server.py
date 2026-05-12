@@ -294,17 +294,17 @@ class PlanningMCP(InsightsMCP):
             ),
         ] = "",
         include_related: Annotated[
-            str,
+            bool,
             Field(
-                default="false",
+                default=False,
                 description=(
-                    "When 'true', returns both RHEL versions observed in inventory and additional "
+                    "When true, returns both RHEL versions observed in inventory and additional "
                     "higher-minor or future versions of the same major that are still supported but "
-                    "not yet deployed (marked as related=true). When 'false', returns only RHEL "
+                    "not yet deployed (marked as related=true). When false, returns only RHEL "
                     "versions actually observed in the requester's inventory."
                 ),
             ),
-        ] = "false",
+        ] = False,
     ) -> str:
         """Returns RHEL lifecycle information for systems in the requester's inventory.
 
@@ -317,10 +317,10 @@ class PlanningMCP(InsightsMCP):
         When the question is scoped to a specific RHEL major (or major/minor), set major (and optionally minor)
         so relevance is calculated only from systems on that version.
 
-        If the user wants only what is currently running, set include_related=false
+        If the user wants only what is currently running, set include_related=False
         (default, not needed to be specified).
 
-        If the user wants upgrade options or newer streams related to what they run today, set include_related=true and
+        If the user wants upgrade options or newer streams related to what they run today, set include_related=True and
         look at items where related=true as potential targets.
 
         Response guidance:

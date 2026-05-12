@@ -219,7 +219,7 @@ class TestPlanningGetRelevantRhelLifecycle:
         with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
             mock_get.return_value = mock_lifecycle_response
 
-            result = await planning_mcp_server.get_relevant_rhel_lifecycle(include_related=str(include_related))
+            result = await planning_mcp_server.get_relevant_rhel_lifecycle(include_related=include_related)
 
             mock_get.assert_called_once_with(
                 "relevant/lifecycle/rhel",
