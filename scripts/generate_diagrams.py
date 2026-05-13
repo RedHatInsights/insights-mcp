@@ -13,6 +13,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+MERMAID_CLI_IMAGE = "ghcr.io/mermaid-js/mermaid-cli/mermaid-cli:11.14.1-beta.13"
+
 
 def extract_mermaid_blocks(markdown_file: Path) -> dict[str, str]:
     """Extract Mermaid code blocks from markdown file.
@@ -85,8 +87,7 @@ def generate_diagram_from_mermaid(mermaid_code: str, output_file: Path, docs_dir
     input_file = docs_dir / "input.mmd"
     input_file.write_text(mermaid_code, encoding="utf-8")
 
-    # Use official Mermaid CLI container
-    container_image = "ghcr.io/mermaid-js/mermaid-cli/mermaid-cli:latest"
+    container_image = MERMAID_CLI_IMAGE
 
     # Run podman to convert Mermaid to requested format
     # Mount docs_dir as both /data (for input) and /output (for output)
@@ -108,7 +109,7 @@ def generate_diagram_from_mermaid(mermaid_code: str, output_file: Path, docs_dir
     ]
 
     try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        subprocess.run(cmd, check=True)
 
         # Post-process SVG to make box border match background color
         # This makes the border effectively invisible
@@ -116,7 +117,7 @@ def generate_diagram_from_mermaid(mermaid_code: str, output_file: Path, docs_dir
         if format_type == "svg" and output_file.exists():
             _make_box_border_match_background(output_file, rgb_color=(225, 245, 255))
     except subprocess.CalledProcessError as e:
-        error_msg = f"Failed to generate {format_type.upper()}: {e.stderr if e.stderr else e.stdout}"
+        error_msg = f"Failed to generate {format_type.upper()}: podman exited with status {e.returncode}"
         raise RuntimeError(error_msg) from e
     finally:
         # Clean up input file
