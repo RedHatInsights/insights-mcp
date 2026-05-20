@@ -1,10 +1,20 @@
 name: Build and Push Container Image and Release Artifacts
 
+# Queue deploy runs per ref so overlapping main pushes cannot race on :latest (HMS-10651).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 on:  # yamllint disable-line rule:truthy
   push:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      push_images:
+        description: Push images to GHCR on manual build (requires main branch)
+        type: boolean
+        default: false
 
 jobs:
   generate-tag:
@@ -40,12 +50,23 @@ jobs:
           podman build --build-arg INSIGHTS_MCP_VERSION=${{ needs.generate-tag.outputs.tag }} --platform=linux/amd64,linux/arm64 --jobs=2 --manifest insights-mcp .
 
       - name: Push
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        if: >-
+          github.ref == 'refs/heads/main' &&
+          (github.event_name == 'push' ||
+           (github.event_name == 'workflow_dispatch' && inputs.push_images))
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u $ --password-stdin
+          echo "${GITHUB_TOKEN}" | podman login ghcr.io -u $ --password-stdin
           REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          podman manifest push --all --format v2s2 insights-mcp docker://ghcr.io/${REPO_LOWER}:${{ needs.generate-tag.outputs.tag }}
-          podman manifest push --all --format v2s2 insights-mcp docker://ghcr.io/${REPO_LOWER}:latest
+          TAG="${{ needs.generate-tag.outputs.tag }}"
+          podman manifest push --all --format v2s2 insights-mcp "docker://ghcr.io/${REPO_LOWER}:${TAG}"
+          HEAD_SHA=$(gh api "repos/${{ github.repository }}/commits/main" --jq .sha)
+          if [ "$HEAD_SHA" != "${{ github.sha }}" ]; then
+            echo "Skipping :latest push: ${{ github.sha }} is not tip of main (${HEAD_SHA})"
+            exit 0
+          fi
+          podman manifest push --all --format v2s2 insights-mcp "docker://ghcr.io/${REPO_LOWER}:latest"
 
       - name: Build Lightspeed image
         run: |
@@ -57,24 +78,39 @@ jobs:
           .
 
       - name: Push Lightspeed image
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        if: >-
+          github.ref == 'refs/heads/main' &&
+          (github.event_name == 'push' ||
+           (github.event_name == 'workflow_dispatch' && inputs.push_images))
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           IMAGE_PATH=ghcr.io/${REPO_LOWER/insights-mcp/red-hat-lightspeed-mcp}
-          podman manifest push --all --format v2s2 red-hat-lightspeed-mcp docker://${IMAGE_PATH}:${{ needs.generate-tag.outputs.tag }}
-          podman manifest push --all --format v2s2 red-hat-lightspeed-mcp docker://${IMAGE_PATH}:latest
+          TAG="${{ needs.generate-tag.outputs.tag }}"
+          podman manifest push --all --format v2s2 red-hat-lightspeed-mcp "docker://${IMAGE_PATH}:${TAG}"
+          HEAD_SHA=$(gh api "repos/${{ github.repository }}/commits/main" --jq .sha)
+          if [ "$HEAD_SHA" != "${{ github.sha }}" ]; then
+            echo "Skipping :latest push: ${{ github.sha }} is not tip of main (${HEAD_SHA})"
+            exit 0
+          fi
+          podman manifest push --all --format v2s2 red-hat-lightspeed-mcp "docker://${IMAGE_PATH}:latest"
 
       # Essentially this is too late as the images are already deployed at this point
       # but might be better to catch any issues "early".
       # also Konflux CI might not be run at this point
       # but at least we test the "last" image with this.
       - name: Test all deployed images
+        if: >-
+          github.ref == 'refs/heads/main' &&
+          (github.event_name == 'push' ||
+           (github.event_name == 'workflow_dispatch' && inputs.push_images))
         run: |
           make test-upstream-containers
 
   build-release-artifacts:
     runs-on: ubuntu-latest
-    needs: generate-tag
+    needs: [generate-tag, build-image]
     permissions:
       contents: write
     steps:
@@ -89,6 +125,7 @@ jobs:
           make build-claude-extension CONTAINER_BRAND=red-hat-lightspeed
 
       - name: Create release with assets
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           TAG: ${{ needs.generate-tag.outputs.tag }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
