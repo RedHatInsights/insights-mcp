@@ -51,6 +51,7 @@ dev = [
     "llama-index-core",
     "llama-index-tools-mcp",
     "llama-index-llms-openai",
+    "llama-index-llms-openai-like",
     "mkdocs-techdocs-core",
 ]
 

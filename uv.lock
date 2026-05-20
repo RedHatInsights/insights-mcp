@@ -1461,6 +1461,7 @@ dev = [
     { name = "llama-index" },
     { name = "llama-index-core" },
     { name = "llama-index-llms-openai" },
+    { name = "llama-index-llms-openai-like" },
     { name = "llama-index-tools-mcp" },
     { name = "mkdocs-techdocs-core" },
     { name = "mypy" },
@@ -1493,6 +1494,7 @@ requires-dist = [
     { name = "llama-index", marker = "extra == 'dev'" },
     { name = "llama-index-core", marker = "extra == 'dev'" },
     { name = "llama-index-llms-openai", marker = "extra == 'dev'" },
+    { name = "llama-index-llms-openai-like", marker = "extra == 'dev'" },
     { name = "llama-index-tools-mcp", marker = "extra == 'dev'" },
     { name = "mkdocs-techdocs-core", marker = "extra == 'dev'" },
     { name = "mypy", marker = "extra == 'dev'" },
@@ -1989,6 +1991,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/74/6e/1ef83a852296c55fe8c529b4476073eccaff150d57aceb3d6319a87dcc89/llama_index_llms_openai-0.7.10.tar.gz", hash = "sha256:aa8dabf08ea0b9740fc9dae9677f05049254be5e929794a886692eaf26973def", size = 27586, upload-time = "2026-07-21T23:16:18.087Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8b/89/854cb7b2e5be3b3c16561e93f3edd52d8a1b6e031be1aca4519b9fdd3917/llama_index_llms_openai-0.7.10-py3-none-any.whl", hash = "sha256:b76a0c3d4aaa9aba57dc0366ca6b2346c6819bed22973e334676d7a34704e46a", size = 28673, upload-time = "2026-07-21T23:16:17.062Z" },
+]
+
+[[package]]
+name = "llama-index-llms-openai-like"
+version = "0.7.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "llama-index-core" },
+    { name = "llama-index-llms-openai" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3b/a3/16410b28d131aa113ada79f856b78cb68a8e92a1e27255ea9c36c27a5dec/llama_index_llms_openai_like-0.7.2.tar.gz", hash = "sha256:ed9ff73f975dce470f98ac61c982151ba78eedfa3fb9b03894bc1d1312b213ff", size = 5389, upload-time = "2026-04-23T23:05:32.525Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f4/0c/fdddaee5391d915d3d568d2d8dbdb7c95647e65bb94d4ddb31d47cef5daf/llama_index_llms_openai_like-0.7.2-py3-none-any.whl", hash = "sha256:1f45a7b1cec8fb3f5997684327ffe6c19f93e789c2fff35dc5522465850faf0b", size = 6602, upload-time = "2026-04-23T23:05:31.708Z" },
 ]
 
 [[package]]

@@ -6,11 +6,10 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import requests
 from llama_index.core.agent.workflow import FunctionAgent
-from llama_index.core.base.llms.types import LLMMetadata
 from llama_index.core.llms import ChatMessage
 from llama_index.core.tools import BaseTool
 from llama_index.core.workflow import Context
-from llama_index.llms.openai import OpenAI
+from llama_index.llms.openai_like import OpenAILike
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 
 from deepeval_support.tool_calls import tool_call_record
@@ -52,11 +51,16 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
 
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-        self.llama_llm = CustomLlamaIndexLLM(
-            api_url=api_url,
-            model_id=model_id,
+        self.llama_llm = OpenAILike(
+            model=model_id,
+            api_base=api_url,
             api_key=api_key,
-            system_prompt="You are a helpful assistant that can use tools to answer questions and perform tasks.",
+            temperature=0.1,
+            context_window=8192,
+            max_tokens=2048,
+            is_chat_model=True,
+            is_function_calling_model=True,
+            additional_kwargs={"parallel_tool_calls": False},
         )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
@@ -269,37 +273,4 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         return []
 
 
-# pylint: disable=too-few-public-methods,too-many-ancestors
-class CustomLlamaIndexLLM(OpenAI):
-    """Custom LlamaIndex LLM that wraps vLLM with OpenAI-compatible API."""
-
-    def __init__(self, api_url: str, model_id: str, api_key: str, system_prompt: str = "", **kwargs):
-        temperature = kwargs.pop("temperature", 0.1)
-        merged_additional_kwargs = dict(kwargs.pop("additional_kwargs", None) or {})
-        # OpenAI-compat APIs (including some Gemini gateways) stream multiple tool_calls; collapsing
-        # them can merge names/ids — request at most one tool call per assistant turn unless overridden.
-        merged_additional_kwargs.setdefault("parallel_tool_calls", False)
-        super().__init__(
-            model=model_id,
-            api_key=api_key,
-            api_base=api_url,
-            temperature=temperature,
-            additional_kwargs=merged_additional_kwargs,
-            **kwargs,
-        )
-        self._custom_model_id = model_id
-        self._system_prompt = system_prompt
-
-    @property
-    def metadata(self):
-        """Override metadata to provide context window for custom models."""
-        return LLMMetadata(
-            context_window=8192,
-            num_output=2048,
-            is_chat_model=True,
-            is_function_calling_model=True,
-            model_name=self._custom_model_id,
-        )
-
-
-__all__ = ["CustomLlamaIndexLLM", "MCPAgentWrapper"]
+__all__ = ["MCPAgentWrapper"]

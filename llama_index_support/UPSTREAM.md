@@ -19,3 +19,7 @@ upstream if another call site ever passes bare booleans.
 
 `agent_mcp.py` holds **LlamaIndex** `FunctionAgent` wiring plus MCP discovery used by behavioral
 integration tests—no Red Hat MCP domain assertions.
+
+Dev dependency: `llama-index-llms-openai-like`. `MCPAgentWrapper` uses `OpenAILike` against
+OpenAI-compatible remote endpoints (`MODEL_API` / `MODEL_ID` from test config). Requests pass
+`additional_kwargs={"parallel_tool_calls": False}` for behavioral tests.
