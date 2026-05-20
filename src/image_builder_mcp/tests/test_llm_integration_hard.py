@@ -59,7 +59,7 @@ class TestLLMIntegrationHard:
         )
 
         # Add a strict tool correctness check to fail when expected tools are not called
-        tool_correctness = ToolCorrectnessMetric(threshold=0.6)
+        tool_correctness = ToolCorrectnessMetric(threshold=0.6, model=guardian_agent)
 
         verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.name)
         # Evaluate with deepeval metrics

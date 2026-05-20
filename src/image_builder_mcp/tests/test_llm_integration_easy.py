@@ -118,8 +118,7 @@ class TestLLMIntegrationEasy:
     async def test_image_build_status_tool_selection(self, test_agent, verbose_logger, llm_config, guardian_agent):
         """Test that LLM selects appropriate tools for image build status queries."""
 
-        # Define tool correctness metric - ToolCorrectnessMetric doesn't support model parameter
-        tool_correctness = ToolCorrectnessMetric(threshold=0.7, include_reason=True)
+        tool_correctness = ToolCorrectnessMetric(threshold=0.7, include_reason=True, model=guardian_agent)
 
         prompt = TEST_IMAGE_BUILD_STATUS_PROMPT
 
@@ -210,7 +209,7 @@ class TestLLMIntegrationEasy:
     )
     @pytest.mark.asyncio
     # pylint: disable=redefined-outer-name
-    async def test_tool_usage_patterns(self, test_agent, verbose_logger, llm_config, scenario):
+    async def test_tool_usage_patterns(self, test_agent, guardian_agent, verbose_logger, llm_config, scenario):
         """Test various tool usage patterns and their appropriateness."""
 
         response, _, tools_executed, _ = await test_agent.execute_with_reasoning(scenario["prompt"], chat_history=[])
@@ -227,8 +226,7 @@ class TestLLMIntegrationEasy:
         verbose_logger.info("  Tools called: %s", tool_names)
         verbose_logger.info("  Response: %s", response)
 
-        # Create tool correctness metric - doesn't support model parameter
-        tool_correctness = ToolCorrectnessMetric(threshold=0.6)
+        tool_correctness = ToolCorrectnessMetric(threshold=0.6, model=guardian_agent)
 
         # Evaluate with deepeval
         verbose_logger.info("🤔 Checking tool correctness")
@@ -253,7 +251,7 @@ class TestLLMIntegrationEasy:
 
     @pytest.mark.parametrize("llm_config", llm_configurations, ids=[config["name"] for config in llm_configurations])
     @pytest.mark.asyncio
-    async def test_llm_paging(self, test_agent, verbose_logger, llm_config):  # pylint: disable=redefined-outer-name,too-many-locals
+    async def test_llm_paging(self, test_agent, guardian_agent, verbose_logger, llm_config):  # pylint: disable=redefined-outer-name,too-many-locals
         """Test that the LLM can page through results."""
 
         prompt = TEST_LLM_PAGING_PROMPT_1
@@ -266,7 +264,7 @@ class TestLLMIntegrationEasy:
         test_case_initial = LLMTestCase(
             input=prompt, actual_output=response, tools_called=tools_executed, expected_tools=expected_tools
         )
-        tool_correctness = ToolCorrectnessMetric(threshold=0.6)
+        tool_correctness = ToolCorrectnessMetric(threshold=0.6, model=guardian_agent)
 
         # Measure once to get access to explanation and avoid double LLM call
         tool_correctness.measure(test_case_initial)
@@ -302,7 +300,7 @@ class TestLLMIntegrationEasy:
         test_case_subsequent = LLMTestCase(
             input=follow_up_prompt, actual_output=response, tools_called=tools_executed, expected_tools=expected_tools
         )
-        tool_correctness = ToolCorrectnessMetric(threshold=0.6)
+        tool_correctness = ToolCorrectnessMetric(threshold=0.6, model=guardian_agent)
 
         verbose_logger.info("🤔 Checking tool correctness")
 

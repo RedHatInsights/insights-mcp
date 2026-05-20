@@ -114,6 +114,7 @@ triaging
 TTL
 TUI
 UI
+unconfigured
 Ungrouped
 URI
 UUID

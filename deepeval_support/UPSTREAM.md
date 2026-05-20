@@ -6,7 +6,8 @@ Target: [confident-ai/deepeval](https://github.com/confident-ai/deepeval)
 
 Guardian/judge metrics in LLM integration tests use `deepeval.models.GPTModel` with
 `MODEL_API`, `MODEL_ID`, and `USER_KEY` from test config (OpenAI-compatible remote
-endpoints).
+endpoints). Pass the same model to `GEval` and `ToolCorrectnessMetric` so deepeval does
+not fall back to an unconfigured default `GPTModel`.
 
 ## Candidates to contribute upstream
 

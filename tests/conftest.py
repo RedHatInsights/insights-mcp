@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from contextlib import contextmanager
+from typing import Dict
 from unittest.mock import Mock, patch
 
 import pytest
@@ -17,6 +18,17 @@ from insights_mcp.config import INSIGHTS_BASE_URL
 from llama_index_support.agent_mcp import MCPAgentWrapper
 from tests import oauth_utils as oauth_utils_module
 from tests.utils import cleanup_server_process, load_llm_configurations, start_insights_mcp_server
+
+
+def gpt_model_from_config(config: Dict[str, str]) -> GPTModel:
+    """Build deepeval GPTModel for OpenAI-compatible endpoints from test config."""
+    return GPTModel(
+        model=config["MODEL_ID"],
+        base_url=config["MODEL_API"],
+        api_key=config["USER_KEY"],
+        temperature=0,
+    )
+
 
 # Load LLM configurations for fixtures
 _, guardian_llm_config = load_llm_configurations()
@@ -53,12 +65,7 @@ def guardian_agent(verbose_logger, request):  # pylint: disable=redefined-outer-
     else:
         config = llm_config
 
-    agent = GPTModel(
-        model=config["MODEL_ID"],
-        base_url=config["MODEL_API"],
-        api_key=config["USER_KEY"],
-        temperature=0,
-    )
+    agent = gpt_model_from_config(config)
 
     verbose_logger.info("🧪 Verifying with the model: %s", agent.get_model_name())
 
