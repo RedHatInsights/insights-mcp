@@ -12,7 +12,7 @@ on:  # yamllint disable-line rule:truthy
   workflow_dispatch:
     inputs:
       push_images:
-        description: Push images to GHCR on manual build (requires main branch)
+        description: Publish to GHCR and create GitHub release on manual build (requires main branch)
         type: boolean
         default: false
 
@@ -125,7 +125,10 @@ jobs:
           make build-claude-extension CONTAINER_BRAND=red-hat-lightspeed
 
       - name: Create release with assets
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: >-
+          github.ref == 'refs/heads/main' &&
+          (github.event_name == 'push' ||
+           (github.event_name == 'workflow_dispatch' && inputs.push_images))
         env:
           TAG: ${{ needs.generate-tag.outputs.tag }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
