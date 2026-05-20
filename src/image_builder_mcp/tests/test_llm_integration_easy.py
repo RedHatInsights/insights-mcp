@@ -87,7 +87,7 @@ class TestLLMIntegrationEasy:
             model=guardian_agent,
         )
 
-        verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.model_id)
+        verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.name)
 
         # Measure once to get access to explanation and avoid double LLM call
         behavioral_compliance.measure(test_case)
@@ -141,7 +141,7 @@ class TestLLMIntegrationEasy:
         answered_with_question = None
         # if this fails that's ok, we can continue
         try:
-            verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.model_id)
+            verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.name)
 
             # Measure once to get access to explanation and avoid double LLM call
             contains_question.measure(question_test_case)
@@ -357,7 +357,7 @@ class TestLLMIntegrationEasy:
             model=guardian_agent,
         )
 
-        verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.model_id)
+        verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.name)
 
         # Measure once to get access to explanation and avoid double LLM call
         behavioral_compliance.measure(test_case)

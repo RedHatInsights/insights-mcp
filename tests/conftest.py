@@ -6,10 +6,10 @@ from contextlib import contextmanager
 from unittest.mock import Mock, patch
 
 import pytest
-from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 
 # pylint: disable=wrong-import-position
-from deepeval_support.models import CustomVLLMModel
+from deepeval.models import GPTModel
+from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 
 # Add imports for mock client creation
 from insights_mcp.client import InsightsClient
@@ -49,15 +49,16 @@ def guardian_agent(verbose_logger, request):  # pylint: disable=redefined-outer-
     # if there is a guardian LLM, use it for the guardian agent
     # otherwise, use the test LLM for the guardian agent
     if guardian_llm_config:
-        agent = CustomVLLMModel(
-            api_url=guardian_llm_config["MODEL_API"],
-            model_id=guardian_llm_config["MODEL_ID"],
-            api_key=guardian_llm_config["USER_KEY"],
-        )
+        config = guardian_llm_config
     else:
-        agent = CustomVLLMModel(
-            api_url=llm_config["MODEL_API"], model_id=llm_config["MODEL_ID"], api_key=llm_config["USER_KEY"]
-        )
+        config = llm_config
+
+    agent = GPTModel(
+        model=config["MODEL_ID"],
+        base_url=config["MODEL_API"],
+        api_key=config["USER_KEY"],
+        temperature=0,
+    )
 
     verbose_logger.info("🧪 Verifying with the model: %s", agent.get_model_name())
 

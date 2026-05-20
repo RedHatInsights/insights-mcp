@@ -2,12 +2,16 @@
 
 Target: [confident-ai/deepeval](https://github.com/confident-ai/deepeval)
 
+## Behavioral test guardian LLM
+
+Guardian/judge metrics in LLM integration tests use `deepeval.models.GPTModel` with
+`MODEL_API`, `MODEL_ID`, and `USER_KEY` from test config (OpenAI-compatible remote
+endpoints).
+
 ## Candidates to contribute upstream
 
 1. **Evaluation parameter names** — Stable resolution of `SingleTurnParams` vs legacy
    `LLMTestCaseParams` (see `compat.py`).
-2. **OpenAI-compatible judging models** — Patterns for custom base URLs and Bearer
-   authentication for `DeepEvalBaseLLM` (see `models.py` and `http_llm.py`).
 
 ## Workflow
 
