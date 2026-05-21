@@ -13,6 +13,9 @@ For now this is intended to be used with vLLM test agents.
 - `../instrumentation_tests/` - Structural MCP checks (run ``make test-instrumentation``)
 - `conftest.py` - Pytest fixtures and configuration
 - `test_tokens.py` - MCP tool input token budget checks (see below)
+- `llm_prompt_support.py` - Shared helpers and `create_llm_prompt_test_class()` for per-toolset tests
+- `llm_api_discovery.py` - Resolves `{cve_id}`, `{host_id}`, etc. from live Insights APIs before each test
+- `src/<toolset>_mcp/tests/test_<toolset>_llm_prompts.py` - Per-toolset LLM tests (one case per prompt; asserts expected tool name)
 
 Image Builder specific tests are located in `src/image_builder_mcp/tests/`:
 - `test_get_blueprints.py` - Blueprint retrieval tests
@@ -64,8 +67,15 @@ make test-verbose
 make test-very-verbose
 
 # LLM integration tests only (requires test_config.json and Insights credentials)
-uv run pytest -m llm -v
+make test-llm
+# equivalent:
+# env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -v
+
+# One toolset only
+uv run pytest src/vulnerability_mcp/tests/test_vulnerability_llm_prompts.py -m llm -v -rs
 ```
+
+Each prompt declares `expected_tools` in `src/<toolset>_mcp/test_prompts.py`; the test fails if none of those MCP tools appear in `tools_executed`. Placeholders (`{cve_id}`, …) are resolved from live APIs; scenarios skip when data is missing (`-rs`). Optional: `INSIGHTS_TEST_WORKSPACE` for advisor workspace prompts. Regenerate example markdown: `make test-prompts-md`.
 
 ### LLM test tracing
 

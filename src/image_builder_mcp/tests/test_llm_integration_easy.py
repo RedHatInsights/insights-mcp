@@ -235,7 +235,8 @@ class TestLLMIntegrationEasy:
     @pytest.mark.asyncio
     async def test_llm_paging(self, test_agent, guardian_agent, verbose_logger, llm_config):  # pylint: disable=redefined-outer-name,too-many-locals
         """Test that the LLM can page through results."""
-        prompt = PROMPTS["llm_paging_1"]
+        paging_turns = PROMPTS.turns_for("llm_paging")
+        prompt = paging_turns[0]
 
         response, _, tools_executed, conversation_history = await test_agent.execute_with_reasoning(
             prompt, chat_history=[]
@@ -264,7 +265,7 @@ class TestLLMIntegrationEasy:
         )
 
         # Now ask for more with conversation context
-        follow_up_prompt = PROMPTS["llm_paging_2"]
+        follow_up_prompt = paging_turns[1]
 
         # conversation_history from simplified agent is already ChatMessage objects
         (

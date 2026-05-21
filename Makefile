@@ -102,6 +102,16 @@ test-coverage: install-test-deps ## Run tests with coverage reporting
 	@echo "Running pytest tests with coverage..."
 	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v --cov=. --cov-report=html --cov-report=term-missing
 
+.PHONY: test-llm
+test-llm: ## Run only @pytest.mark.llm behavioral tests (needs test_config.json + INSIGHTS_* creds)
+	@echo "Running LLM tests (pytest -m llm)..."
+	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -v
+
+.PHONY: test-llm-verbose
+test-llm-verbose: ## Run only @pytest.mark.llm behavioral tests (needs test_config.json + INSIGHTS_* creds)
+	@echo "Running LLM tests (pytest -m llm)..."
+	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -vv -o log_cli=true
+
 # Define a reusable check function for container sanity tests
 # $(1) = image URL, $(2) = expected CONTAINER_BRAND value
 define check_container
@@ -204,18 +214,55 @@ run-oauth: build ## Run the MCP server with OAuth transport
 
 ALL_PYTHON_FILES := $(shell find src -name "*.py")
 
+PROMPTS_GENERATOR_DEPS := scripts/generate_test_prompts.py src/insights_mcp/test_prompts_markdown.py src/insights_mcp/test_prompts_data.py
+
 .PHONY: generate-docs tool-tokens-md test-prompts-md prepare-mkdocs build-mkdocs serve-mkdocs catalog-info
 generate-docs: usage.md toolsets.md catalog-info.yaml docs/tool-tokens.md test-prompts-md docs/architecture-structure.svg docs/architecture-deployment.svg prepare-mkdocs .agents/skills/README.md ## Generate documentation from the MCP server
 
 tool-tokens-md: docs/tool-tokens.md ## Generate MCP tool input token table
 
-test-prompts-md: src/image_builder_mcp/test_prompts.md ## Generate toolset test_prompts.md files
+TEST_PROMPTS_MD := \
+	src/image_builder_mcp/test_prompts.md \
+	src/vulnerability_mcp/test_prompts.md \
+	src/inventory_mcp/test_prompts.md \
+	src/advisor_mcp/test_prompts.md \
+	src/remediations_mcp/test_prompts.md \
+	src/rbac_mcp/test_prompts.md \
+	src/rhsm_mcp/test_prompts.md \
+	src/content_sources_mcp/test_prompts.md \
+	src/planning_mcp/test_prompts.md
+
+test-prompts-md: $(TEST_PROMPTS_MD) ## Generate all toolset test_prompts.md files
 
 docs/tool-tokens.md: $(ALL_PYTHON_FILES) scripts/dump_tool_tokens.py
 	uv run python scripts/dump_tool_tokens.py -o $@
 
-src/image_builder_mcp/test_prompts.md: src/image_builder_mcp/test_prompts.py scripts/generate_test_prompts.py src/insights_mcp/test_prompts_markdown.py src/insights_mcp/test_prompts_data.py
+src/image_builder_mcp/test_prompts.md: src/image_builder_mcp/test_prompts.py $(PROMPTS_GENERATOR_DEPS)
 	uv run python scripts/generate_test_prompts.py --module image_builder_mcp.test_prompts -o $@
+
+src/vulnerability_mcp/test_prompts.md: src/vulnerability_mcp/test_prompts.py $(PROMPTS_GENERATOR_DEPS)
+	uv run python scripts/generate_test_prompts.py --module vulnerability_mcp.test_prompts -o $@
+
+src/inventory_mcp/test_prompts.md: src/inventory_mcp/test_prompts.py $(PROMPTS_GENERATOR_DEPS)
+	uv run python scripts/generate_test_prompts.py --module inventory_mcp.test_prompts -o $@
+
+src/advisor_mcp/test_prompts.md: src/advisor_mcp/test_prompts.py $(PROMPTS_GENERATOR_DEPS)
+	uv run python scripts/generate_test_prompts.py --module advisor_mcp.test_prompts -o $@
+
+src/remediations_mcp/test_prompts.md: src/remediations_mcp/test_prompts.py $(PROMPTS_GENERATOR_DEPS)
+	uv run python scripts/generate_test_prompts.py --module remediations_mcp.test_prompts -o $@
+
+src/rbac_mcp/test_prompts.md: src/rbac_mcp/test_prompts.py $(PROMPTS_GENERATOR_DEPS)
+	uv run python scripts/generate_test_prompts.py --module rbac_mcp.test_prompts -o $@
+
+src/rhsm_mcp/test_prompts.md: src/rhsm_mcp/test_prompts.py $(PROMPTS_GENERATOR_DEPS)
+	uv run python scripts/generate_test_prompts.py --module rhsm_mcp.test_prompts -o $@
+
+src/content_sources_mcp/test_prompts.md: src/content_sources_mcp/test_prompts.py $(PROMPTS_GENERATOR_DEPS)
+	uv run python scripts/generate_test_prompts.py --module content_sources_mcp.test_prompts -o $@
+
+src/planning_mcp/test_prompts.md: src/planning_mcp/test_prompts.py $(PROMPTS_GENERATOR_DEPS)
+	uv run python scripts/generate_test_prompts.py --module planning_mcp.test_prompts -o $@
 
 prepare-mkdocs: usage.md toolsets.md docs/architecture-structure.svg docs/architecture-deployment.svg README.md HACKING.md ## Prepare MkDocs staging files under docs/mkdocs/
 	uv run python scripts/prepare_mkdocs.py

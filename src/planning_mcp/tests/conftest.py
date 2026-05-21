@@ -5,13 +5,29 @@ adds a PlanningMCP-specific fixture for unit tests.
 
 import pytest
 
+from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 from planning_mcp.server import PlanningMCP
-
-# Import directly from tests since pytest now knows where to find packages
-from tests.conftest import (  # pylint: disable=import-error
-    mcp_server_url,
+from tests.conftest import (
+    llm_api_context,
     mcp_tools,
+    test_agent,
+    verbose_logger,
 )
+
+
+@pytest.fixture(scope="session")
+def mcp_server_url(request):
+    """Start MCP server with only the planning toolset for LLM integration tests."""
+    transport = getattr(request, "param", "http")
+    if hasattr(request.node, "callspec") and "transport" in request.node.callspec.params:
+        transport = request.node.callspec.params["transport"]
+
+    server_url, server_process = start_insights_mcp_server(transport, toolset="planning")
+
+    try:
+        yield server_url
+    finally:
+        cleanup_server_process(server_process)
 
 
 @pytest.fixture
@@ -24,9 +40,11 @@ def planning_mcp_server() -> PlanningMCP:
     return PlanningMCP()
 
 
-# Make the fixtures available for import
 __all__ = [
+    "llm_api_context",
     "mcp_server_url",
     "mcp_tools",
     "planning_mcp_server",
+    "test_agent",
+    "verbose_logger",
 ]

@@ -85,13 +85,14 @@ make help  # Show all available make targets
 - `src/<toolset_name>_mcp/test_prompts.py` - `PROMPTS = PromptRegistry(...)` (see `insights_mcp.test_prompts_data`)
 - `src/<toolset_name>_mcp/test_prompts.md` - Generated bullet-list examples for users (`make test-prompts-md`)
 
-**`PromptRegistry` entries:** a string for example/behavioral prompts; a `(text, (expected_tools,), description)` tuple for parametrized tool-correctness tests. LLM tests use `PROMPTS["id"]` and `PROMPTS.tool_usage_scenarios()`.
+**`PromptRegistry` entries:** a string (single-turn), a tuple of strings (multi-turn), or `(text, (expected_tools,), description)` for tool-correctness tests. Templates may use `{cve_id}`, `{host_id}`, etc.; unified LLM tests resolve those via live APIs (`tests/llm_api_discovery.py`). Regenerate markdown with `make test-prompts-md`.
 
 **Example test implementations:**
+- `src/<toolset>_mcp/tests/test_<toolset>_llm_prompts.py` - One parametrized LLM test per `prompt_id`; direct assert that at least one `expected_tools` entry was called (`make test-llm`). Each file must have a unique module basename (pytest import safety).
+- `tests/llm_prompt_support.py` - Shared resolve/run/assert helpers; `tests/llm_api_discovery.py` for live placeholder values
 - `tests/` - Cross-toolset authentication, API, and pattern tests
 - `src/image_builder_mcp/test_prompts.py` - `PromptRegistry` shared by LLM tests and generated `test_prompts.md`
-- `src/image_builder_mcp/tests/` - Full test suite with unit and LLM integration tests
-- `src/vulnerability_mcp/test_prompts.md` - LLM test prompts (hand-written until migrated to the generated pattern)
+- `src/image_builder_mcp/tests/` - Additional image-builder behavioral LLM tests (easy/hard)
 
 ### Running Tests
 
@@ -102,6 +103,8 @@ make help  # Shows all available targets with descriptions
 
 **Key test commands (see `make help` for complete list):**
 - `make test` - Standard test run
+- `make test-llm` - Only `@pytest.mark.llm` tests (unified prompt smoke + toolset behavioral tests)
+- `make test-prompts-md` - Regenerate all `src/*/test_prompts.md` from `test_prompts.py`
 - `make test-verbose` - With logging output
 - `make test-coverage` - With coverage reporting
 - `make install-test-deps` - Install test dependencies

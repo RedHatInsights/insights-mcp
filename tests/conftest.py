@@ -335,3 +335,11 @@ def multi_user_tokens():
         ...     assert user1_token.claims["organization"]["id"] != user2_token.claims["organization"]["id"]
     """
     return oauth_utils_module.create_multi_user_tokens(num_users=3)
+
+
+@pytest.fixture(scope="session")
+def llm_api_context():
+    """Live API-derived placeholder values for LLM prompt tests (session scope)."""
+    from tests.llm_api_discovery import build_llm_api_context
+
+    return asyncio.run(build_llm_api_context())
