@@ -63,9 +63,10 @@ class TestGetBlueprints:
 
             # Parse the result
             assert result.startswith("[INSTRUCTION]")
-            assert "Use the UI_URL to link to the blueprint" in result
-            # check paging reminder
-            assert "There could be more entries" in result
+            assert "Link each row using UI_URL" in result
+            assert "[PAGE] Returned 4 row(s) at offset=0" in result
+            assert "offset=4" in result
+            assert "Do not invent rows" in result
 
             # Extract JSON data from result
             json_start = result.find('[{"reply_id"')
@@ -238,5 +239,6 @@ class TestGetBlueprints:
 
             # Should return result
             assert "[INSTRUCTION]" in result
-            # check paging reminder
-            assert "There could be more entries" in result
+            assert "[PAGE] Returned" in result
+            assert "get_blueprints" in result
+            assert "Do not invent rows" in result

@@ -61,71 +61,20 @@ class ImageBuilderMCP(InsightsMCP):
 
         self.logger = logging.getLogger("ImageBuilderMCP")
 
-        self.paging_reminder = (
-            "There could be more entries, ask the user if they want to get more"
-            "and use the parameters offset and limit accordingly.\n"
-        )
+        general_intro = """You are a Red Hat Image Builder assistant (console.redhat.com): list and create
+        custom Linux images.
 
-        general_intro = """You are a comprehensive Linux Image Builder assistant that creates custom
-        Linux disk images, ISOs, and virtual machine images.
+        🟢 CALL IMMEDIATELY: get_openapi, get_blueprints, get_blueprint_details, get_composes,
+        get_compose_details.
+        🔴 GATHER FIRST: create_blueprint (name, distribution, architecture, image type, users).
+        🟡 VERIFY: blueprint_compose (confirm blueprint UUID).
 
-        You can build images for multiple Linux distributions including:
-        - Red Hat Enterprise Linux (RHEL)
-        - CentOS Stream
-        - Fedora Linux (not an official version, only similar to upstream)
+        Creation: collect required fields before create_blueprint; use tool_calls, not prose.
+        Repositories: get UUIDs from content-sources_list_repositories; duplicate them in both
+        payload_repositories and custom_repositories; never guess UUIDs.
 
-        You create various image formats suitable for:
-        - Cloud deployments (AWS, Azure, GCP)
-        - Virtual machines (VMware, guest images)
-        - Edge computing devices
-        - Container registries (OCI)
-        - Bare metal installations (ISO installers)
-        - WSL (Windows Subsystem for Linux)
-
-        This service uses Red Hat's console.redhat.com image-builder osbuild.org infrastructure but serves
-        general Linux image building needs across the entire ecosystem.
-
-        🚨 CRITICAL BEHAVIORAL RULES:
-
-        🟢 **CALL IMMEDIATELY** (tools marked with green indicator):
-        - get_openapi, get_blueprints, get_blueprint_details, get_composes, get_compose_details
-        - For queries like: "List my blueprints", "What's my build status?", "Show blueprint details"
-
-        🔴 **GATHER INFORMATION FIRST** (tools marked with red indicator):
-        - create_blueprint: Ask for name, distribution, architecture, image type, users, etc.
-
-        🟡 **VERIFY PARAMETERS** (tools marked with yellow indicator):
-        - blueprint_compose: Confirm blueprint UUID before proceeding
-
-        **Note**: Each tool description includes color-coded behavioral indicators for MCP clients
-                  that ignore server instructions.
-
-        RULES FOR CREATION TOOLS:
-        1. **ALWAYS GATHER COMPLETE INFORMATION FIRST** through a conversational approach
-        2. **ASK SPECIFIC QUESTIONS** to collect all required details before making creation API calls
-        3. **BE HELPFUL AND CONSULTATIVE** - guide users through the creation process
-        4. **When you need to call a tool, you MUST use the tool_calls format, NOT plain text.**
-
-        WHEN A USER ASKS TO CREATE AN IMAGE OR ISO:
-        - Start by asking about their specific needs and use case
-        - Ask for blueprint name, distribution, architecture, image type, etc.
-        - For RHEL images: Always ask about registration preferences
-        - Ask about custom user accounts and any special configurations
-        - Only call create_blueprint() after you have ALL required information
-
-        Your goal is to be a knowledgeable consultant who helps users both access existing information
-        immediately and create the perfect custom Linux image, ISO, or virtual machine image for their
-        specific deployment needs.
-
-        🚨 **CRITICAL REPOSITORY HANDLING**:
-        When users want to add custom repositories to their blueprints, you MUST:
-        1. Use `content-sources_list_repositories` to find repository UUIDs
-        2. Include the SAME repository UUIDs in BOTH payload_repositories AND custom_repositories fields
-        3. This dual inclusion is MANDATORY - missing either field causes build failures
-        4. NEVER make up or guess repository UUIDs - ALWAYS use the actual UUIDs from content-sources_list_repositories
-
-        <|function_call_library|>
-
+        Tool descriptions include color hints when server instructions are unavailable.
+        List paging rules are returned in get_blueprints/get_composes responses.
         """
 
         super().__init__(
@@ -139,6 +88,20 @@ class ImageBuilderMCP(InsightsMCP):
         # cache the client for all users
         # TBD: purge cache after some time
         self.clients = {self.insights_client.client_id: self.insights_client}
+
+    def _list_response_paging_instructions(
+        self,
+        tool_name: str,
+        offset: int,
+        returned_count: int,
+    ) -> str:
+        """Concrete paging rules for the first list-tool response in a conversation."""
+        next_offset = offset + returned_count
+        return (
+            f"[PAGE] Returned {returned_count} row(s) at offset={offset}. "
+            f"More data requires another {tool_name} call with offset={next_offset} and the requested "
+            f"limit. Do not invent rows, names, or UUIDs.\n"
+        )
 
     def _get_image_types_architectures(self) -> tuple[list[str], list[str]]:
         """Get the list of image types available to build images with."""
@@ -523,6 +486,7 @@ class ImageBuilderMCP(InsightsMCP):
         Linux distributions, packages, users).
 
         🟢 CALL IMMEDIATELY - No information gathering required.
+        Link rows with UI_URL. Paging details are in the tool response footer.
         """
 
         # workaround seen in LLama 3.3 70B Instruct
@@ -565,8 +529,8 @@ class ImageBuilderMCP(InsightsMCP):
                 else:
                     ret.append(data)
 
-            intro = "[INSTRUCTION] Use the UI_URL to link to the blueprint\n"
-            intro += self.paging_reminder
+            intro = "[INSTRUCTION] Link each row using UI_URL.\n"
+            intro += self._list_response_paging_instructions("get_blueprints", offset, len(ret))
             return f"{intro}\n{json.dumps(ret)}"
         except InsightsApiError:
             raise
@@ -648,7 +612,7 @@ class ImageBuilderMCP(InsightsMCP):
         - Check status of recent builds → call this first
         - Find your latest build → call this first
         - Get any build information → call this first
-        Ask the user if they want to get more composes and adapt "offset" accordingly.
+        Link rows with blueprint_url. Paging details are in the tool response footer.
 
         You can also provide this link so the user can check directly in the UI:
         {base_url}/insights/image-builder
@@ -698,11 +662,8 @@ class ImageBuilderMCP(InsightsMCP):
                 if self._should_include_compose(data, search_string):
                     ret.append(data)
 
-            intro = (
-                "[INSTRUCTION] Present a bulleted list and use the blueprint_url to link to the "
-                "blueprint which created this compose\n"
-            )
-            intro += self.paging_reminder
+            intro = "[INSTRUCTION] Present a bulleted list; link each row with blueprint_url.\n"
+            intro += self._list_response_paging_instructions("get_composes", offset, len(ret))
             intro += "[ANSWER]\n"
             return f"{intro}\n{json.dumps(ret)}"
 

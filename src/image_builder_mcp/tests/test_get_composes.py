@@ -63,7 +63,9 @@ class TestGetComposes:
             # Parse the result
             assert_instruction_in_result(result)
             assert "Present a bulleted list" in result
-            assert "There could be more entries" in result
+            assert "[PAGE] Returned" in result
+            assert "get_composes" in result
+            assert "Do not invent rows" in result
 
             # Extract JSON data from result
             json_start = result.find('[{"reply_id"')
