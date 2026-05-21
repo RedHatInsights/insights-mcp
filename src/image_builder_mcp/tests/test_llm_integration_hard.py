@@ -34,7 +34,6 @@ class TestLLMIntegrationHard:
     @pytest.mark.asyncio
     async def test_complete_conversation_flow(self, test_agent, guardian_agent, verbose_logger, llm_config):  # pylint: disable=redefined-outer-name
         """Test complete conversation flow with proper agent behavior."""
-
         prompt = TEST_COMPLETE_CONVERSATION_FLOW_PROMPT
 
         response, _, tools_executed, _ = await test_agent.execute_with_reasoning(prompt, chat_history=[])

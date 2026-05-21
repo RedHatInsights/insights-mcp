@@ -3,15 +3,17 @@
 import asyncio
 import logging
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple, cast
 
 import httpx
-from llama_index.core.agent.workflow import FunctionAgent
+from llama_index.core.agent.workflow.function_agent import FunctionAgent
 from llama_index.core.agent.workflow.workflow_events import AgentOutput
+from llama_index.core.base.llms.types import ChatResponse
 from llama_index.core.llms import ChatMessage
+from llama_index.core.llms.function_calling import FunctionCallingLLM
 from llama_index.core.memory import Memory
 from llama_index.core.storage.chat_store.sql import MessageStatus
-from llama_index.core.tools import BaseTool
+from llama_index.core.tools import AsyncBaseTool, BaseTool
 from llama_index.core.workflow import Context
 from llama_index.llms.openai_like import OpenAILike
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
@@ -23,8 +25,8 @@ from instrumentation_tests.mcp_jsonrpc import (
 )
 from tests.deepeval_support.tracing import WorkflowToolCallCollector, tools_called_from_agent_run
 
-# Align with OpenAILike context_window in initialize().
-_LLM_CONTEXT_TOKEN_LIMIT = 8192
+# Align with OpenAILike context_window in initialize(). Large enough for tool results + follow-up turns.
+_LLM_CONTEXT_TOKEN_LIMIT = 16384
 
 _MCP_INSTRUCTIONS_HEADER = "## MCP server instructions"
 _USER_REQUEST_HEADER = "## User request"
@@ -67,6 +69,33 @@ def _assistant_text_from_handler_response(response: Any) -> str:
 def _chat_history_without_system(messages: List[ChatMessage]) -> List[ChatMessage]:
     """Drop system messages; MCP instructions are injected on the user turn instead."""
     return [message for message in messages if message.role != "system"]
+
+
+class ToolRequiredFunctionAgent(FunctionAgent):
+    """FunctionAgent that sets OpenAI ``tool_choice: required`` before the first tool result.
+
+    Mistral and similar gateways often return prose instead of ``tool_calls`` once roughly
+    seven or more tools are registered; ``tool_required`` is the reliable OpenAI fix.
+    Applied for all matrix models in this harness, not only Mistral.
+    """
+
+    async def _get_response(
+        self,
+        current_llm_input: List[ChatMessage],
+        tools: Sequence[AsyncBaseTool],
+    ) -> ChatResponse:
+        # Require a tool call only before any tool output is in context; later turns need room for history.
+        tool_required = not any(message.role == "tool" for message in current_llm_input)
+        chat_kwargs: Dict[str, Any] = {
+            "chat_history": current_llm_input,
+            "allow_parallel_tool_calls": self.allow_parallel_tool_calls,
+            "tools": tools,
+            "tool_required": tool_required,
+        }
+        if self.initial_tool_choice is not None and current_llm_input[-1].role == "user":
+            chat_kwargs["tool_choice"] = self.initial_tool_choice
+        function_calling_llm = cast(FunctionCallingLLM, self.llm)
+        return await function_calling_llm.achat_with_tools(**chat_kwargs)
 
 
 class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
@@ -122,9 +151,11 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             api_key=self.api_key,
             temperature=0.1,
             context_window=_LLM_CONTEXT_TOKEN_LIMIT,
-            max_tokens=2048,
+            max_tokens=1024,
             is_chat_model=True,
             is_function_calling_model=True,
+            # Some OpenAI-compatible gateways (e.g. Mistral) reject strict JSON-schema tool mode.
+            strict=False,
             async_http_client=self._llm_http_client,
         )
         self._memory = Memory.from_defaults(
@@ -199,7 +230,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         """Setup LlamaIndex agent with MCP tools and optional verbose logging."""
         self._step_names = []
 
-        self.agent = FunctionAgent(
+        self.agent = ToolRequiredFunctionAgent(
             name="MCP Agent",
             description="Agent with MCP tools",
             system_prompt=None,

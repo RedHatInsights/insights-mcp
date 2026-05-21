@@ -7,10 +7,10 @@ Every row uses `--all-tools` (maximum tools per mode).
 
 | Mode | Tools | Input tokens |
 |------|------:|-------------:|
-| all-tools | 41 | 12506 |
+| all-tools | 41 | 10663 |
 | advisor | 8 | 2222 |
 | content-sources | 2 | 404 |
-| image-builder | 11 | 2877 |
+| image-builder | 11 | 1034 |
 | inventory | 6 | 1043 |
 | planning | 7 | 3507 |
 | rbac | 2 | 247 |

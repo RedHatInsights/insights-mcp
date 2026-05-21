@@ -61,21 +61,10 @@ class ImageBuilderMCP(InsightsMCP):
 
         self.logger = logging.getLogger("ImageBuilderMCP")
 
-        general_intro = """You are a Red Hat Image Builder assistant (console.redhat.com): list and create
-        custom Linux images.
-
-        🟢 CALL IMMEDIATELY: get_openapi, get_blueprints, get_blueprint_details, get_composes,
-        get_compose_details.
-        🔴 GATHER FIRST: create_blueprint (name, distribution, architecture, image type, users).
-        🟡 VERIFY: blueprint_compose (confirm blueprint UUID).
-
-        Creation: collect required fields before create_blueprint; use tool_calls, not prose.
-        Repositories: get UUIDs from content-sources_list_repositories; duplicate them in both
-        payload_repositories and custom_repositories; never guess UUIDs.
-
-        Tool descriptions include color hints when server instructions are unavailable.
-        List paging rules are returned in get_blueprints/get_composes responses.
-        """
+        general_intro = """Image Builder assistant. Use tool_calls, not code samples.
+        🟢 list/status: get_blueprints, get_composes, get_*_details, get_openapi, get_distributions.
+        🔴 create_blueprint: gather fields first. 🟡 blueprint_compose: need UUID.
+        Paging: follow [PAGE] in list tool responses."""
 
         super().__init__(
             name="Image Builder MCP Server",
@@ -127,6 +116,14 @@ class ImageBuilderMCP(InsightsMCP):
             raise ValueError("Error getting openapi for image types and architectures") from e
         return image_types, architectures
 
+    @staticmethod
+    def _compact_tool_description(description_str: str, max_len: int = 96) -> str:
+        """First line only, capped — keeps multi-tool gateways within reliable tool-calling limits."""
+        first_line = description_str.strip().split("\n", 1)[0].strip()
+        if len(first_line) <= max_len:
+            return first_line
+        return first_line[: max_len - 3] + "..."
+
     def register_tools(self) -> None:
         """Register all available tools with the MCP server."""
         image_types, architectures = self._get_image_types_architectures()
@@ -162,23 +159,13 @@ class ImageBuilderMCP(InsightsMCP):
                 if doc_str
                 else ""
             )
-            tool.description = description_str
-            tool.title = description_str.split("\n", 1)[0] if description_str else ""
+            compact = self._compact_tool_description(description_str)
+            tool.description = compact
+            tool.title = compact
             self.add_tool(tool)
 
     async def get_distributions(self) -> str:
-        """Get the list of distributions available to build images with.
-
-        🟢 CALL IMMEDIATELY - No information gathering required.
-
-        Emphasize that there is support only for Red Hat Enterprise Linux (RHEL) images
-        and there only for the latest minor version of each major version.
-        Emphasize that Fedora images are "similar" to the upstream but no official versions!
-        Emphasize that CentOS Stream is not supported by Red Hat.
-
-        Returns:
-            List of distributions
-        """
+        """🟢 List RHEL distributions (latest minor per major). No Fedora/CentOS Stream support."""
         try:
             distributions = await self.insights_client.get("distributions")
             return json.dumps(distributions)
@@ -204,17 +191,7 @@ class ImageBuilderMCP(InsightsMCP):
     async def blueprint_compose(
         self, blueprint_uuid: Annotated[str, Field(description="The UUID of the blueprint to compose")]
     ) -> str:
-        """Compose an image from a blueprint UUID created with create_blueprint, get_blueprints.
-        If the UUID is not clear, ask the user whether to create a new blueprint with create_blueprint
-        or use an existing blueprint from get_blueprints.
-
-        🟡 VERIFY PARAMETERS - Confirm blueprint UUID before proceeding.
-
-        Returns:
-            The response from the image-builder API
-
-        Raises:
-        """
+        """🟡 Start compose for a blueprint UUID. Confirm UUID via get_blueprints first."""
         try:
             response = await self.insights_client.post(f"blueprints/{blueprint_uuid}/compose")
         except InsightsApiError:
@@ -259,21 +236,7 @@ class ImageBuilderMCP(InsightsMCP):
             ),
         ],
     ) -> str:
-        """Get OpenAPI spec. Use this to get details e.g for a new blueprint
-
-        🟢 CALL IMMEDIATELY - No information gathering required.
-
-        Optional parameters:
-        - **endpoints**: Comma-separated endpoint specs (like `GET:/blueprints,POST:/blueprints`).
-          When provided, the returned OpenAPI is minimized to only the selected paths and their transitive
-          component references. Use this only to prepare payloads for `create_blueprint` or `update_blueprint`.
-
-        Returns:
-            OpenAPI specification JSON (possibly reduced when 'endpoints' is provided)
-
-        Raises:
-            Exception: If the image-builder connection fails.
-        """
+        """🟢 OpenAPI spec. Optional endpoints=GET:/blueprints,POST:/blueprints to shrink payload."""
         try:
             response = await self.insights_client.get("openapi.json", noauth=True)
             if endpoints:
@@ -299,18 +262,7 @@ class ImageBuilderMCP(InsightsMCP):
             raise InsightsApiError(str(e)) from e
 
     async def get_org_id(self) -> str:
-        """Get the organization ID for RHEL image registration/subscription.
-
-        Purpose: Fetch the organization ID for RHEL image registration.
-
-        When to Use: Always use this tool when enabling registration for Red Hat services in a blueprint.
-
-        CRITICAL NOTE: Never assume or use placeholder organization IDs.
-        Always fetch the actual organization ID using this tool.
-
-        Returns:
-            The organization ID
-        """
+        """🟢 RHEL org ID for blueprint registration. Never invent org IDs."""
         try:
             org_id = await self.insights_client.get_org_id()
             if org_id:
@@ -328,71 +280,8 @@ class ImageBuilderMCP(InsightsMCP):
             Field(description="Complete blueprint data formatted according to CreateBlueprintRequest from get_openapi"),
         ],
     ) -> str:
-        """Create a custom Linux image blueprint.
-
-        🔴 GATHER INFORMATION FIRST - Do not call immediately.
-        ⚠️ CRITICAL: Only call this function after you have gathered ALL required information from the user.
-
-        INFORMATION YOU MUST COLLECT FROM THE USER BEFORE CALLING:
-        1. Blueprint name ("What would you like to name your blueprint? or should I generate a name?")
-        2. Distribution ("Which distribution do you want? call get_distributions to see the list of distributions")
-        3. Architecture ("Which architecture? Available: {architectures}")
-        4. Image type ("What image type do you need? Available: {image_types} or take guest-image as default")
-        5. Username ("Do you want to create a custom user account? If so, what username?")
-        6. For RHEL images specifically: use RHSM get_activation_keys and get_org_id to get the required information.
-           never use 2040324 as organization ID unless get_org_id returns it.
-           "Do you want to enable registration for Red Hat services with an activation key?"
-
-        7. Any customizations ("Do you need any specific packages, services, or configurations?")
-
-        🚨 CRITICAL REPOSITORY REQUIREMENT:
-        ⚠️ **CUSTOM REPOSITORIES MUST BE INCLUDED IN BOTH FIELDS**:
-        When adding custom repositories to a blueprint, you MUST include them in BOTH:
-        - payload_repositories - for package installation during build
-        - custom_repositories - for repository configuration in the final image
-
-        This dual inclusion is REQUIRED for the blueprint to work correctly.
-        Missing either field will cause build failures.
-
-        📋 REPOSITORY SETUP PROCESS:
-        1. Use content_sources_mcp tool to find repository UUIDs: `content-sources_list_repositories`
-        2. Include the same repository UUIDs in BOTH payload_repositories and custom_repositories arrays
-           along with their URL
-        3. NEVER use fake or made-up UUIDs - ALWAYS get real UUIDs from the content-sources tool
-        4. Example structure:
-           ```json
-           {{
-             "payload_repositories": [
-               {{"id": "repo-uuid-1", "url": "https://repo-url-1"}},
-               {{"id": "repo-uuid-2", "url": "https://repo-url-2"}}
-              ],
-             "custom_repositories": [
-               {{"id": "repo-uuid-1", "url": "https://repo-url-1"}},
-               {{"id": "repo-uuid-2", "url": "https://repo-url-2"}}
-             ]
-           }}
-           ```
-
-        NOTES ON CUSTOMIZATIONS:
-        1. If you need to add custom repositories, pass them in as payload_repositories AND custom_repositories
-        2. For custom_repositories and payload_repositories, its best to store the UUID from the repositories in
-           the content_sources_mcp tool
-        3. CRITICAL: NEVER use fake or made-up repository UUIDs. ALWAYS call content-sources_list_repositories
-           to get real UUIDs
-
-        YOUR PROCESS AS THE AI ASSISTANT:
-        1. If you haven't already, call get_openapi to understand the CreateBlueprintRequest structure.
-           For minimal context, call `get_openapi(endpoints="POST:/blueprints")` when preparing the payload.
-        2. for registration/subscription, call get_org_id and get_activation_keys for required information
-        4. Ask the user for ALL the required information listed above through conversation
-        5. Only after collecting all information, call this function with properly formatted data
-
-        Never make assumptions or fill in data yourself unless the user explicitly asks for it.
-        Always ask the user for explicit input through conversation.
-
-        Returns:
-            The response from the image-builder API
-        """
+        """🔴 Create blueprint after gathering name, distro, arch, image type, user;
+        use get_openapi POST:/blueprints."""
         try:
             if os.environ.get("IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK", "").lower() != "true":
                 desc_parts = [data.get("description", ""), WATERMARK_CREATED]
@@ -428,17 +317,7 @@ class ImageBuilderMCP(InsightsMCP):
             Field(description="Complete blueprint data formatted according to CreateBlueprintRequest from get_openapi"),
         ],
     ) -> str:
-        """Update a blueprint.
-
-        🟡 VERIFY PARAMETERS - Get original blueprint details and UUID before proceeding.
-
-        Guidance for LLM:
-        - Use `get_openapi(endpoints="PUT:/blueprints/{{id}}")` to fetch the minimal schema needed to format the
-          update payload (path placeholders are acceptable in endpoint specs).
-
-        Returns:
-            The response from the image-builder API
-        """
+        """🟡 Update blueprint. Confirm UUID; schema via get_openapi PUT:/blueprints/{{id}}."""
         try:
             if os.environ.get("IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK", "").lower() != "true":
                 if all(wmark not in data.get("description", "") for wmark in [WATERMARK_CREATED, WATERMARK_UPDATED]):
@@ -482,12 +361,7 @@ class ImageBuilderMCP(InsightsMCP):
         offset: Annotated[int, Field(0, description="Number of items to skip when paging (use 0 as default)")],
         search_string: Annotated[Optional[str], Field(None, description="Substring to search for in the name")],
     ) -> str:
-        """Show user's image blueprints (saved image templates/configurations for
-        Linux distributions, packages, users).
-
-        🟢 CALL IMMEDIATELY - No information gathering required.
-        Link rows with UI_URL. Paging details are in the tool response footer.
-        """
+        """🟢 List blueprints. Use limit/offset from the user. Paging hints in response footer."""
 
         # workaround seen in LLama 3.3 70B Instruct
         if search_string == "null":
@@ -540,16 +414,7 @@ class ImageBuilderMCP(InsightsMCP):
     async def get_blueprint_details(
         self, blueprint_identifier: Annotated[str, Field(description="The UUID, name or reply_id to query")]
     ) -> str:
-        """Get blueprint details.
-
-        🟢 CALL IMMEDIATELY - No information gathering required.
-
-        Returns:
-            Blueprint details
-
-        Raises:
-            Exception: If the image-builder connection fails.
-        """
+        """🟢 Blueprint details by UUID, name, or reply_id from get_blueprints."""
         if not blueprint_identifier:
             raise InsightsApiError("Error: a blueprint identifier is required")
 
@@ -602,38 +467,7 @@ class ImageBuilderMCP(InsightsMCP):
         offset: Annotated[int, Field(0, description="Number of items to skip when paging (use 0 as default)")],
         search_string: Annotated[Optional[str], Field(None, description="Substring to search for in the name")],
     ) -> str:
-        """Get a list of all image builds (composes) with their UUIDs and basic status.
-
-        **ALWAYS USE THIS FIRST** when checking image build status or finding builds.
-        This returns the UUID needed for get_compose_details.
-        🟢 CALL IMMEDIATELY - No information gathering required.
-
-        Common uses:
-        - Check status of recent builds → call this first
-        - Find your latest build → call this first
-        - Get any build information → call this first
-        Link rows with blueprint_url. Paging details are in the tool response footer.
-
-        You can also provide this link so the user can check directly in the UI:
-        {base_url}/insights/image-builder
-
-        Returns:
-            List of composes with:
-            - uuid: The unique identifier (REQUIRED for get_compose_details)
-            - name: Blueprint name used
-            - status: Current build status
-            - created_at: When the build started
-
-        Example response:
-        [
-            {{
-                "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-                "name": "my-rhel-image",
-                "status": "RUNNING",
-                "created_at": "2025-01-18T10:30:00Z"
-            }}
-        ]
-        """
+        """🟢 List composes/builds. Use limit/offset. Paging hints in response footer."""
         limit = limit or self.default_response_size
         if limit <= 0:
             limit = self.default_response_size
@@ -676,25 +510,7 @@ class ImageBuilderMCP(InsightsMCP):
     async def get_compose_details(
         self, compose_identifier: Annotated[str, "The exact UUID string from get_composes()"]
     ) -> str:
-        """Get detailed information about a specific image build.
-
-        ⚠️ REQUIRES: You MUST have the compose UUID from get_composes() first.
-        ⚠️ NEVER call this with generic terms like "latest", "recent", or "my build"
-        🟢 CALL IMMEDIATELY - No information gathering required.
-
-        Process:
-        1. User asks about build status → call get_composes()
-        2. Find the desired compose and copy its UUID
-        3. Call this function with that exact UUID
-
-        Returns:
-            Detailed compose information including:
-            - Full status and progress
-            - Error messages if failed
-            - Download URLs if completed
-            - Build logs
-            - Artifact details
-        """
+        """🟢 Compose details. Requires exact UUID from get_composes (not 'latest')."""
         if not compose_identifier:
             raise InsightsApiError("Error: Compose UUID is required")
 

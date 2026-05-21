@@ -64,7 +64,6 @@ class TestLLMIntegrationEasy:
     # pylint: disable=redefined-outer-name,too-many-locals
     async def test_rhel_initial_question(self, test_agent, guardian_agent, llm_config, verbose_logger):
         """Test that LLM follows behavioral rules and doesn't immediately call create_blueprint."""
-
         prompt = TEST_RHEL_INITIAL_QUESTION_PROMPT
 
         # Execute tools and capture reasoning steps and tool calls
@@ -125,7 +124,6 @@ class TestLLMIntegrationEasy:
     # pylint: disable=redefined-outer-name,too-many-locals
     async def test_image_build_status_tool_selection(self, test_agent, verbose_logger, llm_config, guardian_agent):
         """Test that LLM selects appropriate tools for image build status queries."""
-
         tool_correctness = ToolCorrectnessMetric(threshold=0.7, include_reason=True, model=guardian_agent)
 
         prompt = TEST_IMAGE_BUILD_STATUS_PROMPT
@@ -219,7 +217,6 @@ class TestLLMIntegrationEasy:
     # pylint: disable=redefined-outer-name
     async def test_tool_usage_patterns(self, test_agent, guardian_agent, verbose_logger, llm_config, scenario):
         """Test various tool usage patterns and their appropriateness."""
-
         response, _, tools_executed, _ = await test_agent.execute_with_reasoning(scenario["prompt"], chat_history=[])
         expected_tools = [ToolCall(name=name) for name in scenario["expected_tools"]]
 
@@ -261,7 +258,6 @@ class TestLLMIntegrationEasy:
     @pytest.mark.asyncio
     async def test_llm_paging(self, test_agent, guardian_agent, verbose_logger, llm_config):  # pylint: disable=redefined-outer-name,too-many-locals
         """Test that the LLM can page through results."""
-
         prompt = TEST_LLM_PAGING_PROMPT_1
 
         response, _, tools_executed, conversation_history = await test_agent.execute_with_reasoning(
@@ -345,8 +341,7 @@ class TestLLMIntegrationEasy:
     @pytest.mark.asyncio
     # pylint: disable=redefined-outer-name,too-many-locals
     async def test_list_image_types(self, test_agent, guardian_agent, llm_config, verbose_logger):
-        """Test that LLM follows behavioral rules and doesn't immediately call create_blueprint."""
-
+        """Test that LLM uses get_openapi for image type discovery instead of create_blueprint."""
         prompt = TEST_LIST_IMAGE_TYPES_PROMPT
 
         # Execute tools and capture reasoning steps and tool calls
