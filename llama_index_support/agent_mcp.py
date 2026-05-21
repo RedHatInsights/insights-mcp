@@ -11,6 +11,7 @@ from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.agent.workflow.workflow_events import AgentOutput
 from llama_index.core.llms import ChatMessage
 from llama_index.core.memory import Memory
+from llama_index.core.storage.chat_store.sql import MessageStatus
 from llama_index.core.tools import BaseTool
 from llama_index.core.workflow import Context
 from llama_index.llms.openai_like import OpenAILike
@@ -135,6 +136,19 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         self._llm_http_client = None
         self._mcp_client = None
         self._initialized = False
+
+    async def get_archived_messages(self) -> List[ChatMessage]:
+        """Return messages archived by Memory waterfall (empty if under token_limit)."""
+        if self._memory is None:
+            raise ValueError("Agent not initialized")
+        return await self._memory.aget_all(status=MessageStatus.ARCHIVED)
+
+    async def get_active_memory_token_estimate(self) -> int:
+        """Estimate tokens in the active Memory queue (same logic as Memory waterfall)."""
+        if self._memory is None:
+            raise ValueError("Agent not initialized")
+        active_messages = await self._memory.aget_all(status=MessageStatus.ACTIVE)
+        return sum(self._memory._estimate_token_count(message) for message in active_messages)
 
     async def _init_mcp_tools(self):
         """Initialize MCP tools using LlamaIndex MCP support."""
