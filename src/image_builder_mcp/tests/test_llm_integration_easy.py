@@ -13,6 +13,7 @@ from deepeval_support.compat import EvalCaseParams
 from tests.utils import (
     load_llm_configurations,
     pretty_print_chat_history,
+    should_skip_insights_llm_tests,
     should_skip_llm_matrix_tests,
 )
 
@@ -47,7 +48,14 @@ TOOL_USAGE_SCENARIOS: List[Dict[str, Any]] = [
 llm_configurations, _ = load_llm_configurations()
 
 
-@pytest.mark.skipif(should_skip_llm_matrix_tests(), reason="No valid LLM configurations found")
+@pytest.mark.skipif(
+    should_skip_llm_matrix_tests(),
+    reason="No valid LLM configurations found",
+)
+@pytest.mark.skipif(
+    should_skip_insights_llm_tests(),
+    reason="INSIGHTS_CLIENT_ID and INSIGHTS_CLIENT_SECRET (or LIGHTSPEED_* equivalents) required",
+)
 class TestLLMIntegrationEasy:
     """Test LLM integration with MCP server using deepeval with multiple LLM configurations."""
 

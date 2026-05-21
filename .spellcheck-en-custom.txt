@@ -29,6 +29,7 @@ deeplinks
 deprecations
 Deprecations
 Dev
+direnv
 env
 EPEL
 FastMCP's

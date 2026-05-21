@@ -44,6 +44,17 @@ USER_AGENT = f"insights-mcp/{__version__}"
 # SSO claim keys containing PII (personally identifiable information); masked in logs for ISO 27018 compliance
 _PII_CLAIM_KEYS = frozenset({"subject", "account_id", "username", "email"})
 
+MCP_VERSION_TOOL = "get_mcp_version"
+RBAC_DIAGNOSTIC_TOOL = "rbac__get_all_access"
+
+
+def build_mounted_tool_names(allowed_toolsets: list[str]) -> frozenset[str]:
+    """Return diagnostic tool names available for the mounted toolsets."""
+    names = {MCP_VERSION_TOOL}
+    if "rbac" in allowed_toolsets:
+        names.add(RBAC_DIAGNOSTIC_TOOL)
+    return frozenset(names)
+
 
 def _extract_bearer_token_from_auth_header(auth_header: str) -> str:
     if auth_header and auth_header.lower().startswith("bearer "):
@@ -80,6 +91,7 @@ class InsightsClientBase(httpx.AsyncClient):
         base_url: str,
         proxy_url: str | None = None,
         mcp_transport: str | None = None,
+        mounted_tool_names: frozenset[str] | None = None,
     ):
         super().__init__(
             headers={"User-Agent": USER_AGENT, "Content-Type": "application/json"},
@@ -88,6 +100,7 @@ class InsightsClientBase(httpx.AsyncClient):
         self.insights_base_url = base_url
         self.proxy_url = proxy_url
         self.mcp_transport = mcp_transport
+        self.mounted_tool_names = mounted_tool_names or frozenset({MCP_VERSION_TOOL})
         self.logger = getLogger("InsightsClientBase")
         # Will be set by subclasses to indicate if using environment credentials
         self._using_env_credentials = False
@@ -165,6 +178,29 @@ class InsightsClientBase(httpx.AsyncClient):
                     f"content: {e.response.content.decode('utf-8')}"
                 )
 
+    def _mentions_rbac_diagnostic(self) -> bool:
+        return RBAC_DIAGNOSTIC_TOOL in self.mounted_tool_names
+
+    def _auth_diagnostic_preamble(self) -> str:
+        preamble = (
+            "[INSTRUCTION] There seems to be a problem with the request. "
+            "Without asking the user, immediately call get_mcp_version() to check "
+            "if we are on the latest release. "
+        )
+        if self._mentions_rbac_diagnostic():
+            preamble += (
+                f"ALSO call {RBAC_DIAGNOSTIC_TOOL}() to check "
+                "if it's an authentication problem or just missing permissions. "
+                f"ONLY if it is an authentication problem that *also occurs* with {RBAC_DIAGNOSTIC_TOOL}(), "
+                "tell the user that the MCP server setup is not valid! "
+            )
+        else:
+            preamble += (
+                "If credentials are missing or invalid, this may be an authentication problem; "
+                "tell the user the MCP server setup is not valid. "
+            )
+        return preamble
+
     def no_auth_error(self, e: httpx.HTTPStatusError | ValueError) -> str:
         """Generate authentication error message based on transport type and credential source.
 
@@ -174,14 +210,7 @@ class InsightsClientBase(httpx.AsyncClient):
         Returns:
             Detailed authentication error message with setup instructions
         """
-        base_message = (
-            "[INSTRUCTION] There seems to be a problem with the request. "
-            "Without asking the user, immediately call get_mcp_version() to check "
-            "if we are on the latest release. ALSO call rbac__get_all_access() to check "
-            "if it's an authentication problem or just missing permissions.\n"
-            "ONLY if it is an authentication problem that *also occurs* with rbac__get_all_access(), tell the user "
-            "that the MCP server setup is not valid! "
-        )
+        base_message = self._auth_diagnostic_preamble()
         error_message = str(e)
         # strip off "401 Unauthorized"
         # this confuses LLMs
@@ -227,7 +256,7 @@ class InsightsClientBase(httpx.AsyncClient):
             f"[{self.insights_base_url}/iam/service-accounts]({self.insights_base_url}/iam/service-accounts) "
             "Come up with a detailed description of this for the user. "
             "Only describe this, don't expose details about the tool function itself. "
-            f"Don't proceed with the request before this is fixed. {error_message}\n"
+            f"{error_message}"
         )
 
         if isinstance(e, httpx.HTTPStatusError):
@@ -244,20 +273,23 @@ class InsightsClientBase(httpx.AsyncClient):
         Returns:
             Detailed permissions error message with access request instructions
         """
-        return (
-            f"[INSTRUCTION] Use get_mcp_version() to check if we are on the latest release. "
-            "Also use rbac__get_all_access() to list all current permissions"
-            " and help the user find out which permissions might be missing."
+        message = "[INSTRUCTION] Use get_mcp_version() to check if we are on the latest release. "
+        if self._mentions_rbac_diagnostic():
+            message += (
+                f"Also use {RBAC_DIAGNOSTIC_TOOL}() to list all current permissions "
+                "and help the user find out which permissions might be missing. "
+            )
+        message += (
             f"Then the user should go to [{self.insights_base_url}/iam/user-access/overview]"
-            f"({self.insights_base_url}/iam/user-access/overview) to check their RBAC permissions and roles."
-            " They may need to request additional access or have an "
+            f"({self.insights_base_url}/iam/user-access/overview) to check their RBAC permissions and roles. "
+            "They may need to request additional access or have an "
             "administrator grant them the necessary permissions for this resource. The user is authenticated but "
             "lacks the required permissions to access this resource.\n"
             "Come up with a detailed description of this for the user. "
             "Only describe this, don't expose details about the tool function itself. "
-            f"Don't proceed with the request before this is fixed. Error: {str(e)}. "
-            f"Response: {e.response.text}"
+            f"Error: {str(e)}."
         )
+        return message
 
 
 class InsightsNoauthClient(InsightsClientBase):
@@ -274,8 +306,14 @@ class InsightsNoauthClient(InsightsClientBase):
         base_url: str = INSIGHTS_BASE_URL,
         proxy_url: str | None = None,
         mcp_transport: str | None = None,
+        mounted_tool_names: frozenset[str] | None = None,
     ):
-        super().__init__(base_url=base_url, proxy_url=proxy_url, mcp_transport=mcp_transport)
+        super().__init__(
+            base_url=base_url,
+            proxy_url=proxy_url,
+            mcp_transport=mcp_transport,
+            mounted_tool_names=mounted_tool_names,
+        )
 
     async def get_org_id(self) -> str | None:
         """Extract the organization ID from the access token.
@@ -310,8 +348,14 @@ class InsightsBearerTokenClient(InsightsClientBase):
         base_url: str = INSIGHTS_BASE_URL,
         proxy_url: str | None = None,
         mcp_transport: str | None = None,
+        mounted_tool_names: frozenset[str] | None = None,
     ):
-        super().__init__(base_url=base_url, proxy_url=proxy_url, mcp_transport=mcp_transport)
+        super().__init__(
+            base_url=base_url,
+            proxy_url=proxy_url,
+            mcp_transport=mcp_transport,
+            mounted_tool_names=mounted_tool_names,
+        )
         self._bearer_token = bearer_token
         self.headers["authorization"] = f"Bearer {bearer_token}"
         self.logger = getLogger("InsightsBearerTokenClient")
@@ -398,8 +442,15 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
         proxy_url: str | None = None,
         mcp_transport: str | None = None,
         token_endpoint: str = SSO_TOKEN_ENDPOINT,
+        mounted_tool_names: frozenset[str] | None = None,
     ):
-        InsightsClientBase.__init__(self, base_url=base_url, proxy_url=proxy_url, mcp_transport=mcp_transport)
+        InsightsClientBase.__init__(
+            self,
+            base_url=base_url,
+            proxy_url=proxy_url,
+            mcp_transport=mcp_transport,
+            mounted_tool_names=mounted_tool_names,
+        )
         if refresh_token and not client_id:
             client_id = "rhsm-api"
         token_dict = {"refresh_token": refresh_token} if refresh_token else {}
@@ -551,6 +602,7 @@ class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attribute
         proxy_url: str | None = None,
         mcp_transport: str | None = None,
         token_endpoint: str = SSO_TOKEN_ENDPOINT,
+        mounted_tool_names: frozenset[str] | None = None,
     ):
         """Initialize the headers-based client factory with session caching.
 
@@ -563,6 +615,7 @@ class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attribute
         self.proxy_url = proxy_url
         self.mcp_transport = mcp_transport
         self.token_endpoint = token_endpoint
+        self.mounted_tool_names = mounted_tool_names or frozenset({MCP_VERSION_TOOL})
         self._using_env_credentials = False
         self._request_auth_method = "header_based_client_credentials_auth"
 
@@ -577,6 +630,7 @@ class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attribute
             proxy_url=proxy_url,
             mcp_transport=mcp_transport,
             token_endpoint=token_endpoint,
+            mounted_tool_names=self.mounted_tool_names,
         )
 
     def get_credentials_from_headers(self) -> tuple[str | None, str | None]:
@@ -697,6 +751,7 @@ class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attribute
                 proxy_url=self.proxy_url,
                 mcp_transport=self.mcp_transport,
                 token_endpoint=self.token_endpoint,
+                mounted_tool_names=self.mounted_tool_names,
             )
 
             try:
@@ -731,6 +786,7 @@ class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attribute
                 proxy_url=self.proxy_url,
                 mcp_transport=self.mcp_transport,
                 token_endpoint=self.token_endpoint,
+                mounted_tool_names=self.mounted_tool_names,
             )
             client.token = cached_token
             return client
@@ -993,6 +1049,7 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
         proxy_url: str | None = INSIGHTS_PROXY_URL,
         mcp_transport: str | None = None,  # TODO: get rid of mcp_transport in client
         token_endpoint: str = SSO_TOKEN_ENDPOINT,
+        mounted_tool_names: frozenset[str] | None = None,
     ):
         self.logger = getLogger("InsightsClient")
 
@@ -1008,8 +1065,14 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
         self.proxy_url = proxy_url
         self.mcp_transport = mcp_transport
         self.token_endpoint = token_endpoint
+        self.mounted_tool_names = mounted_tool_names or frozenset({MCP_VERSION_TOOL})
 
-        self.client_noauth = InsightsNoauthClient(base_url=base_url, proxy_url=proxy_url, mcp_transport=mcp_transport)
+        self.client_noauth = InsightsNoauthClient(
+            base_url=base_url,
+            proxy_url=proxy_url,
+            mcp_transport=mcp_transport,
+            mounted_tool_names=self.mounted_tool_names,
+        )
 
         if refresh_token or client_secret:
             # Use traditional OAuth2 client for service account/refresh token flows
@@ -1021,6 +1084,7 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
                 proxy_url=proxy_url,
                 mcp_transport=mcp_transport,
                 token_endpoint=token_endpoint,
+                mounted_tool_names=self.mounted_tool_names,
             )
         else:
             self.client = InsightsHeadersBasedClient(
@@ -1028,6 +1092,7 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
                 proxy_url=proxy_url,
                 mcp_transport=mcp_transport,
                 token_endpoint=token_endpoint,
+                mounted_tool_names=self.mounted_tool_names,
             )
 
         # merge headers with client headers

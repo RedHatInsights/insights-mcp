@@ -64,6 +64,7 @@ class InsightsMCP(FastMCP):
         headers: dict[str, str] | None = None,
         mcp_transport: str | None = None,
         token_endpoint: str = SSO_TOKEN_ENDPOINT,
+        mounted_tool_names: frozenset[str] | None = None,
     ):
         """Initialize the authenticated Insights client.
 
@@ -91,6 +92,7 @@ class InsightsMCP(FastMCP):
             headers=self.headers,
             mcp_transport=mcp_transport,
             token_endpoint=token_endpoint,
+            mounted_tool_names=mounted_tool_names,
         )
 
     def register_tools(self) -> None:

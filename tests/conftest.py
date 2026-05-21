@@ -14,8 +14,14 @@ from deepeval.models import GPTModel
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 
 # Add imports for mock client creation
-from insights_mcp.client import InsightsClient
-from insights_mcp.config import INSIGHTS_BASE_URL
+from insights_mcp.client import InsightsClient, build_mounted_tool_names
+from insights_mcp.config import (
+    BRAND_CLIENT_ID_HEADER,
+    BRAND_CLIENT_SECRET_HEADER,
+    INSIGHTS_BASE_URL,
+    INSIGHTS_CLIENT_ID,
+    INSIGHTS_CLIENT_SECRET,
+)
 from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 from llama_index_support.agent_mcp import MCPAgentWrapper
 from tests import oauth_utils as oauth_utils_module
@@ -36,6 +42,16 @@ def gpt_model_from_config(config: Dict[str, str]) -> GPTModel:
 _, guardian_llm_config = load_llm_configurations()
 
 
+def _insights_mcp_http_headers() -> Dict[str, str] | None:
+    """HTTP headers for Insights MCP when service account credentials are in the environment."""
+    if INSIGHTS_CLIENT_ID and INSIGHTS_CLIENT_SECRET:
+        return {
+            BRAND_CLIENT_ID_HEADER: INSIGHTS_CLIENT_ID,
+            BRAND_CLIENT_SECRET_HEADER: INSIGHTS_CLIENT_SECRET,
+        }
+    return None
+
+
 @pytest_asyncio.fixture
 async def test_agent(mcp_server_url, verbose_logger, request):  # pylint: disable=redefined-outer-name
     """Create and configure a simplified test agent for the current LLM configuration."""
@@ -48,6 +64,7 @@ async def test_agent(mcp_server_url, verbose_logger, request):  # pylint: disabl
         model_id=llm_config["MODEL_ID"],
         api_key=llm_config["USER_KEY"],
         verbose_logger=verbose_logger,
+        mcp_http_headers=_insights_mcp_http_headers(),
     )
     verbose_logger.info("🧪 Testing the model: %s", agent.model_id)
 
@@ -168,9 +185,11 @@ TEST_BLUEPRINT_UUID = "12345678-1234-1234-1234-123456789012"
 def create_mcp_server(server_class, client_id=TEST_CLIENT_ID, client_secret=TEST_CLIENT_SECRET):
     """Create a mock MCP server instance for any server class."""
     server = server_class()
+    mounted_tool_names = build_mounted_tool_names([server.toolset_name])
     server.init_insights_client(
         client_id=client_id,
         client_secret=client_secret,
+        mounted_tool_names=mounted_tool_names,
     )
     server.register_tools()
     return server

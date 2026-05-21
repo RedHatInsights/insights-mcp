@@ -19,6 +19,7 @@ from mcp.types import Icon, ToolAnnotations
 
 from insights_mcp import __version__, config
 from insights_mcp.catalog_tools import catalog_tool_description
+from insights_mcp.client import build_mounted_tool_names
 from insights_mcp.mcp import InsightsMCP
 from insights_mcp.toolsets import MCPS
 
@@ -181,6 +182,7 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
             allowed_mcps: List of MCP server names to register and mount
             readonly: If True, only register read-only tools
         """
+        mounted_tool_names = build_mounted_tool_names(allowed_mcps)
         for mcp in MCPS:
             if mcp.toolset_name not in allowed_mcps:
                 continue
@@ -194,6 +196,7 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
                 headers=mcp.headers,
                 mcp_transport=self.mcp_transport,
                 token_endpoint=self.token_endpoint,
+                mounted_tool_names=mounted_tool_names,
             )
             try:
                 mcp.register_tools()

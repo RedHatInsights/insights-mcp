@@ -134,6 +134,10 @@ see also [usage.md](usage.md) for more details on the CLI.
    }
    ```
 
+3. **Insights API credentials** for LLM integration tests that call real APIs:
+   - Set `INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET` (or `LIGHTSPEED_*` equivalents), typically via `.envrc` and [direnv](https://direnv.net/)
+   - If direnv is not hooked into your shell, run tests as `direnv exec . pytest ...` so `.envrc` is loaded
+
 ### Test Types
 
 - **Unit Tests**: Component isolation and API method validation
