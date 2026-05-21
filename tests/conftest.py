@@ -23,8 +23,8 @@ from insights_mcp.config import (
     INSIGHTS_CLIENT_SECRET,
 )
 from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
-from llama_index_support.agent_mcp import MCPAgentWrapper
 from tests import oauth_utils as oauth_utils_module
+from tests.llama_index_support.agent_mcp import MCPAgentWrapper
 from tests.llm_tracing import enable_llm_test_tracing
 from tests.utils import load_llm_configurations
 

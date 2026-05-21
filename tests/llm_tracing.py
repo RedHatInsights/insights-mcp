@@ -1,7 +1,7 @@
 """Register DeepEval LlamaIndex instrumentation for LLM integration tests.
 
 Phoenix/OpenInference is not used here: tool-call recording for assertions comes from
-workflow stream events (``deepeval_support.tracing``) and optional DeepEval spans via
+workflow stream events (``tests.deepeval_support.tracing``) and optional DeepEval spans via
 ``instrument_llama_index``. This module exists so pytest can enable that hook once per
 session when LLM matrix tests are collected (see ``tests/conftest.py``).
 """

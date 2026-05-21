@@ -4,16 +4,12 @@ Targets:
 
 - [`run-llama/llama_index`](https://github.com/run-llama/llama_index) (`llama-index-core`, `llama-index-tools-mcp`)
 
-## MCP schema handling (historical bool `additionalProperties` crash)
+## MCP schema handling (bool `additionalProperties`)
 
 LlamaIndex used to recurse into boolean `additionalProperties` and call
-`_resolve_field_type` with a `bool`. Upstream addressed this for real schemas in PR
+`_resolve_field_type` with a `bool`. Upstream addressed this in PR
 [#20082](https://github.com/run-llama/llama_index/pull/20082) (shipped in
-**llama-index-tools-mcp 0.4.2**). `_resolve_field_type` itself still assumes dict-shaped
-schemas; a small optional hardening would be an `isinstance(field_schema, bool)` guard
-upstream if another call site ever passes bare booleans.
-
-`non_iterable_bool_patch.py` only retains a deprecated no-op import check (`apply_llama_index_bool_patch`).
+**llama-index-tools-mcp 0.4.2+**; this repo pins 0.4.8 in `uv.lock`).
 
 ## MCP + Llama agents in tests
 
@@ -35,7 +31,7 @@ tests, or `Memory` token settings—do not reintroduce per-model string hacks in
 ### Tool-call recording (native instrumentation)
 
 Tool calls for DeepEval `ToolCorrectnessMetric` are recorded from LlamaIndex workflow
-`ToolCall` stream events (`deepeval_support/tracing.py`). DeepEval
+`ToolCall` stream events (`tests/deepeval_support/tracing.py`). DeepEval
 `instrument_llama_index` is enabled for LLM tests via `tests/llm_tracing.py`.
 
 Dev dependency: `llama-index-llms-openai-like`. `MCPAgentWrapper` uses `OpenAILike` against

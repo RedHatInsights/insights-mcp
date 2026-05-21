@@ -18,12 +18,12 @@ from llama_index.llms.openai_like import OpenAILike
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 from mcp.shared._httpx_utils import create_mcp_http_client
 
-from deepeval_support.tracing import WorkflowToolCallCollector, tools_called_from_agent_run
 from instrumentation_tests.mcp_jsonrpc import (
     DEFAULT_JSON_HEADERS,
     create_mcp_init_request,
     parse_mcp_response,
 )
+from tests.deepeval_support.tracing import WorkflowToolCallCollector, tools_called_from_agent_run
 
 # Align with OpenAILike context_window in initialize().
 _LLM_CONTEXT_TOKEN_LIMIT = 8192
@@ -62,7 +62,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
     """MCP agent harness for behavioral LLM tests.
 
     Multi-turn history uses LlamaIndex ``Memory`` (``agent.run(..., memory=...)``).
-    Tool calls are recorded from workflow stream events (``deepeval_support.tracing``).
+    Tool calls are recorded from workflow stream events (``tests.deepeval_support.tracing``).
     """
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments

@@ -7,9 +7,8 @@ from typing import Any, Dict, List
 
 import pytest
 from deepeval.metrics import GEval, ToolCorrectnessMetric
-from deepeval.test_case import LLMTestCase, ToolCall
+from deepeval.test_case import LLMTestCase, LLMTestCaseParams, ToolCall
 
-from deepeval_support.compat import EvalCaseParams
 from tests.utils import (
     load_llm_configurations,
     pretty_print_chat_history,
@@ -92,7 +91,7 @@ class TestLLMIntegrationEasy:
                 "architectures, image types etc.) or optionally use get_openapi to understand the system first."
                 "In any case the response should be targeted to the user for more information."
             ),
-            evaluation_params=[EvalCaseParams.ACTUAL_OUTPUT, EvalCaseParams.TOOLS_CALLED],
+            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.TOOLS_CALLED],
             model=guardian_agent,
         )
 
@@ -137,7 +136,7 @@ class TestLLMIntegrationEasy:
         contains_question = GEval(
             name="Contains Question",
             criteria=("The response should contain a question for the name or UUID of the compose"),
-            evaluation_params=[EvalCaseParams.ACTUAL_OUTPUT],
+            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT],
             model=guardian_agent,
         )
 
@@ -373,7 +372,7 @@ class TestLLMIntegrationEasy:
                 "the response must not contain edge-commit, edge-installer, rhel-edge-commit, "
                 "rhel-edge-installer or report them as deprecated image types"
             ),
-            evaluation_params=[EvalCaseParams.ACTUAL_OUTPUT],
+            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT],
             model=guardian_agent,
         )
 
