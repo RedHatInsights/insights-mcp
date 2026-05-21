@@ -34,6 +34,14 @@ Tool calls for DeepEval `ToolCorrectnessMetric` are recorded from LlamaIndex wor
 `ToolCall` stream events (`tests/deepeval_support/tracing.py`). DeepEval
 `instrument_llama_index` is enabled for LLM tests via `tests/llm_tracing.py`.
 
+### MCP initialize instructions (test harness)
+
+`McpToolSpec` does not attach MCP `initialize` `instructions` to tools. The harness loads
+them via `instrumentation_tests.mcp_jsonrpc` (HTTP/SSE POST or stdio `ClientSession`) and
+prepends them to the **first user turn** of each conversation
+(`format_user_message_with_mcp_instructions`). `FunctionAgent.system_prompt` stays `None`
+so Granite and similar models keep a clean tool-calling template.
+
 Dev dependency: `llama-index-llms-openai-like`. `MCPAgentWrapper` uses `OpenAILike` against
 OpenAI-compatible remote endpoints (`MODEL_API` / `MODEL_ID` from test config).
 `FunctionAgent.allow_parallel_tool_calls=False` is set on the agent (not via LLM

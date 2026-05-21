@@ -6,7 +6,6 @@ import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
-import requests
 from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.agent.workflow.workflow_events import AgentOutput
 from llama_index.core.llms import ChatMessage
@@ -19,14 +18,26 @@ from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 from mcp.shared._httpx_utils import create_mcp_http_client
 
 from instrumentation_tests.mcp_jsonrpc import (
-    DEFAULT_JSON_HEADERS,
-    create_mcp_init_request,
-    parse_mcp_response,
+    fetch_mcp_instructions_http,
+    fetch_mcp_instructions_stdio,
 )
 from tests.deepeval_support.tracing import WorkflowToolCallCollector, tools_called_from_agent_run
 
 # Align with OpenAILike context_window in initialize().
 _LLM_CONTEXT_TOKEN_LIMIT = 8192
+
+_MCP_INSTRUCTIONS_HEADER = "## MCP server instructions"
+_USER_REQUEST_HEADER = "## User request"
+
+_STDIO_MCP_COMMAND = "python"
+_STDIO_MCP_ARGS = ["-m", "insights_mcp.server", "stdio"]
+
+
+def format_user_message_with_mcp_instructions(user_msg: str, mcp_instructions: str) -> str:
+    """Prepend MCP initialize instructions to the user turn (Granite-safe vs system_prompt)."""
+    if not mcp_instructions.strip():
+        return user_msg
+    return f"{_MCP_INSTRUCTIONS_HEADER}\n{mcp_instructions.strip()}\n\n{_USER_REQUEST_HEADER}\n{user_msg}"
 
 
 def _chat_message_text(message: ChatMessage) -> str:
@@ -54,7 +65,7 @@ def _assistant_text_from_handler_response(response: Any) -> str:
 
 
 def _chat_history_without_system(messages: List[ChatMessage]) -> List[ChatMessage]:
-    """Drop system messages; FunctionAgent already applies system_prompt."""
+    """Drop system messages; MCP instructions are injected on the user turn instead."""
     return [message for message in messages if message.role != "system"]
 
 
@@ -81,7 +92,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         self.model_id = model_id
         self.api_key = api_key
         self.tools: Optional[List[BaseTool]] = []
-        self.system_prompt = ""
+        self.mcp_instructions = ""
         self.agent: Optional[FunctionAgent] = None
         self.context: Optional[Context] = None
 
@@ -154,39 +165,35 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         """Initialize MCP tools using LlamaIndex MCP support."""
         try:
             if self.server_url == "stdio":
-                mcp_client = BasicMCPClient("python", args=["-m", "insights_mcp.server", "stdio"])
-                fetch_system_prompt = False
+                mcp_client = BasicMCPClient(_STDIO_MCP_COMMAND, args=_STDIO_MCP_ARGS)
             else:
                 mcp_http_client = create_mcp_http_client(headers=self.mcp_http_headers)
                 mcp_client = BasicMCPClient(self.server_url, http_client=mcp_http_client)
-                fetch_system_prompt = self.server_url.startswith("http")
             self._mcp_client = mcp_client
             mcp_tool_spec = McpToolSpec(client=mcp_client)
             self.tools = await mcp_tool_spec.to_tool_list_async()
+            self.mcp_instructions = await self._fetch_mcp_instructions()
 
-            if fetch_system_prompt:
-                self.system_prompt = await self._get_system_prompt()
-            else:
-                self.system_prompt = ""
-
+            if self.mcp_instructions:
+                self.logger.info(
+                    "Loaded MCP initialize instructions (%d chars); delivering via user message",
+                    len(self.mcp_instructions),
+                )
             logging.info("Initialized %d tools from MCP server", len(self.tools or []))
         except Exception as exc:  # pylint: disable=broad-exception-caught
             self.logger.error("Failed to initialize MCP tools: %s", exc)
             raise
 
-    async def _get_system_prompt(self) -> str:
-        """Get system prompt from MCP server."""
+    async def _fetch_mcp_instructions(self) -> str:
+        """Load MCP ``initialize`` instructions for HTTP, SSE, or stdio transports."""
         try:
-            init_request = create_mcp_init_request()
-            response = requests.post(self.server_url, json=init_request, headers=DEFAULT_JSON_HEADERS, timeout=10)
-            if response.status_code == 200:
-                response_data = parse_mcp_response(response.text)
-                if isinstance(response_data, dict) and "result" in response_data:
-                    return response_data["result"].get("instructions", "")
-            return ""
+            if self.server_url == "stdio":
+                return await fetch_mcp_instructions_stdio(_STDIO_MCP_COMMAND, _STDIO_MCP_ARGS)
+            if self.server_url.startswith("http"):
+                return fetch_mcp_instructions_http(self.server_url, headers=self.mcp_http_headers)
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            self.logger.warning("Failed to get system prompt: %s", exc)
-            return ""
+            self.logger.warning("Failed to fetch MCP instructions: %s", exc)
+        return ""
 
     async def _setup_agent(self):
         """Setup LlamaIndex agent with MCP tools and optional verbose logging."""
@@ -195,7 +202,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         self.agent = FunctionAgent(
             name="MCP Agent",
             description="Agent with MCP tools",
-            system_prompt=self.system_prompt,
+            system_prompt=None,
             llm=self.llama_llm,
             tools=self.tools,
             streaming=False,
@@ -218,6 +225,10 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         prior_history = _chat_history_without_system(chat_history or [])
         await self._memory.aset(prior_history)
 
+        agent_user_msg = user_msg
+        if self.mcp_instructions and not prior_history:
+            agent_user_msg = format_user_message_with_mcp_instructions(user_msg, self.mcp_instructions)
+
         self.logger.info("🎬 Starting workflow execution...")
         self.logger.info("📝 User message: %s", user_msg)
 
@@ -229,7 +240,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             self._step_names = []
 
             handler = self.agent.run(
-                user_msg=user_msg,
+                user_msg=agent_user_msg,
                 ctx=self.context,
                 memory=self._memory,
                 max_iterations=max_iterations,
@@ -244,7 +255,11 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
                         data_str = f"{ev}"
                         if len(data_str) > 2000:
                             data_str = data_str[:1000] + "\n<… abbreviated log …>\n" + data_str[-1000:]
-                        self.logger.debug("📡 Event %s: %s", ev_name, data_str)
+                        if ev_name == "ToolCall":
+                            log_function = self.logger.info
+                        else:
+                            log_function = self.logger.debug
+                        log_function("📡 Event %s: %s", ev_name, data_str)
 
             stream_task = asyncio.create_task(_stream_events())
             try:
@@ -285,4 +300,4 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         return assistant_text, reasoning_steps, tools_called, updated_history
 
 
-__all__ = ["MCPAgentWrapper"]
+__all__ = ["MCPAgentWrapper", "format_user_message_with_mcp_instructions"]

@@ -76,7 +76,7 @@ class TestLLMIntegrationEasy:
             f"❌ BEHAVIORAL RULE VIOLATION for {llm_config['name']} "
             f"({llm_config['MODEL_ID']}): "
             f"LLM called image-builder__create_blueprint immediately! Tool calls: {tool_names}. "
-            f"System prompt not working correctly.\nThe prompt was: {prompt}\n"
+            f"MCP instructions not working correctly.\nThe prompt was: {prompt}\n"
             f"The response was: {response}\n"
         )
 
@@ -358,7 +358,7 @@ class TestLLMIntegrationEasy:
             f"❌ BEHAVIORAL RULE VIOLATION for {llm_config['name']} "
             f"({llm_config['MODEL_ID']}): "
             f"LLM called image-builder__create_blueprint immediately! Tool calls: {tool_names}. "
-            f"System prompt not working correctly.\nThe prompt was: {prompt}\n"
+            f"MCP instructions not working correctly.\nThe prompt was: {prompt}\n"
             f"The response was: {response}\n"
         )
 
