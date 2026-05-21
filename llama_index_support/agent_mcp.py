@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
@@ -9,6 +10,7 @@ import requests
 from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.agent.workflow.workflow_events import AgentOutput
 from llama_index.core.llms import ChatMessage
+from llama_index.core.memory import Memory
 from llama_index.core.tools import BaseTool
 from llama_index.core.workflow import Context
 from llama_index.llms.openai_like import OpenAILike
@@ -22,51 +24,8 @@ from instrumentation_tests.mcp_jsonrpc import (
     parse_mcp_response,
 )
 
-
-def _message_text(message: ChatMessage) -> str:
-    """Return plain text from a ChatMessage content field."""
-    content = message.content
-    if isinstance(content, str):
-        return content
-    if content is None:
-        return ""
-    return str(content)
-
-
-def _embed_chat_history_in_user_message(user_msg: str, messages: List[ChatMessage]) -> Tuple[str, List[ChatMessage]]:
-    """Fold prior turns into the user message when multi-turn replay breaks a gateway."""
-    lines: List[str] = []
-    for message in messages:
-        text = _message_text(message).strip()
-        if text:
-            lines.append(f"{message.role}: {text}")
-    if not lines:
-        return user_msg, []
-    embedded = "Previous conversation:\n" + "\n".join(lines) + f"\n\nCurrent request: {user_msg}"
-    return embedded, []
-
-
-def _compact_chat_history_for_followup(messages: List[ChatMessage]) -> List[ChatMessage]:
-    """Keep user/assistant text only; drop tool replay that breaks strict gateways (e.g. Gemini Pro)."""
-    compact: List[ChatMessage] = []
-    for message in messages:
-        if message.role == "system":
-            continue
-        if message.role == "tool":
-            continue
-        if message.role == "assistant":
-            extra = getattr(message, "additional_kwargs", None) or {}
-            if extra.get("tool_calls") and not _message_text(message).strip():
-                continue
-            text = _message_text(message).strip()
-            if text:
-                compact.append(ChatMessage(role="assistant", content=text))
-            continue
-        if message.role == "user":
-            text = _message_text(message).strip()
-            if text:
-                compact.append(ChatMessage(role="user", content=text))
-    return compact
+# Align with OpenAILike context_window in initialize().
+_LLM_CONTEXT_TOKEN_LIMIT = 8192
 
 
 def _chat_message_text(message: ChatMessage) -> str:
@@ -93,11 +52,16 @@ def _assistant_text_from_handler_response(response: Any) -> str:
     return str(response)
 
 
+def _chat_history_without_system(messages: List[ChatMessage]) -> List[ChatMessage]:
+    """Drop system messages; FunctionAgent already applies system_prompt."""
+    return [message for message in messages if message.role != "system"]
+
+
 class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
     """MCP agent harness for behavioral LLM tests.
 
-    Tool calls are recorded from native LlamaIndex workflow stream events (see
-    ``deepeval_support.tracing``). Requires ``instrument_llama_index`` in LLM test setup.
+    Multi-turn history uses LlamaIndex ``Memory`` (``agent.run(..., memory=...)``).
+    Tool calls are recorded from workflow stream events (``deepeval_support.tracing``).
     """
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -120,6 +84,8 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         self.agent: Optional[FunctionAgent] = None
         self.context: Optional[Context] = None
 
+        self._session_id = str(uuid.uuid4())
+        self._memory: Optional[Memory] = None
         self._step_names: List[str] = []
         self._mcp_client: Optional[BasicMCPClient] = None
         self._llm_http_client: Optional[httpx.AsyncClient] = None
@@ -143,11 +109,15 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             api_base=self.api_url,
             api_key=self.api_key,
             temperature=0.1,
-            context_window=8192,
+            context_window=_LLM_CONTEXT_TOKEN_LIMIT,
             max_tokens=2048,
             is_chat_model=True,
             is_function_calling_model=True,
             async_http_client=self._llm_http_client,
+        )
+        self._memory = Memory.from_defaults(
+            session_id=self._session_id,
+            token_limit=_LLM_CONTEXT_TOKEN_LIMIT,
         )
         await self._init_mcp_tools()
         await self._setup_agent()
@@ -228,18 +198,11 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         max_iterations: int = 10,
     ) -> Tuple[str, List[Dict[str, Any]], List[Any], List[ChatMessage]]:
         """Execute agent, record tool calls and steps, return response and artifacts."""
-        if chat_history is None:
-            chat_history = []
-        # FunctionAgent prepends system_prompt in setup_agent; do not duplicate it here.
-        chat_history = [message for message in chat_history if message.role != "system"]
-        if chat_history:
-            chat_history = _compact_chat_history_for_followup(chat_history)
-            if "pro" in self.model_id.lower():
-                # Gemini Pro rejects multi-turn chat replay with tools; embed context instead.
-                user_msg, chat_history = _embed_chat_history_in_user_message(user_msg, chat_history)
-
-        if not self.agent or self.llama_llm is None:
+        if not self.agent or self.llama_llm is None or self._memory is None:
             raise ValueError("Agent not initialized")
+
+        prior_history = _chat_history_without_system(chat_history or [])
+        await self._memory.aset(prior_history)
 
         self.logger.info("🎬 Starting workflow execution...")
         self.logger.info("📝 User message: %s", user_msg)
@@ -248,14 +211,13 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         tool_collector = WorkflowToolCallCollector()
         self.context = Context(self.agent)
         for attempt in range(2):
-            # Per-turn isolation: stale workflow context breaks follow-up turns on some gateways.
             tool_collector.clear()
             self._step_names = []
 
             handler = self.agent.run(
                 user_msg=user_msg,
                 ctx=self.context,
-                chat_history=chat_history,
+                memory=self._memory,
                 max_iterations=max_iterations,
             )
 
@@ -296,12 +258,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
 
         assistant_text = _assistant_text_from_handler_response(response)
         agent_tool_calls = len(response.tool_calls) if isinstance(response, AgentOutput) and response.tool_calls else 0
-        memory = await self.context.store.get("memory")
-        if memory is not None:
-            updated_history = await memory.aget()
-        else:
-            updated_history = chat_history + [ChatMessage(role="user", content=user_msg)]
-            updated_history.append(ChatMessage(role="assistant", content=assistant_text))
+        updated_history = await self._memory.aget()
 
         tools_called = tools_called_from_agent_run(response, workflow_collector=tool_collector)
 
@@ -312,14 +269,6 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             self.logger.info("🔧 No tools called")
 
         return assistant_text, reasoning_steps, tools_called, updated_history
-
-    def get_all_checkpoints(self) -> Dict[str, List[Any]]:  # pylint: disable=too-few-public-methods
-        """No longer uses checkpoints; returns empty mapping for compatibility."""
-        return {}
-
-    def get_checkpoints_for_run(self, run_id: str) -> List[Any]:  # pylint: disable=unused-argument
-        """No longer uses checkpoints; returns empty list for compatibility."""
-        return []
 
 
 __all__ = ["MCPAgentWrapper"]
