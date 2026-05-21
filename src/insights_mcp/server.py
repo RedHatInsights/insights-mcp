@@ -433,8 +433,8 @@ def setup_credentials(mcp_server_config: dict, logger: logging.Logger) -> None:
 
 
 def get_mcp_version() -> str:
-    """Get the version of the {container_brand_long} MCP server.
-    Always call this if the user asks for the version of the {container_brand_long} MCP server.
+    """MCP server package version only—not image builds or compose status.
+    Use ONLY if the user asks for the {container_brand_long} MCP server version,
     or when there is an API or authentication issue.
     Present the comparison URL to the user."""
     # TBD get the latest release tag from github, provide the difference

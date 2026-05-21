@@ -33,7 +33,7 @@ from tests.test_patterns import (
         ),
         (
             "image-builder__get_composes",
-            "🟢 List composes",
+            "🟢 Image build status",
             {
                 "limit": {
                     "description": "Maximum number of items to return (use 7 as default)",

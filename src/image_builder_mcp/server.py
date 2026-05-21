@@ -62,6 +62,8 @@ class ImageBuilderMCP(InsightsMCP):
         self.logger = logging.getLogger("ImageBuilderMCP")
 
         general_intro = """Image Builder assistant. Use tool_calls, not code samples.
+        Compose = one image build job (status: pending, running, success, failure); not a blueprint.
+        Image build status, latest build, recent builds → get_composes first; get_compose_details if UUID known.
         🟢 list/status: get_blueprints, get_composes, get_*_details, get_openapi, get_distributions.
         🔴 create_blueprint: gather fields first. 🟡 blueprint_compose: need UUID.
         Paging: follow [PAGE] in list tool responses."""
@@ -467,7 +469,7 @@ class ImageBuilderMCP(InsightsMCP):
         offset: Annotated[int, Field(0, description="Number of items to skip when paging (use 0 as default)")],
         search_string: Annotated[Optional[str], Field(None, description="Substring to search for in the name")],
     ) -> str:
-        """🟢 List composes/builds. Use limit/offset. Paging hints in response footer."""
+        """🟢 Image build status, latest/recent compose builds, build jobs: use FIRST. Compose=build run."""
         limit = limit or self.default_response_size
         if limit <= 0:
             limit = self.default_response_size
@@ -510,7 +512,7 @@ class ImageBuilderMCP(InsightsMCP):
     async def get_compose_details(
         self, compose_identifier: Annotated[str, "The exact UUID string from get_composes()"]
     ) -> str:
-        """🟢 Compose details. Requires exact UUID from get_composes (not 'latest')."""
+        """🟢 One compose/image build status & details. UUID from get_composes—not "latest" alone."""
         if not compose_identifier:
             raise InsightsApiError("Error: Compose UUID is required")
 
