@@ -17,9 +17,32 @@ upstream if another call site ever passes bare booleans.
 
 ## MCP + Llama agents in tests
 
-`agent_mcp.py` holds **LlamaIndex** `FunctionAgent` wiring plus MCP discovery used by behavioral
-integration tests—no Red Hat MCP domain assertions.
+`agent_mcp.py` is a **test harness** only (MCP discovery, `OpenAILike` matrix, multi-turn
+`execute_with_reasoning`)—no Red Hat MCP domain assertions.
+
+### Tool-call recording (native instrumentation)
+
+Tool calls for DeepEval `ToolCorrectnessMetric` are **not** monkey-patched on MCP tools.
+Instead:
+
+1. **Workflow stream events** — `WorkflowToolCallCollector` records LlamaIndex workflow
+   `ToolCall` events from `handler.stream_events()` (see `deepeval_support/tracing.py`).
+2. **DeepEval** — `instrument_llama_index(get_dispatcher())` is enabled for LLM tests via
+   `tests/llm_tracing.py` / session autouse in `tests/conftest.py` (span fallback only).
 
 Dev dependency: `llama-index-llms-openai-like`. `MCPAgentWrapper` uses `OpenAILike` against
-OpenAI-compatible remote endpoints (`MODEL_API` / `MODEL_ID` from test config). Requests pass
-`additional_kwargs={"parallel_tool_calls": False}` for behavioral tests.
+OpenAI-compatible remote endpoints (`MODEL_API` / `MODEL_ID` from test config).
+`FunctionAgent.allow_parallel_tool_calls=False` is set on the agent (not via LLM
+`additional_kwargs`, because some gateways reject `parallel_tool_calls` on the request).
+
+### Gateway workarounds (debt)
+
+These exist until system prompts and model behavior are stable across the LLM matrix:
+
+| Workaround | Trigger | Goal |
+|------------|---------|------|
+| `_embed_chat_history_in_user_message` | `pro` in `model_id` (Gemini Pro) | Avoid multi-turn chat replay failures with tools |
+| `_compact_chat_history_for_followup` | Any follow-up with `chat_history` | Strip tool messages that break strict gateways |
+| Empty-response retry | No text and no tool calls after `agent.run` | Recover from occasional blank completions |
+
+Remove each row when matrix runs no longer need it; track per-model failures in LLM test logs.

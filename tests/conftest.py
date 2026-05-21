@@ -25,6 +25,7 @@ from insights_mcp.config import (
 from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 from llama_index_support.agent_mcp import MCPAgentWrapper
 from tests import oauth_utils as oauth_utils_module
+from tests.llm_tracing import enable_llm_test_tracing
 from tests.utils import load_llm_configurations
 
 
@@ -40,6 +41,25 @@ def gpt_model_from_config(config: Dict[str, str]) -> GPTModel:
 
 # Load LLM configurations for fixtures
 _, guardian_llm_config = load_llm_configurations()
+
+
+def _node_requests_llm_tracing(node: pytest.Item) -> bool:
+    """Return True when the test uses the LLM matrix (``llm_config`` parametrization)."""
+    callspec = getattr(node, "callspec", None)
+    return callspec is not None and "llm_config" in callspec.params
+
+
+@pytest.fixture(scope="session", autouse=True)
+def llm_test_tracing(request):
+    """Enable DeepEval and Phoenix LlamaIndex tracing for LLM integration tests only."""
+    if not request.session.items:
+        yield
+        return
+    if not any(_node_requests_llm_tracing(item) for item in request.session.items):
+        yield
+        return
+    enable_llm_test_tracing()
+    yield
 
 
 def _insights_mcp_http_headers() -> Dict[str, str] | None:

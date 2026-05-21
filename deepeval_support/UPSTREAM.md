@@ -9,6 +9,12 @@ Guardian/judge metrics in LLM integration tests use `deepeval.models.GPTModel` w
 endpoints). Pass the same model to `GEval` and `ToolCorrectnessMetric` so deepeval does
 not fall back to an unconfigured default `GPTModel`.
 
+## LlamaIndex tool-call tracing
+
+LLM tests call `instrument_llama_index(get_dispatcher())` from `tests/llm_tracing.py`.
+`deepeval_support/tracing.py` maps workflow stream events and `AgentOutput` to
+`deepeval.test_case.ToolCall` for `ToolCorrectnessMetric` (see `llama_index_support/UPSTREAM.md`).
+
 ## Candidates to contribute upstream
 
 1. **Evaluation parameter names** — Stable resolution of `SingleTurnParams` vs legacy

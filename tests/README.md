@@ -8,7 +8,8 @@ For now this is intended to be used with vLLM test agents.
 - `test_auth.py` - Authentication and OAuth tests
 - `utils.py` - Shared testing utilities and helper functions
 - `../llama_index_support/` - LlamaIndex MCP agent (`MCPAgentWrapper`); MCP import shim — see ``UPSTREAM.md`` there
-- `../deepeval_support/` - DeepEval adapters (e.g. OpenAI-compat judge models) — see ``UPSTREAM.md`` there
+- `../deepeval_support/` - DeepEval adapters (tool-call tracing, OpenAI-compat judge models)
+- `llm_tracing.py` - Session hook that enables DeepEval ``instrument_llama_index`` for ``@pytest.mark.llm`` tests
 - `../instrumentation_tests/` - Structural MCP checks (run ``make test-instrumentation``)
 - `conftest.py` - Pytest fixtures and configuration
 - `test_tokens.py` - MCP tool input token budget checks (see below)
@@ -61,7 +62,22 @@ make test-verbose
 
 # or
 make test-very-verbose
+
+# LLM integration tests only (requires test_config.json and Insights credentials)
+uv run pytest -m llm -v
 ```
+
+### LLM test tracing
+
+When pytest collects any test parametrized with ``llm_config``, ``tests/conftest.py`` calls
+``tests/llm_tracing.enable_llm_test_tracing()`` once per session. That registers DeepEval
+``instrument_llama_index`` on LlamaIndex's dispatcher (span fallback for tool asserts).
+Actual ``tools_called`` for ``ToolCorrectnessMetric`` come from workflow stream events in
+``deepeval_support/tracing.py``, not from Phoenix.
+
+Environment:
+
+- ``DEEPEVAL_TELEMETRY_OPT_OUT=YES`` — disable DeepEval telemetry (recommended in CI/docs).
 
 ### Fallback
 

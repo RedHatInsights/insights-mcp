@@ -115,6 +115,7 @@ asyncio_default_test_loop_scope = "session"
 markers = [
     "integration: tests that call external APIs (e.g. GitHub API)",
     "instrumentation: structural MCP / wiring checks without LLM behavior assertions",
+    "llm: behavioral LLM integration tests (requires test_config.json or MODEL_* env)",
 ]
 
 [dependency-groups]

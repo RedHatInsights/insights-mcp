@@ -56,6 +56,7 @@ llm_configurations, _ = load_llm_configurations()
     should_skip_insights_llm_tests(),
     reason="INSIGHTS_CLIENT_ID and INSIGHTS_CLIENT_SECRET (or LIGHTSPEED_* equivalents) required",
 )
+@pytest.mark.llm
 class TestLLMIntegrationEasy:
     """Test LLM integration with MCP server using deepeval with multiple LLM configurations."""
 

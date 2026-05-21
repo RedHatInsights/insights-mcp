@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 import requests
@@ -15,7 +15,7 @@ from llama_index.llms.openai_like import OpenAILike
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 from mcp.shared._httpx_utils import create_mcp_http_client
 
-from deepeval_support.tool_calls import tool_call_record
+from deepeval_support.tracing import WorkflowToolCallCollector, tools_called_from_agent_run
 from instrumentation_tests.mcp_jsonrpc import (
     DEFAULT_JSON_HEADERS,
     create_mcp_init_request,
@@ -94,11 +94,10 @@ def _assistant_text_from_handler_response(response: Any) -> str:
 
 
 class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
-    """MCP agent wrapper that records tool calls and step progression.
+    """MCP agent harness for behavioral LLM tests.
 
-    - Records tool calls for validation in tests
-    - Optionally logs step progression if a logger is provided
-    - Provides minimal reasoning steps useful for debugging output
+    Tool calls are recorded from native LlamaIndex workflow stream events (see
+    ``deepeval_support.tracing``). Requires ``instrument_llama_index`` in LLM test setup.
     """
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -116,12 +115,11 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         self.api_url = api_url
         self.model_id = model_id
         self.api_key = api_key
-        self.tools: Optional[List[Union[BaseTool, Callable]]] = []
+        self.tools: Optional[List[BaseTool]] = []
         self.system_prompt = ""
         self.agent: Optional[FunctionAgent] = None
         self.context: Optional[Context] = None
 
-        self._called_tools: List[Any] = []
         self._step_names: List[str] = []
         self._mcp_client: Optional[BasicMCPClient] = None
         self._llm_http_client: Optional[httpx.AsyncClient] = None
@@ -206,85 +204,9 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             self.logger.warning("Failed to get system prompt: %s", exc)
             return ""
 
-    def _record_tool_call(self, tool_name: str, arguments: Optional[Dict[str, Any]] = None) -> None:
-        """Record a tool call in a deepeval-compatible structure."""
-        if len(self._called_tools) > 0 and self._called_tools[-1].name == tool_name:
-            return
-        args = arguments or {}
-        self._called_tools.append(tool_call_record(tool_name, args))
-
-    def _wrap_one_tool(self, tool: Union[BaseTool, Callable]) -> Union[BaseTool, Callable]:
-        """Monkey-patch a tool to record invocations while preserving behavior."""
-        try:
-            tool_name: str
-            if hasattr(tool, "metadata") and getattr(tool, "metadata") is not None:
-                tool_name = str(getattr(tool.metadata, "name", "unknown"))
-            else:
-                name_attr = getattr(tool, "name", None)
-                tool_name = (
-                    str(name_attr) if name_attr is not None else (f"unknown class:{tool.__class__.__name__} {tool}")
-                )
-
-            if hasattr(tool, "acall") and asyncio.iscoroutinefunction(getattr(tool, "acall")):
-                original_acall = getattr(tool, "acall")
-
-                async def wrapped_acall(*args: Any, **kwargs: Any) -> Any:  # type: ignore
-                    self._record_tool_call(tool_name, kwargs)
-                    return await original_acall(*args, **kwargs)
-
-                setattr(tool, "acall", wrapped_acall)
-                return tool
-
-            if hasattr(tool, "__call__") and asyncio.iscoroutinefunction(getattr(tool, "__call__")):
-                original_call = getattr(tool, "__call__")
-
-                async def wrapped_call(*args: Any, **kwargs: Any) -> Any:  # type: ignore
-                    self._record_tool_call(tool_name, kwargs)
-                    return await original_call(*args, **kwargs)
-
-                setattr(tool, "__call__", wrapped_call)  # type: ignore
-                return tool
-
-            if hasattr(tool, "call") and callable(getattr(tool, "call")):
-                original_sync_call = getattr(tool, "call")
-
-                async def wrapped_sync(*args: Any, **kwargs: Any) -> Any:
-                    self._record_tool_call(tool_name, kwargs)
-                    return await asyncio.to_thread(original_sync_call, *args, **kwargs)
-
-                setattr(tool, "acall", wrapped_sync)
-                return tool
-
-            if callable(tool):
-                original_callable = tool
-
-                async def wrapped_callable(*args: Any, **kwargs: Any) -> Any:
-                    self._record_tool_call(tool_name, kwargs)
-                    if asyncio.iscoroutinefunction(original_callable):
-                        return await original_callable(*args, **kwargs)
-                    return await asyncio.to_thread(original_callable, *args, **kwargs)
-
-                setattr(tool, "acall", wrapped_callable)
-                return tool
-
-            return tool
-        except Exception:  # pylint: disable=broad-exception-caught
-            return tool
-
-    def _wrap_tools_for_recording(self) -> None:
-        if not self.tools:
-            return
-        wrapped: List[Union[BaseTool, Callable]] = []
-        for step_tool in self.tools:
-            wrapped.append(self._wrap_one_tool(step_tool))
-        self.tools = wrapped
-
     async def _setup_agent(self):
         """Setup LlamaIndex agent with MCP tools and optional verbose logging."""
-        self._called_tools = []
         self._step_names = []
-
-        self._wrap_tools_for_recording()
 
         self.agent = FunctionAgent(
             name="MCP Agent",
@@ -319,52 +241,15 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         if not self.agent or self.llama_llm is None:
             raise ValueError("Agent not initialized")
 
-        def _history_summary(messages: List[ChatMessage]) -> dict:
-            summary: List[dict] = []
-            for message in messages[:20]:
-                content = message.content
-                if isinstance(content, str):
-                    content_kind = "str"
-                    content_len = len(content)
-                elif isinstance(content, list):
-                    content_kind = "list"
-                    content_len = len(content)
-                    block_types = [
-                        block.get("type") if isinstance(block, dict) else type(block).__name__ for block in content[:8]
-                    ]
-                    summary.append(
-                        {
-                            "role": message.role,
-                            "content_kind": content_kind,
-                            "content_len": content_len,
-                            "block_types": block_types,
-                        }
-                    )
-                    continue
-                else:
-                    content_kind = type(content).__name__
-                    content_len = 0
-                entry: dict = {
-                    "role": message.role,
-                    "content_kind": content_kind,
-                    "content_len": content_len,
-                }
-                extra = getattr(message, "additional_kwargs", None) or {}
-                if extra:
-                    entry["additional_keys"] = list(extra.keys())
-                    if "tool_calls" in extra:
-                        entry["tool_calls_count"] = len(extra["tool_calls"])
-                summary.append(entry)
-            return {"count": len(messages), "messages": summary}
-
         self.logger.info("🎬 Starting workflow execution...")
         self.logger.info("📝 User message: %s", user_msg)
 
         response: Any = None
+        tool_collector = WorkflowToolCallCollector()
         self.context = Context(self.agent)
         for attempt in range(2):
             # Per-turn isolation: stale workflow context breaks follow-up turns on some gateways.
-            self._called_tools = []
+            tool_collector.clear()
             self._step_names = []
 
             handler = self.agent.run(
@@ -376,6 +261,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
 
             async def _stream_events() -> None:
                 async for ev in handler.stream_events():
+                    tool_collector.consume_event(ev)
                     ev_name = ev.__class__.__name__
                     self._step_names.append(ev_name)
                     if self.logger and ev_name not in ["AgentStream"]:
@@ -396,7 +282,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
                     stream_task.cancel()
 
             attempt_text = _assistant_text_from_handler_response(response)
-            if attempt_text.strip() or self._called_tools:
+            if attempt_text.strip() or tool_collector.as_list():
                 break
             if attempt == 0:
                 self.logger.warning(
@@ -417,7 +303,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             updated_history = chat_history + [ChatMessage(role="user", content=user_msg)]
             updated_history.append(ChatMessage(role="assistant", content=assistant_text))
 
-        tools_called: List[Any] = list(self._called_tools)
+        tools_called = tools_called_from_agent_run(response, workflow_collector=tool_collector)
 
         self.logger.info("🔍 Agent response: %s", assistant_text)
         if tools_called:
