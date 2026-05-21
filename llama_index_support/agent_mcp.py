@@ -46,6 +46,23 @@ def _embed_chat_history_in_user_message(user_msg: str, messages: List[ChatMessag
     return embedded, []
 
 
+def _is_paging_followup(user_msg: str, messages: List[ChatMessage]) -> bool:
+    """Return True when the user is asking for the next page of a prior list."""
+    if not messages:
+        return False
+    lowered = user_msg.lower()
+    return any(token in lowered for token in ("next", "more", "another page", "show me the next"))
+
+
+def _paging_followup_user_message(user_msg: str) -> str:
+    """Nudge the model to call get_blueprints with limit/offset instead of answering from memory."""
+    return (
+        f"{user_msg}\n\n"
+        "Use image-builder__get_blueprints with the requested limit and offset "
+        "(for example offset=2 after listing 2 items). Do not answer from conversation memory alone."
+    )
+
+
 def _compact_chat_history_for_followup(messages: List[ChatMessage]) -> List[ChatMessage]:
     """Keep user/assistant text only; drop tool replay that breaks strict gateways (e.g. Gemini Pro)."""
     compact: List[ChatMessage] = []
@@ -310,8 +327,13 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         chat_history = [message for message in chat_history if message.role != "system"]
         if chat_history:
             chat_history = _compact_chat_history_for_followup(chat_history)
-            # Gemini 2.5 Pro rejects multi-turn chat replay with tools; embed context instead.
-            if "pro" in self.model_id.lower():
+            if _is_paging_followup(user_msg, chat_history):
+                # Drop prior assistant text (often auth-error instructions) so the model
+                # calls get_blueprints for the next page instead of continuing that narrative.
+                user_msg = _paging_followup_user_message(user_msg)
+                chat_history = []
+            elif "pro" in self.model_id.lower():
+                # Gemini Pro rejects multi-turn chat replay with tools; embed context instead.
                 user_msg, chat_history = _embed_chat_history_in_user_message(user_msg, chat_history)
 
         if not self.agent or self.llama_llm is None:

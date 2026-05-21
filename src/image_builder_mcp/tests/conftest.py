@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from image_builder_mcp import ImageBuilderMCP
+from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 
 # Import directly from tests since pytest now knows where to find packages
 from tests.conftest import (
@@ -22,7 +23,6 @@ from tests.conftest import (
     create_mock_client,
     default_response_size,
     guardian_agent,
-    mcp_server_url,
     mcp_tools,
     mock_http_headers,
     setup_mcp_mock,
@@ -30,6 +30,21 @@ from tests.conftest import (
     test_client_credentials,
     verbose_logger,
 )
+
+
+@pytest.fixture(scope="session")
+def mcp_server_url(request):
+    """Start MCP server with only the image-builder toolset for LLM integration tests."""
+    transport = getattr(request, "param", "http")
+    if hasattr(request.node, "callspec") and "transport" in request.node.callspec.params:
+        transport = request.node.callspec.params["transport"]
+
+    server_url, server_process = start_insights_mcp_server(transport, toolset="image-builder")
+
+    try:
+        yield server_url
+    finally:
+        cleanup_server_process(server_process)
 
 
 @pytest.fixture
