@@ -82,12 +82,16 @@ make help  # Show all available make targets
 **General pattern for toolset testing:**
 - `tests/` - Main test directory with cross-toolset auth and utility tests
 - `src/<toolset_name>_mcp/tests/` - Toolset-specific tests (when present)
-- `src/<toolset_name>_mcp/test_prompts.md` - Test prompts for LLM validation
+- `src/<toolset_name>_mcp/test_prompts.py` - `PROMPTS = PromptRegistry(...)` (see `insights_mcp.test_prompts_data`)
+- `src/<toolset_name>_mcp/test_prompts.md` - Generated bullet-list examples for users (`make test-prompts-md`)
+
+**`PromptRegistry` entries:** a string for example/behavioral prompts; a `(text, (expected_tools,), description)` tuple for parametrized tool-correctness tests. LLM tests use `PROMPTS["id"]` and `PROMPTS.tool_usage_scenarios()`.
 
 **Example test implementations:**
 - `tests/` - Cross-toolset authentication, API, and pattern tests
+- `src/image_builder_mcp/test_prompts.py` - `PromptRegistry` shared by LLM tests and generated `test_prompts.md`
 - `src/image_builder_mcp/tests/` - Full test suite with unit and LLM integration tests
-- `src/vulnerability_mcp/test_prompts.md` - LLM test prompts (pattern used by most toolsets)
+- `src/vulnerability_mcp/test_prompts.md` - LLM test prompts (hand-written until migrated to the generated pattern)
 
 ### Running Tests
 

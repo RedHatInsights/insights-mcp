@@ -3,12 +3,11 @@ This includes easy questions to the LLM, that should work out of the box.
 Updated to use the simplified agent approach with WorkflowCheckpointer.
 """
 
-from typing import Any, Dict, List
-
 import pytest
 from deepeval.metrics import GEval, ToolCorrectnessMetric
 from deepeval.test_case import LLMTestCase, LLMTestCaseParams, ToolCall
 
+from image_builder_mcp.test_prompts import PROMPTS
 from tests.utils import (
     load_llm_configurations,
     pretty_print_chat_history,
@@ -16,32 +15,7 @@ from tests.utils import (
     should_skip_llm_matrix_tests,
 )
 
-# Test prompts
-TEST_RHEL_INITIAL_QUESTION_PROMPT = "Can you create a RHEL 9 image for me?"
-TEST_IMAGE_BUILD_STATUS_PROMPT = "What is the status of my latest image build?"
-TEST_LLM_PAGING_PROMPT_1 = "List my latest 2 blueprints"
-TEST_LLM_PAGING_PROMPT_2 = "Can you show me the next 3 blueprints?"
-TEST_LIST_IMAGE_TYPES_PROMPT = "Which image types are available?"
-
-# Test scenarios for tool usage patterns
-# not sure why mypy needs Any here
-TOOL_USAGE_SCENARIOS: List[Dict[str, Any]] = [
-    {
-        "prompt": "List all my recent builds",
-        "expected_tools": ["image-builder__get_composes"],
-        "description": "Should use get_composes for build listings",
-    },
-    {
-        "prompt": "What blueprints do I have?",
-        "expected_tools": ["image-builder__get_blueprints"],
-        "description": "Should use get_blueprints for blueprint listings",
-    },
-    {
-        "prompt": "Please show my blueprints",
-        "expected_tools": ["image-builder__get_blueprints"],
-        "description": "Should use get_blueprints for blueprint listings",
-    },
-]
+TOOL_USAGE_SCENARIOS = PROMPTS.tool_usage_scenarios()
 
 # Load LLM configurations for parametrization
 llm_configurations, _ = load_llm_configurations()
@@ -64,7 +38,7 @@ class TestLLMIntegrationEasy:
     # pylint: disable=redefined-outer-name,too-many-locals
     async def test_rhel_initial_question(self, test_agent, guardian_agent, llm_config, verbose_logger):
         """Test that LLM follows behavioral rules and doesn't immediately call create_blueprint."""
-        prompt = TEST_RHEL_INITIAL_QUESTION_PROMPT
+        prompt = PROMPTS["rhel_initial_question"]
 
         # Execute tools and capture reasoning steps and tool calls
         response, reasoning_steps, tools_executed, _ = await test_agent.execute_with_reasoning(prompt, chat_history=[])
@@ -126,7 +100,7 @@ class TestLLMIntegrationEasy:
         """Test that LLM selects appropriate tools for image build status queries."""
         tool_correctness = ToolCorrectnessMetric(threshold=0.7, include_reason=True, model=guardian_agent)
 
-        prompt = TEST_IMAGE_BUILD_STATUS_PROMPT
+        prompt = PROMPTS["image_build_status"]
 
         response, _, tools_executed, _ = await test_agent.execute_with_reasoning(prompt, chat_history=[])
 
@@ -258,7 +232,7 @@ class TestLLMIntegrationEasy:
     @pytest.mark.asyncio
     async def test_llm_paging(self, test_agent, guardian_agent, verbose_logger, llm_config):  # pylint: disable=redefined-outer-name,too-many-locals
         """Test that the LLM can page through results."""
-        prompt = TEST_LLM_PAGING_PROMPT_1
+        prompt = PROMPTS["llm_paging_1"]
 
         response, _, tools_executed, conversation_history = await test_agent.execute_with_reasoning(
             prompt, chat_history=[]
@@ -287,7 +261,7 @@ class TestLLMIntegrationEasy:
         )
 
         # Now ask for more with conversation context
-        follow_up_prompt = TEST_LLM_PAGING_PROMPT_2
+        follow_up_prompt = PROMPTS["llm_paging_2"]
 
         # conversation_history from simplified agent is already ChatMessage objects
         (
@@ -342,7 +316,7 @@ class TestLLMIntegrationEasy:
     # pylint: disable=redefined-outer-name,too-many-locals
     async def test_list_image_types(self, test_agent, guardian_agent, llm_config, verbose_logger):
         """Test that LLM uses get_openapi for image type discovery instead of create_blueprint."""
-        prompt = TEST_LIST_IMAGE_TYPES_PROMPT
+        prompt = PROMPTS["list_image_types"]
 
         # Execute tools and capture reasoning steps and tool calls
         response, reasoning_steps, tools_executed, _ = await test_agent.execute_with_reasoning(prompt, chat_history=[])

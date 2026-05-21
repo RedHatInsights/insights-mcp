@@ -7,14 +7,12 @@ from deepeval.evaluate import assert_test
 from deepeval.metrics import GEval, ToolCorrectnessMetric
 from deepeval.test_case import LLMTestCase, LLMTestCaseParams, ToolCall
 
+from image_builder_mcp.test_prompts import PROMPTS
 from tests.utils import (
     load_llm_configurations,
     should_skip_insights_llm_tests,
     should_skip_llm_matrix_tests,
 )
-
-# Test prompts
-TEST_COMPLETE_CONVERSATION_FLOW_PROMPT = "Can you help me understand what blueprints are available?"
 
 # Load LLM configurations for parametrization
 llm_configurations, _ = load_llm_configurations()
@@ -34,7 +32,7 @@ class TestLLMIntegrationHard:
     @pytest.mark.asyncio
     async def test_complete_conversation_flow(self, test_agent, guardian_agent, verbose_logger, llm_config):  # pylint: disable=redefined-outer-name
         """Test complete conversation flow with proper agent behavior."""
-        prompt = TEST_COMPLETE_CONVERSATION_FLOW_PROMPT
+        prompt = PROMPTS["complete_conversation_flow"]
 
         response, _, tools_executed, _ = await test_agent.execute_with_reasoning(prompt, chat_history=[])
 

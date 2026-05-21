@@ -484,7 +484,7 @@ Please explain red-hat-lightspeed-mcp and what I can do with it?
 
 For example questions specific to each toolset please have a look at the test files:
 
- * [`image-builder-mcp`](src/image_builder_mcp/tests/test_llm_integration_easy.py#L20)
+ * [`image-builder-mcp`](src/image_builder_mcp/test_prompts.md)
  * [`inventory-mcp`](src/inventory_mcp/test_prompts.md)
  * [`planning-mcp`](src/planning_mcp/test_prompts.md)
  * [`remediations-mcp`](src/remediations_mcp/test_prompts.md)

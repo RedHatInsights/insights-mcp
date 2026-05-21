@@ -204,13 +204,18 @@ run-oauth: build ## Run the MCP server with OAuth transport
 
 ALL_PYTHON_FILES := $(shell find src -name "*.py")
 
-.PHONY: generate-docs tool-tokens-md prepare-mkdocs build-mkdocs serve-mkdocs catalog-info
-generate-docs: usage.md toolsets.md catalog-info.yaml docs/tool-tokens.md docs/architecture-structure.svg docs/architecture-deployment.svg prepare-mkdocs .agents/skills/README.md ## Generate documentation from the MCP server
+.PHONY: generate-docs tool-tokens-md test-prompts-md prepare-mkdocs build-mkdocs serve-mkdocs catalog-info
+generate-docs: usage.md toolsets.md catalog-info.yaml docs/tool-tokens.md test-prompts-md docs/architecture-structure.svg docs/architecture-deployment.svg prepare-mkdocs .agents/skills/README.md ## Generate documentation from the MCP server
 
 tool-tokens-md: docs/tool-tokens.md ## Generate MCP tool input token table
 
+test-prompts-md: src/image_builder_mcp/test_prompts.md ## Generate toolset test_prompts.md files
+
 docs/tool-tokens.md: $(ALL_PYTHON_FILES) scripts/dump_tool_tokens.py
 	uv run python scripts/dump_tool_tokens.py -o $@
+
+src/image_builder_mcp/test_prompts.md: src/image_builder_mcp/test_prompts.py scripts/generate_test_prompts.py src/insights_mcp/test_prompts_markdown.py src/insights_mcp/test_prompts_data.py
+	uv run python scripts/generate_test_prompts.py --module image_builder_mcp.test_prompts -o $@
 
 prepare-mkdocs: usage.md toolsets.md docs/architecture-structure.svg docs/architecture-deployment.svg README.md HACKING.md ## Prepare MkDocs staging files under docs/mkdocs/
 	uv run python scripts/prepare_mkdocs.py
