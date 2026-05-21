@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import requests
 from llama_index.core.agent.workflow import FunctionAgent
+from llama_index.core.agent.workflow.workflow_events import AgentOutput
 from llama_index.core.llms import ChatMessage
 from llama_index.core.tools import BaseTool
 from llama_index.core.workflow import Context
@@ -18,6 +19,76 @@ from instrumentation_tests.mcp_jsonrpc import (
     create_mcp_init_request,
     parse_mcp_response,
 )
+
+
+def _message_text(message: ChatMessage) -> str:
+    """Return plain text from a ChatMessage content field."""
+    content = message.content
+    if isinstance(content, str):
+        return content
+    if content is None:
+        return ""
+    return str(content)
+
+
+def _embed_chat_history_in_user_message(user_msg: str, messages: List[ChatMessage]) -> Tuple[str, List[ChatMessage]]:
+    """Fold prior turns into the user message when multi-turn replay breaks a gateway."""
+    lines: List[str] = []
+    for message in messages:
+        text = _message_text(message).strip()
+        if text:
+            lines.append(f"{message.role}: {text}")
+    if not lines:
+        return user_msg, []
+    embedded = "Previous conversation:\n" + "\n".join(lines) + f"\n\nCurrent request: {user_msg}"
+    return embedded, []
+
+
+def _compact_chat_history_for_followup(messages: List[ChatMessage]) -> List[ChatMessage]:
+    """Keep user/assistant text only; drop tool replay that breaks strict gateways (e.g. Gemini Pro)."""
+    compact: List[ChatMessage] = []
+    for message in messages:
+        if message.role == "system":
+            continue
+        if message.role == "tool":
+            continue
+        if message.role == "assistant":
+            extra = getattr(message, "additional_kwargs", None) or {}
+            if extra.get("tool_calls") and not _message_text(message).strip():
+                continue
+            text = _message_text(message).strip()
+            if text:
+                compact.append(ChatMessage(role="assistant", content=text))
+            continue
+        if message.role == "user":
+            text = _message_text(message).strip()
+            if text:
+                compact.append(ChatMessage(role="user", content=text))
+    return compact
+
+
+def _chat_message_text(message: ChatMessage) -> str:
+    """Extract display text from a ChatMessage (content string or text blocks)."""
+    content = message.content
+    if isinstance(content, str) and content:
+        return content
+    block_texts: List[str] = []
+    for block in getattr(message, "blocks", None) or []:
+        text = getattr(block, "text", None)
+        if text:
+            block_texts.append(text)
+    return "\n".join(block_texts)
+
+
+def _assistant_text_from_handler_response(response: Any) -> str:
+    """Normalize workflow handler output to plain assistant text for chat history."""
+    if isinstance(response, AgentOutput):
+        return _chat_message_text(response.response)
+    if hasattr(response, "response") and hasattr(response.response, "content"):
+        return _chat_message_text(response.response)
+    if response is None:
+        return ""
+    return str(response)
 
 
 class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
@@ -51,6 +122,8 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
 
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
+        # parallel_tool_calls is enforced via FunctionAgent.allow_parallel_tool_calls;
+        # omit it here because some OpenAI-compatible gateways (e.g. Gemini Flash) reject the field.
         self.llama_llm = OpenAILike(
             model=model_id,
             api_base=api_url,
@@ -60,7 +133,6 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             max_tokens=2048,
             is_chat_model=True,
             is_function_calling_model=True,
-            additional_kwargs={"parallel_tool_calls": False},
         )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
@@ -197,6 +269,8 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             system_prompt=self.system_prompt,
             llm=self.llama_llm,
             tools=self.tools,
+            streaming=False,
+            allow_parallel_tool_calls=False,
         )
         self.context = Context(self.agent)
 
@@ -209,60 +283,126 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         max_iterations: int = 10,
     ) -> Tuple[str, List[Dict[str, Any]], List[Any], List[ChatMessage]]:
         """Execute agent, record tool calls and steps, return response and artifacts."""
-        if chat_history is None or len(chat_history) == 0:
-            if self.system_prompt:
-                chat_history = [ChatMessage(role="system", content=self.system_prompt)]
-            else:
-                chat_history = []
+        if chat_history is None:
+            chat_history = []
+        # FunctionAgent prepends system_prompt in setup_agent; do not duplicate it here.
+        chat_history = [message for message in chat_history if message.role != "system"]
+        if chat_history:
+            chat_history = _compact_chat_history_for_followup(chat_history)
+            # Gemini 2.5 Pro rejects multi-turn chat replay with tools; embed context instead.
+            if "pro" in self.model_id.lower():
+                user_msg, chat_history = _embed_chat_history_in_user_message(user_msg, chat_history)
 
-        if not self.agent or not self.context:
-            raise ValueError("Agent or context not initialized")
+        if not self.agent:
+            raise ValueError("Agent not initialized")
+
+        def _history_summary(messages: List[ChatMessage]) -> dict:
+            summary: List[dict] = []
+            for message in messages[:20]:
+                content = message.content
+                if isinstance(content, str):
+                    content_kind = "str"
+                    content_len = len(content)
+                elif isinstance(content, list):
+                    content_kind = "list"
+                    content_len = len(content)
+                    block_types = [
+                        block.get("type") if isinstance(block, dict) else type(block).__name__ for block in content[:8]
+                    ]
+                    summary.append(
+                        {
+                            "role": message.role,
+                            "content_kind": content_kind,
+                            "content_len": content_len,
+                            "block_types": block_types,
+                        }
+                    )
+                    continue
+                else:
+                    content_kind = type(content).__name__
+                    content_len = 0
+                entry: dict = {
+                    "role": message.role,
+                    "content_kind": content_kind,
+                    "content_len": content_len,
+                }
+                extra = getattr(message, "additional_kwargs", None) or {}
+                if extra:
+                    entry["additional_keys"] = list(extra.keys())
+                    if "tool_calls" in extra:
+                        entry["tool_calls_count"] = len(extra["tool_calls"])
+                summary.append(entry)
+            return {"count": len(messages), "messages": summary}
 
         self.logger.info("🎬 Starting workflow execution...")
         self.logger.info("📝 User message: %s", user_msg)
 
-        handler = self.agent.run(
-            user_msg=user_msg,
-            ctx=self.context,
-            chat_history=chat_history,
-            max_iterations=max_iterations,
-        )
+        response: Any = None
+        self.context = Context(self.agent)
+        for attempt in range(2):
+            # Per-turn isolation: stale workflow context breaks follow-up turns on some gateways.
+            self._called_tools = []
+            self._step_names = []
 
-        async def _stream_events() -> None:
-            async for ev in handler.stream_events():
-                ev_name = ev.__class__.__name__
-                self._step_names.append(ev_name)
-                if self.logger and ev_name not in ["AgentStream"]:
-                    data_str = f"{ev}"
-                    if len(data_str) > 2000:
-                        data_str = data_str[:1000] + "\n<… abbreviated log …>\n" + data_str[-1000:]
-                    self.logger.debug("📡 Event %s: %s", ev_name, data_str)
+            handler = self.agent.run(
+                user_msg=user_msg,
+                ctx=self.context,
+                chat_history=chat_history,
+                max_iterations=max_iterations,
+            )
 
-        stream_task = asyncio.create_task(_stream_events())
-        try:
-            response = await handler
-        finally:
+            async def _stream_events() -> None:
+                async for ev in handler.stream_events():
+                    ev_name = ev.__class__.__name__
+                    self._step_names.append(ev_name)
+                    if self.logger and ev_name not in ["AgentStream"]:
+                        data_str = f"{ev}"
+                        if len(data_str) > 2000:
+                            data_str = data_str[:1000] + "\n<… abbreviated log …>\n" + data_str[-1000:]
+                        self.logger.debug("📡 Event %s: %s", ev_name, data_str)
+
+            stream_task = asyncio.create_task(_stream_events())
             try:
-                await asyncio.wait_for(stream_task, timeout=0.5)
-            except asyncio.TimeoutError:
-                stream_task.cancel()
+                response = await handler
+            except Exception:
+                raise
+            finally:
+                try:
+                    await asyncio.wait_for(stream_task, timeout=0.5)
+                except asyncio.TimeoutError:
+                    stream_task.cancel()
+
+            attempt_text = _assistant_text_from_handler_response(response)
+            if attempt_text.strip() or self._called_tools:
+                break
+            if attempt == 0:
+                self.logger.warning(
+                    "Empty agent response with no tool calls for model %s; retrying once",
+                    self.model_id,
+                )
 
         reasoning_steps: List[Dict[str, Any]] = [
             {"step_number": idx + 1, "step_type": "event", "content": name} for idx, name in enumerate(self._step_names)
         ]
 
-        updated_history = chat_history + [ChatMessage(role="user", content=user_msg)]
-        updated_history.append(ChatMessage(role="assistant", content=str(response)))
+        assistant_text = _assistant_text_from_handler_response(response)
+        agent_tool_calls = len(response.tool_calls) if isinstance(response, AgentOutput) and response.tool_calls else 0
+        memory = await self.context.store.get("memory")
+        if memory is not None:
+            updated_history = await memory.aget()
+        else:
+            updated_history = chat_history + [ChatMessage(role="user", content=user_msg)]
+            updated_history.append(ChatMessage(role="assistant", content=assistant_text))
 
         tools_called: List[Any] = list(self._called_tools)
 
-        self.logger.info("🔍 Agent response: %s", response)
+        self.logger.info("🔍 Agent response: %s", assistant_text)
         if tools_called:
-            self.logger.info("🔧 Tools called: %s", [t.name for t in tools_called])
+            self.logger.info("🔧 Tools called (%s calls): %s", agent_tool_calls, [t.name for t in tools_called])
         else:
             self.logger.info("🔧 No tools called")
 
-        return str(response), reasoning_steps, tools_called, updated_history
+        return assistant_text, reasoning_steps, tools_called, updated_history
 
     def get_all_checkpoints(self) -> Dict[str, List[Any]]:  # pylint: disable=too-few-public-methods
         """No longer uses checkpoints; returns empty mapping for compatibility."""
