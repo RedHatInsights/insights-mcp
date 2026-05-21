@@ -204,8 +204,13 @@ run-oauth: build ## Run the MCP server with OAuth transport
 
 ALL_PYTHON_FILES := $(shell find src -name "*.py")
 
-.PHONY: generate-docs prepare-mkdocs build-mkdocs serve-mkdocs
-generate-docs: usage.md toolsets.md catalog-info.yaml docs/architecture-structure.svg docs/architecture-deployment.svg prepare-mkdocs .agents/skills/README.md ## Generate documentation from the MCP server
+.PHONY: generate-docs tool-tokens-md prepare-mkdocs build-mkdocs serve-mkdocs catalog-info
+generate-docs: usage.md toolsets.md catalog-info.yaml docs/tool-tokens.md docs/architecture-structure.svg docs/architecture-deployment.svg prepare-mkdocs .agents/skills/README.md ## Generate documentation from the MCP server
+
+tool-tokens-md: docs/tool-tokens.md ## Generate MCP tool input token table
+
+docs/tool-tokens.md: $(ALL_PYTHON_FILES) scripts/dump_tool_tokens.py
+	uv run python scripts/dump_tool_tokens.py -o $@
 
 prepare-mkdocs: usage.md toolsets.md docs/architecture-structure.svg docs/architecture-deployment.svg README.md HACKING.md ## Prepare MkDocs staging files under docs/mkdocs/
 	uv run python scripts/prepare_mkdocs.py

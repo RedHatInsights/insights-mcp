@@ -4,13 +4,11 @@ This module tests the --toolset command line argument to ensure that the correct
 set of tools is available based on the toolset configuration.
 """
 
-import asyncio
 from typing import Any, Dict, List, Set
 
 import pytest
-from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 
-from tests.utils import cleanup_server_process, start_insights_mcp_server
+from insights_mcp.tool_tokens import fetch_mcp_tools
 
 
 def get_mcp_tools_with_toolset(
@@ -19,47 +17,13 @@ def get_mcp_tools_with_toolset(
     readonly: bool = False,
     container_brand: str | None = None,
 ) -> List[Any]:
-    """Get MCP tools for a specific transport and toolset configuration.
-
-    Args:
-        transport: Transport type ('http', 'sse', or 'stdio')
-        toolset: Toolset to use (e.g., 'all', 'image-builder', 'inventory')
-        readonly: If True, only register read-only tools
-        container_brand: Container brand for the server subprocess (see ``start_insights_mcp_server``)
-
-    Returns:
-        List of MCP tools
-    """
-    server_url, server_process = start_insights_mcp_server(
-        transport,
+    """Get MCP tools for a specific transport and toolset configuration."""
+    return fetch_mcp_tools(
+        transport=transport,
         toolset=toolset,
         readonly=readonly,
         container_brand=container_brand,
     )
-
-    try:
-        if server_url == "stdio":
-            # For stdio, use subprocess approach with toolset
-            args = ["-m", "insights_mcp.server"]
-            if toolset is not None:
-                args.extend(["--toolset", toolset])
-            if not readonly:
-                args.append("--all-tools")
-            args.append("stdio")
-            client = BasicMCPClient("python", args=args)
-        else:
-            # For HTTP/SSE, connect to running server
-            client = BasicMCPClient(server_url)
-
-        tool_spec = McpToolSpec(client=client)
-
-        async def _fetch():
-            return await tool_spec.to_tool_list_async()
-
-        return asyncio.run(_fetch())
-
-    finally:
-        cleanup_server_process(server_process)
 
 
 class TestCliArguments:

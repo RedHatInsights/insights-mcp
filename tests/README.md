@@ -11,6 +11,7 @@ For now this is intended to be used with vLLM test agents.
 - `../deepeval_support/` - DeepEval adapters (e.g. OpenAI-compat judge models) — see ``UPSTREAM.md`` there
 - `../instrumentation_tests/` - Structural MCP checks (run ``make test-instrumentation``)
 - `conftest.py` - Pytest fixtures and configuration
+- `test_tokens.py` - MCP tool input token budget checks (see below)
 
 Image Builder specific tests are located in `src/image_builder_mcp/tests/`:
 - `test_get_blueprints.py` - Blueprint retrieval tests
@@ -65,6 +66,35 @@ make test-very-verbose
 ### Fallback
 
 If `test_config.json` is missing, tests fall back to environment variables: `MODEL_API`, `MODEL_ID`, `USER_KEY`.
+
+## Tool input token tests
+
+`test_tokens.py` checks that the full `--all-tools` catalog fits within an input token budget for each
+entry in `llm_configurations` (not `guardian_llm`). Counts use the same OpenAI-style tool JSON as
+`FunctionAgent` / `achat_with_tools`, tokenized with tiktoken.
+
+Optional per-model override in `test_config.json`:
+
+- `TIKTOKEN_ENCODING` — tiktoken encoding name (e.g. `cl100k_base`). Omit to use `encoding_for_model(MODEL_ID)` or fall back to `cl100k_base` with a warning for unknown models (e.g. Gemini).
+
+Environment:
+
+- `INSIGHTS_MCP_MAX_TOOL_INPUT_TOKENS` — maximum allowed tokens for the all-tools row (default: `15000`).
+
+Generate the markdown overview (all toolsets + each toolset, all with `--all-tools`):
+
+```bash
+make docs/tool-tokens.md
+# or
+make generate-docs
+uv run python scripts/dump_tool_tokens.py -o docs/tool-tokens.md
+```
+
+Run only the token tests:
+
+```bash
+uv run pytest tests/test_tokens.py -v
+```
 
 ### Future Work
 

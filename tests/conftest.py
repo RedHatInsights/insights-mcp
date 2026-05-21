@@ -15,9 +15,10 @@ from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 # Add imports for mock client creation
 from insights_mcp.client import InsightsClient
 from insights_mcp.config import INSIGHTS_BASE_URL
+from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 from llama_index_support.agent_mcp import MCPAgentWrapper
 from tests import oauth_utils as oauth_utils_module
-from tests.utils import cleanup_server_process, load_llm_configurations, start_insights_mcp_server
+from tests.utils import load_llm_configurations
 
 
 def gpt_model_from_config(config: Dict[str, str]) -> GPTModel:
