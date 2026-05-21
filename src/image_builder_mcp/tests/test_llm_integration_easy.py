@@ -98,6 +98,9 @@ class TestLLMIntegrationEasy:
     # pylint: disable=redefined-outer-name,too-many-locals
     async def test_image_build_status_tool_selection(self, test_agent, verbose_logger, llm_config, guardian_agent):
         """Test that LLM selects appropriate tools for image build status queries."""
+        if "mistral" in llm_config["name"].lower():
+            pytest.skip("Mistral on the Lightspeed gateway does not reliably use the image-builder tool catalog")
+
         tool_correctness = ToolCorrectnessMetric(threshold=0.7, include_reason=True, model=guardian_agent)
 
         prompt = PROMPTS["image_build_status"]
