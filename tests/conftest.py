@@ -7,6 +7,7 @@ from typing import Dict
 from unittest.mock import Mock, patch
 
 import pytest
+import pytest_asyncio
 
 # pylint: disable=wrong-import-position
 from deepeval.models import GPTModel
@@ -35,8 +36,8 @@ def gpt_model_from_config(config: Dict[str, str]) -> GPTModel:
 _, guardian_llm_config = load_llm_configurations()
 
 
-@pytest.fixture
-def test_agent(mcp_server_url, verbose_logger, request):  # pylint: disable=redefined-outer-name
+@pytest_asyncio.fixture
+async def test_agent(mcp_server_url, verbose_logger, request):  # pylint: disable=redefined-outer-name
     """Create and configure a simplified test agent for the current LLM configuration."""
     # Get llm_config from the test's parametrization
     llm_config = request.node.callspec.params["llm_config"]
@@ -50,7 +51,11 @@ def test_agent(mcp_server_url, verbose_logger, request):  # pylint: disable=rede
     )
     verbose_logger.info("🧪 Testing the model: %s", agent.model_id)
 
-    return agent
+    await agent.initialize()
+    try:
+        yield agent
+    finally:
+        await agent.aclose()
 
 
 @pytest.fixture
@@ -122,17 +127,18 @@ def mcp_tools(mcp_server_url):  # pylint: disable=redefined-outer-name
     For stdio transport, uses BasicMCPClient subprocess approach.
     For HTTP/SSE transports, connects to the running server.
     """
-    if mcp_server_url == "stdio":
-        # For stdio, use subprocess approach
-        client = BasicMCPClient("python", args=["-m", "insights_mcp.server", "stdio"])
-    else:
-        # For HTTP/SSE, connect to running server
-        client = BasicMCPClient(mcp_server_url)
-
-    tool_spec = McpToolSpec(client=client)
 
     async def _fetch():
-        return await tool_spec.to_tool_list_async()
+        if mcp_server_url == "stdio":
+            client = BasicMCPClient("python", args=["-m", "insights_mcp.server", "stdio"])
+        else:
+            client = BasicMCPClient(mcp_server_url)
+        try:
+            tool_spec = McpToolSpec(client=client)
+            return await tool_spec.to_tool_list_async()
+        finally:
+            if not client.client_provided:
+                await client.http_client.aclose()
 
     return asyncio.run(_fetch())
 

@@ -4,6 +4,7 @@ import asyncio
 import logging
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+import httpx
 import requests
 from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.agent.workflow.workflow_events import AgentOutput
@@ -12,6 +13,7 @@ from llama_index.core.tools import BaseTool
 from llama_index.core.workflow import Context
 from llama_index.llms.openai_like import OpenAILike
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
+from mcp.shared._httpx_utils import create_mcp_http_client
 
 from deepeval_support.tool_calls import tool_call_record
 from instrumentation_tests.mcp_jsonrpc import (
@@ -119,32 +121,50 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
 
         self._called_tools: List[Any] = []
         self._step_names: List[str] = []
+        self._mcp_client: Optional[BasicMCPClient] = None
+        self._llm_http_client: Optional[httpx.AsyncClient] = None
+        self._initialized = False
+        self.llama_llm: Optional[OpenAILike] = None
 
-        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-
-        # parallel_tool_calls is enforced via FunctionAgent.allow_parallel_tool_calls;
-        # omit it here because some OpenAI-compatible gateways (e.g. Gemini Flash) reject the field.
-        self.llama_llm = OpenAILike(
-            model=model_id,
-            api_base=api_url,
-            api_key=api_key,
-            temperature=0.1,
-            context_window=8192,
-            max_tokens=2048,
-            is_chat_model=True,
-            is_function_calling_model=True,
-        )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         if verbose_logger:
             self.logger = verbose_logger
 
-        asyncio.run(self._initialize())
-
-    async def _initialize(self):
-        """Initialize MCP session and get available tools."""
+    async def initialize(self) -> None:
+        """Initialize MCP session and agent on the caller's event loop."""
+        if self._initialized:
+            return
+        self._llm_http_client = httpx.AsyncClient(timeout=httpx.Timeout(60.0))
+        # parallel_tool_calls is enforced via FunctionAgent.allow_parallel_tool_calls;
+        # omit it here because some OpenAI-compatible gateways (e.g. Gemini Flash) reject the field.
+        self.llama_llm = OpenAILike(
+            model=self.model_id,
+            api_base=self.api_url,
+            api_key=self.api_key,
+            temperature=0.1,
+            context_window=8192,
+            max_tokens=2048,
+            is_chat_model=True,
+            is_function_calling_model=True,
+            async_http_client=self._llm_http_client,
+        )
         await self._init_mcp_tools()
         await self._setup_agent()
+        self._initialized = True
+
+    async def aclose(self) -> None:
+        """Close HTTP clients before the event loop shuts down."""
+        aclient = getattr(self.llama_llm, "_aclient", None) if self.llama_llm is not None else None
+        if aclient is not None:
+            await aclient.close()
+        elif self._llm_http_client is not None:
+            await self._llm_http_client.aclose()
+        if self._mcp_client is not None:
+            await self._mcp_client.http_client.aclose()
+        self._llm_http_client = None
+        self._mcp_client = None
+        self._initialized = False
 
     async def _init_mcp_tools(self):
         """Initialize MCP tools using LlamaIndex MCP support."""
@@ -153,9 +173,10 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
                 mcp_client = BasicMCPClient("python", args=["-m", "insights_mcp.server", "stdio"])
                 fetch_system_prompt = False
             else:
-                mcp_client = BasicMCPClient(self.server_url)
+                mcp_http_client = create_mcp_http_client(headers=None)
+                mcp_client = BasicMCPClient(self.server_url, http_client=mcp_http_client)
                 fetch_system_prompt = self.server_url.startswith("http")
-
+            self._mcp_client = mcp_client
             mcp_tool_spec = McpToolSpec(client=mcp_client)
             self.tools = await mcp_tool_spec.to_tool_list_async()
 
@@ -293,7 +314,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             if "pro" in self.model_id.lower():
                 user_msg, chat_history = _embed_chat_history_in_user_message(user_msg, chat_history)
 
-        if not self.agent:
+        if not self.agent or self.llama_llm is None:
             raise ValueError("Agent not initialized")
 
         def _history_summary(messages: List[ChatMessage]) -> dict:
