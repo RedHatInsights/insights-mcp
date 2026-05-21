@@ -1,5 +1,6 @@
 """Image Builder MCP server for creating and managing Linux images."""
 
+import copy
 import json
 import logging
 import os
@@ -17,6 +18,28 @@ from tools import OpenAPIReducer
 
 WATERMARK_CREATED = "Blueprint created via insights-mcp"
 WATERMARK_UPDATED = "Blueprint updated via insights-mcp"
+
+DEPRECATED_IMAGE_TYPES = frozenset(
+    {
+        "edge-commit",
+        "edge-installer",
+        "rhel-edge-commit",
+        "rhel-edge-installer",
+    }
+)
+
+
+def _filter_deprecated_image_types_from_openapi(spec: dict[str, Any]) -> dict[str, Any]:
+    """Remove deprecated image types from the ImageTypes enum in an OpenAPI dict."""
+    try:
+        enum_values = spec["components"]["schemas"]["ImageTypes"]["enum"]
+        if isinstance(enum_values, list):
+            spec["components"]["schemas"]["ImageTypes"]["enum"] = [
+                value for value in enum_values if value not in DEPRECATED_IMAGE_TYPES
+            ]
+    except (KeyError, TypeError):
+        pass
+    return spec
 
 
 class ImageBuilderMCP(InsightsMCP):
@@ -125,17 +148,10 @@ class ImageBuilderMCP(InsightsMCP):
             self.logger.debug("Getting openapi")
             openapi = json.loads(self.get_openapi_synchronous())
 
-            deprecated_image_types = [
-                "edge-commit",
-                "edge-installer",
-                "rhel-edge-commit",
-                "rhel-edge-installer",
-            ]
-
             image_types = list(openapi["components"]["schemas"]["ImageTypes"]["enum"])
 
             # remove deprecated image types - TBD remove or mark as deprecated in the openapi spec
-            image_types = [image_type for image_type in image_types if image_type not in deprecated_image_types]
+            image_types = [image_type for image_type in image_types if image_type not in DEPRECATED_IMAGE_TYPES]
 
             image_types.sort()
 
@@ -302,11 +318,17 @@ class ImageBuilderMCP(InsightsMCP):
                     endpoint_list = [e.strip() for e in endpoints.split(",") if e.strip()]
                     reducer = OpenAPIReducer.from_response(response)
                     reduced = reducer.reduce(endpoint_list)
+                    if isinstance(reduced, dict):
+                        reduced = _filter_deprecated_image_types_from_openapi(copy.deepcopy(reduced))
                     return json.dumps(reduced)
                 except Exception as reduce_err:  # pylint: disable=broad-exception-caught
                     # Fall back to full spec on any reduction error
                     self.logger.warning("OpenAPI reduction failed: %s", reduce_err)
+                    if isinstance(response, dict):
+                        response = _filter_deprecated_image_types_from_openapi(copy.deepcopy(response))
                     return json.dumps(response)
+            if isinstance(response, dict):
+                response = _filter_deprecated_image_types_from_openapi(copy.deepcopy(response))
             return json.dumps(response)
         except InsightsApiError:
             raise
