@@ -14,6 +14,7 @@ from pydantic import Field
 from insights_mcp.client import InsightsClient
 from insights_mcp.errors import InsightsApiError
 from insights_mcp.mcp import InsightsMCP
+from insights_mcp.tool_description import mcp_tool_title_from_docstring
 from tools import OpenAPIReducer
 
 WATERMARK_CREATED = "Blueprint created via insights-mcp"
@@ -63,7 +64,7 @@ class ImageBuilderMCP(InsightsMCP):
 
         general_intro = """Image Builder assistant. Use tool_calls, not code samples.
         Compose = one image build job (status: pending, running, success, failure); not a blueprint.
-        Image build status, latest build, recent builds → get_composes first; get_compose_details if UUID known.
+        Image build status, latest or recent builds: get_composes; get_compose_details if UUID known.
         🟢 list/status: get_blueprints, get_composes, get_*_details, get_openapi, get_distributions.
         🔴 create_blueprint: gather fields first. 🟡 blueprint_compose: need UUID.
         Paging: follow [PAGE] in list tool responses."""
@@ -118,14 +119,6 @@ class ImageBuilderMCP(InsightsMCP):
             raise ValueError("Error getting openapi for image types and architectures") from e
         return image_types, architectures
 
-    @staticmethod
-    def _compact_tool_description(description_str: str, max_len: int = 96) -> str:
-        """First line only, capped — keeps multi-tool gateways within reliable tool-calling limits."""
-        first_line = description_str.strip().split("\n", 1)[0].strip()
-        if len(first_line) <= max_len:
-            return first_line
-        return first_line[: max_len - 3] + "..."
-
     def register_tools(self) -> None:
         """Register all available tools with the MCP server."""
         image_types, architectures = self._get_image_types_architectures()
@@ -161,9 +154,8 @@ class ImageBuilderMCP(InsightsMCP):
                 if doc_str
                 else ""
             )
-            compact = self._compact_tool_description(description_str)
-            tool.description = compact
-            tool.title = compact
+            tool.description = description_str
+            tool.title = mcp_tool_title_from_docstring(description_str)
             self.add_tool(tool)
 
     async def get_distributions(self) -> str:
@@ -282,8 +274,7 @@ class ImageBuilderMCP(InsightsMCP):
             Field(description="Complete blueprint data formatted according to CreateBlueprintRequest from get_openapi"),
         ],
     ) -> str:
-        """🔴 Create blueprint after gathering name, distro, arch, image type, user;
-        use get_openapi POST:/blueprints."""
+        """🔴 Create blueprint: gather name, distro, arch, image type; use get_openapi POST:/blueprints."""
         try:
             if os.environ.get("IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK", "").lower() != "true":
                 desc_parts = [data.get("description", ""), WATERMARK_CREATED]
@@ -469,7 +460,7 @@ class ImageBuilderMCP(InsightsMCP):
         offset: Annotated[int, Field(0, description="Number of items to skip when paging (use 0 as default)")],
         search_string: Annotated[Optional[str], Field(None, description="Substring to search for in the name")],
     ) -> str:
-        """🟢 Image build status, latest/recent compose builds, build jobs: use FIRST. Compose=build run."""
+        """🟢 List image builds (composes) with status; newest first. limit/offset default 7, 0."""
         limit = limit or self.default_response_size
         if limit <= 0:
             limit = self.default_response_size
