@@ -338,6 +338,19 @@ def print_toolset_help_and_exit(args: argparse.Namespace):
         sys.exit(0)
 
 
+def _github_api_headers() -> dict[str, str]:
+    """Build headers for GitHub REST API requests.
+
+    Uses GITHUB_TOKEN or GH_TOKEN from the environment when available to avoid
+    unauthenticated rate limits (especially in CI).
+    """
+    headers = {"Accept": "application/vnd.github+json"}
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
 def extract_version_sha(version: str) -> str:
     """Extract the SHA component from a version string.
 
@@ -355,7 +368,11 @@ def get_latest_release_tag() -> str:
     """Get the latest release tag from github."""
     # https://github.com/RedHatInsights/insights-mcp/releases
     # rather use the api to get the latest release tag
-    response = requests.get("https://api.github.com/repos/RedHatInsights/insights-mcp/releases/latest", timeout=30)
+    response = requests.get(
+        "https://api.github.com/repos/RedHatInsights/insights-mcp/releases/latest",
+        headers=_github_api_headers(),
+        timeout=30,
+    )
     response.raise_for_status()
     return response.json()["tag_name"]
 
@@ -440,6 +457,7 @@ def get_mcp_version() -> str:
         # Use GitHub Compare API which is designed for comparing between tags/commits
         response = requests.get(
             f"https://api.github.com/repos/RedHatInsights/insights-mcp/compare/{__version__}...{latest_release_tag}",
+            headers=_github_api_headers(),
             timeout=30,
         )
         response.raise_for_status()

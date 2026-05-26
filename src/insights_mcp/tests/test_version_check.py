@@ -5,7 +5,12 @@ from unittest.mock import Mock, patch
 import pytest
 import requests
 
-from insights_mcp.server import extract_version_sha, get_latest_release_tag, get_mcp_version
+from insights_mcp.server import (
+    _github_api_headers,
+    extract_version_sha,
+    get_latest_release_tag,
+    get_mcp_version,
+)
 
 
 class TestExtractVersionSha:
@@ -104,6 +109,29 @@ def test_version_check_with_updates_available(mock_requests_get, mock_get_latest
             "https://api.github.com/repos/RedHatInsights/insights-mcp/compare/"
             "20250905-001953-16930107...20250905-072605-a8f7bd3a"
         ),
+        headers=_github_api_headers(),
+        timeout=30,
+    )
+
+
+@patch("insights_mcp.server.requests.get")
+def test_get_latest_release_tag_uses_github_token(mock_requests_get, monkeypatch):
+    """Test that GitHub API calls include auth headers when GITHUB_TOKEN is set."""
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    mock_response = Mock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = {"tag_name": "20250905-072605-a8f7bd3a"}
+    mock_requests_get.return_value = mock_response
+
+    latest_tag = get_latest_release_tag()
+
+    assert latest_tag == "20250905-072605-a8f7bd3a"
+    mock_requests_get.assert_called_once_with(
+        "https://api.github.com/repos/RedHatInsights/insights-mcp/releases/latest",
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": "Bearer test-token",
+        },
         timeout=30,
     )
 
