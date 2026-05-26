@@ -33,4 +33,6 @@ jobs:
         run: make install-test-deps
 
       - name: Run tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: make test
