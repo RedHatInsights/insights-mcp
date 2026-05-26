@@ -27,7 +27,15 @@ RUN pip3.12 install -U --no-cache-dir pip uv && \
     uv export --no-hashes > requirements.txt && \
     sed -i '/^-e ./d' requirements.txt && \
     pip3.12 install --no-cache-dir . -c requirements.txt && \
-    pip3.12 uninstall -y uv pip
+    pip3.12 install --no-cache-dir pip-licenses && \
+    mkdir -p /licenses && \
+    cp LICENSE /licenses/LICENSE && \
+    pip-licenses --from=mixed \
+      --format=plain-vertical --with-license-file --with-notice-file --no-license-path \
+      --output-file=/licenses/third-party-notices.txt && \
+    pip-licenses --from=mixed --format=rst \
+      --output-file=/licenses/third-party-summary.rst && \
+    pip3.12 uninstall -y pip-licenses uv pip
 
 # Runtime stage
 FROM registry.access.redhat.com/ubi9/ubi-minimal
@@ -52,6 +60,7 @@ RUN microdnf install -y --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
 COPY --from=builder /usr/local/lib/python3.12/site-packages/ /usr/local/lib/python3.12/site-packages/
 COPY --from=builder /usr/local/lib64/python3.12/site-packages/ /usr/local/lib64/python3.12/site-packages/
 COPY --from=builder /usr/local/bin/ /usr/local/bin/
+COPY --from=builder /licenses/ /licenses/
 
 # Drop to non-root user for runtime
 USER mcpuser
