@@ -1,0 +1,936 @@
+{
+  "schema_version": 1,
+  "generated_by": "scripts/generate_tool_rbac_manifest.py",
+  "provenance": {
+    "rbac_config_ref": "master",
+    "upstream_refs": {
+      "RedHatInsights/insights-host-inventory": "master",
+      "RedHatInsights/vulnerability-engine": "master"
+    }
+  },
+  "tools": {
+    "advisor__get_active_rules": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/insights/v1",
+        "path_template": "/rule/"
+      },
+      "application": "advisor",
+      "required_v1_permissions": [
+        [
+          "advisor:*:read"
+        ]
+      ],
+      "kessel_permission": "advisor_recommendation_results_view",
+      "kessel_note": "",
+      "recommended_roles": [
+        "RHEL viewer"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "advisor__get_hosts_details_for_rule": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/insights/v1",
+        "path_template": "/rule/{rule_id}/systems_detail/"
+      },
+      "application": "advisor",
+      "required_v1_permissions": [
+        [
+          "advisor:*:read",
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "RHEL viewer",
+        "Inventory Hosts Viewer"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "advisor__get_hosts_hitting_a_rule": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/insights/v1",
+        "path_template": "/rule/{rule_id}/systems/"
+      },
+      "application": "advisor",
+      "required_v1_permissions": [
+        [
+          "advisor:*:read",
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "RHEL viewer",
+        "Inventory Hosts Viewer"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "advisor__get_recommendations_stats": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/insights/v1",
+        "path_template": "/stats/rules/"
+      },
+      "application": "advisor",
+      "required_v1_permissions": [
+        [
+          "advisor:*:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "RHEL viewer"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "advisor__get_rule_by_text_search": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/insights/v1",
+        "path_template": "/rule/"
+      },
+      "application": "advisor",
+      "required_v1_permissions": [
+        [
+          "advisor:*:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "RHEL viewer"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "advisor__get_rule_details": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/insights/v1",
+        "path_template": "/rule/{rule_id}/"
+      },
+      "application": "advisor",
+      "required_v1_permissions": [
+        [
+          "advisor:*:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "RHEL viewer"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "advisor__get_rule_from_node_id": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/insights/v1",
+        "path_template": "/kcs/{node_id}/"
+      },
+      "application": "advisor",
+      "required_v1_permissions": [
+        [
+          "advisor:*:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "RHEL viewer"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "content-sources__list_repositories": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/content-sources/v1.0",
+        "path_template": "/repositories/"
+      },
+      "application": "content-sources",
+      "required_v1_permissions": [
+        [
+          "content-sources:repositories:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "Content Template viewer"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "image-builder__get_blueprint_details": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/image-builder/v1",
+        "path_template": "/blueprints/{id}"
+      },
+      "application": "image-builder",
+      "required_v1_permissions": [
+        [
+          "image-builder:blueprint:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "Image Builder viewer"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "image-builder__get_blueprints": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/image-builder/v1",
+        "path_template": "/blueprints"
+      },
+      "application": "image-builder",
+      "required_v1_permissions": [
+        [
+          "image-builder:blueprint:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "Image Builder viewer"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "image-builder__get_compose_details": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/image-builder/v1",
+        "path_template": "/composes/{id}"
+      },
+      "application": "image-builder",
+      "required_v1_permissions": [
+        [
+          "image-builder:compose:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "Image Builder viewer"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "image-builder__get_composes": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/image-builder/v1",
+        "path_template": "/composes"
+      },
+      "application": "image-builder",
+      "required_v1_permissions": [
+        [
+          "image-builder:compose:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "Image Builder viewer"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "image-builder__get_distributions": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/image-builder/v1",
+        "path_template": "/distributions"
+      },
+      "application": "image-builder",
+      "required_v1_permissions": [
+        [
+          "image-builder:blueprint:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "Image Builder viewer"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "image-builder__get_openapi": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/image-builder/v1",
+        "path_template": "/openapi.json"
+      },
+      "application": "image-builder",
+      "required_v1_permissions": [],
+      "kessel_permission": "",
+      "kessel_note": "OpenAPI may be fetched without auth in MCP; production may differ.",
+      "recommended_roles": [
+        "Image Builder viewer"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "image-builder__get_org_id": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/image-builder/v1",
+        "path_template": "/openapi.json"
+      },
+      "application": "image-builder",
+      "required_v1_permissions": [],
+      "kessel_permission": "",
+      "kessel_note": "Uses token claims only.",
+      "recommended_roles": [],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "inventory__find_host_by_name": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/inventory/v1",
+        "path_template": "/hosts"
+      },
+      "application": "inventory",
+      "required_v1_permissions": [
+        [
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "inventory_host_view",
+      "kessel_note": "",
+      "recommended_roles": [
+        "Inventory Hosts Viewer"
+      ],
+      "openapi_sources": [
+        "https://github.com/RedHatInsights/insights-host-inventory/blob/master/swagger/api.spec.yaml"
+      ],
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/insights-host-inventory",
+        "file": "api/host.py",
+        "handler": "get_host_list",
+        "rbac_decorators": [
+          "KesselResourceTypes.HOST.view"
+        ]
+      }
+    },
+    "inventory__get_host_details": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/inventory/v1",
+        "path_template": "/hosts/{host_ids}"
+      },
+      "application": "inventory",
+      "required_v1_permissions": [
+        [
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "inventory_host_view",
+      "kessel_note": "",
+      "recommended_roles": [
+        "Inventory Hosts Viewer"
+      ],
+      "openapi_sources": [
+        "https://github.com/RedHatInsights/insights-host-inventory/blob/master/swagger/api.spec.yaml"
+      ],
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/insights-host-inventory",
+        "file": "api/host.py",
+        "handler": "get_host_list",
+        "rbac_decorators": [
+          "KesselResourceTypes.HOST.view"
+        ]
+      }
+    },
+    "inventory__get_host_system_profile": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/inventory/v1",
+        "path_template": "/hosts/{host_ids}/system_profile"
+      },
+      "application": "inventory",
+      "required_v1_permissions": [
+        [
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "inventory_host_view",
+      "kessel_note": "",
+      "recommended_roles": [
+        "Inventory Hosts Viewer"
+      ],
+      "openapi_sources": [
+        "https://github.com/RedHatInsights/insights-host-inventory/blob/master/swagger/api.spec.yaml"
+      ],
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/insights-host-inventory",
+        "file": "api/host.py",
+        "handler": "get_host_list",
+        "rbac_decorators": [
+          "KesselResourceTypes.HOST.view"
+        ]
+      }
+    },
+    "inventory__get_host_tags": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/inventory/v1",
+        "path_template": "/hosts/{host_ids}/tags"
+      },
+      "application": "inventory",
+      "required_v1_permissions": [
+        [
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "inventory_host_view",
+      "kessel_note": "",
+      "recommended_roles": [
+        "Inventory Hosts Viewer"
+      ],
+      "openapi_sources": [
+        "https://github.com/RedHatInsights/insights-host-inventory/blob/master/swagger/api.spec.yaml"
+      ],
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/insights-host-inventory",
+        "file": "api/host.py",
+        "handler": "get_host_list",
+        "rbac_decorators": [
+          "KesselResourceTypes.HOST.view"
+        ]
+      }
+    },
+    "inventory__list_hosts": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/inventory/v1",
+        "path_template": "/hosts"
+      },
+      "application": "inventory",
+      "required_v1_permissions": [
+        [
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "inventory_host_view",
+      "kessel_note": "",
+      "recommended_roles": [
+        "Inventory Hosts Viewer"
+      ],
+      "openapi_sources": [
+        "https://github.com/RedHatInsights/insights-host-inventory/blob/master/swagger/api.spec.yaml"
+      ],
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/insights-host-inventory",
+        "file": "api/host.py",
+        "handler": "get_host_list",
+        "rbac_decorators": [
+          "KesselResourceTypes.HOST.view"
+        ]
+      }
+    },
+    "planning__get_appstreams_lifecycle": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/roadmap/v1",
+        "path_template": "/lifecycle/appstreams"
+      },
+      "application": "roadmap",
+      "required_v1_permissions": [
+        [
+          "roadmap:lifecycle:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "planning__get_relevant_appstreams": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/roadmap/v1",
+        "path_template": "/relevant/appstreams"
+      },
+      "application": "roadmap",
+      "required_v1_permissions": [
+        [
+          "roadmap:lifecycle:read",
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "Inventory Hosts Viewer"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "planning__get_relevant_rhel_lifecycle": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/roadmap/v1",
+        "path_template": "/relevant/lifecycle/rhel"
+      },
+      "application": "roadmap",
+      "required_v1_permissions": [
+        [
+          "roadmap:lifecycle:read",
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "Inventory Hosts Viewer"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "planning__get_relevant_upcoming": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/roadmap/v1",
+        "path_template": "/relevant/upcoming-changes"
+      },
+      "application": "roadmap",
+      "required_v1_permissions": [
+        [
+          "roadmap:upcoming:read",
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "Inventory Hosts Viewer"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "planning__get_rhel_lifecycle": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/roadmap/v1",
+        "path_template": "/lifecycle/rhel"
+      },
+      "application": "roadmap",
+      "required_v1_permissions": [
+        [
+          "roadmap:lifecycle:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "planning__get_upcoming_changes": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/roadmap/v1",
+        "path_template": "/upcoming-changes"
+      },
+      "application": "roadmap",
+      "required_v1_permissions": [
+        [
+          "roadmap:upcoming:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "rbac__explain_access_denied": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/rbac/v1",
+        "path_template": "/access/"
+      },
+      "application": "rbac",
+      "required_v1_permissions": [
+        [
+          "rbac:roles:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "RBAC viewer"
+      ],
+      "openapi_sources": [
+        "apis/rbac-openapi.json"
+      ],
+      "verified": false
+    },
+    "rbac__get_all_access": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/rbac/v1",
+        "path_template": "/access/"
+      },
+      "application": "rbac",
+      "required_v1_permissions": [
+        [
+          "rbac:roles:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "Deprecated alias; use rbac__get_caller_access_all.",
+      "recommended_roles": [
+        "RBAC viewer"
+      ],
+      "openapi_sources": [
+        "apis/rbac-openapi.json"
+      ],
+      "verified": false
+    },
+    "rbac__get_caller_access": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/rbac/v1",
+        "path_template": "/access/"
+      },
+      "application": "rbac",
+      "required_v1_permissions": [
+        [
+          "rbac:roles:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "RBAC viewer"
+      ],
+      "openapi_sources": [
+        "apis/rbac-openapi.json"
+      ],
+      "verified": false
+    },
+    "rbac__get_caller_access_all": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/rbac/v1",
+        "path_template": "/access/"
+      },
+      "application": "rbac",
+      "required_v1_permissions": [
+        [
+          "rbac:roles:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "RBAC viewer"
+      ],
+      "openapi_sources": [
+        "apis/rbac-openapi.json"
+      ],
+      "verified": false
+    },
+    "rbac__lookup_tool_requirements": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/rbac/v1",
+        "path_template": "/access/"
+      },
+      "application": "rbac",
+      "required_v1_permissions": [],
+      "kessel_permission": "",
+      "kessel_note": "Local manifest only; no RBAC API call.",
+      "recommended_roles": [],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "rhsm__get_activation_key": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/rhsm/v2",
+        "path_template": "/activation_keys/{name}"
+      },
+      "application": "config-manager",
+      "required_v1_permissions": [
+        [
+          "config-manager:activation_keys:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "RHC User"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "rhsm__get_activation_keys": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/rhsm/v2",
+        "path_template": "/activation_keys"
+      },
+      "application": "config-manager",
+      "required_v1_permissions": [
+        [
+          "config-manager:activation_keys:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "RHC User"
+      ],
+      "openapi_sources": [],
+      "verified": false
+    },
+    "vulnerability__explain_cves": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/vulnerability/v1",
+        "path_template": "/systems/{inventory_id}/cves"
+      },
+      "application": "vulnerability",
+      "required_v1_permissions": [
+        [
+          "vulnerability:vulnerability_results:read",
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "vulnerability_vulnerability_results_view",
+      "kessel_note": "Kessel: vulnerability_vulnerability_results_view requires inventory_host_view on the host workspace (see RedHatInsights/rbac-config vulnerability.ksl).",
+      "recommended_roles": [
+        "Vulnerability viewer",
+        "Inventory Hosts Viewer"
+      ],
+      "openapi_sources": [
+        "apis/vulnerability-openapi.json"
+      ],
+      "verified": true,
+      "user_guidance_notes": [
+        "Do not suggest vulnerability:system.cves:read; it is not a valid permission."
+      ],
+      "upstream": {
+        "repo": "RedHatInsights/vulnerability-engine",
+        "file": "manager/system_handler.py",
+        "handler": "GetSystemsCves.handle_get",
+        "rbac_decorators": [
+          "RbacRoutePermissions.VULNERABILITY_RESULTS"
+        ]
+      }
+    },
+    "vulnerability__get_cve": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/vulnerability/v1",
+        "path_template": "/cves/{cve}"
+      },
+      "application": "vulnerability",
+      "required_v1_permissions": [
+        [
+          "vulnerability:vulnerability_results:read",
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "vulnerability_vulnerability_results_view",
+      "kessel_note": "Kessel: vulnerability_vulnerability_results_view requires inventory_host_view on the host workspace (see RedHatInsights/rbac-config vulnerability.ksl).",
+      "recommended_roles": [
+        "Vulnerability viewer",
+        "Inventory Hosts Viewer"
+      ],
+      "openapi_sources": [
+        "apis/vulnerability-openapi.json"
+      ],
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/vulnerability-engine",
+        "file": "manager/vuln_handler.py",
+        "handler": "GetCveDetails",
+        "rbac_decorators": [
+          "RbacRoutePermissions.VULNERABILITY_RESULTS"
+        ]
+      }
+    },
+    "vulnerability__get_cve_systems": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/vulnerability/v1",
+        "path_template": "/cves/{cve}/affected_systems"
+      },
+      "application": "vulnerability",
+      "required_v1_permissions": [
+        [
+          "vulnerability:vulnerability_results:read",
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "vulnerability_vulnerability_results_view",
+      "kessel_note": "Kessel: vulnerability_vulnerability_results_view requires inventory_host_view on the host workspace (see RedHatInsights/rbac-config vulnerability.ksl).",
+      "recommended_roles": [
+        "Vulnerability viewer",
+        "Inventory Hosts Viewer"
+      ],
+      "openapi_sources": [
+        "apis/vulnerability-openapi.json"
+      ],
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/vulnerability-engine",
+        "file": "manager/vuln_handler.py",
+        "handler": "GetCveAffectedSystems",
+        "rbac_decorators": [
+          "RbacRoutePermissions.VULNERABILITY_RESULTS"
+        ]
+      }
+    },
+    "vulnerability__get_cves": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/vulnerability/v1",
+        "path_template": "/vulnerabilities/cves"
+      },
+      "application": "vulnerability",
+      "required_v1_permissions": [
+        [
+          "vulnerability:vulnerability_results:read",
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "vulnerability_vulnerability_results_view",
+      "kessel_note": "Kessel: vulnerability_vulnerability_results_view requires inventory_host_view on the host workspace (see RedHatInsights/rbac-config vulnerability.ksl).",
+      "recommended_roles": [
+        "Vulnerability viewer",
+        "Inventory Hosts Viewer"
+      ],
+      "openapi_sources": [
+        "apis/vulnerability-openapi.json"
+      ],
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/vulnerability-engine",
+        "file": "manager/vuln_handler.py",
+        "handler": "GetCves",
+        "rbac_decorators": [
+          "RbacRoutePermissions.VULNERABILITY_RESULTS"
+        ]
+      }
+    },
+    "vulnerability__get_openapi": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/vulnerability/v1",
+        "path_template": "/openapi.json"
+      },
+      "application": "vulnerability",
+      "required_v1_permissions": [
+        [
+          "vulnerability:vulnerability_results:read"
+        ]
+      ],
+      "kessel_permission": "",
+      "kessel_note": "",
+      "recommended_roles": [
+        "Vulnerability viewer"
+      ],
+      "openapi_sources": [
+        "apis/vulnerability-openapi.json"
+      ],
+      "verified": false
+    },
+    "vulnerability__get_system_cves": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/vulnerability/v1",
+        "path_template": "/systems/{inventory_id}/cves"
+      },
+      "application": "vulnerability",
+      "required_v1_permissions": [
+        [
+          "vulnerability:vulnerability_results:read",
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "vulnerability_vulnerability_results_view",
+      "kessel_note": "Kessel: vulnerability_vulnerability_results_view requires inventory_host_view on the host workspace (see RedHatInsights/rbac-config vulnerability.ksl).",
+      "recommended_roles": [
+        "Vulnerability viewer",
+        "Inventory Hosts Viewer"
+      ],
+      "openapi_sources": [
+        "apis/vulnerability-openapi.json"
+      ],
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/vulnerability-engine",
+        "file": "manager/system_handler.py",
+        "handler": "GetSystemsCves.handle_get",
+        "rbac_decorators": [
+          "RbacRoutePermissions.VULNERABILITY_RESULTS"
+        ]
+      },
+      "user_guidance_notes": [
+        "Do not suggest vulnerability:system.cves:read; it is not a valid permission."
+      ]
+    },
+    "vulnerability__get_systems": {
+      "rest": {
+        "method": "GET",
+        "api_path": "api/vulnerability/v1",
+        "path_template": "/systems"
+      },
+      "application": "vulnerability",
+      "required_v1_permissions": [
+        [
+          "vulnerability:vulnerability_results:read",
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "vulnerability_vulnerability_results_view",
+      "kessel_note": "Kessel: vulnerability_vulnerability_results_view requires inventory_host_view on the host workspace (see RedHatInsights/rbac-config vulnerability.ksl).",
+      "recommended_roles": [
+        "Vulnerability viewer",
+        "Inventory Hosts Viewer"
+      ],
+      "openapi_sources": [
+        "apis/vulnerability-openapi.json"
+      ],
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/vulnerability-engine",
+        "file": "manager/system_handler.py",
+        "handler": "GetSystems",
+        "rbac_decorators": [
+          "RbacRoutePermissions.VULNERABILITY_RESULTS"
+        ]
+      }
+    }
+  }
+}

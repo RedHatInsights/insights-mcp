@@ -1,0 +1,33 @@
+name: RBAC manifest weekly refresh
+
+on:  # yamllint disable-line rule:truthy
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Regenerate RBAC data from pinned sources
+        run: uv run python scripts/generate_tool_rbac_manifest.py
+
+      - name: Open PR if data changed
+        uses: peter-evans/create-pull-request@v7
+        with:
+          title: "chore: refresh RBAC manifest from upstream sources"
+          body: |
+            Automated weekly refresh of `tool_rbac_manifest.json`, `role_recommendations.json`,
+            and `upstream_permissions.json` via `make generate-rbac-manifest`.
+          branch: chore/rbac-manifest-weekly
+          commit-message: "chore: refresh RBAC manifest from upstream sources"

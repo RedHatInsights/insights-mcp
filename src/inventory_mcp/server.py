@@ -48,6 +48,7 @@ mcp = InsightsMCP(
 
     Workspaces in the console UI are Inventory groups.
 
+    On permission errors (HTTP 403), call rbac__explain_access_denied with the failed tool name or URL.
     """,
 )
 

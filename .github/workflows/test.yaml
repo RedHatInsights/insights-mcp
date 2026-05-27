@@ -32,6 +32,9 @@ jobs:
       - name: Install test dependencies
         run: make install-test-deps
 
+      - name: Verify RBAC manifest is current
+        run: make check-rbac-manifest
+
       - name: Run tests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

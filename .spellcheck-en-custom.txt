@@ -1,3 +1,4 @@
+apis
 appstream
 Appstream
 appstreams
@@ -21,8 +22,10 @@ deeplink
 deeplinks
 deprecations
 Deprecations
+env
 EPEL
 FastMCP's
+GDPR
 gzip
 gzipped
 Gzipped
@@ -32,6 +35,7 @@ HTTPS
 integrations
 Integrations
 js
+json
 JSON
 JWKS
 JWT
@@ -51,10 +55,10 @@ multiuser
 mypy
 natively
 nodejs
-GDPR
 OAuth
 OCI
 OIDC
+openapi
 PII
 PKCE
 pluggable
@@ -72,6 +76,7 @@ RBAC
 README
 remediations
 repo
+requester's
 RESTful
 rh
 rhel
@@ -100,13 +105,13 @@ URI
 UUID
 UUIDs
 vendored
+Vendored
 verifier
 workspaces
 remediatable
 requester's
 Ansible
 CDN
-env
 Mitigations
 permissioned
 SDK
