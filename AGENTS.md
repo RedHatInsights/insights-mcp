@@ -148,10 +148,7 @@ see also [usage.md](usage.md) for more details on the CLI.
 make lint    # CI-parity lint (uv sync dev deps + pre-commit, includes pylint on src and tests)
 ```
 
-**Note:** The `make lint` command requires pre-commit to be installed. If you encounter "pre-commit: No such file or directory", install it first:
-```bash
-uv pip install pre-commit
-```
+**Note:** `make lint` runs `install-test-deps` first (includes `pre-commit` via optional development dependencies). For spell checking locally, install the aspell package (CI installs it with apt).
 
 ### Manual Tools
 ```bash

@@ -75,7 +75,6 @@ build-claude-extension-dev: build ## Build Claude extension for local developmen
 
 .PHONY: lint
 lint: install-test-deps ## Run linting with pre-commit (same hooks as CI lint workflow)
-	uv pip install pre-commit
 	uv run pre-commit run --all-files --hook-stage manual
 
 .PHONY: test
