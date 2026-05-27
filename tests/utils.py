@@ -7,6 +7,7 @@ import os
 import socket
 import sys
 import time
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
@@ -132,38 +133,53 @@ def get_server_url_and_port(transport: str) -> tuple[str, int]:
     return server_url, port
 
 
-def _server_worker(
-    transport: str,
-    port: int,
-    toolset: str | None,
-    server_queue: multiprocessing.Queue,
-    readonly: bool = False,
-):
+def _resolve_container_brand(container_brand: str | None) -> str:
+    """Return the container brand to use when starting a test server subprocess."""
+    return container_brand if container_brand is not None else os.getenv("CONTAINER_BRAND", "insights")
+
+
+@dataclass(frozen=True)
+class _ServerWorkerConfig:
+    """Arguments for :func:`_server_worker` (pickled for multiprocessing)."""
+
+    transport: str
+    port: int
+    toolset: str | None
+    readonly: bool
+    container_brand: str
+
+
+def _server_worker(config: _ServerWorkerConfig, server_queue: multiprocessing.Queue) -> None:
     """Start the MCP server in a separate process.
 
     This function is at module level so it can be pickled for multiprocessing.
+    ``container_brand`` is passed explicitly so tests work when the default
+    multiprocessing start method is ``forkserver`` (Python 3.14+), which does not
+    pick up ``os.environ`` changes made after the forkserver process starts.
     """
     try:
+        os.environ["CONTAINER_BRAND"] = config.container_brand
+
         # Mock sys.argv to simulate command line arguments
         original_argv = sys.argv.copy()
         try:
             base_args = ["insights_mcp"]
 
             # Add toolset argument if specified
-            if toolset is not None:
-                base_args.extend(["--toolset", toolset])
+            if config.toolset is not None:
+                base_args.extend(["--toolset", config.toolset])
 
             # Add all-tools argument when full access is requested (default is read-only)
-            if not readonly:
+            if not config.readonly:
                 base_args.append("--all-tools")
 
             # Add transport-specific arguments
-            if transport == "stdio":
+            if config.transport == "stdio":
                 base_args.append("stdio")
-            elif transport == "sse":
-                base_args.extend(["sse", "--host", "127.0.0.1", "--port", str(port)])
+            elif config.transport == "sse":
+                base_args.extend(["sse", "--host", "127.0.0.1", "--port", str(config.port)])
             else:  # http
-                base_args.extend(["http", "--host", "127.0.0.1", "--port", str(port)])
+                base_args.extend(["http", "--host", "127.0.0.1", "--port", str(config.port)])
 
             sys.argv = base_args
 
@@ -184,8 +200,55 @@ def _server_worker(
         server_queue.put(f"error: {e}")
 
 
+def _wait_for_http_server_ready(
+    server_url: str,
+    server_process: multiprocessing.Process,
+    port: int,
+    *,
+    max_retries: int = 5,
+) -> None:
+    """Confirm the HTTP MCP server accepts an initialize request."""
+    if not server_process.is_alive():
+        raise ServerStartupError(
+            f"Server process died before init request connection to host {server_url}."
+            f"Process exit code: {server_process.exitcode}"
+        )
+
+    for attempt in range(max_retries):
+        try:
+            test_request = create_mcp_init_request()
+            response = requests.post(server_url, json=test_request, headers=DEFAULT_JSON_HEADERS, timeout=10)
+
+            if response.status_code == 200:
+                return
+
+            if attempt == max_retries - 1:
+                raise ServerConnectionError(
+                    (
+                        f"Server not responding properly after {max_retries} "
+                        f"attempts: {response.status_code} - {response.text}. "
+                        f"Server process: {'alive' if server_process.is_alive() else 'dead'}"
+                    )
+                )
+
+            time.sleep(2)
+
+        except requests.exceptions.RequestException as e:
+            if attempt == max_retries - 1:
+                raise ServerConnectionError(
+                    f"Failed to connect to server after {max_retries} attempts. "
+                    f"Server process: {'alive' if server_process.is_alive() else 'dead'}, "
+                    f"Port: {port}, URL: {server_url}, Error: {e}"
+                ) from e
+            time.sleep(2)
+
+
 def start_insights_mcp_server(
-    transport: str, timeout: int = 30, toolset: str | None = None, readonly: bool = False
+    transport: str,
+    timeout: int = 30,
+    toolset: str | None = None,
+    readonly: bool = False,
+    container_brand: str | None = None,
 ) -> tuple[str, multiprocessing.Process]:
     """Start the insights MCP server with specified transport type.
 
@@ -194,18 +257,25 @@ def start_insights_mcp_server(
         timeout: Timeout in seconds for server startup
         toolset: Toolset to use (e.g., 'all', 'image-builder', 'inventory', 'image-builder,inventory')
         readonly: If True, only register read-only tools
+        container_brand: Brand passed to the server process (defaults to ``CONTAINER_BRAND`` env or ``insights``)
 
     Returns:
         Tuple of (server_url, server_process)
     """
     server_url, port = get_server_url_and_port(transport)
-
+    worker_config = _ServerWorkerConfig(
+        transport=transport,
+        port=port,
+        toolset=toolset,
+        readonly=readonly,
+        container_brand=_resolve_container_brand(container_brand),
+    )
     server_queue: multiprocessing.Queue = multiprocessing.Queue()
 
     # Start server process using module-level function for pickling compatibility
     server_process = multiprocessing.Process(
         target=_server_worker,
-        args=(transport, port, toolset, server_queue, readonly),
+        args=(worker_config, server_queue),
         daemon=True,
     )
     server_process.start()
@@ -219,47 +289,9 @@ def start_insights_mcp_server(
         # Additional wait for server to be fully ready
         time.sleep(3)
 
-        # For HTTP transport, test connectivity with MCP init request
         if transport == "http":
-            if not server_process.is_alive():
-                raise ServerStartupError(
-                    f"Server process died before init request connection to host {server_url}."
-                    f"Process exit code: {server_process.exitcode}"
-                )
-
-            max_retries = 5
-            for attempt in range(max_retries):
-                try:
-                    test_request = create_mcp_init_request()
-                    response = requests.post(server_url, json=test_request, headers=DEFAULT_JSON_HEADERS, timeout=10)
-
-                    if response.status_code == 200:
-                        break
-
-                    if attempt == max_retries - 1:
-                        raise ServerConnectionError(
-                            (
-                                f"Server not responding properly after {max_retries} "
-                                f"attempts: {response.status_code} - {response.text}. "
-                                f"Server process: {'alive' if server_process.is_alive() else 'dead'}"
-                            )
-                        )
-
-                    time.sleep(2)  # Wait before retry
-
-                except requests.exceptions.RequestException as e:
-                    if attempt == max_retries - 1:
-                        raise ServerConnectionError(
-                            f"Failed to connect to server after {max_retries} attempts. "
-                            f"Server process: {'alive' if server_process.is_alive() else 'dead'}, "
-                            f"Port: {port}, URL: {server_url}, Error: {e}"
-                        ) from e
-                    time.sleep(2)  # Wait before retry
-
-                # For SSE transport, skip connectivity test since SSE streams continuously
-        # The server startup signal is sufficient to confirm it's working
-        elif transport == "sse":
-            pass  # SSE endpoint streaming behavior makes connectivity testing complex
+            _wait_for_http_server_ready(server_url, server_process, port)
+        # For SSE transport, skip connectivity test since SSE streams continuously.
 
         return server_url, server_process
 
