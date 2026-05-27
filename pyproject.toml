@@ -30,6 +30,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "packaging",
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
@@ -55,7 +56,7 @@ Repository = "https://github.com/RedHatInsights/insights-mcp"
 Issues = "https://github.com/RedHatInsights/insights-mcp/issues"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["src", "scripts"]
 
 [tool.setuptools.package-dir]
 "" = "src"
@@ -95,7 +96,7 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.pytest.ini_options]
-pythonpath = ["src", "."]
+pythonpath = ["src", "scripts", "."]
 testpaths = ["tests", "src"]
 markers = [
     "integration: tests that call external APIs (e.g. GitHub API)",

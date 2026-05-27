@@ -52,7 +52,7 @@ repos:
         # always pass all classes, otherwise e.g. tests fail
         stages: [manual]
         pass_filenames: false
-        args: [--recursive=y, src, tests]
+        args: [--recursive=y, src, tests, scripts/mcp_registry]
         additional_dependencies:
           - PyYAML
           - types-PyYAML

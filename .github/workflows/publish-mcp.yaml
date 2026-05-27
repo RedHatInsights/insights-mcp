@@ -40,5 +40,11 @@ jobs:
       - name: Login to MCP Registry
         run: mcp-publisher login github-oidc
 
+      - name: Set MCP Registry version
+        run: |
+          VERSION=$(uv run python scripts/set_mcp_registry_version.py --sha "${GITHUB_SHA::8}")
+          echo "Publishing MCP Registry version: ${VERSION}"
+          mcp-publisher validate
+
       - name: Publish to MCP Registry
         run: mcp-publisher publish
