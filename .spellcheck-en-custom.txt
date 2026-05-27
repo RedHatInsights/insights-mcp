@@ -2,6 +2,7 @@ appstream
 Appstream
 appstreams
 Appstreams
+aspell
 auth
 autopep
 backend

@@ -20,11 +20,8 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
 
-      - name: Install dependencies
-        run: |
-          uv sync --locked --all-extras --dev
-          uv pip install pre-commit
-          sudo apt install -y aspell
+      - name: Install aspell for pyspelling
+        run: sudo apt install -y aspell
 
       - name: Run lint
         run: make lint
