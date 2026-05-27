@@ -78,22 +78,22 @@ lint: generate-docs ## Run linting with pre-commit
 	uv run pre-commit run --all-files --hook-stage manual
 
 .PHONY: test
-test: ## Run tests with pytest (hides logging output)
+test: install-test-deps ## Run tests with pytest (hides logging output)
 	@echo "Running pytest tests..."
 	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v
 
 .PHONY: test-verbose
-test-verbose: ## Run tests with pytest with verbose output (shows logging output)
+test-verbose: install-test-deps ## Run tests with pytest with verbose output (shows logging output)
 	@echo "Running pytest tests with verbose output..."
 	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -vv -o log_cli=true
 
 .PHONY: test-very-verbose
-test-very-verbose: ## Run tests with pytest showing all intermediate agent steps (shows logging output)
+test-very-verbose: install-test-deps ## Run tests with pytest showing all intermediate agent steps (shows logging output)
 	@echo "Running pytest tests with debug output..."
 	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -vvv -o log_cli=true
 
 .PHONY: test-coverage
-test-coverage: ## Run tests with coverage reporting
+test-coverage: install-test-deps ## Run tests with coverage reporting
 	@echo "Running pytest tests with coverage..."
 	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v --cov=. --cov-report=html --cov-report=term-missing
 
@@ -120,7 +120,7 @@ test-upstream-containers: ## Pull the upstream container images and check if the
 	$(call check_container,quay.io/redhat-services-prod/insights-management-tenant/insights-mcp/insights-mcp:latest,insights)
 
 .PHONY: install-test-deps
-install-test-deps: ## Install test dependencies
+install-test-deps: pyproject.toml uv.lock ## Install test dependencies (dev optional extras)
 	uv sync --locked --all-extras --dev
 
 .PHONY: clean-test
