@@ -60,7 +60,7 @@ where = ["src"]
 "" = "src"
 
 [tool.setuptools.package-data]
-insights_mcp = ["assets/*.png"]
+insights_mcp = ["assets/*.png", "rbac/data/*.json"]
 
 [tool.pylint.format]
 max-line-length = 120

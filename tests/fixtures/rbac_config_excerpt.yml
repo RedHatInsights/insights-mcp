@@ -1,0 +1,28 @@
+kind: Template
+apiVersion: v1
+objects:
+  - apiVersion: v1
+    data:
+      inventory.json: |
+        {
+          "roles": [
+            {
+              "name": "Inventory Hosts Viewer",
+              "access": [
+                {"permission": "inventory:hosts:read"}
+              ]
+            }
+          ]
+        }
+      vulnerability.json: |
+        {
+          "roles": [
+            {
+              "name": "Vulnerability viewer",
+              "access": [
+                {"permission": "vulnerability:vulnerability_results:read"},
+                {"permission": "vulnerability:system.opt_out:read"}
+              ]
+            }
+          ]
+        }

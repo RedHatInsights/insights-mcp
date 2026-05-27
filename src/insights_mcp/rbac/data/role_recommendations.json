@@ -1,0 +1,213 @@
+{
+  "Advisor Viewer": [
+    "advisor:*:read"
+  ],
+  "Compliance administrator": [
+    "compliance:*:*",
+    "remediations:remediation:read",
+    "remediations:remediation:write"
+  ],
+  "Compliance viewer": [
+    "compliance:policy:read",
+    "compliance:report:read",
+    "compliance:system:read",
+    "remediations:remediation:read"
+  ],
+  "Content Template administrator": [
+    "content-sources:repositories:read",
+    "content-sources:templates:read",
+    "content-sources:templates:write"
+  ],
+  "Content Template viewer": [
+    "content-sources:repositories:read",
+    "content-sources:templates:read"
+  ],
+  "Insights administrator": [
+    "advisor:*:*"
+  ],
+  "Inventory Groups Administrator": [
+    "inventory:groups:read",
+    "inventory:groups:write",
+    "rbac:role_binding:grant",
+    "rbac:role_binding:revoke",
+    "rbac:role_binding:view"
+  ],
+  "Inventory Groups Viewer": [
+    "inventory:groups:read",
+    "rbac:role_binding:view"
+  ],
+  "Inventory Hosts Administrator": [
+    "inventory:hosts:read",
+    "inventory:hosts:write"
+  ],
+  "Inventory Hosts Viewer": [
+    "inventory:hosts:read"
+  ],
+  "Inventory administrator": [
+    "inventory:*:*"
+  ],
+  "Patch administrator": [
+    "patch:*:*",
+    "remediations:*:read",
+    "remediations:*:write"
+  ],
+  "RHC Administrator": [
+    "config-manager:activation_keys:*",
+    "config-manager:profile:*",
+    "playbook-dispatcher:config_manager_run:read",
+    "playbook-dispatcher:run:read",
+    "subscriptions:organization:read"
+  ],
+  "RHC Viewer": [
+    "config-manager:activation_keys:read",
+    "config-manager:activation_keys:write",
+    "config-manager:profile:read",
+    "playbook-dispatcher:config_manager_run:read",
+    "playbook-dispatcher:run:read"
+  ],
+  "RHEL admin": [
+    "advisor:*:*",
+    "compliance:*:*",
+    "config-manager:activation_keys:read",
+    "config-manager:activation_keys:write",
+    "config-manager:profile:read",
+    "config-manager:profile:write",
+    "content-sources:repositories:read",
+    "content-sources:repositories:upload",
+    "content-sources:repositories:write",
+    "content-sources:templates:read",
+    "content-sources:templates:write",
+    "idmsvc:domains:create",
+    "idmsvc:domains:delete",
+    "idmsvc:domains:list",
+    "idmsvc:domains:read",
+    "idmsvc:domains:update",
+    "idmsvc:token:create",
+    "integrations:*:*",
+    "inventory:*:*",
+    "malware-detection:*:*",
+    "notifications:events:read",
+    "notifications:notifications:read",
+    "notifications:notifications:write",
+    "patch:*:*",
+    "playbook-dispatcher:remediations_run:read",
+    "playbook-dispatcher:run:read",
+    "policies:policies:read",
+    "policies:policies:write",
+    "remediations:*:*",
+    "ros:*:*",
+    "sources:*:*",
+    "staleness:staleness:read",
+    "staleness:staleness:write",
+    "tasks:*:*",
+    "vulnerability:*:*"
+  ],
+  "RHEL operator": [
+    "advisor:*:*",
+    "compliance:policy:read",
+    "compliance:policy:write",
+    "compliance:report:read",
+    "compliance:system:read",
+    "config-manager:activation_keys:read",
+    "config-manager:activation_keys:write",
+    "config-manager:profile:read",
+    "content-sources:repositories:read",
+    "content-sources:templates:read",
+    "idmsvc:domains:list",
+    "idmsvc:domains:read",
+    "integrations:*:*",
+    "inventory:groups:read",
+    "inventory:groups:write",
+    "inventory:hosts:read",
+    "inventory:hosts:write",
+    "malware-detection:*:read",
+    "malware-detection:acknowledgements:write",
+    "notifications:events:read",
+    "notifications:notifications:read",
+    "notifications:notifications:write",
+    "patch:*:*",
+    "playbook-dispatcher:remediations_run:read",
+    "playbook-dispatcher:run:read",
+    "policies:policies:read",
+    "policies:policies:write",
+    "remediations:*:read",
+    "remediations:*:write",
+    "ros:*:read",
+    "sources:*:*",
+    "staleness:staleness:read",
+    "staleness:staleness:write",
+    "vulnerability:*:read",
+    "vulnerability:advanced_report:read",
+    "vulnerability:cve.business_risk_and_status:write",
+    "vulnerability:report_and_export:read",
+    "vulnerability:system.opt_out:read",
+    "vulnerability:system.opt_out:write",
+    "vulnerability:vulnerability_results:read"
+  ],
+  "RHEL viewer": [
+    "advisor:*:read",
+    "compliance:policy:read",
+    "compliance:report:read",
+    "compliance:system:read",
+    "config-manager:activation_keys:read",
+    "config-manager:activation_keys:write",
+    "config-manager:profile:read",
+    "content-sources:repositories:read",
+    "content-sources:templates:read",
+    "idmsvc:domains:list",
+    "idmsvc:domains:read",
+    "integrations:endpoints:read",
+    "inventory:groups:read",
+    "inventory:hosts:read",
+    "malware-detection:*:read",
+    "notifications:events:read",
+    "notifications:notifications:read",
+    "patch:*:read",
+    "playbook-dispatcher:remediations_run:read",
+    "playbook-dispatcher:run:read",
+    "policies:policies:read",
+    "remediations:remediation:read",
+    "ros:*:read",
+    "staleness:staleness:read",
+    "vulnerability:*:read"
+  ],
+  "Remediations administrator": [
+    "playbook-dispatcher:remediations_run:read",
+    "playbook-dispatcher:run:read",
+    "remediations:*:*"
+  ],
+  "Remediations user": [
+    "playbook-dispatcher:remediations_run:read",
+    "playbook-dispatcher:run:read",
+    "remediations:remediation:read",
+    "remediations:remediation:write"
+  ],
+  "Repositories administrator": [
+    "content-sources:repositories:read",
+    "content-sources:repositories:upload",
+    "content-sources:repositories:write"
+  ],
+  "Repositories uploader": [
+    "content-sources:repositories:upload"
+  ],
+  "Repositories viewer": [
+    "content-sources:repositories:read"
+  ],
+  "User Access administrator": [
+    "rbac:*:*"
+  ],
+  "User Access principal viewer": [
+    "rbac:principal:read"
+  ],
+  "Vulnerability administrator": [
+    "remediations:*:read",
+    "remediations:*:write",
+    "vulnerability:*:*"
+  ],
+  "Vulnerability viewer": [
+    "vulnerability:advanced_report:read",
+    "vulnerability:report_and_export:read",
+    "vulnerability:system.opt_out:read",
+    "vulnerability:vulnerability_results:read"
+  ]
+}
