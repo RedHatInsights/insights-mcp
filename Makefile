@@ -74,7 +74,8 @@ build-claude-extension-dev: build ## Build Claude extension for local developmen
 	$(MAKE) build-claude-extension TAG=local-dev CONTAINER_BRAND=$(CONTAINER_BRAND) CONTAINER_IMAGE=localhost/$(IMAGE_NAME):latest
 
 .PHONY: lint
-lint: generate-docs ## Run linting with pre-commit
+lint: install-test-deps ## Run linting with pre-commit (same hooks as CI lint workflow)
+	uv pip install pre-commit
 	uv run pre-commit run --all-files --hook-stage manual
 
 .PHONY: test

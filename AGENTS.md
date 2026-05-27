@@ -145,7 +145,7 @@ see also [usage.md](usage.md) for more details on the CLI.
 
 ### Pre-commit Hooks
 ```bash
-make lint    # Run all linting with pre-commit (requires pre-commit installation)
+make lint    # CI-parity lint (uv sync dev deps + pre-commit, includes pylint on src and tests)
 ```
 
 **Note:** The `make lint` command requires pre-commit to be installed. If you encounter "pre-commit: No such file or directory", install it first:
