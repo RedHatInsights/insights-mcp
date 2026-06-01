@@ -3,6 +3,8 @@
 import asyncio
 from unittest.mock import patch
 
+from fastmcp import FastMCP
+
 from insights_mcp.cli_catalog import (
     DISABLED_WRITE_TOOLS_RESOURCE_URI,
     build_disabled_write_tools_catalog,
@@ -54,8 +56,6 @@ def test_catalog_pointer_includes_resource_uri(monkeypatch):
 @patch("insights_mcp.cli_catalog.collect_readwrite_tools_by_toolset")
 def test_register_skips_when_catalog_empty(mock_collect):
     """No resource is registered when there are no read-write tools."""
-    from fastmcp import FastMCP
-
     mock_collect.return_value = {}
     server = FastMCP("test")
     register_disabled_write_tools_resource(server, ["image-builder"])
@@ -65,8 +65,6 @@ def test_register_skips_when_catalog_empty(mock_collect):
 @patch("insights_mcp.cli_catalog.collect_readwrite_tools_by_toolset")
 def test_register_adds_resource_when_catalog_non_empty(mock_collect):
     """Resource is registered when read-write tools exist."""
-    from fastmcp import FastMCP
-
     mock_collect.return_value = {"image-builder": [("image-builder__create_blueprint", "Create")]}
     server = FastMCP("test")
     register_disabled_write_tools_resource(server, ["image-builder"])

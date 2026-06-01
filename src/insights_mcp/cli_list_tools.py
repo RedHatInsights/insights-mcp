@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from fastmcp import Client
+
 from insights_mcp.cli_catalog import catalog_pointer_message
 
 
 async def run_list_tools(console: Any, client_spec: Any) -> None:
     """List tools from the MCP server; print catalog pointer when in read-only mode."""
-    from fastmcp import Client
 
     pointer = catalog_pointer_message()
     if pointer:

@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING
 
-from insights_mcp import config
+from fastmcp import FastMCP
 
-if TYPE_CHECKING:
-    from fastmcp import FastMCP
+from insights_mcp import __version__, config
+from insights_mcp.mcps import MCPS
+from insights_mcp.readwrite_tools import collect_readwrite_tools_by_toolset
 
 DISABLED_WRITE_TOOLS_RESOURCE_URI = "insights-mcp://catalog/disabled-write-tools"
 
@@ -23,16 +23,7 @@ def mcp_package_version() -> str:
     env_version = os.environ.get("INSIGHTS_MCP_VERSION")
     if env_version:
         return env_version
-    from insights_mcp import __version__
-
     return __version__
-
-
-def resolve_toolset_list_for_cli() -> list[str]:
-    """Toolsets for catalog resolution (matches server default)."""
-    from insights_mcp.server import _resolve_toolset_list
-
-    return _resolve_toolset_list(config.INSIGHTS_MCP_TOOLSET)
 
 
 def is_readonly_mode() -> bool:
@@ -40,20 +31,11 @@ def is_readonly_mode() -> bool:
     return not config.INSIGHTS_MCP_ALL_TOOLS
 
 
-def collect_readwrite_tools_by_toolset(allowed_mcps: list[str]) -> dict[str, list[tuple[str, str]]]:
-    """Map toolset name to (tool_name, summary) for read-write tools."""
-    from insights_mcp.server import _collect_readwrite_tools_from_temp_root
-
-    return _collect_readwrite_tools_from_temp_root(allowed_mcps)
-
-
 def build_disabled_write_tools_catalog(
     allowed_mcps: list[str],
     rw_by_toolset: dict[str, list[tuple[str, str]]] | None = None,
 ) -> str:
     """Markdown body for the disabled-write-tools MCP resource."""
-    from insights_mcp.server import MCPS
-
     if rw_by_toolset is None:
         rw_by_toolset = collect_readwrite_tools_by_toolset(allowed_mcps)
     display_names = {mcp.toolset_name: mcp.name for mcp in MCPS}
