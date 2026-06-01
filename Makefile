@@ -199,10 +199,10 @@ ALL_PYTHON_FILES := $(shell find src -name "*.py")
 CLI_SCRIPT_NAME := $(IMAGE_NAME)-cli
 GENERATED_CLI := generated/$(CLI_SCRIPT_NAME).py
 SKILL_DIR := skills/$(IMAGE_NAME)
-GENERATED_SKILL_BODY := generated/SKILL.md
+GENERATED_SKILL_BODY := generated/$(IMAGE_NAME)-SKILL.md
 
 .PHONY: generate-cli generate-cli-all check-generated-cli
-generate-cli: install-test-deps $(GENERATED_CLI) $(SKILL_DIR)/SKILL.md ## Generate brand-aware tool CLI and OpenClaw skill
+generate-cli: install-test-deps $(GENERATED_CLI) $(GENERATED_SKILL_BODY) $(SKILL_DIR)/SKILL.md ## Generate brand-aware tool CLI and OpenClaw skill
 
 generate-cli-all: ## Generate tool CLI and skills for all container brands
 	$(MAKE) generate-cli CONTAINER_BRAND=insights
@@ -226,7 +226,7 @@ package-cli-skill-archives: generate-cli-all ## Build OpenClaw skill tarballs (r
 	  scripts/red-hat-lightspeed-mcp-cli \
 	  generated/red-hat-lightspeed-mcp-cli.py
 
-$(GENERATED_CLI): src/insights_mcp/server_cli.py $(ALL_PYTHON_FILES) Makefile scripts/patch_generated_cli.py
+$(GENERATED_CLI) $(GENERATED_SKILL_BODY): src/insights_mcp/server_cli.py $(ALL_PYTHON_FILES) Makefile scripts/patch_generated_cli.py
 	mkdir -p generated $(SKILL_DIR)
 	CONTAINER_BRAND=$(CONTAINER_BRAND) \
 	INSIGHTS_TOOLSET=all \
@@ -234,9 +234,11 @@ $(GENERATED_CLI): src/insights_mcp/server_cli.py $(ALL_PYTHON_FILES) Makefile sc
 	INSIGHTS_CLIENT_ID=generate \
 	INSIGHTS_CLIENT_SECRET=generate \
 	uv run fastmcp generate-cli src/insights_mcp/server_cli.py $(GENERATED_CLI) -f
+	mv -f generated/SKILL.md $(GENERATED_SKILL_BODY)
 	uv run python scripts/patch_generated_cli.py $(GENERATED_CLI) --brand $(CONTAINER_BRAND)
+	uv run ruff format $(GENERATED_CLI)
 
-$(SKILL_DIR)/SKILL.md: $(GENERATED_CLI) skills/$(IMAGE_NAME)/SKILL.md.header.yaml scripts/merge_skill_header.py
+$(SKILL_DIR)/SKILL.md: $(GENERATED_SKILL_BODY) skills/$(IMAGE_NAME)/SKILL.md.header.yaml scripts/merge_skill_header.py
 	uv run python scripts/merge_skill_header.py \
 	  --header $(SKILL_DIR)/SKILL.md.header.yaml \
 	  --body $(GENERATED_SKILL_BODY) \

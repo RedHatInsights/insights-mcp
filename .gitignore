@@ -11,6 +11,7 @@ test_config.json
 
 # Intermediate fastmcp generate-cli output (merged into skills/*/SKILL.md)
 generated/SKILL.md
+generated/*-SKILL.md
 
 release-artifacts/
 
