@@ -1,0 +1,11 @@
+---
+name: insights-mcp
+description: Red Hat Insights MCP tools via insights-mcp-cli subcommands.
+metadata:
+  openclaw:
+    emoji: "🔧"
+    homepage: https://github.com/RedHatInsights/insights-mcp
+    requires:
+      bins: ["insights-mcp-cli"]
+      env: ["INSIGHTS_CLIENT_ID", "INSIGHTS_CLIENT_SECRET"]
+---

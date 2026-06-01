@@ -437,10 +437,27 @@ For example questions specific to each toolset please have a look at the test fi
 
 ## CLI
 
+### MCP server
+
 For some use cases it might be needed to use the MCP server directly from the command line.
-See [usage.md](usage.md) for the usage of the MCP server.
+See [usage.md](usage.md) for the usage of the MCP server (`insights-mcp` / `red-hat-lightspeed-mcp`).
+
+### Tool CLI (OpenClaw / shell)
+
+`fastmcp generate-cli` produces a `cyclopts` CLI with one `subcommand` per MCP tool. The server
+is spawned on each invocation and respects `INSIGHTS_TOOLSET` / `LIGHTSPEED_TOOLSET` and
+`INSIGHTS_MCP_ALL_TOOLS` / `LIGHTSPEED_MCP_ALL_TOOLS` at runtime.
+
+- `insights-mcp-cli` — Insights brand (`./scripts/insights-mcp-cli` or editable install)
+- `red-hat-lightspeed-mcp-cli` — Lightspeed brand
+
+Regenerate after tool changes: `make generate-cli-all`. OpenClaw skill directories:
+`skills/insights-mcp/` and `skills/red-hat-lightspeed-mcp/`. [GitHub releases](https://github.com/RedHatInsights/insights-mcp/releases) attach skill tarballs (`insights-mcp-cli-skill-*`, `red-hat-lightspeed-mcp-cli-skill-*`); build locally with `make package-cli-skill-archives TAG=my-tag`.
 
 ## Releases
+Each [GitHub release](https://github.com/RedHatInsights/insights-mcp/releases) includes Claude
+extension bundles (`.mcpb`/`.dxt`) and OpenClaw skill archives.
+
 There are two container images published for this MCP server.
 
  * `ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest`

@@ -124,6 +124,16 @@ jobs:
           make build-claude-extension CONTAINER_BRAND=insights
           make build-claude-extension CONTAINER_BRAND=red-hat-lightspeed
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+
+      - name: Package OpenClaw skill archives
+        env:
+          TAG: ${{ needs.generate-tag.outputs.tag }}
+        run: make package-cli-skill-archives TAG="$TAG"
+
       - name: Create release with assets
         if: >-
           github.ref == 'refs/heads/main' &&
@@ -139,4 +149,5 @@ jobs:
             insights-mcp-"$TAG".dxt \
             insights-mcp-"$TAG".mcpb \
             red-hat-lightspeed-mcp-"$TAG".dxt \
-            red-hat-lightspeed-mcp-"$TAG".mcpb
+            red-hat-lightspeed-mcp-"$TAG".mcpb \
+            release-artifacts/*

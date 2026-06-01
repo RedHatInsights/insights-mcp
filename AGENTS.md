@@ -210,6 +210,10 @@ insights-mcp --toolset=image-builder,vulnerability # Multiple specific toolsets
 
 **Authentication variables are documented in [README.md](README.md)**. Development-specific variables:
 
+- `INSIGHTS_TOOLSET` / `LIGHTSPEED_TOOLSET` - Default toolsets for `insights-mcp` and `server_cli.py` (see `INSIGHTS_MCP_TOOLSET` in config)
+- `INSIGHTS_MCP_ALL_TOOLS` / `LIGHTSPEED_MCP_ALL_TOOLS` - When `truthy`, register write tools (same as `--all-tools`)
+- `make generate-cli` / `make generate-cli-all` - Regenerate `generated/*-mcp-cli.py` and `skills/*/SKILL.md` (CI: `make check-generated-cli`)
+- `insights-mcp-cli` / `red-hat-lightspeed-mcp-cli` - Generated tool CLIs; spawn MCP server over stdio with runtime `env`
 - `IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK=True` - Disable blueprint watermarks
 - `DEEPEVAL_TELEMETRY_OPT_OUT=YES` - Disable telemetry in tests
 

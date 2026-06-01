@@ -52,7 +52,12 @@ repos:
         # always pass all classes, otherwise e.g. tests fail
         stages: [manual]
         pass_filenames: false
-        args: [--recursive=y, src, tests, scripts/mcp_registry]
+        args:
+          - --recursive=y
+          - --init-hook=import sys; sys.path.insert(0, "scripts")
+          - src
+          - tests
+          - scripts/mcp_registry
         additional_dependencies:
           - PyYAML
           - types-PyYAML

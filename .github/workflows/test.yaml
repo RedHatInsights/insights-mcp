@@ -32,6 +32,10 @@ jobs:
       - name: Install test dependencies
         run: make install-test-deps
 
+      - name: Verify generated CLI is up to date
+        if: matrix.python-version == '3.12'
+        run: make check-generated-cli
+
       - name: Run tests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

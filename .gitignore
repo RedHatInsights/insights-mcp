@@ -9,6 +9,11 @@ test_config.json
 *.dxt
 *.mcpb
 
+# Intermediate fastmcp generate-cli output (merged into skills/*/SKILL.md)
+generated/SKILL.md
+
+release-artifacts/
+
 # temporary mermaid cache
 /docs/input.mmd
 /docs/.cache/
