@@ -588,6 +588,11 @@ def build_insights_mcp_server(
     mcp_server = InsightsMCPServer(**mcp_server_config)
     mcp_server.register_mcps(toolset_list, readonly=effective_readonly)
 
+    if effective_readonly:
+        from insights_mcp.cli_catalog import register_disabled_write_tools_resource
+
+        register_disabled_write_tools_resource(mcp_server, toolset_list)
+
     version_doc = (get_mcp_version.__doc__ or "").format(container_brand_long=container_brand_long).strip()
     mcp_server.tool(
         get_mcp_version,

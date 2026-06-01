@@ -450,8 +450,11 @@ is spawned on each invocation and respects `INSIGHTS_TOOLSET` / `LIGHTSPEED_TOOL
 
 - `insights-mcp-cli` — Insights brand (`./scripts/insights-mcp-cli` or editable install)
 - `red-hat-lightspeed-mcp-cli` — Lightspeed brand
+- `./scripts/*-mcp-cli --version` — package/deploy version (`insights_mcp.__version__`, set via `INSIGHTS_MCP_VERSION` in containers)
+- `list-tools` — tools enabled on the running MCP server (read-only by default)
+- Disabled write tools (exact names): `read-resource insights-mcp://catalog/disabled-write-tools` when the server is read-only; resource is omitted when `INSIGHTS_MCP_ALL_TOOLS=true` or the server uses `--all-tools`
 
-Regenerate after tool changes: `make generate-cli-all`. OpenClaw skill directories:
+Regenerate after tool changes: `UV_PYTHON=3.12 make generate-cli-all`. OpenClaw skill directories:
 `skills/insights-mcp/` and `skills/red-hat-lightspeed-mcp/`. [GitHub releases](https://github.com/RedHatInsights/insights-mcp/releases) attach skill tarballs (`insights-mcp-cli-skill-*`, `red-hat-lightspeed-mcp-cli-skill-*`); build locally with `make package-cli-skill-archives TAG=my-tag`.
 
 ## Releases

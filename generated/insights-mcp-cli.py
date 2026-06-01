@@ -15,6 +15,11 @@ from rich.console import Console
 
 from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
+from insights_mcp.cli_catalog import catalog_help_prologue, mcp_package_version
+from insights_mcp.cli_list_tools import run_list_tools
+
+_CLI_VERSION = mcp_package_version()
+_HELP_PROLOGUE = catalog_help_prologue()
 
 # Modify this to change how the CLI connects to the MCP server.
 _BRAND_SERVER_CMD = {
@@ -31,7 +36,12 @@ def _default_server_cmd() -> str:
 _CLIENT_CMD = os.environ.get("INSIGHTS_MCP_SERVER_CMD") or _default_server_cmd()
 _CLIENT_ARGS = os.environ.get("INSIGHTS_MCP_SERVER_ARGS", "stdio").split()
 CLIENT_SPEC = StdioTransport(command=_CLIENT_CMD, args=_CLIENT_ARGS)
-app = cyclopts.App(name="insights-mcp-cli", help="CLI for server_cli MCP server")
+app = cyclopts.App(
+    name="insights-mcp-cli",
+    help="CLI for insights-mcp MCP server (spawns server over stdio)",
+    version=_CLI_VERSION,
+    help_prologue=_HELP_PROLOGUE,
+)
 call_tool_app = cyclopts.App(name="call-tool", help="Call a tool on the server")
 app.command(call_tool_app)
 
@@ -84,27 +94,8 @@ async def _call_tool(tool_name: str, arguments: dict) -> None:
 
 @app.command
 async def list_tools() -> None:
-    """List available tools."""
-    async with Client(CLIENT_SPEC) as client:
-        tools = await client.list_tools()
-        if not tools:
-            console.print("[dim]No tools found.[/dim]")
-            return
-        for tool in tools:
-            sig_parts = []
-            props = tool.inputSchema.get("properties", {})
-            required = set(tool.inputSchema.get("required", []))
-            for pname, pschema in props.items():
-                ptype = pschema.get("type", "string")
-                if pname in required:
-                    sig_parts.append(f"{pname}: {ptype}")
-                else:
-                    sig_parts.append(f"{pname}: {ptype} = ...")
-            sig = f"{tool.name}({', '.join(sig_parts)})"
-            console.print(f"  [cyan]{sig}[/cyan]")
-            if tool.description:
-                console.print(f"    {tool.description}")
-            console.print()
+    """List tools currently enabled on the MCP server (see help for disabled write tools)."""
+    await run_list_tools(console, CLIENT_SPEC)
 
 
 @app.command

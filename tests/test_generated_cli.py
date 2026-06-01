@@ -1,5 +1,6 @@
 """Tests for fastmcp-generated tool CLI artifacts."""
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -58,6 +59,21 @@ def test_generated_lightspeed_cli_branding():
     text = LIGHTSPEED_CLI.read_text(encoding="utf-8")
     assert 'name="red-hat-lightspeed-mcp-cli"' in text
     assert 'os.environ.get("CONTAINER_BRAND", "red-hat-lightspeed")' in text
+
+
+@pytest.mark.skipif(not INSIGHTS_CLI.is_file(), reason="run make generate-cli-all first")
+def test_generated_insights_cli_version_flag():
+    """--version prints package version without starting the MCP server."""
+    result = subprocess.run(
+        [sys.executable, str(INSIGHTS_CLI), "--version"],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=REPO_ROOT,
+        env={**os.environ, "INSIGHTS_MCP_VERSION": "20250601-testversion"},
+    )
+    assert result.returncode == 0
+    assert "20250601-testversion" in result.stdout
 
 
 def test_cli_shim_resolves_insights_path():
