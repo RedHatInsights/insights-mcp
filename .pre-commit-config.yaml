@@ -5,9 +5,11 @@ repos:
     rev: v6.0.0
     hooks:
       - id: trailing-whitespace
+        exclude: ^generated/
         args:
           - --markdown-linebreak-ext=md
       - id: end-of-file-fixer
+        exclude: ^generated/
       - id: check-added-large-files
   - repo: https://github.com/adrienverge/yamllint
     rev: v1.38.0
@@ -39,6 +41,7 @@ repos:
     rev: v2.3.2
     hooks:
       - id: autopep8
+        exclude: ^generated/
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.14
     hooks:
@@ -52,7 +55,12 @@ repos:
         # always pass all classes, otherwise e.g. tests fail
         stages: [manual]
         pass_filenames: false
-        args: [--recursive=y, src, tests, scripts/mcp_registry]
+        args:
+          - --recursive=y
+          - --init-hook=import sys; sys.path.insert(0, "scripts")
+          - src
+          - tests
+          - scripts/mcp_registry
         additional_dependencies:
           - PyYAML
           - types-PyYAML

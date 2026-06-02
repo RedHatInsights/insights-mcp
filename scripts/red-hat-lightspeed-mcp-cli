@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Wrapper for generated red-hat-lightspeed-mcp-cli (repo checkout or release tarball).
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+export CONTAINER_BRAND="${CONTAINER_BRAND:-red-hat-lightspeed}"
+exec uv run --project "$ROOT" python "$ROOT/generated/red-hat-lightspeed-mcp-cli.py" "$@"

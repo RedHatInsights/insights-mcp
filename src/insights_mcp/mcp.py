@@ -5,11 +5,10 @@ It handles authentication, client initialization, and provides a foundation for 
 Insights-specific MCP tools and resources.
 """
 
-import asyncio
-
 from fastmcp import FastMCP
 from fastmcp.server.auth import AuthProvider
 
+from insights_mcp.async_utils import run_async
 from insights_mcp.client import InsightsClient
 from insights_mcp.config import INSIGHTS_BASE_URL, SSO_TOKEN_ENDPOINT
 
@@ -121,7 +120,7 @@ class InsightsMCP(FastMCP):
         if not readonly:
             return
 
-        tools = asyncio.run(self.list_tools())
+        tools = run_async(self.list_tools())
         tools_to_remove = [
             tool.name
             for tool in tools

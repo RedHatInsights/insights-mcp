@@ -6,6 +6,11 @@ to make settings easily reusable across different modules.
 
 import os
 
+
+def _env_truthy(name: str) -> bool:
+    return os.getenv(name, "").lower() in ("1", "true", "yes")
+
+
 # Base URLs and endpoints
 INSIGHTS_BASE_URL = os.getenv("INSIGHTS_BASE_URL") or os.getenv("LIGHTSPEED_BASE_URL") or "https://console.redhat.com"
 # Optional proxy URL for non Production environments
@@ -43,6 +48,15 @@ INSIGHTS_REFRESH_TOKEN = os.getenv("INSIGHTS_REFRESH_TOKEN") or ""
 
 # Argument toolset
 INSIGHTS_MCP_TOOLSET = os.getenv("INSIGHTS_TOOLSET") or os.getenv("LIGHTSPEED_TOOLSET") or "all"
+
+
+def all_tools_enabled() -> bool:
+    """True when write tools should be registered (reads env at call time)."""
+    return _env_truthy("INSIGHTS_MCP_ALL_TOOLS") or _env_truthy("LIGHTSPEED_MCP_ALL_TOOLS")
+
+
+# Register write tools when true (same as --all-tools); snapshot at import for backward compatibility
+INSIGHTS_MCP_ALL_TOOLS = all_tools_enabled()
 
 SSO_OAUTH_TIMEOUT_SECONDS = int(os.getenv("SSO_OAUTH_TIMEOUT_SECONDS", "30"))
 

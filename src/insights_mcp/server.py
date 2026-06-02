@@ -15,30 +15,12 @@ import requests
 from fastmcp import FastMCP
 from mcp.types import Icon, ToolAnnotations
 
-from advisor_mcp.server import mcp_server as AdvisorMCP
-from content_sources_mcp.server import mcp as ContentSourcesMCP
-from image_builder_mcp.server import mcp_server as ImageBuilderMCP
 from insights_mcp import __version__, config
-from insights_mcp.mcp import InsightsMCP
+from insights_mcp.async_utils import run_async
+from insights_mcp.cli_catalog import register_disabled_write_tools_resource
+from insights_mcp.mcps import MCPS, resolve_toolset_list
 from insights_mcp.oauth import create_oauth_provider
-from inventory_mcp.server import mcp as InventoryMCP
-from planning_mcp.server import mcp as PlanningMCP
-from rbac_mcp.server import mcp as RbacMCP
-from remediations_mcp.server import mcp as RemediationsMCP
-from rhsm_mcp.server import mcp as RhsmMCP
-from vulnerability_mcp.server import mcp as VulnerabilityMCP
-
-MCPS: list[InsightsMCP] = [
-    ImageBuilderMCP,
-    RhsmMCP,
-    VulnerabilityMCP,
-    RemediationsMCP,
-    AdvisorMCP,
-    InventoryMCP,
-    ContentSourcesMCP,
-    RbacMCP,
-    PlanningMCP,
-]
+from insights_mcp.readwrite_tools import collect_readwrite_tools_by_toolset
 
 
 def _format_server_tools(
@@ -52,7 +34,7 @@ def _format_server_tools(
     already been registered.
     """
 
-    tools = asyncio.run(server.list_tools())
+    tools = run_async(server.list_tools())
     for tool in tools:
         for attr_name in ("description", "title"):
             value = getattr(tool, attr_name, None)
@@ -154,6 +136,8 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
         self.proxy_url = proxy_url
         self.oauth_enabled = oauth_enabled
         self.mcp_transport = mcp_transport
+        self.mcp_host = mcp_host
+        self.mcp_port = mcp_port
         self.token_endpoint = token_endpoint
 
     def register_mcps(self, allowed_mcps: list[str], readonly: bool = True):
@@ -189,54 +173,6 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
             self.mount(mcp, prefix=f"{mcp.toolset_name}_")
 
 
-def _get_tool_description(tool: Any) -> str:
-    """Extract first line of description or title for a tool."""
-    desc = getattr(tool, "description", None) or ""
-    title = getattr(tool, "title", None) or ""
-    text = (desc or title).strip()
-    if not text:
-        return ""
-    first_line = text.split("\n", 1)[0].strip()
-    # Truncate very long lines
-    if len(first_line) > 100:
-        last_space = first_line.rfind(" ", 80, 99)
-        first_line = first_line[: last_space + 1 if last_space != -1 else 99] + "…"
-    return first_line
-
-
-def _collect_readwrite_tools_from_temp_root(allowed_mcps: list[str]) -> dict[str, list[tuple[str, str]]]:
-    """Collect read-write tools from a temporary InsightsMCP container.
-
-    Mounts all allowed MCPS (shared for decorator-based, temp for register_tools-based),
-    then filters for readOnlyHint is False and groups by toolset.
-    """
-    temp_root = InsightsMCP(name="temp", toolset_name="temp", api_path="")
-    for mcp in MCPS:
-        if mcp.toolset_name not in allowed_mcps:
-            continue
-        try:
-            temp_sub = type(mcp)()  # type: ignore[call-arg]
-            temp_sub.register_tools()
-            temp_root.mount(temp_sub, namespace=mcp.toolset_name)
-        except (NotImplementedError, TypeError):
-            temp_root.mount(mcp, namespace=mcp.toolset_name)
-
-    tools = asyncio.run(temp_root.list_tools())
-    rw_by_toolset: dict[str, list[tuple[str, str]]] = {}
-    for tool in tools:
-        if getattr(getattr(tool, "annotations", None), "readOnlyHint", True) is False:
-            name = getattr(tool, "name", "")
-            if "_" in name:
-                toolset_name = name.split("_", 1)[0]
-                if toolset_name not in rw_by_toolset:
-                    rw_by_toolset[toolset_name] = []
-                desc = _get_tool_description(tool)
-                rw_by_toolset[toolset_name].append((name, desc))
-    for toolset_name in rw_by_toolset:
-        rw_by_toolset[toolset_name] = sorted(rw_by_toolset[toolset_name], key=lambda x: x[0])
-    return rw_by_toolset
-
-
 def get_instructions(allowed_mcps: list[str], readonly: bool = True) -> str:
     """Get instructions from MCP server."""
     instructions_parts = []
@@ -247,7 +183,7 @@ def get_instructions(allowed_mcps: list[str], readonly: bool = True) -> str:
             instructions_parts.append(f"## {mcp.name}\n\n{mcp.instructions}")
 
     if readonly:
-        rw_by_toolset = _collect_readwrite_tools_from_temp_root(allowed_mcps)
+        rw_by_toolset = collect_readwrite_tools_by_toolset(allowed_mcps)
         tools_sections = []
         for mcp in MCPS:
             if mcp.toolset_name not in allowed_mcps:
@@ -499,6 +435,129 @@ def get_container_brand() -> tuple[str, str]:
     return container_brand, container_brand_long
 
 
+def _resolve_readonly(cli_readonly: bool | None) -> bool:
+    """Resolve readonly mode: CLI flag, then env INSIGHTS_MCP_ALL_TOOLS, else default True."""
+    if cli_readonly is not None:
+        return cli_readonly
+    if config.all_tools_enabled():
+        return False
+    return True
+
+
+def _apply_sse_http_transport_settings(
+    mcp_server_config: dict[str, Any],
+    *,
+    transport: str,
+    host: str | None,
+    port: int | None,
+    logger: logging.Logger,
+) -> None:
+    """Set host/port on the server config for SSE/HTTP, applying SSO registration constraints."""
+    if transport not in ("sse", "http"):
+        return
+    mcp_server_config["mcp_host"] = host
+    mcp_server_config["mcp_port"] = port
+    if (
+        mcp_server_config["oauth_enabled"]
+        and host is not None
+        and port is not None
+        and (host, port) not in config.SSO_AUTHORIZED_MCP_SERVER_HOST_PORTS
+    ):
+        mcp_server_config["mcp_host"] = "localhost"
+        mcp_server_config["mcp_port"] = 8000
+        logger.info(
+            "Force using SSO registered mcp server host:port: %s:%s",
+            mcp_server_config["mcp_host"],
+            mcp_server_config["mcp_port"],
+        )
+        logger.info(">>> The origin passed in host:port: %s:%s", host, port)
+        logger.info(">>> Note: For SSO authentication, you need to register the mcp server host:port with SSO")
+        logger.info(">>> Allowed host:port combinations are: %s", config.SSO_AUTHORIZED_MCP_SERVER_HOST_PORTS)
+
+
+def _build_substituted_instructions(
+    toolset_list: list[str],
+    *,
+    readonly: bool,
+    container_brand_long: str,
+) -> str:
+    """Build server instructions with container brand substitution."""
+    instructions = get_instructions(toolset_list, readonly=readonly)
+    return Template(instructions).safe_substitute(container_brand_long=container_brand_long)
+
+
+def build_insights_mcp_server(
+    *,
+    toolset: str | None = None,
+    readonly: bool | None = None,
+    transport: str = "stdio",
+    host: str | None = None,
+    port: int | None = None,
+) -> InsightsMCPServer:
+    """Build a configured InsightsMCPServer with toolsets mounted and tools registered.
+
+    Toolset selection uses ``toolset`` when set, otherwise ``INSIGHTS_MCP_TOOLSET`` /
+    ``LIGHTSPEED_TOOLSET`` from config. Readonly mode uses ``readonly`` when set,
+    otherwise ``INSIGHTS_MCP_ALL_TOOLS`` / ``LIGHTSPEED_MCP_ALL_TOOLS``, else read-only.
+    """
+    logger = logging.getLogger("InsightsMCPServer")
+    _, container_brand_long = get_container_brand()
+    effective_readonly = _resolve_readonly(readonly)
+    resolved_toolset = toolset or config.INSIGHTS_MCP_TOOLSET
+    toolset_list = resolve_toolset_list(resolved_toolset)
+
+    mcp_server_config: dict[str, Any] = {
+        "base_url": config.INSIGHTS_BASE_URL,
+        "name": f"{container_brand_long} MCP",
+        "proxy_url": config.INSIGHTS_PROXY_URL,
+        "oauth_enabled": config.OAUTH_ENABLED,
+        "mcp_transport": transport,
+    }
+    logger.info("Using config: oauth_enabled: %s", mcp_server_config["oauth_enabled"])
+    setup_credentials(mcp_server_config, logger)
+
+    logger.info(
+        "Building %s MCP %s (%s) with toolsets: %s (readonly=%s)",
+        container_brand_long,
+        __version__,
+        transport,
+        ", ".join(toolset_list),
+        effective_readonly,
+    )
+    logger.info("Connecting to %s", mcp_server_config["base_url"])
+    if mcp_server_config["proxy_url"]:
+        logger.info(">>> Using proxy URL: %s", mcp_server_config["proxy_url"])
+    logger.info("Authenticating against %s", config.SSO_BASE_URL)
+
+    mcp_server_config["instructions"] = _build_substituted_instructions(
+        toolset_list,
+        readonly=effective_readonly,
+        container_brand_long=container_brand_long,
+    )
+    _apply_sse_http_transport_settings(
+        mcp_server_config,
+        transport=transport,
+        host=host,
+        port=port,
+        logger=logger,
+    )
+
+    mcp_server = InsightsMCPServer(**mcp_server_config)
+    mcp_server.register_mcps(toolset_list, readonly=effective_readonly)
+
+    if effective_readonly:
+        register_disabled_write_tools_resource(mcp_server, toolset_list)
+
+    version_doc = (get_mcp_version.__doc__ or "").format(container_brand_long=container_brand_long).strip()
+    mcp_server.tool(
+        get_mcp_version,
+        annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+        description=version_doc,
+    )
+    _format_all_tool_descriptions(mcp_server, container_brand_long=container_brand_long)
+    return mcp_server
+
+
 def main():  # pylint: disable=too-many-statements,too-many-locals
     """Main entry point for the Insights MCP server."""
     available_toolsets = f"all, {', '.join(mcp.toolset_name for mcp in MCPS)}"
@@ -513,18 +572,20 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     parser.add_argument("--toolset", type=str, help=toolset_help)
     parser.add_argument("--toolset-help", action="store_true", help="Show toolset details of all toolsets")
+    parser.set_defaults(readonly=None)
     parser.add_argument(
         "--readonly",
-        action="store_true",
+        action="store_const",
+        const=True,
         dest="readonly",
-        default=True,
-        help="Only register read-only tools (default)",
+        help="Only register read-only tools (overrides INSIGHTS_MCP_ALL_TOOLS)",
     )
     parser.add_argument(
         "--all-tools",
-        action="store_false",
+        action="store_const",
+        const=False,
         dest="readonly",
-        help="Register all tools including write tools",
+        help="Register all tools including write tools (overrides env default)",
     )
 
     # ==== Start of Transport Mode Subparsers ====
@@ -588,93 +649,31 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
 
     # ==== End of Logging Configuration ====
 
-    # ==== Start of Config Setup ====
-    mcp_server_config = {
-        "base_url": config.INSIGHTS_BASE_URL,
-        "name": f"{container_brand_long} MCP",
-        "proxy_url": config.INSIGHTS_PROXY_URL,
-        "oauth_enabled": config.OAUTH_ENABLED,
-        "mcp_transport": args.transport,
-    }
-    logger.info("Using config: oauth_enabled: %s", mcp_server_config["oauth_enabled"])
-
-    # Set client credentials based on OAuth mode
-    setup_credentials(mcp_server_config, logger)
-
-    toolset = args.toolset or config.INSIGHTS_MCP_TOOLSET
-    if toolset == "all":
-        toolset_list = [mcp.toolset_name for mcp in MCPS]
-    else:
-        toolset_list = [t.strip() for t in toolset.split(",")]
-
-    logger.info(
-        "Starting %s MCP %s (%s) with toolsets: %s",
-        container_brand_long,
-        __version__,
-        args.transport,
-        ", ".join(toolset_list),
+    log_level = "DEBUG" if args.debug else "WARNING"
+    mcp_server = build_insights_mcp_server(
+        toolset=args.toolset,
+        readonly=args.readonly,
+        transport=args.transport,
+        host=getattr(args, "host", None),
+        port=getattr(args, "port", None),
     )
-    logger.info("Connecting to %s", mcp_server_config["base_url"])
-    if mcp_server_config["proxy_url"]:
-        logger.info(">>> Using proxy URL: %s", mcp_server_config["proxy_url"])
-
-    logger.info("Authenticating against %s", config.SSO_BASE_URL)
-
-    instructions = get_instructions(toolset_list, readonly=args.readonly)
-    instructions_template = Template(instructions)
-    instructions = instructions_template.safe_substitute(container_brand_long=container_brand_long)
-    mcp_server_config["instructions"] = instructions
-
-    # Note: Force overrided the host:port to a SSO registered host:port if not authorized
-    if args.transport in ["sse", "http"]:
-        mcp_server_config["mcp_host"] = args.host
-        mcp_server_config["mcp_port"] = args.port
-        log_level = "DEBUG" if args.debug else "WARNING"
-        if (
-            mcp_server_config["oauth_enabled"]
-            and (args.host, args.port) not in config.SSO_AUTHORIZED_MCP_SERVER_HOST_PORTS
-        ):
-            mcp_server_config["mcp_host"] = "localhost"
-            mcp_server_config["mcp_port"] = 8000
-            logger.info(
-                "Force using SSO registered mcp server host:port: %s:%s",
-                mcp_server_config["mcp_host"],
-                mcp_server_config["mcp_port"],
-            )
-            logger.info(">>> The origin passed in host:port: %s:%s", args.host, args.port)
-            logger.info(">>> Note: For SSO authentication, you need to register the mcp server host:port with SSO")
-            logger.info(">>> Allowed host:port combinations are: %s", config.SSO_AUTHORIZED_MCP_SERVER_HOST_PORTS)
-
-    # Create and run the MCP server
-    mcp_server = InsightsMCPServer(**mcp_server_config)
-
-    mcp_server.register_mcps(toolset_list, readonly=args.readonly)
-
-    # Register the version checking tool
-    mcp_server.tool(
-        get_mcp_version,
-        annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
-        description=get_mcp_version.__doc__.format(container_brand_long=container_brand_long),
-    )
-
-    # Iterate over all MCPs and their tools to format any descriptions and titles
-    # that use {container_brand_long} placeholders.
-    _format_all_tool_descriptions(mcp_server, container_brand_long=container_brand_long)
 
     if args.transport == "sse":
         mcp_server.run(
             transport="sse",
-            host=mcp_server_config["mcp_host"],
-            port=mcp_server_config["mcp_port"],
+            host=mcp_server.mcp_host,
+            port=mcp_server.mcp_port,
         )
     elif args.transport == "http":
         logger.info(
-            "Running HTTP transport on host: %s, port: %s", mcp_server_config["mcp_host"], mcp_server_config["mcp_port"]
+            "Running HTTP transport on host: %s, port: %s",
+            mcp_server.mcp_host,
+            mcp_server.mcp_port,
         )
         mcp_server.run(
             transport="http",
-            host=mcp_server_config["mcp_host"],
-            port=mcp_server_config["mcp_port"],
+            host=mcp_server.mcp_host,
+            port=mcp_server.mcp_port,
             log_level=log_level,
         )
     else:

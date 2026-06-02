@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Wrapper for generated insights-mcp-cli (repo checkout or release tarball).
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+export CONTAINER_BRAND="${CONTAINER_BRAND:-insights}"
+exec uv run --project "$ROOT" python "$ROOT/generated/insights-mcp-cli.py" "$@"

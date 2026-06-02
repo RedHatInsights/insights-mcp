@@ -39,6 +39,7 @@ dev = [
     "mypy",
     "types-requests",
     "pylint",
+    "ruff>=0.15.14,<0.16",
     "autopep8",
     "deepeval",
     "llama-index",
@@ -50,6 +51,8 @@ dev = [
 [project.scripts]
 insights-mcp = "insights_mcp.server:main"
 red-hat-lightspeed-mcp = "insights_mcp.server:main"
+insights-mcp-cli = "insights_mcp.cli_shim:main_insights"
+red-hat-lightspeed-mcp-cli = "insights_mcp.cli_shim:main_lightspeed"
 
 [project.urls]
 Homepage = "https://github.com/RedHatInsights/insights-mcp"
@@ -78,6 +81,7 @@ max_line_length = 120
 target-version = "py312"
 line-length = 120
 indent-width = 4
+exclude = ["generated"]
 
 [tool.ruff.lint]
 # https://docs.astral.sh/ruff/rules/

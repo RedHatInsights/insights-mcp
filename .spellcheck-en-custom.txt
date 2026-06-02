@@ -27,6 +27,7 @@ EPEL
 EPEL
 EPEL
 FastMCP's
+gitignored
 gzip
 gzipped
 Gzipped
@@ -118,3 +119,5 @@ js
 postgresql
 nodejs
 requester's
+argv
+truthy
