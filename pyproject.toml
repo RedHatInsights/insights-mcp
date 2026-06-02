@@ -39,6 +39,7 @@ dev = [
     "mypy",
     "types-requests",
     "pylint",
+    "ruff>=0.15.14,<0.16",
     "autopep8",
     "deepeval",
     "llama-index",
