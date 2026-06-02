@@ -42,8 +42,10 @@ def test_patch_generated_cli_replaces_transport_and_name(tmp_path: Path):
     path.write_text(SAMPLE, encoding="utf-8")
     patch_generated_cli(path, brand="insights")
     text = path.read_text(encoding="utf-8")
-    assert "import os" in text
-    assert "INSIGHTS_MCP_SERVER_CMD" in text
+    assert "build_stdio_client_spec" in text
+    assert "def client_spec():" in text
+    assert "Client(client_spec())" in text or "client_spec()" in text
+    assert "CLIENT_SPEC = StdioTransport" not in text
     assert 'name="insights-mcp-cli"' in text
     assert "version=_CLI_VERSION" in text
     assert "help_prologue=_HELP_PROLOGUE" in text

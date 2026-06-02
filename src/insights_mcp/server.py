@@ -439,7 +439,7 @@ def _resolve_readonly(cli_readonly: bool | None) -> bool:
     """Resolve readonly mode: CLI flag, then env INSIGHTS_MCP_ALL_TOOLS, else default True."""
     if cli_readonly is not None:
         return cli_readonly
-    if config.INSIGHTS_MCP_ALL_TOOLS:
+    if config.all_tools_enabled():
         return False
     return True
 

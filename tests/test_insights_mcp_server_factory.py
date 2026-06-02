@@ -12,15 +12,15 @@ def test_resolve_readonly_default():
 
 
 def test_resolve_readonly_cli_overrides_env(monkeypatch):
-    """Explicit CLI readonly flag overrides INSIGHTS_MCP_ALL_TOOLS from the environment."""
-    monkeypatch.setattr(config, "INSIGHTS_MCP_ALL_TOOLS", True)
+    """Explicit CLI readonly flag overrides all-tools env."""
+    monkeypatch.setenv("LIGHTSPEED_MCP_ALL_TOOLS", "true")
     assert _resolve_readonly(True) is True
     assert _resolve_readonly(False) is False
 
 
 def test_resolve_readonly_env_all_tools(monkeypatch):
-    """INSIGHTS_MCP_ALL_TOOLS disables readonly when CLI does not pass readonly."""
-    monkeypatch.setattr(config, "INSIGHTS_MCP_ALL_TOOLS", True)
+    """LIGHTSPEED_MCP_ALL_TOOLS disables readonly when CLI does not pass readonly."""
+    monkeypatch.setenv("LIGHTSPEED_MCP_ALL_TOOLS", "true")
     assert _resolve_readonly(None) is False
 
 

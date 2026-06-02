@@ -28,7 +28,7 @@ def mcp_package_version() -> str:
 
 def is_readonly_mode() -> bool:
     """True when write tools are excluded (default server/CLI behavior)."""
-    return not config.INSIGHTS_MCP_ALL_TOOLS
+    return not config.all_tools_enabled()
 
 
 def build_disabled_write_tools_catalog(

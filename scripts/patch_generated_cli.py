@@ -18,37 +18,36 @@ _BRAND_CLI_NAME = {
     "red-hat-lightspeed": "red-hat-lightspeed-mcp-cli",
 }
 
-_CLIENT_SPEC_BLOCK = """\
-_BRAND_SERVER_CMD = {
-    "insights": "insights-mcp",
-    "red-hat-lightspeed": "red-hat-lightspeed-mcp",
-}
-
-
-def _default_server_cmd() -> str:
-    brand = os.environ.get("CONTAINER_BRAND", "{brand}")
-    return _BRAND_SERVER_CMD.get(brand, _BRAND_SERVER_CMD["insights"])
-
-
-_CLIENT_CMD = os.environ.get("INSIGHTS_MCP_SERVER_CMD") or _default_server_cmd()
-_CLIENT_ARGS = os.environ.get("INSIGHTS_MCP_SERVER_ARGS", "stdio").split()
-CLIENT_SPEC = StdioTransport(command=_CLIENT_CMD, args=_CLIENT_ARGS)
-"""
-
 _CATALOG_IMPORTS_BLOCK = """\
 from insights_mcp.cli_catalog import catalog_help_prologue, mcp_package_version
 from insights_mcp.cli_list_tools import run_list_tools
+from insights_mcp.cli_transport import build_stdio_client_spec
 
 _CLI_VERSION = mcp_package_version()
 _HELP_PROLOGUE = catalog_help_prologue()
+
+
+def client_spec():
+    return build_stdio_client_spec()
 """
 
 _LIST_TOOLS_REPLACEMENT = '''\
 @app.command
 async def list_tools() -> None:
     """List tools currently enabled on the MCP server (see help for disabled write tools)."""
-    await run_list_tools(console, CLIENT_SPEC)
+    await run_list_tools(console, client_spec())
 '''
+
+# Legacy static transport block (pre client_spec patch)
+_LEGACY_CLIENT_SPEC_BLOCK = re.compile(
+    r"_BRAND_SERVER_CMD = \{.*?\n\nCLIENT_SPEC = StdioTransport\(.*?\)\n",
+    re.DOTALL,
+)
+
+_SIMPLE_CLIENT_SPEC_LINE = re.compile(
+    r"^CLIENT_SPEC = StdioTransport\(.*\)\s*\n",
+    re.MULTILINE,
+)
 
 _APP_LINE_PATTERN = re.compile(
     r'^app = cyclopts\.App\(name="[^"]*", help="[^"]*"\)\s*$',
@@ -62,6 +61,7 @@ _LIST_TOOLS_PATTERN = re.compile(
 
 
 def patch_generated_cli(path: Path, *, brand: str) -> None:
+    """Apply brand-aware transport and catalog patches to a generated CLI file."""
     if brand not in _BRAND_SERVER_CMD:
         raise ValueError(f"invalid brand: {brand!r}, want one of {sorted(_BRAND_SERVER_CMD)}")
 
@@ -69,23 +69,29 @@ def patch_generated_cli(path: Path, *, brand: str) -> None:
     cli_name = _BRAND_CLI_NAME[brand]
     server_cmd = _BRAND_SERVER_CMD[brand]
 
-    if "import os\n" not in text and "import os\r\n" not in text:
-        text = text.replace("import json\n", "import json\nimport os\n", 1)
-
     if "from insights_mcp.cli_catalog import" not in text:
         text = text.replace(
             "from fastmcp.client.transports import StdioTransport\n",
             "from fastmcp.client.transports import StdioTransport\n" + _CATALOG_IMPORTS_BLOCK,
             1,
         )
+    elif "from insights_mcp.cli_transport import build_stdio_client_spec" not in text:
+        text = text.replace(
+            "from insights_mcp.cli_list_tools import run_list_tools\n",
+            "from insights_mcp.cli_list_tools import run_list_tools\n"
+            "from insights_mcp.cli_transport import build_stdio_client_spec\n\n\n"
+            "def client_spec():\n"
+            "    return build_stdio_client_spec()\n",
+            1,
+        )
 
-    text = re.sub(
-        r"^CLIENT_SPEC = StdioTransport\(.*\)\s*$",
-        _CLIENT_SPEC_BLOCK.replace("{brand}", brand).rstrip(),
-        text,
-        count=1,
-        flags=re.MULTILINE,
-    )
+    text, _ = _LEGACY_CLIENT_SPEC_BLOCK.subn("", text, count=1)
+    text, _ = _SIMPLE_CLIENT_SPEC_LINE.subn("", text)
+
+    if "def client_spec():" not in text:
+        raise ValueError(f"expected client_spec() after patch in {path}")
+
+    text = text.replace("Client(CLIENT_SPEC)", "Client(client_spec())")
 
     app_replacement = (
         f"app = cyclopts.App(\n"

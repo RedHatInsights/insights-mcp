@@ -49,8 +49,14 @@ INSIGHTS_REFRESH_TOKEN = os.getenv("INSIGHTS_REFRESH_TOKEN") or ""
 # Argument toolset
 INSIGHTS_MCP_TOOLSET = os.getenv("INSIGHTS_TOOLSET") or os.getenv("LIGHTSPEED_TOOLSET") or "all"
 
-# Register write tools when true (same as --all-tools); respected by insights-mcp and server_cli.py
-INSIGHTS_MCP_ALL_TOOLS = _env_truthy("INSIGHTS_MCP_ALL_TOOLS") or _env_truthy("LIGHTSPEED_MCP_ALL_TOOLS")
+
+def all_tools_enabled() -> bool:
+    """True when write tools should be registered (reads env at call time)."""
+    return _env_truthy("INSIGHTS_MCP_ALL_TOOLS") or _env_truthy("LIGHTSPEED_MCP_ALL_TOOLS")
+
+
+# Register write tools when true (same as --all-tools); snapshot at import for backward compatibility
+INSIGHTS_MCP_ALL_TOOLS = all_tools_enabled()
 
 SSO_OAUTH_TIMEOUT_SECONDS = int(os.getenv("SSO_OAUTH_TIMEOUT_SECONDS", "30"))
 

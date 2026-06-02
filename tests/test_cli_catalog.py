@@ -22,11 +22,12 @@ def test_mcp_package_version_respects_env(monkeypatch):
     assert mcp_package_version() == "20250601-abc12345"
 
 
-def test_is_readonly_mode_follows_all_tools_config(monkeypatch):
-    """is_readonly_mode is false when INSIGHTS_MCP_ALL_TOOLS config is truthy."""
-    monkeypatch.setattr("insights_mcp.config.INSIGHTS_MCP_ALL_TOOLS", False)
+def test_is_readonly_mode_follows_all_tools_env(monkeypatch):
+    """is_readonly_mode is false when LIGHTSPEED_MCP_ALL_TOOLS env is truthy."""
+    monkeypatch.delenv("INSIGHTS_MCP_ALL_TOOLS", raising=False)
+    monkeypatch.delenv("LIGHTSPEED_MCP_ALL_TOOLS", raising=False)
     assert is_readonly_mode() is True
-    monkeypatch.setattr("insights_mcp.config.INSIGHTS_MCP_ALL_TOOLS", True)
+    monkeypatch.setenv("LIGHTSPEED_MCP_ALL_TOOLS", "true")
     assert is_readonly_mode() is False
 
 
@@ -41,14 +42,15 @@ def test_build_disabled_write_tools_catalog_formats_toolsets():
 
 def test_catalog_pointer_empty_when_all_tools(monkeypatch):
     """Pointer and help prologue are empty when all-tools is enabled."""
-    monkeypatch.setattr("insights_mcp.config.INSIGHTS_MCP_ALL_TOOLS", True)
+    monkeypatch.setenv("INSIGHTS_MCP_ALL_TOOLS", "true")
     assert catalog_pointer_message() == ""
     assert catalog_help_prologue() == ""
 
 
 def test_catalog_pointer_includes_resource_uri(monkeypatch):
     """Pointer references the disabled-write-tools resource URI."""
-    monkeypatch.setattr("insights_mcp.config.INSIGHTS_MCP_ALL_TOOLS", False)
+    monkeypatch.delenv("INSIGHTS_MCP_ALL_TOOLS", raising=False)
+    monkeypatch.delenv("LIGHTSPEED_MCP_ALL_TOOLS", raising=False)
     message = catalog_pointer_message()
     assert DISABLED_WRITE_TOOLS_RESOURCE_URI in message
 
