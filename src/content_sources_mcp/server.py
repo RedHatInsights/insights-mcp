@@ -4,7 +4,6 @@ MCP server for content sources data via Red Hat Insights API.
 Provides tools to get repository information from content sources.
 """
 
-import json
 import logging
 from typing import Annotated, Any, Optional
 
@@ -13,6 +12,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from insights_mcp.mcp import InsightsMCP
+from tools.common import run_insights_tool_request
 
 
 class ContentSourcesMCP(InsightsMCP):
@@ -112,13 +112,10 @@ class ContentSourcesMCP(InsightsMCP):
         params["limit"] = limit
         params["offset"] = offset
 
-        try:
-            response = await self.insights_client.get("repositories/", params=params)
-            if isinstance(response, str):
-                return response
-            return json.dumps(response)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            return f"Error listing repositories: {str(e)}"
+        return await run_insights_tool_request(
+            self.insights_client.get("repositories/", params=params),
+            error_message=lambda exc: f"Error listing repositories: {exc}",
+        )
 
 
 mcp = ContentSourcesMCP()

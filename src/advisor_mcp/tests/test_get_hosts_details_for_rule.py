@@ -2,6 +2,8 @@
 
 import pytest
 
+from insights_mcp.errors import InsightsApiError
+
 from .conftest import TEST_RHEL_VERSION, TEST_RULE_ID, get_default_hosts_details_params, setup_advisor_mock
 
 
@@ -153,11 +155,12 @@ class TestGetHostsDetailsForRule:
 
         # Call the method with invalid RHEL version
         params = get_default_hosts_details_params(rule_id=rule_id, rhel_version="invalid.version")
-        result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
+        with pytest.raises(InsightsApiError) as exc_info:
+            await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
-        # Should return error message
-        assert "Error: Invalid RHEL version(s) 'invalid.version'" in result
-        assert "Valid versions are:" in result
+        error_message = str(exc_info.value)
+        assert "Error: Invalid RHEL version(s) 'invalid.version'" in error_message
+        assert "Valid versions are:" in error_message
 
     @pytest.mark.parametrize(
         "rule_id, expected_error",
@@ -170,8 +173,9 @@ class TestGetHostsDetailsForRule:
     async def test_get_hosts_details_for_rule_invalid_rule_id(self, advisor_mcp_server, rule_id, expected_error):
         """Test get_hosts_details_for_rule with various invalid rule IDs."""
         params = get_default_hosts_details_params(rule_id=rule_id)
-        result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
-        assert result == expected_error
+        with pytest.raises(InsightsApiError) as exc_info:
+            await advisor_mcp_server.get_hosts_details_for_rule(**params)
+        assert str(exc_info.value) == expected_error
 
     @pytest.mark.asyncio
     async def test_get_hosts_details_for_rule_api_error(self, advisor_mcp_server, advisor_mock_client):
@@ -180,13 +184,13 @@ class TestGetHostsDetailsForRule:
 
         # Setup mocks
         with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
-            # Call the method
             params = get_default_hosts_details_params(rule_id=rule_id)
-            result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
+            with pytest.raises(InsightsApiError) as exc_info:
+                await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
-            # Should return error message
-            assert f"Failed to retrieve detailed system information for recommendation {rule_id}:" in result
-            assert "API Error" in result
+            error_message = str(exc_info.value)
+            assert f"Failed to retrieve detailed system information for recommendation {rule_id}:" in error_message
+            assert "API Error" in error_message
 
     @pytest.mark.asyncio
     async def test_get_hosts_details_for_rule_empty_response(self, advisor_mcp_server, advisor_mock_client):
@@ -207,10 +211,10 @@ class TestGetHostsDetailsForRule:
         """Test get_hosts_details_for_rule with whitespace-only rule ID."""
         # Call the method with whitespace-only rule_id
         params = get_default_hosts_details_params(rule_id="   ")
-        result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
+        with pytest.raises(InsightsApiError) as exc_info:
+            await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
-        # Should return error message
-        assert result == "Error: Recommendation ID must be a non-empty string."
+        assert str(exc_info.value) == "Error: Recommendation ID must be a non-empty string."
 
     @pytest.mark.parametrize(
         "exception, error_message",
@@ -229,13 +233,13 @@ class TestGetHostsDetailsForRule:
 
         # Setup mocks with exception
         with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, side_effect=exception):
-            # Call the method
             params = get_default_hosts_details_params(rule_id=rule_id)
-            result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
+            with pytest.raises(InsightsApiError) as exc_info:
+                await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
-            # Should return error message
-            assert f"Failed to retrieve detailed system information for recommendation {rule_id}:" in result
-            assert error_message in result
+            error_text = str(exc_info.value)
+            assert f"Failed to retrieve detailed system information for recommendation {rule_id}:" in error_text
+            assert error_message in error_text
 
     @pytest.mark.asyncio
     async def test_get_hosts_details_for_rule_valid_rhel_versions(
@@ -314,8 +318,9 @@ class TestGetHostsDetailsForRule:
 
         # Call the method with invalid RHEL versions
         params = get_default_hosts_details_params(rule_id=rule_id, rhel_version=invalid_versions)
-        result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
+        with pytest.raises(InsightsApiError) as exc_info:
+            await advisor_mcp_server.get_hosts_details_for_rule(**params)
 
-        # Should return error message with all invalid versions
-        assert "Error: Invalid RHEL version(s) '5.9, 11.0, 9.99'" in result
-        assert "Valid versions are:" in result
+        error_message = str(exc_info.value)
+        assert "Error: Invalid RHEL version(s) '5.9, 11.0, 9.99'" in error_message
+        assert "Valid versions are:" in error_message

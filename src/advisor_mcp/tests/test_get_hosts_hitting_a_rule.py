@@ -2,6 +2,8 @@
 
 import pytest
 
+from insights_mcp.errors import InsightsApiError
+
 from .conftest import TEST_RULE_ID, setup_advisor_mock
 
 
@@ -42,17 +44,17 @@ class TestGetHostsHittingARule:
     @pytest.mark.asyncio
     async def test_get_hosts_hitting_a_rule_invalid_rule_id(self, advisor_mcp_server, rule_id, expected_error):
         """Test get_hosts_hitting_a_rule with various invalid rule IDs."""
-        result = await advisor_mcp_server.get_hosts_hitting_a_rule(rule_id=rule_id)
-        assert result == expected_error
+        with pytest.raises(InsightsApiError) as exc_info:
+            await advisor_mcp_server.get_hosts_hitting_a_rule(rule_id=rule_id)
+        assert str(exc_info.value) == expected_error
 
     @pytest.mark.asyncio
     async def test_get_hosts_hitting_a_rule_whitespace_rule_id(self, advisor_mcp_server):
         """Test get_hosts_hitting_a_rule with whitespace-only rule ID."""
-        # Call the method with whitespace-only rule_id
-        result = await advisor_mcp_server.get_hosts_hitting_a_rule(rule_id="   ")
+        with pytest.raises(InsightsApiError) as exc_info:
+            await advisor_mcp_server.get_hosts_hitting_a_rule(rule_id="   ")
 
-        # Should return error message
-        assert result == "Error: Recommendation ID must be a non-empty string."
+        assert str(exc_info.value) == "Error: Recommendation ID must be a non-empty string."
 
     @pytest.mark.asyncio
     async def test_get_hosts_hitting_a_rule_whitespace_handling(
@@ -76,12 +78,12 @@ class TestGetHostsHittingARule:
 
         # Setup mocks
         with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
-            # Call the method
-            result = await advisor_mcp_server.get_hosts_hitting_a_rule(rule_id=rule_id)
+            with pytest.raises(InsightsApiError) as exc_info:
+                await advisor_mcp_server.get_hosts_hitting_a_rule(rule_id=rule_id)
 
-            # Should return error message
-            assert f"Failed to retrieve systems for recommendation {rule_id}:" in result
-            assert "API Error" in result
+            error_message = str(exc_info.value)
+            assert f"Failed to retrieve systems for recommendation {rule_id}:" in error_message
+            assert "API Error" in error_message
 
     @pytest.mark.asyncio
     async def test_get_hosts_hitting_a_rule_empty_response(self, advisor_mcp_server, advisor_mock_client):

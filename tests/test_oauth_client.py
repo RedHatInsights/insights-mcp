@@ -8,6 +8,7 @@ token extraction from FastMCP context and OAuth-authenticated API calls.
 # Pytest fixtures are injected as function parameters, which pylint
 # incorrectly flags as redefining names from outer scope.
 
+import json
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -127,10 +128,12 @@ class TestMakeRequest:
 
     @pytest.fixture
     def mock_get_response(self):
-        """Mock HTTP GET response."""
+        """Mock HTTP GET response compatible with InsightsClientBase.make_request."""
         response = Mock()
         response.status_code = 200
-        response.json.return_value = {"data": "test"}
+        response.headers = {}
+        response.content = json.dumps({"data": "test"}).encode("utf-8")
+        response.raise_for_status = Mock()
         return response
 
     @pytest.mark.asyncio

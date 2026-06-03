@@ -8,6 +8,7 @@ from fastmcp.tools import Tool
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
+from insights_mcp.errors import InsightsApiError
 from insights_mcp.mcp import InsightsMCP
 
 
@@ -374,7 +375,9 @@ class AdvisorMCP(InsightsMCP):
                         tag_list.append(tag)
                     elif tag:
                         self.logger.error("Invalid tag format '%s', Required format: namespace/key=value", tag)
-                        return f"Error: Invalid tag format '{tag}', Required format: namespace/key=value"
+                        raise InsightsApiError(
+                            f"Error: Invalid tag format '{tag}', Required format: namespace/key=value"
+                        )
 
                 if tag_list:
                     params["tags"] = ",".join(tag_list)
@@ -384,7 +387,7 @@ class AdvisorMCP(InsightsMCP):
             return response
         except Exception as e:  # pylint: disable=broad-except
             self.logger.error("Error: Failed to retrieve recommendations: %s", str(e))
-            return f"Error: Failed to retrieve recommendations: {str(e)}"
+            raise InsightsApiError(f"Error: Failed to retrieve recommendations: {str(e)}") from e
 
     async def get_rule_from_node_id(
         self,
@@ -408,7 +411,7 @@ class AdvisorMCP(InsightsMCP):
             return response
         except Exception as e:  # pylint: disable=broad-except
             self.logger.error("Failed to retrieve recommendation for node ID %s: %s", node_id, str(e))
-            return f"Error: Failed to retrieve recommendation for node ID {node_id}: {str(e)}"
+            raise InsightsApiError(f"Error: Failed to retrieve recommendation for node ID {node_id}: {str(e)}") from e
 
     async def get_rule_details(
         self,
@@ -425,19 +428,19 @@ class AdvisorMCP(InsightsMCP):
             Standard call: {"rule_id": "xfs_with_md_raid_hang|XFS_WITH_MD_RAID_HANG_ISSUE_DEFAULT_KERNEL"}
         """
         if not rule_id or not isinstance(rule_id, str) or "|" not in rule_id:
-            return "Error: Recommendation ID must be a non-empty string in format rule_name|ERROR_KEY."
+            raise InsightsApiError("Error: Recommendation ID must be a non-empty string in format rule_name|ERROR_KEY.")
 
         # Basic sanitization for rule_id
         sanitized_rule_id = rule_id.strip()
         if not sanitized_rule_id:
-            return "Error: Recommendation ID cannot be empty."
+            raise InsightsApiError("Error: Recommendation ID cannot be empty.")
 
         try:
             response = await self.insights_client.get(f"rule/{sanitized_rule_id}/")
             return response
         except Exception as e:  # pylint: disable=broad-except
             self.logger.error("Error: Failed to retrieve recommendation details for %s: %s", rule_id, str(e))
-            return f"Error: Failed to retrieve recommendation details for {rule_id}: {str(e)}"
+            raise InsightsApiError(f"Error: Failed to retrieve recommendation details for {rule_id}: {str(e)}") from e
 
     async def get_hosts_hitting_a_rule(
         self,
@@ -456,18 +459,18 @@ class AdvisorMCP(InsightsMCP):
             Standard call: {"rule_id": "xfs_with_md_raid_hang|XFS_WITH_MD_RAID_HANG_ISSUE_DEFAULT_KERNEL"}
         """
         if not rule_id or not isinstance(rule_id, str) or "|" not in rule_id:
-            return "Error: Recommendation ID must be a non-empty string."
+            raise InsightsApiError("Error: Recommendation ID must be a non-empty string.")
 
         sanitized_rule_id = rule_id.strip()
         if not sanitized_rule_id:
-            return "Error: Recommendation ID cannot be empty."
+            raise InsightsApiError("Error: Recommendation ID cannot be empty.")
 
         try:
             response = await self.insights_client.get(f"rule/{sanitized_rule_id}/systems/")
             return response
         except Exception as e:  # pylint: disable=broad-except
             self.logger.error("Error: Failed to retrieve systems for recommendation %s: %s", rule_id, str(e))
-            return f"Error: Failed to retrieve systems for recommendation {rule_id}: {str(e)}"
+            raise InsightsApiError(f"Error: Failed to retrieve systems for recommendation {rule_id}: {str(e)}") from e
 
     async def get_hosts_details_for_rule(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
         self,
@@ -506,11 +509,11 @@ class AdvisorMCP(InsightsMCP):
             Combined filters: {"rule_id": "rule_id", "limit": 50, "offset": 20, "rhel_version": "8.9"}
         """
         if not rule_id or not isinstance(rule_id, str) or "|" not in rule_id:
-            return "Error: Recommendation ID must be a non-empty string."
+            raise InsightsApiError("Error: Recommendation ID must be a non-empty string.")
 
         sanitized_rule_id = rule_id.strip()
         if not sanitized_rule_id:
-            return "Error: Recommendation ID cannot be empty."
+            raise InsightsApiError("Error: Recommendation ID cannot be empty.")
 
         rhel_version_list = self._parse_string_list(rhel_version)
 
@@ -578,7 +581,9 @@ class AdvisorMCP(InsightsMCP):
                 )
                 valid_versions = ", ".join(sorted(valid_rhel_versions))
                 invalid_list = ", ".join(invalid_versions)
-                return f"Error: Invalid RHEL version(s) '{invalid_list}'. Valid versions are: {valid_versions}"
+                raise InsightsApiError(
+                    f"Error: Invalid RHEL version(s) '{invalid_list}'. Valid versions are: {valid_versions}"
+                )
 
         # Build query parameters
         params: dict[str, int | str] = {}
@@ -594,7 +599,9 @@ class AdvisorMCP(InsightsMCP):
             self.logger.error(
                 "Error: Failed to retrieve detailed system information for recommendation %s: %s", rule_id, str(e)
             )
-            return f"Error: Failed to retrieve detailed system information for recommendation {rule_id}: {str(e)}"
+            raise InsightsApiError(
+                f"Error: Failed to retrieve detailed system information for recommendation {rule_id}: {str(e)}"
+            ) from e
 
     async def get_rule_by_text_search(
         self,
@@ -611,14 +618,14 @@ class AdvisorMCP(InsightsMCP):
         """
         sanitized_text = text.strip()
         if not sanitized_text:
-            return "Error: Text search query must be a non-empty string."
+            raise InsightsApiError("Error: Text search query must be a non-empty string.")
 
         try:
             response = await self.insights_client.get("rule/", params={"text": sanitized_text})
             return response
         except Exception as e:  # pylint: disable=broad-except
             self.logger.error("Error: Failed to retrieve recommendations for text search '%s': %s", text, str(e))
-            return f"Error: Failed to retrieve recommendations for text search {text}: {str(e)}"
+            raise InsightsApiError(f"Error: Failed to retrieve recommendations for text search {text}: {str(e)}") from e
 
     async def get_recommendations_stats(
         self,
@@ -674,7 +681,9 @@ class AdvisorMCP(InsightsMCP):
                         continue
                     if "/" not in tag_stripped or "=" not in tag_stripped:
                         self.logger.error("Invalid tag format '%s', expected namespace/key=value", tag_stripped)
-                        return f"Error: Invalid tag format '{tag_stripped}', expected namespace/key=value"
+                        raise InsightsApiError(
+                            f"Error: Invalid tag format '{tag_stripped}', expected namespace/key=value"
+                        )
                     tag_list.append(tag_stripped)
 
                 if tag_list:
@@ -685,7 +694,7 @@ class AdvisorMCP(InsightsMCP):
             return response
         except Exception as e:  # pylint: disable=broad-except
             self.logger.error("Error: Failed to retrieve recommendations statistics: %s", str(e))
-            return f"Error: Failed to retrieve recommendations statistics: {str(e)}"
+            raise InsightsApiError(f"Error: Failed to retrieve recommendations statistics: {str(e)}") from e
 
 
 mcp_server = AdvisorMCP()

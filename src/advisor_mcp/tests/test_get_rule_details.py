@@ -2,6 +2,8 @@
 
 import pytest
 
+from insights_mcp.errors import InsightsApiError
+
 from .conftest import TEST_RULE_ID, setup_advisor_mock
 
 
@@ -73,31 +75,32 @@ class TestGetRuleDetails:
     @pytest.mark.asyncio
     async def test_get_rule_details_invalid_rule_id(self, advisor_mcp_server, rule_id, expected_error):
         """Test get_rule_details with various invalid rule IDs."""
-        result = await advisor_mcp_server.get_rule_details(rule_id=rule_id)
-        assert result == expected_error
+        with pytest.raises(InsightsApiError) as exc_info:
+            await advisor_mcp_server.get_rule_details(rule_id=rule_id)
+        assert str(exc_info.value) == expected_error
 
     @pytest.mark.asyncio
     async def test_get_rule_details_whitespace_rule_id(self, advisor_mcp_server):
         """Test get_rule_details with whitespace-only rule ID."""
-        # Call the method with whitespace-only rule_id
-        result = await advisor_mcp_server.get_rule_details(rule_id="   ")
+        with pytest.raises(InsightsApiError) as exc_info:
+            await advisor_mcp_server.get_rule_details(rule_id="   ")
 
-        # Should return error message
-        assert result == "Error: Recommendation ID must be a non-empty string in format rule_name|ERROR_KEY."
+        assert str(exc_info.value) == (
+            "Error: Recommendation ID must be a non-empty string in format rule_name|ERROR_KEY."
+        )
 
     @pytest.mark.asyncio
     async def test_get_rule_details_api_error(self, advisor_mcp_server, advisor_mock_client):
         """Test get_rule_details when API returns error."""
         rule_id = TEST_RULE_ID
 
-        # Setup mocks
         with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
-            # Call the method
-            result = await advisor_mcp_server.get_rule_details(rule_id=rule_id)
+            with pytest.raises(InsightsApiError) as exc_info:
+                await advisor_mcp_server.get_rule_details(rule_id=rule_id)
 
-            # Should return error message
-            assert f"Failed to retrieve recommendation details for {rule_id}:" in result
-            assert "API Error" in result
+            error_message = str(exc_info.value)
+            assert f"Failed to retrieve recommendation details for {rule_id}:" in error_message
+            assert "API Error" in error_message
 
     @pytest.mark.asyncio
     async def test_get_rule_details_empty_response(self, advisor_mcp_server, advisor_mock_client):
