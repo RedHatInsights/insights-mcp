@@ -19,6 +19,7 @@ from advisor_mcp.server import mcp_server as AdvisorMCP
 from content_sources_mcp.server import mcp as ContentSourcesMCP
 from image_builder_mcp.server import mcp_server as ImageBuilderMCP
 from insights_mcp import __version__, config
+from insights_mcp.catalog_tools import catalog_tool_description
 from insights_mcp.mcp import InsightsMCP
 from insights_mcp.oauth import create_oauth_provider
 from inventory_mcp.server import mcp as InventoryMCP
@@ -189,21 +190,6 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
             self.mount(mcp, prefix=f"{mcp.toolset_name}_")
 
 
-def _get_tool_description(tool: Any) -> str:
-    """Extract first line of description or title for a tool."""
-    desc = getattr(tool, "description", None) or ""
-    title = getattr(tool, "title", None) or ""
-    text = (desc or title).strip()
-    if not text:
-        return ""
-    first_line = text.split("\n", 1)[0].strip()
-    # Truncate very long lines
-    if len(first_line) > 100:
-        last_space = first_line.rfind(" ", 80, 99)
-        first_line = first_line[: last_space + 1 if last_space != -1 else 99] + "…"
-    return first_line
-
-
 def _collect_readwrite_tools_from_temp_root(allowed_mcps: list[str]) -> dict[str, list[tuple[str, str]]]:
     """Collect read-write tools from a temporary InsightsMCP container.
 
@@ -230,7 +216,7 @@ def _collect_readwrite_tools_from_temp_root(allowed_mcps: list[str]) -> dict[str
                 toolset_name = name.split("_", 1)[0]
                 if toolset_name not in rw_by_toolset:
                     rw_by_toolset[toolset_name] = []
-                desc = _get_tool_description(tool)
+                desc = catalog_tool_description(tool)
                 rw_by_toolset[toolset_name].append((name, desc))
     for toolset_name in rw_by_toolset:
         rw_by_toolset[toolset_name] = sorted(rw_by_toolset[toolset_name], key=lambda x: x[0])

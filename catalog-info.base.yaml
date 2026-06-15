@@ -1,0 +1,40 @@
+apiVersion: mcp/v1beta1
+kind: MCPServer
+metadata:
+  annotations:
+    github.com/project-slug: RedHatInsights/insights-mcp
+    backstage.io/managed-by-location: url:https://github.com/RedHatInsights/insights-mcp/blob/main/catalog-info.yaml
+    backstage.io/managed-by-origin-location: url:https://github.com/RedHatInsights/insights-mcp/blob/main/catalog-info.yaml
+    backstage.io/view-url: https://github.com/RedHatInsights/insights-mcp/blob/main/catalog-info.yaml
+    backstage.io/edit-url: https://github.com/RedHatInsights/insights-mcp/edit/main/catalog-info.yaml
+    backstage.io/source-location: url:https://github.com/RedHatInsights/insights-mcp/tree/main/
+  name: lightspeed-mcp-server
+  title: Red Hat Lightspeed MCP Server
+  namespace: redhat
+  description: An MCP server to enable AI agents to query platform data, analyze
+    systems, identify critical vulnerabilities, and perform proactive planning
+    and lifecycle management.
+  tags:
+    - mcp
+    - lightspeed
+    - administration
+    - placeholder
+  links:
+    - url: https://github.com/RedHatInsights/insights-mcp/blob/main/catalog-info.yaml
+      title: catalog-info.yaml on GitHub
+      type: documentation
+    - url: https://catalog.redhat.com/en/software/container-stacks/detail/69441d9d0df8059c340fa3f1
+      title: View on Red Hat Catalog
+      type: documentation
+relations:
+  - type: ownedBy
+    targetRef: group:redhat/rh-lightspeed-mcp
+spec:
+  type: local
+  lifecycle: developer-preview
+  owner: group:redhat/rh-lightspeed-mcp
+  packages:
+    - type: docker
+      registry: ghcr.io
+      name: redhatinsights/red-hat-lightspeed-mcp
+      version: latest

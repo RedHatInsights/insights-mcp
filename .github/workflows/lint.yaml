@@ -26,6 +26,15 @@ jobs:
       - name: Run lint
         run: make lint
 
+      - name: Check generated docs are up to date
+        run: |
+          make generate-docs
+          if git diff --name-only | grep .; then
+            echo "Error: generated files are out of date"
+            echo "Please run 'make generate-docs' and commit the changes"
+            exit 1
+          fi
+
       - name: Fail if there are changed files
         run: |
           if git diff --name-only | grep .; then
