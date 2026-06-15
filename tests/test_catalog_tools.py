@@ -2,29 +2,33 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
+from fastmcp.tools import Tool
 
 from insights_mcp.catalog_tools import catalog_tool_description, collect_tool_primitives
 
 
-def _make_tool(
-    *,
-    name: str = "example_tool",
-    title: str = "",
-    description: str = "",
-) -> SimpleNamespace:
-    return SimpleNamespace(name=name, title=title, description=description)
+def _make_tool(*, docstring: str = "", title: str | None = None) -> Tool:
+    """Build a FastMCP Tool for unit tests."""
+
+    async def stub_tool() -> str:
+        return ""
+
+    stub_tool.__doc__ = docstring
+    tool = Tool.from_function(stub_tool, name="stub_tool")
+    if title is not None:
+        tool.title = title
+    return tool
 
 
 def test_catalog_tool_description_prefers_title() -> None:
     """Title is used when both title and description are present."""
-    tool = _make_tool(title="Short title", description="Longer description line")
+    tool = _make_tool(docstring="Longer description line", title="Short title")
     assert catalog_tool_description(tool) == "Short title"
 
 
 def test_catalog_tool_description_uses_description_when_title_missing() -> None:
     """Description first line is used when title is not set."""
-    tool = _make_tool(description="List CVEs affecting the account.")
+    tool = _make_tool(docstring="List CVEs affecting the account.")
     assert catalog_tool_description(tool) == "List CVEs affecting the account."
 
 

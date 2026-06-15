@@ -1,6 +1,7 @@
 """Test get_instructions for read-only vs all-tools modes."""
 
-from insights_mcp.server import MCPS, get_instructions
+from insights_mcp.server import get_instructions
+from insights_mcp.toolsets import MCPS
 
 ADDITIONAL_TOOLS_PHRASE = "Additional tools are available but not enabled"
 

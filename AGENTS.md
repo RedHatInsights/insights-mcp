@@ -35,13 +35,13 @@ The project uses a **toolset-based architecture** where each service is implemen
 - Most toolsets: `src/<toolset_name>_mcp/server.py` (e.g., `src/vulnerability_mcp/server.py`)
 - Legacy pattern: `src/insights_mcp/servers/<name>.py` (e.g., example toolset)
 
-**Example toolsets (see `src/insights_mcp/server.py` MCPS list for complete current list):**
+**Example toolsets (see `src/insights_mcp/toolsets.py` MCPS list for complete current list):**
 - **image-builder** (`src/image_builder_mcp/server.py`): Linux image building tools
 - **vulnerability** (`src/vulnerability_mcp/server.py`): Security vulnerability management
 - **inventory** (`src/inventory_mcp/server.py`): System inventory management
 
 **Toolset Registration:**
-- Toolsets are registered in `MCPS` list in `src/insights_mcp/server.py`
+- Toolsets are registered in `MCPS` list in `src/insights_mcp/toolsets.py`
 - Each toolset has a unique `toolset_name` for identification
 - Tools are mounted with toolset prefix (e.g., `image-builder_get_blueprints`)
 - Users can select specific toolsets: `insights-mcp --toolset=image-builder`
@@ -226,7 +226,7 @@ insights-mcp --toolset=image-builder,vulnerability # Multiple specific toolsets
 1. Create new class inheriting from `InsightsMCP` in `src/insights_mcp/servers/`
 2. Set unique `toolset_name` and appropriate `api_path`
 3. Implement tools using `@mcp.tool()` decorator
-4. Add toolset to `MCPS` list in `src/insights_mcp/server.py`
+4. Add toolset to `MCPS` list in `src/insights_mcp/toolsets.py`
 5. Write unit and integration tests
 
 ### Adding New Tools to Existing Toolsets

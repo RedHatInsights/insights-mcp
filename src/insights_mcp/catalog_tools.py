@@ -4,35 +4,16 @@ from __future__ import annotations
 
 import asyncio
 from string import Template
-from typing import Protocol
+
+from fastmcp.tools import Tool
 
 from insights_mcp.mcp import InsightsMCP
-
-# Deferred import avoids circular dependency: server.py imports this module.
-_MCPS: list[InsightsMCP] | None = None
+from insights_mcp.toolsets import MCPS
 
 _DESCRIPTION_MAX_LENGTH = 100
 
 
-class ToolDescriptionSource(Protocol):
-    """Minimal tool surface used for catalog description extraction."""
-
-    name: str
-    title: str | None
-    description: str | None
-
-
-def _get_mcps() -> list[InsightsMCP]:
-    """Return registered MCP toolsets, importing lazily from server."""
-    global _MCPS  # pylint: disable=global-statement
-    if _MCPS is None:
-        from insights_mcp.server import MCPS  # pylint: disable=import-outside-toplevel
-
-        _MCPS = MCPS
-    return _MCPS
-
-
-def catalog_tool_description(tool: ToolDescriptionSource, *, brand_long: str | None = None) -> str:
+def catalog_tool_description(tool: Tool, *, brand_long: str | None = None) -> str:
     """Extract a short catalog description from an MCP tool.
 
     Uses ``tool.title`` when set by the toolset, otherwise the first line of
@@ -62,10 +43,10 @@ def _truncate_description(first_line: str) -> str:
     return first_line[:truncate_at] + "…"
 
 
-def _list_mounted_tools() -> list[ToolDescriptionSource]:
+def _list_mounted_tools() -> list[Tool]:
     """Register, mount, and list tools using the same naming as InsightsMCPServer."""
     temp_root = InsightsMCP(name="temp", toolset_name="temp", api_path="")
-    for mcp in _get_mcps():
+    for mcp in MCPS:
         try:
             temp_sub = type(mcp)()  # type: ignore[call-arg]
             temp_sub.register_tools()
