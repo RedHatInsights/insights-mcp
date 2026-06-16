@@ -265,6 +265,17 @@ def get_instructions(allowed_mcps: list[str], readonly: bool = True) -> str:
                 + "\n\n".join(tools_sections)
             )
 
+    rbac_note = (
+        "## RBAC diagnostics\n\n"
+        "If any tool returns HTTP 403 Forbidden, call `rbac__explain_access_denied` with the "
+        "failed tool name (e.g. `vulnerability__get_system_cves`) or the request URL before "
+        "suggesting permissions or roles. Do not invent permission names.\n"
+    )
+    if "rbac" in allowed_mcps:
+        instructions_parts.append(rbac_note)
+    elif any(ts in allowed_mcps for ts in ("inventory", "vulnerability", "advisor")):
+        instructions_parts.append(rbac_note)
+
     return "\n\n".join(instructions_parts)
 
 

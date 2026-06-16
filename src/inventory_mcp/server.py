@@ -21,9 +21,7 @@ mcp = InsightsMCP(
     This server provides tools to get host inventory data for systems connected to $container_brand_long.
     You can get information about connected systems, their operating systems, installed packages, etc.
 
-    $container_brand_long Host Inventory requires correct RBAC permissions to be able to use the tools. Ensure that your
-    Service Account has at least this role:
-    - Inventory Hosts viewer
+    On permission errors (HTTP 403), call rbac__explain_access_denied with the failed tool name or URL.
     """,
 )
 

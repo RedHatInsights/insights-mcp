@@ -34,6 +34,28 @@ especially handing over environment variables and credentials
 - Default configuration with service account credentials in header or JWT Bearer token
 - Custom environment: `INSIGHTS_BASE_URL` and `INSIGHTS_SSO_BASE_URL` set with credentials in header
 
+## RBAC manifest pipeline
+
+MCP tools map to REST endpoints and documented upstream RBAC requirements in
+`src/insights_mcp/rbac/data/tool_rbac_manifest.json`. Regenerate after changing tools
+or when refreshing permissions from upstream:
+
+```bash
+make generate-rbac-manifest
+make check-rbac-manifest   # CI: fail if committed JSON is stale
+```
+
+**Sources (merge priority):**
+
+1. Upstream service enforcement (`scripts/scrape_upstream_rbac.py` → `upstream_permissions.json`)
+2. [RedHatInsights/rbac-config](https://github.com/RedHatInsights/rbac-config) prod roles (`configs/rbac_config_ref.txt`)
+3. Vendored OpenAPI in `apis/` (`scripts/parse_openapi_permissions.py`)
+4. Tool REST mappings in `configs/tool_rest_map.json` (skeletons for all read-only tools)
+
+**Runtime:** `rbac__explain_access_denied` resolves requirements as bundled verified → upstream bundle → live `openapi.json` (TTL cache) → unknown. Platform roles for suggestions are refreshed from rbac-config on GitHub (`RBAC_CONFIG_REF`, `RBAC_CONFIG_CACHE_TTL_SECONDS`, default 24h) with bundled `role_recommendations.json` fallback.
+
+On HTTP 403, call `rbac__explain_access_denied` before suggesting permissions or roles—never invent permission names.
+
 ## Architecture
 
 ### Application Structure

@@ -197,6 +197,14 @@ run-oauth: build ## Run the MCP server with OAuth transport
 ALL_PYTHON_FILES := $(shell find src -name "*.py")
 
 .PHONY: generate-docs
+.PHONY: generate-rbac-manifest
+generate-rbac-manifest: ## Regenerate RBAC manifest, roles, and upstream_permissions from pinned sources
+	uv run python scripts/generate_tool_rbac_manifest.py
+
+.PHONY: check-rbac-manifest
+check-rbac-manifest: generate-rbac-manifest ## Fail if RBAC data files differ from generator output
+	git diff --exit-code -- src/insights_mcp/rbac/data/
+
 generate-docs: usage.md toolsets.md docs/architecture-structure.svg docs/architecture-deployment.svg ## Generate documentation from the MCP server
 
 usage.md: $(ALL_PYTHON_FILES) Makefile

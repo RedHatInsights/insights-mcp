@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "upstream_refs": {
+    "RedHatInsights/insights-host-inventory": "master",
+    "RedHatInsights/vulnerability-engine": "master"
+  },
+  "endpoints": {
+    "GET api/inventory/v1/hosts": {
+      "application": "inventory",
+      "required_v1_permissions": [
+        [
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "inventory_host_view",
+      "kessel_note": "",
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/insights-host-inventory",
+        "file": "api/host.py",
+        "handler": "get_host_list",
+        "rbac_decorators": [
+          "KesselResourceTypes.HOST.view"
+        ]
+      }
+    },
+    "GET api/inventory/v1/hosts/{host_ids}": {
+      "application": "inventory",
+      "required_v1_permissions": [
+        [
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "inventory_host_view",
+      "kessel_note": "",
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/insights-host-inventory",
+        "file": "api/host.py",
+        "handler": "get_host_list",
+        "rbac_decorators": [
+          "KesselResourceTypes.HOST.view"
+        ]
+      }
+    },
+    "GET api/inventory/v1/hosts/{host_ids}/system_profile": {
+      "application": "inventory",
+      "required_v1_permissions": [
+        [
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "inventory_host_view",
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/insights-host-inventory",
+        "file": "api/host.py",
+        "handler": "get_host_list",
+        "rbac_decorators": [
+          "KesselResourceTypes.HOST.view"
+        ]
+      }
+    },
+    "GET api/inventory/v1/hosts/{host_ids}/tags": {
+      "application": "inventory",
+      "required_v1_permissions": [
+        [
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "inventory_host_view",
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/insights-host-inventory",
+        "file": "api/host.py",
+        "handler": "get_host_list",
+        "rbac_decorators": [
+          "KesselResourceTypes.HOST.view"
+        ]
+      }
+    },
+    "GET api/vulnerability/v1/systems/{inventory_id}/cves": {
+      "application": "vulnerability",
+      "required_v1_permissions": [
+        [
+          "vulnerability:vulnerability_results:read",
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "vulnerability_vulnerability_results_view",
+      "kessel_note": "Kessel: vulnerability_vulnerability_results_view requires inventory_host_view on the host workspace (see RedHatInsights/rbac-config vulnerability.ksl).",
+      "user_guidance_notes": [
+        "Do not suggest vulnerability:system.cves:read; it is not a valid permission."
+      ],
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/vulnerability-engine",
+        "file": "manager/system_handler.py",
+        "handler": "GetSystemsCves.handle_get",
+        "rbac_decorators": [
+          "RbacRoutePermissions.VULNERABILITY_RESULTS"
+        ]
+      }
+    },
+    "GET api/vulnerability/v1/vulnerabilities/cves": {
+      "application": "vulnerability",
+      "required_v1_permissions": [
+        [
+          "vulnerability:vulnerability_results:read",
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "vulnerability_vulnerability_results_view",
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/vulnerability-engine",
+        "file": "manager/vuln_handler.py",
+        "handler": "GetCves",
+        "rbac_decorators": [
+          "RbacRoutePermissions.VULNERABILITY_RESULTS"
+        ]
+      }
+    },
+    "GET api/vulnerability/v1/cves/{cve}": {
+      "application": "vulnerability",
+      "required_v1_permissions": [
+        [
+          "vulnerability:vulnerability_results:read",
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "vulnerability_vulnerability_results_view",
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/vulnerability-engine",
+        "file": "manager/vuln_handler.py",
+        "handler": "GetCveDetails",
+        "rbac_decorators": [
+          "RbacRoutePermissions.VULNERABILITY_RESULTS"
+        ]
+      }
+    },
+    "GET api/vulnerability/v1/cves/{cve}/affected_systems": {
+      "application": "vulnerability",
+      "required_v1_permissions": [
+        [
+          "vulnerability:vulnerability_results:read",
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "vulnerability_vulnerability_results_view",
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/vulnerability-engine",
+        "file": "manager/vuln_handler.py",
+        "handler": "GetCveAffectedSystems",
+        "rbac_decorators": [
+          "RbacRoutePermissions.VULNERABILITY_RESULTS"
+        ]
+      }
+    },
+    "GET api/vulnerability/v1/systems": {
+      "application": "vulnerability",
+      "required_v1_permissions": [
+        [
+          "vulnerability:vulnerability_results:read",
+          "inventory:hosts:read"
+        ]
+      ],
+      "kessel_permission": "vulnerability_vulnerability_results_view",
+      "verified": true,
+      "upstream": {
+        "repo": "RedHatInsights/vulnerability-engine",
+        "file": "manager/system_handler.py",
+        "handler": "GetSystems",
+        "rbac_decorators": [
+          "RbacRoutePermissions.VULNERABILITY_RESULTS"
+        ]
+      }
+    }
+  }
+}

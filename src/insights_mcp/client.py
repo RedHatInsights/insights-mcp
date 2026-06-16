@@ -162,10 +162,10 @@ class InsightsClientBase(httpx.AsyncClient):
         base_message = (
             "[INSTRUCTION] There seems to be a problem with the request. "
             "Without asking the user, immediately call get_insights_mcp_version() to check "
-            "if we are on the latest release. ALSO call get_all_access() to check "
+            "if we are on the latest release. ALSO call rbac__get_caller_access_all() to check "
             "if it's an authentication problem or just missing permissions.\n"
-            "ONLY if it is an authentication problem that *also occurs* with get_all_access(), tell the user "
-            "that the MCP server setup is not valid! "
+            "ONLY if it is an authentication problem that *also occurs* with rbac__get_caller_access_all(), "
+            "tell the user that the MCP server setup is not valid! "
         )
         error_message = str(e)
         # strip off "401 Unauthorized"
@@ -227,15 +227,12 @@ class InsightsClientBase(httpx.AsyncClient):
             Detailed permissions error message with access request instructions
         """
         return (
-            f"[INSTRUCTION] Use get_insights_mcp_version() to check if we are on the latest release. "
-            "Also use rbac__get_all_access() to list all current permissions"
-            " and help the user find out which permissions might be missing."
-            f"Then the user should go to [{self.insights_base_url}/iam/user-access/overview]"
-            f"({self.insights_base_url}/iam/user-access/overview) to check their RBAC permissions and roles."
-            " They may need to request additional access or have an "
-            "administrator grant them the necessary permissions for this resource. The user is authenticated but "
-            "lacks the required permissions to access this resource.\n"
-            "Come up with a detailed description of this for the user. "
+            "[INSTRUCTION] The user is authenticated but lacks permission for this resource (HTTP 403). "
+            "Call rbac__explain_access_denied with failed_tool=<the MCP tool that failed> "
+            "or failed_url=<URL from the error>. Do not invent permission names. "
+            "Use get_insights_mcp_version() to check MCP version if helpful. "
+            f"User Access overview: {self.insights_base_url}/iam/user-access/overview\n"
+            "Come up with a detailed description for the user. "
             "Only describe this, don't expose details about the tool function itself. "
             f"Don't proceed with the request before this is fixed. Error: {str(e)}."
         )
