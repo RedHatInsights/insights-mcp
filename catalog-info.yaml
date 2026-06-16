@@ -1,44 +1,38 @@
 apiVersion: mcp/v1beta1
 kind: MCPServer
 metadata:
-  annotations:
-    github.com/project-slug: RedHatInsights/insights-mcp
-    backstage.io/managed-by-location: url:https://github.com/RedHatInsights/insights-mcp/blob/main/catalog-info.yaml
-    backstage.io/managed-by-origin-location: url:https://github.com/RedHatInsights/insights-mcp/blob/main/catalog-info.yaml
-    backstage.io/view-url: https://github.com/RedHatInsights/insights-mcp/blob/main/catalog-info.yaml
-    backstage.io/edit-url: https://github.com/RedHatInsights/insights-mcp/edit/main/catalog-info.yaml
-    backstage.io/source-location: url:https://github.com/RedHatInsights/insights-mcp/tree/main/
   name: lightspeed-mcp-server
   title: Red Hat Lightspeed MCP Server
   namespace: redhat
-  description: An MCP server to enable AI agents to query platform data, analyze
-    systems, identify critical vulnerabilities, and perform proactive planning
-    and lifecycle management.
+
+  description: An MCP server to enable AI agents to query platform data, analyze systems, identify critical vulnerabilities, and perform proactive planning and lifecycle management.
+
   tags:
     - mcp
     - lightspeed
     - administration
-    - placeholder
+
   links:
-    - url: https://github.com/RedHatInsights/insights-mcp/blob/main/catalog-info.yaml
-      title: catalog-info.yaml on GitHub
-      type: documentation
     - url: https://catalog.redhat.com/en/software/container-stacks/detail/69441d9d0df8059c340fa3f1
       title: View on Red Hat Catalog
       type: documentation
-relations:
-  - type: ownedBy
-    targetRef: group:redhat/rh-lightspeed-mcp
+
 spec:
   type: local
   lifecycle: developer-preview
   owner: group:redhat/rh-lightspeed-mcp
+
   packages:
-    - type: docker
+    - type: container
+      registry: quay.io
+      name: redhat-services-prod/insights-management-tenant/insights-mcp/red-hat-lightspeed-mcp
+      version: latest
+    - type: container
       registry: ghcr.io
       name: redhatinsights/red-hat-lightspeed-mcp
       version: latest
   primitives:
+    # advisor
     - type: tool
       name: advisor__get_active_rules
       description: "Get Active Advisor Recommendations for Account"
@@ -60,9 +54,11 @@ spec:
     - type: tool
       name: advisor__get_rule_from_node_id
       description: "Find Advisor Recommendations using Knowledge Base solution ID or article ID"
+    # content-sources
     - type: tool
       name: content-sources__list_repositories
       description: "List repositories with filtering and pagination options."
+    # image-builder
     - type: tool
       name: image-builder__blueprint_compose
       description: "Compose an image from a blueprint UUID created with create_blueprint, get_blueprints."
@@ -93,6 +89,7 @@ spec:
     - type: tool
       name: image-builder__update_blueprint
       description: "Update a blueprint."
+    # inventory
     - type: tool
       name: inventory__find_host_by_name
       description: "Find a host by its hostname/display name."
@@ -108,6 +105,7 @@ spec:
     - type: tool
       name: inventory__list_hosts
       description: "List hosts with filtering and sorting options."
+    # planning
     - type: tool
       name: planning__get_appstreams_lifecycle
       description: "Get Application Streams lifecycle information."
@@ -126,18 +124,22 @@ spec:
     - type: tool
       name: planning__get_upcoming_changes
       description: "List upcoming package changes, deprecations, additions and enhancements."
+    # rbac
     - type: tool
       name: rbac__get_all_access
       description: "Get access information for all Red Hat insights applications."
+    # remediations
     - type: tool
       name: remediations__create_vuln_playbook
       description: "Create remediation playbook for given CVEs on given systems to mitigate vulnerabilities."
+    # rhsm
     - type: tool
       name: rhsm__get_activation_key
       description: "Get a specific activation key by name."
     - type: tool
       name: rhsm__get_activation_keys
       description: "Get the list of activation keys available to the authenticated user."
+    # vulnerability
     - type: tool
       name: vulnerability__explain_cves
       description: "Explain why CVEs are affecting my environment."

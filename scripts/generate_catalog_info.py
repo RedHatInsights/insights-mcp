@@ -69,10 +69,28 @@ def load_base_catalog(base_path: Path) -> str:
     return base_text
 
 
+def _toolset_from_primitive_name(name: str) -> str:
+    """Extract the toolset prefix from a prefixed primitive name."""
+    toolset, separator, _ = name.partition("__")
+    if not separator:
+        raise ValueError(f"Primitive name must contain '__': got {name!r}")
+    return toolset
+
+
 def format_primitives_yaml(primitives: list[dict[str, str]]) -> str:
-    """Render spec.primitives as YAML with yamllint-compatible indentation."""
+    """Render spec.primitives as YAML with yamllint-compatible indentation.
+
+    Inserts a ``# {toolset}`` comment heading before the first tool of each toolset
+    group. Primitives are expected to be sorted by name so toolsets appear
+    alphabetically.
+    """
     lines = ["  primitives:"]
+    current_toolset: str | None = None
     for primitive in primitives:
+        toolset = _toolset_from_primitive_name(primitive["name"])
+        if toolset != current_toolset:
+            lines.append(f"    # {toolset}")
+            current_toolset = toolset
         lines.append("    - type: tool")
         lines.append(f"      name: {_yaml_scalar(primitive['name'])}")
         lines.append(f"      description: {_yaml_scalar(primitive['description'])}")
