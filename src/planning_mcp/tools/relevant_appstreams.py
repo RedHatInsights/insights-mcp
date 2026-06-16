@@ -1,15 +1,11 @@
 """Helpers for the Planning MCP relevant appstreams lifecycle tool."""
-# pylint: disable=duplicate-code
 
 from __future__ import annotations
 
-import json
 from logging import Logger
-from typing import Any
 
 from insights_mcp.client import InsightsClient
-from tools.common import normalise_bool as _normalise_bool
-from tools.common import normalise_int as _normalise_int
+from tools.common import RelevantLifecycleRequest, fetch_relevant_lifecycle
 
 
 async def get_relevant_appstreams(
@@ -34,36 +30,14 @@ async def get_relevant_appstreams(
     Returns:
         A JSON-encoded string with the response data or an error message.
     """
-    try:
-        major_int = _normalise_int("major", major)
-        minor_int = _normalise_int("minor", minor)
-        include_related_bool = _normalise_bool("include_related", include_related)
-
-        if minor_int is not None and major_int is None:
-            raise ValueError("The 'minor' parameter requires 'major' to be specified")
-
-        params: dict[str, Any] = {}
-        if major_int is not None:
-            params["major"] = major_int
-        if minor_int is not None:
-            params["minor"] = minor_int
-        if include_related_bool is not None:
-            params["related"] = include_related_bool
-
-        response: dict[str, Any] | str = await insights_client.get(
-            "relevant/lifecycle/app-streams",
-            params=params,
-            timeout=30,
-        )
-
-        # The underlying client may already return a JSON string; if so, pass it through.
-        if isinstance(response, str):
-            return response
-
-        # Otherwise, encode the dict to a JSON string for the MCP client.
-        return json.dumps(response)
-    except Exception as exc:  # pylint: disable=broad-exception-caught
-        error_detail = f"Error retrieving relevant appstreams: {exc}"
-        if logger:
-            logger.error(error_detail)
-        return f"Error: API Error - {error_detail}"
+    return await fetch_relevant_lifecycle(
+        insights_client,
+        RelevantLifecycleRequest(
+            endpoint="relevant/lifecycle/app-streams",
+            operation="relevant appstreams",
+            major=major,
+            minor=minor,
+            include_related=include_related,
+        ),
+        logger,
+    )

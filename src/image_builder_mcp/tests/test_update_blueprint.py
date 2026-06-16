@@ -2,9 +2,10 @@
 
 import pytest
 
+from insights_mcp.errors import InsightsApiError
 from tests.conftest import (
     TEST_BLUEPRINT_UUID,
-    assert_api_error_result,
+    assert_api_error_message,
     assert_instruction_in_result,
 )
 
@@ -115,9 +116,9 @@ class TestUpdateBlueprint:
             imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")
         ):
             # Call the method
-            result = await imagebuilder_mcp_server.update_blueprint(
-                blueprint_uuid=TEST_BLUEPRINT_UUID, data=mock_blueprint_data
-            )
+            with pytest.raises(InsightsApiError) as exc_info:
+                await imagebuilder_mcp_server.update_blueprint(
+                    blueprint_uuid=TEST_BLUEPRINT_UUID, data=mock_blueprint_data
+                )
 
-            # Should return error message
-            assert_api_error_result(result)
+            assert_api_error_message(exc_info.value)

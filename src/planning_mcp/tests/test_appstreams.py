@@ -5,7 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
-from tests.conftest import assert_api_error_result
+from insights_mcp.errors import InsightsApiError
+from tests.conftest import assert_api_error_message
 
 
 class TestPlanningGetAppstreamsLifecycle:
@@ -257,12 +258,13 @@ class TestPlanningGetAppstreamsLifecycle:
         planning_mcp_server,
     ):
         """Invalid mode should surface as a standard API error string."""
-        result = await planning_mcp_server.get_appstreams_lifecycle(
-            mode="0",
-            application_stream_name="Node",
-        )
+        with pytest.raises(InsightsApiError) as exc_info:
+            await planning_mcp_server.get_appstreams_lifecycle(
+                mode="0",
+                application_stream_name="Node",
+            )
 
-        assert_api_error_result(result)
+        assert_api_error_message(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_accepts_string_major(

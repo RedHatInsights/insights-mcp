@@ -5,8 +5,9 @@ from unittest.mock import patch
 
 import pytest
 
+from insights_mcp.errors import InsightsApiError
 from tests.conftest import (
-    assert_api_error_result,
+    assert_api_error_message,
 )
 
 
@@ -101,9 +102,9 @@ class TestPlanningGetRhelLifecycle:
     async def test_get_rhel_lifecycle_api_error(self, planning_mcp_server):
         """Test get_rhel_lifecycle when backend raises an API error."""
         with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.side_effect = Exception("Backend unavailable")
+            mock_get.side_effect = RuntimeError("Backend unavailable")
 
-            result = await planning_mcp_server.get_rhel_lifecycle()
+            with pytest.raises(InsightsApiError) as exc_info:
+                await planning_mcp_server.get_rhel_lifecycle()
 
-            # Reuse common helper to validate error formatting
-            assert_api_error_result(result)
+            assert_api_error_message(exc_info.value)

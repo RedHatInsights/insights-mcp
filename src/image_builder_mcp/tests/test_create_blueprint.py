@@ -2,10 +2,11 @@
 
 import pytest
 
+from insights_mcp.errors import InsightsApiError
 from tests.conftest import (
     TEST_BLUEPRINT_UUID,
     TEST_CLIENT_ID,
-    assert_api_error_result,
+    assert_api_error_message,
     assert_instruction_in_result,
 )
 
@@ -90,10 +91,10 @@ class TestCreateBlueprint:
             imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")
         ):
             # Call the method
-            result = await imagebuilder_mcp_server.create_blueprint(data=mock_blueprint_data)
+            with pytest.raises(InsightsApiError) as exc_info:
+                await imagebuilder_mcp_server.create_blueprint(data=mock_blueprint_data)
 
-            # Should return error message
-            assert_api_error_result(result)
+            assert_api_error_message(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_create_blueprint_unexpected_list_response(
@@ -104,7 +105,7 @@ class TestCreateBlueprint:
         list_response = [{"id": "test-id"}]
         with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, list_response):
             # Call the method
-            result = await imagebuilder_mcp_server.create_blueprint(data=mock_blueprint_data)
+            with pytest.raises(InsightsApiError) as exc_info:
+                await imagebuilder_mcp_server.create_blueprint(data=mock_blueprint_data)
 
-            # Should return error message about unexpected list response
-            assert "Error: the response of blueprint creation is a list" in result
+            assert "Error: the response of blueprint creation is a list" in str(exc_info.value)

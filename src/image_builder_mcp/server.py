@@ -11,6 +11,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from insights_mcp.client import InsightsClient
+from insights_mcp.errors import InsightsApiError
 from insights_mcp.mcp import InsightsMCP
 from tools import OpenAPIReducer
 
@@ -202,8 +203,10 @@ class ImageBuilderMCP(InsightsMCP):
         try:
             distributions = await self.insights_client.get("distributions")
             return json.dumps(distributions)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            return f"Error getting distributions: {str(e)}"
+        except InsightsApiError:
+            raise
+        except Exception as e:
+            raise InsightsApiError(f"Error getting distributions: {str(e)}") from e
 
     def get_openapi_synchronous(self) -> str:
         """
@@ -235,9 +238,10 @@ class ImageBuilderMCP(InsightsMCP):
         """
         try:
             response = await self.insights_client.post(f"blueprints/{blueprint_uuid}/compose")
-        # avoid crashing the server so we'll stick to the broad exception catch
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            return f"Error: {str(e)} in blueprint_compose {blueprint_uuid}"
+        except InsightsApiError:
+            raise
+        except Exception as e:
+            raise InsightsApiError(f"Error: {str(e)} in blueprint_compose {blueprint_uuid}") from e
 
         if isinstance(response, str):
             return response
@@ -248,7 +252,7 @@ class ImageBuilderMCP(InsightsMCP):
         build_ids_str: list[str] = []
 
         if isinstance(response, dict):
-            return (
+            raise InsightsApiError(
                 f"Error: the response of blueprint_compose is a dict. This is not expected. "
                 f"Response: {json.dumps(response)}"
             )
@@ -304,9 +308,10 @@ class ImageBuilderMCP(InsightsMCP):
                     self.logger.warning("OpenAPI reduction failed: %s", reduce_err)
                     return json.dumps(response)
             return json.dumps(response)
-        # avoid crashing the server so we'll stick to the broad exception catch
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            return f"Error: {str(e)}"
+        except InsightsApiError:
+            raise
+        except Exception as e:
+            raise InsightsApiError(str(e)) from e
 
     async def get_org_id(self) -> str:
         """Get the organization ID for RHEL image registration/subscription.
@@ -325,9 +330,11 @@ class ImageBuilderMCP(InsightsMCP):
             org_id = await self.insights_client.get_org_id()
             if org_id:
                 return org_id
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            return f"Error: {str(e)}"
-        return "Error: No organization ID found"
+        except InsightsApiError:
+            raise
+        except Exception as e:
+            raise InsightsApiError(str(e)) from e
+        raise InsightsApiError("Error: No organization ID found")
 
     async def create_blueprint(
         self,
@@ -407,15 +414,16 @@ class ImageBuilderMCP(InsightsMCP):
                 data["description"] = "\n".join(filter(None, desc_parts))
             # TBD: programmatically check against openapi
             response = await self.insights_client.post("blueprints", json=data)
-        # avoid crashing the server so we'll stick to the broad exception catch
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            return f"Error: {str(e)}"
+        except InsightsApiError:
+            raise
+        except Exception as e:
+            raise InsightsApiError(str(e)) from e
 
         if isinstance(response, str):
             return response
 
         if isinstance(response, list):
-            return (
+            raise InsightsApiError(
                 "Error: the response of blueprint creation is a list. This is not expected. "
                 f"Response: {json.dumps(response)}"
             )
@@ -452,15 +460,17 @@ class ImageBuilderMCP(InsightsMCP):
                     desc_parts = [data.get("description", ""), WATERMARK_UPDATED]
                     data["description"] = "\n".join(filter(None, desc_parts))
             response = await self.insights_client.put(f"blueprints/{blueprint_uuid}", json=data)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            return f"Error: {str(e)}"
+        except InsightsApiError:
+            raise
+        except Exception as e:
+            raise InsightsApiError(str(e)) from e
 
         # Normalize response handling similar to create_blueprint
         if isinstance(response, str):
             return response
 
         if isinstance(response, list):
-            return (
+            raise InsightsApiError(
                 "Error: the response of blueprint update is a list. This is not expected. "
                 f"Response: {json.dumps(response)}"
             )
@@ -509,7 +519,7 @@ class ImageBuilderMCP(InsightsMCP):
                 return response
 
             if isinstance(response, list):
-                return (
+                raise InsightsApiError(
                     "Error: the response of get_blueprints is a list. This is not expected. "
                     f"Response: {json.dumps(response)}"
                 )
@@ -536,9 +546,10 @@ class ImageBuilderMCP(InsightsMCP):
             intro = "[INSTRUCTION] Use the UI_URL to link to the blueprint\n"
             intro += self.paging_reminder
             return f"{intro}\n{json.dumps(ret)}"
-        # avoid crashing the server so we'll stick to the broad exception catch
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            return f"Error: {str(e)}"
+        except InsightsApiError:
+            raise
+        except Exception as e:
+            raise InsightsApiError(str(e)) from e
 
     async def get_blueprint_details(
         self, blueprint_identifier: Annotated[str, Field(description="The UUID, name or reply_id to query")]
@@ -554,7 +565,7 @@ class ImageBuilderMCP(InsightsMCP):
             Exception: If the image-builder connection fails.
         """
         if not blueprint_identifier:
-            return "Error: a blueprint identifier is required"
+            raise InsightsApiError("Error: a blueprint identifier is required")
 
         try:
             # If the identifier looks like a UUID, use it directly
@@ -568,10 +579,11 @@ class ImageBuilderMCP(InsightsMCP):
             ret += "please use the UUID from get_blueprints\n"
             ret += "[INSTRUCTION] retry calling get_blueprints\n\n"
             ret += f"[ANSWER] {blueprint_identifier} is not a valid blueprint identifier"
-            return ret
-        # avoid crashing the server so we'll stick to the broad exception catch
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            return f"Error: {str(e)}"
+            raise InsightsApiError(ret)
+        except InsightsApiError:
+            raise
+        except Exception as e:
+            raise InsightsApiError(str(e)) from e
 
     def _create_compose_data(self, compose: dict, reply_id: int, client: InsightsClient) -> dict:
         """Create compose data dictionary with blueprint URL."""
@@ -648,7 +660,7 @@ class ImageBuilderMCP(InsightsMCP):
                 return response
 
             if isinstance(response, list):
-                return (
+                raise InsightsApiError(
                     f"Error: the response of get_composes is a list. This is not expected. "
                     f"Response: {json.dumps(response)}"
                 )
@@ -672,9 +684,10 @@ class ImageBuilderMCP(InsightsMCP):
             intro += "[ANSWER]\n"
             return f"{intro}\n{json.dumps(ret)}"
 
-        # avoid crashing the server so we'll stick to the broad exception catch
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            return f"Error: {str(e)}"
+        except InsightsApiError:
+            raise
+        except Exception as e:
+            raise InsightsApiError(str(e)) from e
 
     # pylint: disable=too-many-return-statements
     async def get_compose_details(
@@ -700,7 +713,7 @@ class ImageBuilderMCP(InsightsMCP):
             - Artifact details
         """
         if not compose_identifier:
-            return "Error: Compose UUID is required"
+            raise InsightsApiError("Error: Compose UUID is required")
 
         try:
             # If the identifier looks like a UUID, use it directly
@@ -716,7 +729,7 @@ class ImageBuilderMCP(InsightsMCP):
                         compose_identifier,
                         json.dumps(response),
                     )
-                    return f"Error: Unexpected list response for {compose_identifier}"
+                    raise InsightsApiError(f"Error: Unexpected list response for {compose_identifier}")
                 response["compose_uuid"] = compose_identifier
             else:
                 ret = (
@@ -725,7 +738,7 @@ class ImageBuilderMCP(InsightsMCP):
                 )
                 ret += "[INSTRUCTION] retry calling get_composes\n\n"
                 ret += f"[ANSWER] {compose_identifier} is not a valid compose identifier"
-                return ret
+                raise InsightsApiError(ret)
 
             intro = ""
             download_url = response.get("image_status", {}).get("upload_status", {}).get("options", {}).get("url")
@@ -771,9 +784,10 @@ gcloud compute images create {image_name}-copy --source-image-project red-hat-im
             # else depends on the status and the target if it can be downloaded
 
             return f"{intro}{json.dumps(response)}"
-        # avoid crashing the server so we'll stick to the broad exception catch
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            return f"Error: {e}"
+        except InsightsApiError:
+            raise
+        except Exception as e:
+            raise InsightsApiError(str(e)) from e
 
 
 mcp_server = ImageBuilderMCP()

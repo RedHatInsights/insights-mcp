@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
-import json
 from logging import Logger
 from typing import Any
 
 from insights_mcp.client import InsightsClient
-from tools.common import normalise_int as _normalise_int
+from tools.common import (
+    normalise_int as _normalise_int,
+)
+from tools.common import (
+    planning_api_error_message,
+    run_insights_tool_request,
+    run_planning_tool_with_errors,
+)
 
 
 async def get_appstreams_lifecycle(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-branches
@@ -21,11 +27,11 @@ async def get_appstreams_lifecycle(  # pylint: disable=too-many-arguments,too-ma
     logger: Logger | None = None,
 ) -> str:
     """Call Application Streams lifecycle endpoints and return a JSON-encoded response."""
-    try:
+
+    async def _load_appstreams() -> str:
         if mode not in ("raw", "streams"):
             raise ValueError(f"Invalid mode '{mode}'. Expected 'raw' or 'streams'.")
 
-        # Normalise major to an int (or None) – tolerate string input from MCP clients.
         major_int = _normalise_int("major", major)
 
         params: dict[str, Any] = {}
@@ -44,21 +50,16 @@ async def get_appstreams_lifecycle(  # pylint: disable=too-many-arguments,too-ma
                 raise ValueError("Parameter 'major' is required when mode='raw'.")
             endpoint = f"lifecycle/app-streams/{major_int}"
         else:
-            # mode == "streams"
-            # Major is intentionally ignored in streams mode; overview is cross-major.
             endpoint = "lifecycle/app-streams/streams"
 
-        # Call backend
-        response = await insights_client.get(endpoint, params=params or None)
+        return await run_insights_tool_request(
+            insights_client.get(endpoint, params=params or None),
+            error_message=lambda exc: planning_api_error_message("application streams lifecycle", exc),
+            logger=logger,
+        )
 
-        # Pass through JSON strings; otherwise encode dict/list to JSON.
-        if isinstance(response, str):
-            return response
-
-        return json.dumps(response)
-    except Exception as exc:  # pylint: disable=broad-exception-caught
-        error_detail = f"Error retrieving application streams lifecycle: {exc}"
-        if logger:
-            logger.error(error_detail)
-        # Keep the same error shape convention as upcoming.py
-        return f"Error: API Error - {error_detail}"
+    return await run_planning_tool_with_errors(
+        _load_appstreams,
+        "application streams lifecycle",
+        logger,
+    )

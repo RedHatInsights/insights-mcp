@@ -37,6 +37,7 @@ from insights_mcp.config import (
     OAUTH_ENABLED,
     SSO_TOKEN_ENDPOINT,
 )
+from insights_mcp.errors import InsightsApiError
 from insights_mcp.session_cache import SessionCache
 
 from . import __version__
@@ -87,7 +88,10 @@ class InsightsClientBase(httpx.AsyncClient):
             **kwargs: Keyword arguments for the HTTP method
 
         Returns:
-            JSON response data or error information
+            JSON response data or plain-text body on success
+
+        Raises:
+            InsightsApiError: If the HTTP request fails or an unhandled error occurs
         """
         try:
             self.logger.debug(
@@ -122,10 +126,9 @@ class InsightsClientBase(httpx.AsyncClient):
             self.logger.debug("JSONDecodeError: %s", e)
             return response.content.decode("utf-8")
         except httpx.HTTPStatusError as e:
-            content = self.get_error_message(e)
-            return content
-        except Exception as exc:  # pylint: disable=broad-exception-caught
-            return {"Unhandled error": str(exc)}
+            raise InsightsApiError(self.get_error_message(e)) from e
+        except Exception as exc:
+            raise InsightsApiError(str(exc)) from exc
 
     def get_error_message(self, e: httpx.HTTPStatusError) -> str:
         """Generate appropriate error message based on HTTP status code.
@@ -451,7 +454,7 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
             JSON response data or error information
         """
         if not self.oauth_enabled and self.refresh_token is None and self.client_secret is None:
-            return self.no_auth_error(ValueError("Client not authenticated"))
+            raise InsightsApiError(self.no_auth_error(ValueError("Client not authenticated")))
 
         await self.refresh_auth()
 
@@ -1513,15 +1516,17 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
             **kwargs: Additional arguments for the HTTP request
 
         Returns:
-            JSON response data or error information
+            JSON response data or plain-text body on success
+
+        Raises:
+            InsightsApiError: If authentication fails or the API request fails
         """
         try:
             client = self.client_noauth if noauth else self.client
             url = f"{self.insights_base_url}/{self.api_path}/{endpoint}"
             return await client.make_request(client.get, url=url, params=params, **kwargs)
         except ValueError as e:
-            # Authentication or validation error - return as string for MCP client
-            return str(e)
+            raise InsightsApiError(str(e)) from e
 
     async def post(
         self,
@@ -1539,15 +1544,17 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
             **kwargs: Additional arguments for the HTTP request
 
         Returns:
-            JSON response data or error information
+            JSON response data or plain-text body on success
+
+        Raises:
+            InsightsApiError: If authentication fails or the API request fails
         """
         try:
             client = self.client_noauth if noauth else self.client
             url = f"{self.insights_base_url}/{self.api_path}/{endpoint}"
             return await client.make_request(client.post, url=url, json=json, **kwargs)
         except ValueError as e:
-            # Authentication or validation error - return as string for MCP client
-            return str(e)
+            raise InsightsApiError(str(e)) from e
 
     async def put(
         self,
@@ -1565,12 +1572,14 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
             **kwargs: Additional arguments for the HTTP request
 
         Returns:
-            JSON response data or error information
+            JSON response data or plain-text body on success
+
+        Raises:
+            InsightsApiError: If authentication fails or the API request fails
         """
         try:
             client = self.client_noauth if noauth else self.client
             url = f"{self.insights_base_url}/{self.api_path}/{endpoint}"
             return await client.make_request(client.put, url=url, json=json, **kwargs)
         except ValueError as e:
-            # Authentication or validation error - return as string for MCP client
-            return str(e)
+            raise InsightsApiError(str(e)) from e

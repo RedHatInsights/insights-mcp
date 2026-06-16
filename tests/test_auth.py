@@ -5,8 +5,8 @@ from unittest.mock import patch
 import pytest
 from authlib.integrations.httpx_client import OAuthError
 
-# Clean import - no sys.path.insert needed with proper package structure!
 from image_builder_mcp import ImageBuilderMCP
+from insights_mcp.errors import InsightsApiError
 
 # Brand test cases for HTTP/SSE transports - only need to verify id header
 BRAND_HEADER_TEST_CASES = ["insights-client-id", "lightspeed-client-id"]
@@ -34,7 +34,7 @@ class TestAuthentication:
     @pytest.mark.asyncio
     @pytest.mark.parametrize("function_name,kwargs", AUTH_FUNCTIONS)
     async def test_function_no_auth(self, function_name, kwargs):
-        """Test that functions without authentication return error."""
+        """Test that functions without authentication raise InsightsApiError."""
         mcp_server = ImageBuilderMCP()
         mcp_server.init_insights_client(
             client_id="test-client-id",
@@ -43,32 +43,25 @@ class TestAuthentication:
         )
         mcp_server.register_tools()
 
-        # Mock fetch_token to simulate OAuth error without making real network calls
         async def mock_fetch_token(*args, **kwargs):
             raise OAuthError(error="invalid_client", description="Invalid client or Invalid client credentials")
 
         with patch.object(mcp_server.insights_client.client, "fetch_token", new=mock_fetch_token):
-            # Call the method
             method = getattr(mcp_server, function_name)
-            result = await method(**kwargs)
+            with pytest.raises(InsightsApiError) as exc_info:
+                await method(**kwargs)
 
-            # Should return authentication error
-            # The mocked implementation raises OAuthError which gets caught and formatted
-            assert "Invalid client or Invalid client credentials" in result
-            assert "[INSTRUCTION]" in result
+            error_message = str(exc_info.value)
+            assert "Invalid client or Invalid client credentials" in error_message
+            assert "[INSTRUCTION]" in error_message
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("function_name,kwargs", AUTH_FUNCTIONS)
     @pytest.mark.parametrize("expected_id_env", BRAND_ENV_TEST_CASES, ids=BRAND_ENV_IDS)
     async def test_function_no_auth_error_message(self, function_name, kwargs, expected_id_env, monkeypatch):
-        """Test that functions return the no_auth_error() message when authentication is missing.
-
-        Tests that the correct branded env variable names appear in the error message for stdio transport.
-        """
-        # Patch the brand env variable name in the client module
+        """Test auth error message when credentials are missing (stdio transport)."""
         monkeypatch.setattr("insights_mcp.client.BRAND_CLIENT_ID_ENV", expected_id_env)
 
-        # Create MCP server without default credentials (default is stdio transport)
         mcp_server = ImageBuilderMCP()
         mcp_server.init_insights_client(
             client_id=None,
@@ -78,12 +71,13 @@ class TestAuthentication:
         mcp_server.register_tools()
 
         method = getattr(mcp_server, function_name)
-        result = await method(**kwargs)
+        with pytest.raises(InsightsApiError) as exc_info:
+            await method(**kwargs)
 
-        # Verify branded env variable name appears in error message
-        assert "[INSTRUCTION] There seems to be a problem with the request." in result
-        assert "authentication problem" in result
-        assert expected_id_env in result
+        error_message = str(exc_info.value)
+        assert "[INSTRUCTION] There seems to be a problem with the request." in error_message
+        assert "authentication problem" in error_message
+        assert expected_id_env in error_message
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("function_name,kwargs", AUTH_FUNCTIONS)
@@ -91,14 +85,9 @@ class TestAuthentication:
     async def test_function_no_auth_error_message_sse_transport(
         self, function_name, kwargs, expected_id_header, monkeypatch
     ):
-        """Test that functions return the no_auth_error() message for SSE transport.
-
-        Tests that the correct branded header name appears in the error message.
-        """
-        # Patch the brand header value in the client module
+        """Test auth error message for SSE transport."""
         monkeypatch.setattr("insights_mcp.client.BRAND_CLIENT_ID_HEADER", expected_id_header)
 
-        # Create MCP server with SSE transport
         mcp_server = ImageBuilderMCP()
         mcp_server.init_insights_client(
             client_id=None,
@@ -109,12 +98,13 @@ class TestAuthentication:
         mcp_server.register_tools()
 
         method = getattr(mcp_server, function_name)
-        result = await method(**kwargs)
+        with pytest.raises(InsightsApiError) as exc_info:
+            await method(**kwargs)
 
-        # Verify branded header appears in error message
-        assert "[INSTRUCTION] There seems to be a problem with the request." in result
-        assert "authentication problem" in result
-        assert expected_id_header in result
+        error_message = str(exc_info.value)
+        assert "[INSTRUCTION] There seems to be a problem with the request." in error_message
+        assert "authentication problem" in error_message
+        assert expected_id_header in error_message
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("function_name,kwargs", AUTH_FUNCTIONS)
@@ -122,14 +112,9 @@ class TestAuthentication:
     async def test_function_no_auth_error_message_http_transport(
         self, function_name, kwargs, expected_id_header, monkeypatch
     ):
-        """Test that functions return the no_auth_error() message for HTTP transport.
-
-        Tests that the correct branded header name appears in the error message.
-        """
-        # Patch the brand header value in the client module
+        """Test auth error message for HTTP transport."""
         monkeypatch.setattr("insights_mcp.client.BRAND_CLIENT_ID_HEADER", expected_id_header)
 
-        # Create MCP server with HTTP transport
         mcp_server = ImageBuilderMCP()
         mcp_server.init_insights_client(
             client_id=None,
@@ -140,9 +125,10 @@ class TestAuthentication:
         mcp_server.register_tools()
 
         method = getattr(mcp_server, function_name)
-        result = await method(**kwargs)
+        with pytest.raises(InsightsApiError) as exc_info:
+            await method(**kwargs)
 
-        # Verify branded header appears in error message
-        assert "[INSTRUCTION] There seems to be a problem with the request." in result
-        assert "authentication problem" in result
-        assert expected_id_header in result
+        error_message = str(exc_info.value)
+        assert "[INSTRUCTION] There seems to be a problem with the request." in error_message
+        assert "authentication problem" in error_message
+        assert expected_id_header in error_message

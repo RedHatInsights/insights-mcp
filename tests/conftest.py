@@ -232,8 +232,17 @@ def setup_mcp_mock(
         yield mock_headers
 
 
+def assert_api_error_message(exception: BaseException, error_message: str = "API Error") -> None:
+    """Assert that an InsightsApiError message matches expected API error text."""
+    error_text = str(exception)
+    assert error_text.startswith(f"Error: {error_message}") or error_message.lower() in error_text.lower()
+
+
 def assert_api_error_result(result, error_message="API Error"):
-    """Helper to assert API error results."""
+    """Helper to assert API error results returned as strings (legacy).
+
+    Prefer ``pytest.raises(InsightsApiError)`` with ``assert_api_error_message``.
+    """
     assert result.startswith(f"Error: {error_message}") or error_message.lower() in result.lower()
 
 

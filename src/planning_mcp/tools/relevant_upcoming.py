@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import json
 from logging import Logger
-from typing import Any
 
 from insights_mcp.client import InsightsClient
-from tools.common import normalise_int as _normalise_int
+from tools.common import RelevantInventoryFilters, fetch_relevant_inventory_json
 
 
 async def get_relevant_upcoming_changes(
@@ -29,33 +27,10 @@ async def get_relevant_upcoming_changes(
     Returns:
         A JSON-encoded string with the response data or an error message.
     """
-    try:
-        major_int = _normalise_int("major", major)
-        minor_int = _normalise_int("minor", minor)
-
-        if minor_int is not None and major_int is None:
-            raise ValueError("The 'minor' parameter requires 'major' to be specified")
-
-        params: dict[str, Any] = {}
-        if major_int is not None:
-            params["major"] = major_int
-        if minor_int is not None:
-            params["minor"] = minor_int
-
-        response: dict[str, Any] | str = await insights_client.get(
-            "relevant/upcoming-changes",
-            params=params or None,
-            timeout=30,
-        )
-
-        # The underlying client may already return a JSON string; if so, pass it through.
-        if isinstance(response, str):
-            return response
-
-        # Otherwise, encode the dict to a JSON string for the MCP client.
-        return json.dumps(response)
-    except Exception as exc:  # pylint: disable=broad-exception-caught
-        error_detail = f"Error retrieving relevant upcoming changes: {exc}"
-        if logger:
-            logger.error(error_detail)
-        return f"Error: API Error - {error_detail}"
+    return await fetch_relevant_inventory_json(
+        insights_client,
+        "relevant/upcoming-changes",
+        operation="relevant upcoming changes",
+        logger=logger,
+        filters=RelevantInventoryFilters(major=major, minor=minor),
+    )

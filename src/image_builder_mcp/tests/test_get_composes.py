@@ -4,9 +4,10 @@ import json
 
 import pytest
 
+from insights_mcp.errors import InsightsApiError
 from tests.conftest import (
     TEST_BLUEPRINT_UUID,
-    assert_api_error_result,
+    assert_api_error_message,
     assert_empty_response,
     assert_instruction_in_result,
 )
@@ -155,10 +156,10 @@ class TestGetComposes:
             imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")
         ):
             # Call the method
-            result = await imagebuilder_mcp_server.get_composes(limit=7, offset=0, search_string="")
+            with pytest.raises(InsightsApiError) as exc_info:
+                await imagebuilder_mcp_server.get_composes(limit=7, offset=0, search_string="")
 
-            # Should return error message
-            assert_api_error_result(result)
+            assert_api_error_message(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_composes_zero_limit_uses_default(
