@@ -44,9 +44,11 @@ cannot obtain a service account with the required roles.
 **Requirements:**
 
 - STDIO transport (credentials via environment variables, same as service-account STDIO setups)
-- `INSIGHTS_REFRESH_TOKEN` set to a valid Red Hat SSO refresh token
-- `INSIGHTS_CLIENT_ID` defaults to `rhsm-api` when unset (do not set it to your service-account
-  client ID this has to match the client that originally issued the refresh token)
+- `INSIGHTS_REFRESH_TOKEN` or `LIGHTSPEED_REFRESH_TOKEN` set to a valid Red Hat SSO refresh token
+  (`INSIGHTS_REFRESH_TOKEN` takes precedence when both are set)
+- `INSIGHTS_CLIENT_ID` defaults to `rhsm-api` when unset (optional; separate from the refresh-token
+  environment variable — do not set it to your service-account client ID; it must match the client that
+  originally issued the refresh token)
 
 #### How to obtain a refresh token
 
