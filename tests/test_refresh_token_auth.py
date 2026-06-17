@@ -1,9 +1,23 @@
 """Tests for refresh-token authentication credential handling."""
 
+import importlib
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+import insights_mcp.config as config_module
 from insights_mcp.client import InsightsClient, InsightsOAuth2Client
 from insights_mcp.server import setup_credentials
+
+
+def _reload_config(monkeypatch: pytest.MonkeyPatch, **env: str | None):
+    """Reload config module with the given environment variables."""
+    for key, value in env.items():
+        if value is None:
+            monkeypatch.delenv(key, raising=False)
+        else:
+            monkeypatch.setenv(key, value)
+    return importlib.reload(config_module)
 
 
 class TestRefreshTokenAuth:
@@ -55,3 +69,39 @@ class TestRefreshTokenAuth:
 
         assert isinstance(client.client, InsightsOAuth2Client)
         assert client.client.client_id == "rhsm-api"
+
+
+class TestLightspeedRefreshTokenConfig:
+    """Test LIGHTSPEED_REFRESH_TOKEN fallback in config."""
+
+    def test_lightspeed_refresh_token_used_when_insights_unset(self, monkeypatch: pytest.MonkeyPatch):
+        """LIGHTSPEED_REFRESH_TOKEN is used when INSIGHTS_REFRESH_TOKEN is unset."""
+        reloaded = _reload_config(
+            monkeypatch,
+            INSIGHTS_REFRESH_TOKEN=None,
+            LIGHTSPEED_REFRESH_TOKEN="lightspeed-refresh-token",
+        )
+
+        assert reloaded.INSIGHTS_REFRESH_TOKEN == "lightspeed-refresh-token"
+
+    def test_insights_refresh_token_takes_precedence(self, monkeypatch: pytest.MonkeyPatch):
+        """INSIGHTS_REFRESH_TOKEN wins when both env vars are set."""
+        reloaded = _reload_config(
+            monkeypatch,
+            INSIGHTS_REFRESH_TOKEN="insights-refresh-token",
+            LIGHTSPEED_REFRESH_TOKEN="lightspeed-refresh-token",
+        )
+
+        assert reloaded.INSIGHTS_REFRESH_TOKEN == "insights-refresh-token"
+
+    def test_lightspeed_refresh_token_with_insights_client_id_set(self, monkeypatch: pytest.MonkeyPatch):
+        """LIGHTSPEED_REFRESH_TOKEN works even when INSIGHTS_CLIENT_ID is set."""
+        reloaded = _reload_config(
+            monkeypatch,
+            INSIGHTS_CLIENT_ID="rhsm-api",
+            INSIGHTS_REFRESH_TOKEN=None,
+            LIGHTSPEED_REFRESH_TOKEN="lightspeed-refresh-token",
+        )
+
+        assert reloaded.INSIGHTS_CLIENT_ID == "rhsm-api"
+        assert reloaded.INSIGHTS_REFRESH_TOKEN == "lightspeed-refresh-token"
