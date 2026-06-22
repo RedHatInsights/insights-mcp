@@ -36,6 +36,36 @@ def test_collect_markdown_uses_examples() -> None:
     assert prompts == [format_template_for_markdown("Affected by {cve_id}")]
 
 
+def test_collect_markdown_prompts_deduplicates() -> None:
+    registry = PromptRegistry(
+        first=("Same text", ("svc__a",)),
+        second=("Same text", ("svc__b",), "tool test"),
+        third=("Other", ("svc__c",)),
+    )
+    assert collect_markdown_prompts(registry) == ["Same text", "Other"]
+
+
+def test_tool_usage_scenarios() -> None:
+    registry = PromptRegistry(
+        example=("Hello", ("svc__tool",)),
+        tool_case=("Run tool", ("svc__tool",), "uses tool"),
+    )
+    assert registry["example"] == "Hello"
+    assert registry.example == "Hello"
+    assert registry.tool_usage_scenarios() == [
+        {
+            "prompt": "Hello",
+            "expected_tools": ["svc__tool"],
+            "description": "",
+        },
+        {
+            "prompt": "Run tool",
+            "expected_tools": ["svc__tool"],
+            "description": "uses tool",
+        },
+    ]
+
+
 def test_turns_for_multi_turn() -> None:
     registry = PromptRegistry(
         paging=PromptWithTools(
@@ -49,6 +79,16 @@ def test_turns_for_multi_turn() -> None:
 def test_registry_rejects_entry_without_tools() -> None:
     with pytest.raises(ValueError, match="expected_tools must be non-empty"):
         PromptRegistry(empty_tools=("prompt", ()))
+
+
+def test_registry_rejects_invalid_entry() -> None:
+    with pytest.raises(ValueError, match="invalid prompt entry"):
+        PromptRegistry(bad=("only", "two"))  # type: ignore[arg-type]
+
+
+def test_registry_requires_entries() -> None:
+    with pytest.raises(ValueError, match="at least one"):
+        PromptRegistry()
 
 
 @pytest.mark.parametrize("toolset,module_name", TOOLSET_PROMPT_MODULES)

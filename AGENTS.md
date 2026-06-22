@@ -85,7 +85,7 @@ make help  # Show all available make targets
 - `src/<toolset_name>_mcp/test_prompts.py` - `PROMPTS = PromptRegistry(...)` (see `insights_mcp.test_prompts_data`)
 - `src/<toolset_name>_mcp/test_prompts.md` - Generated bullet-list examples for users (`make test-prompts-md`)
 
-**`PromptRegistry` entries:** a string (single-turn), a tuple of strings (multi-turn), or `(text, (expected_tools,), description)` for tool-correctness tests. Templates may use `{cve_id}`, `{host_id}`, etc.; unified LLM tests resolve those via live APIs (`tests/llm_api_discovery.py`). Regenerate markdown with `make test-prompts-md`.
+**`PromptRegistry` entries:** every entry must declare at least one expected tool name via `(text, (expected_tools,))`, `(text, (expected_tools,), description)` for single-turn prompts, or `PromptWithTools(turns=..., expected_tools=...)` for multi-turn. Templates may use `{cve_id}`, `{host_id}`, etc.; unified LLM tests resolve those via live APIs (`tests/llm_api_discovery.py`). Regenerate markdown with `make test-prompts-md`.
 
 **Example test implementations:**
 - `src/<toolset>_mcp/tests/test_<toolset>_llm_prompts.py` - One parametrized LLM test per `prompt_id`; direct assert that at least one `expected_tools` entry was called (`make test-llm`). Each file must have a unique module basename (pytest import safety).
