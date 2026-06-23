@@ -1,0 +1,186 @@
+apiVersion: mcp/v1beta1
+kind: MCPServer
+metadata:
+  name: lightspeed-mcp-server
+  title: Red Hat Lightspeed MCP Server
+  namespace: redhat
+
+  description: An MCP server to enable AI agents to query platform data, analyze systems, identify critical vulnerabilities, and perform proactive planning and lifecycle management.
+
+  annotations:
+    github.com/project-slug: RedHatInsights/insights-mcp
+    backstage.io/source-location: url:https://github.com/RedHatInsights/insights-mcp/tree/main/
+    backstage.io/managed-by-location: url:https://github.com/RedHatInsights/insights-mcp/blob/main/catalog-info.yaml
+    backstage.io/managed-by-origin-location: url:https://github.com/RedHatInsights/insights-mcp/blob/main/catalog-info.yaml
+    backstage.io/view-url: https://github.com/RedHatInsights/insights-mcp/blob/main/catalog-info.yaml
+    backstage.io/edit-url: https://github.com/RedHatInsights/insights-mcp/edit/main/catalog-info.yaml
+    backstage.io/techdocs-ref: dir:.
+    feedback/type: JIRA
+    jira/project-key: HMS
+    feedback/host: https://redhat.atlassian.net
+    feedback/email-to: rh-lightspeed-mcp@redhat.com
+
+  tags:
+    - mcp
+    - lightspeed
+    - administration
+
+  links:
+    - url: https://github.com/RedHatInsights/insights-mcp/blob/main/README.md
+      title: README
+      type: documentation
+    - url: https://github.com/RedHatInsights/insights-mcp/issues
+      title: Report an issue
+      type: issue-tracker
+    - url: https://catalog.redhat.com/en/software/container-stacks/detail/69441d9d0df8059c340fa3f1
+      title: View on Red Hat Catalog
+      type: documentation
+
+relations:
+  - type: ownedBy
+    targetRef: group:redhat/rh-lightspeed-mcp
+
+spec:
+  type: local
+  lifecycle: developer-preview
+  owner: group:redhat/rh-lightspeed-mcp
+
+  packages:
+    - type: container
+      registry: quay.io
+      name: redhat-services-prod/insights-management-tenant/insights-mcp/red-hat-lightspeed-mcp
+      version: latest
+    - type: container
+      registry: ghcr.io
+      name: redhatinsights/red-hat-lightspeed-mcp
+      version: latest
+  primitives:
+    # advisor
+    - type: tool
+      name: advisor__get_active_rules
+      description: "Get Active Advisor Recommendations for Account"
+    - type: tool
+      name: advisor__get_hosts_details_for_rule
+      description: "Get Detailed System Information for Advisor Recommendation"
+    - type: tool
+      name: advisor__get_hosts_hitting_a_rule
+      description: "Get Systems Affected by Advisor Recommendation"
+    - type: tool
+      name: advisor__get_recommendations_stats
+      description: "Get Statistics of Recommendations Across Categories and Risks"
+    - type: tool
+      name: advisor__get_rule_by_text_search
+      description: "Find Advisor Recommendations by Text Search"
+    - type: tool
+      name: advisor__get_rule_details
+      description: "Get Detailed Advisor Recommendation Information"
+    - type: tool
+      name: advisor__get_rule_from_node_id
+      description: "Find Advisor Recommendations using Knowledge Base solution ID or article ID"
+    # content-sources
+    - type: tool
+      name: content-sources__list_repositories
+      description: "List repositories with filtering and pagination options."
+    # image-builder
+    - type: tool
+      name: image-builder__blueprint_compose
+      description: "Compose an image from a blueprint UUID created with create_blueprint, get_blueprints."
+    - type: tool
+      name: image-builder__create_blueprint
+      description: "Create a custom Linux image blueprint."
+    - type: tool
+      name: image-builder__get_blueprint_details
+      description: "Get blueprint details."
+    - type: tool
+      name: image-builder__get_blueprints
+      description: "Show user's image blueprints (saved image templates/configurations for"
+    - type: tool
+      name: image-builder__get_compose_details
+      description: "Get detailed information about a specific image build."
+    - type: tool
+      name: image-builder__get_composes
+      description: "Get a list of all image builds (composes) with their UUIDs and basic status."
+    - type: tool
+      name: image-builder__get_distributions
+      description: "Get the list of distributions available to build images with."
+    - type: tool
+      name: image-builder__get_openapi
+      description: "Get OpenAPI spec. Use this to get details e.g for a new blueprint"
+    - type: tool
+      name: image-builder__get_org_id
+      description: "Get the organization ID for RHEL image registration/subscription."
+    - type: tool
+      name: image-builder__update_blueprint
+      description: "Update a blueprint."
+    # inventory
+    - type: tool
+      name: inventory__find_host_by_name
+      description: "Find a host by its hostname/display name."
+    - type: tool
+      name: inventory__get_host_details
+      description: "Get detailed information for specific hosts by their IDs."
+    - type: tool
+      name: inventory__get_host_system_profile
+      description: "Get detailed system profile information for specific hosts."
+    - type: tool
+      name: inventory__get_host_tags
+      description: "Get tags for specific hosts."
+    - type: tool
+      name: inventory__list_hosts
+      description: "List hosts with filtering and sorting options."
+    # planning
+    - type: tool
+      name: planning__get_appstreams_lifecycle
+      description: "Get Application Streams lifecycle information."
+    - type: tool
+      name: planning__get_relevant_appstreams
+      description: "Get Application Streams relevant to the requester's inventory (includes lifecycle/support dates)."
+    - type: tool
+      name: planning__get_relevant_rhel_lifecycle
+      description: "Returns RHEL lifecycle information for systems in the requester's inventory."
+    - type: tool
+      name: planning__get_relevant_upcoming
+      description: "List relevant upcoming package changes, deprecations, additions and enhancements to user's systems."
+    - type: tool
+      name: planning__get_rhel_lifecycle
+      description: "Returns life cycle dates for all RHEL majors and minors."
+    - type: tool
+      name: planning__get_upcoming_changes
+      description: "List upcoming package changes, deprecations, additions and enhancements."
+    # rbac
+    - type: tool
+      name: rbac__get_all_access
+      description: "Get access information for all Red Hat insights applications."
+    # remediations
+    - type: tool
+      name: remediations__create_vuln_playbook
+      description: "Create remediation playbook for given CVEs on given systems to mitigate vulnerabilities."
+    # rhsm
+    - type: tool
+      name: rhsm__get_activation_key
+      description: "Get a specific activation key by name."
+    - type: tool
+      name: rhsm__get_activation_keys
+      description: "Get the list of activation keys available to the authenticated user."
+    # vulnerability
+    - type: tool
+      name: vulnerability__explain_cves
+      description: "Explain why CVEs are affecting my environment."
+    - type: tool
+      name: vulnerability__get_cve
+      description: "Get details about specific CVE."
+    - type: tool
+      name: vulnerability__get_cve_systems
+      description: "Get list of systems affected by a given CVE."
+    - type: tool
+      name: vulnerability__get_cves
+      description: "Get list of CVEs affecting the account."
+    - type: tool
+      name: vulnerability__get_openapi
+      description: "Get Red Hat Lightspeed Vulnerability OpenAPI specification in JSON format."
+    - type: tool
+      name: vulnerability__get_system_cves
+      description: "Get list of CVEs affecting a given system."
+    - type: tool
+      name: vulnerability__get_systems
+      description: "Get list of systems in Red Hat Lightspeed Vulnerability inventory."

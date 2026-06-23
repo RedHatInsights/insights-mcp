@@ -1,0 +1,9 @@
+site_name: Red Hat Lightspeed MCP Server
+docs_dir: .
+nav:
+  - Home: README.md
+  - Usage: usage.md
+  - Hacking: HACKING.md
+  - Toolsets: toolsets.md
+plugins:
+  - techdocs-core

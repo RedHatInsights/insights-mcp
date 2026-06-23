@@ -66,3 +66,11 @@ repos:
           - llama-index-core
           - llama-index-tools-mcp
           - llama-index-llms-openai
+  - repo: local
+    hooks:
+      - id: check-generated-docs
+        name: Check generated docs (usage, toolsets, catalog-info)
+        entry: bash -c 'make generate-docs && git diff --exit-code usage.md toolsets.md catalog-info.yaml'
+        language: system
+        pass_filenames: false
+        stages: [manual]

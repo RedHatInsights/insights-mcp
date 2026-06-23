@@ -197,7 +197,13 @@ run-oauth: build ## Run the MCP server with OAuth transport
 ALL_PYTHON_FILES := $(shell find src -name "*.py")
 
 .PHONY: generate-docs
-generate-docs: usage.md toolsets.md docs/architecture-structure.svg docs/architecture-deployment.svg ## Generate documentation from the MCP server
+generate-docs: usage.md toolsets.md catalog-info.yaml docs/architecture-structure.svg docs/architecture-deployment.svg ## Generate documentation from the MCP server
+
+catalog-info.yaml: catalog-info.base.yaml $(ALL_PYTHON_FILES) Makefile
+	uv run python scripts/generate_catalog_info.py
+
+.PHONY: catalog-info
+catalog-info: catalog-info.yaml ## Regenerate catalog-info.yaml tool primitives
 
 usage.md: $(ALL_PYTHON_FILES) Makefile
 	uv tool install -e .
