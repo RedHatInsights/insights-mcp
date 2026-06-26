@@ -43,11 +43,11 @@ spec:
     type: bearer
 
   packages:
-    - type: container
+    - type: docker
       registry: "quay.io"
       name: "redhat-services-prod/insights-management-tenant/insights-mcp/red-hat-lightspeed-mcp"
       version: latest
-    - type: container
+    - type: docker
       registry: "ghcr.io"
       name: "redhatinsights/red-hat-lightspeed-mcp"
       version: latest
