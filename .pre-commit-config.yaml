@@ -70,7 +70,13 @@ repos:
     hooks:
       - id: check-generated-docs
         name: Check generated docs (usage, toolsets, catalog-info)
-        entry: bash -c 'make generate-docs && git diff --exit-code usage.md toolsets.md catalog-info.yaml'
+        entry: bash -c 'make generate-docs && git diff --exit-code usage.md toolsets.md catalog-info.yaml docs/mkdocs/index.md docs/mkdocs/HACKING.md'
+        language: system
+        pass_filenames: false
+        stages: [manual]
+      - id: build-mkdocs
+        name: Build mkdocs docs (--strict)
+        entry: bash -c 'make build-mkdocs'
         language: system
         pass_filenames: false
         stages: [manual]

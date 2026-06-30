@@ -35,6 +35,9 @@ jobs:
             exit 1
           fi
 
+      - name: Build mkdocs docs
+        run: make build-mkdocs
+
       - name: Fail if there are changed files
         run: |
           if git diff --name-only | grep .; then
