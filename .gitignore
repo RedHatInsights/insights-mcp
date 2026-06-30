@@ -8,6 +8,7 @@ dictionary.dic
 test_config.json
 *.dxt
 *.mcpb
+.envrc
 
 # temporary mermaid cache
 /docs/input.mmd
