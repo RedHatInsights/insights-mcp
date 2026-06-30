@@ -26,6 +26,7 @@ Tools marked as read-write **`(rw)`** are excluded by default. Use the `--all-to
 - `get_openapi`: Get $container_brand_long Vulnerability OpenAPI specification in JSON format.
 - `get_system_cves`: Get list of CVEs affecting a given system.
 - `get_systems`: Get list of systems in $container_brand_long Vulnerability inventory.
+- `load_cve_dashboard`: Render CVE data in the interactive CVE Dashboard.
 
 ## remediations
 - `create_vuln_playbook` **`(rw)`**: Create remediation playbook for given CVEs on given systems to mitigate…
@@ -45,6 +46,7 @@ Tools marked as read-write **`(rw)`** are excluded by default. Use the `--all-to
 - `get_host_system_profile`: Get detailed system profile information for specific hosts.
 - `get_host_tags`: Get tags for specific hosts.
 - `list_hosts`: List hosts with filtering and sorting options.
+- `load_inventory_dashboard`: Render host data in the interactive Inventory Dashboard.
 
 ## content-sources
 - `list_repositories`: List repositories with filtering and pagination options.

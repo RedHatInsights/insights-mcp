@@ -125,6 +125,9 @@ spec:
     - type: tool
       name: inventory__list_hosts
       description: "List hosts with filtering and sorting options."
+    - type: tool
+      name: inventory__load_inventory_dashboard
+      description: "Render host data in the interactive Inventory Dashboard."
     # planning
     - type: tool
       name: planning__get_appstreams_lifecycle
@@ -181,3 +184,6 @@ spec:
     - type: tool
       name: vulnerability__get_systems
       description: "Get list of systems in Red Hat Lightspeed Vulnerability inventory."
+    - type: tool
+      name: vulnerability__load_cve_dashboard
+      description: "Render CVE data in the interactive CVE Dashboard."
