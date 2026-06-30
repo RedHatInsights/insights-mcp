@@ -45,6 +45,7 @@ dev = [
     "llama-index-core",
     "llama-index-tools-mcp",
     "llama-index-llms-openai",
+    "mkdocs-techdocs-core",
 ]
 
 [project.scripts]

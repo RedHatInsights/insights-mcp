@@ -132,6 +132,8 @@ clean-test: ## Clean test artifacts and cache
 	find . -name "*.pyc" -delete
 	find . -name "__pycache__" -delete
 
+.DEFAULT_GOAL := help
+
 .PHONY: help
 help: ## Show this help message
 	@echo "make [TARGETS...]"
@@ -196,8 +198,17 @@ run-oauth: build ## Run the MCP server with OAuth transport
 
 ALL_PYTHON_FILES := $(shell find src -name "*.py")
 
-.PHONY: generate-docs
-generate-docs: usage.md toolsets.md catalog-info.yaml docs/architecture-structure.svg docs/architecture-deployment.svg ## Generate documentation from the MCP server
+.PHONY: generate-docs prepare-mkdocs build-mkdocs serve-mkdocs
+generate-docs: usage.md toolsets.md catalog-info.yaml docs/architecture-structure.svg docs/architecture-deployment.svg prepare-mkdocs ## Generate documentation from the MCP server
+
+prepare-mkdocs: usage.md toolsets.md docs/architecture-structure.svg docs/architecture-deployment.svg README.md HACKING.md ## Prepare MkDocs staging files under docs/mkdocs/
+	uv run python scripts/prepare_mkdocs.py
+
+build-mkdocs: install-test-deps prepare-mkdocs ## Build mkdocs documentation (--strict)
+	uv run mkdocs build --strict
+
+serve-mkdocs: install-test-deps prepare-mkdocs ## Serve mkdocs documentation locally
+	uv run mkdocs serve
 
 catalog-info.yaml: catalog-info.base.yaml $(ALL_PYTHON_FILES) Makefile
 	uv run python scripts/generate_catalog_info.py
