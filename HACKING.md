@@ -34,6 +34,54 @@ especially handing over environment variables and credentials
 - Default configuration with service account credentials in header or JWT Bearer token
 - Custom environment: `INSIGHTS_BASE_URL` and `INSIGHTS_SSO_BASE_URL` set with credentials in header
 
+### Refresh-token authentication (exception / not recommended)
+
+Use this path only when [service account](README.md#service-account-setup) credentials,
+[JWT Bearer tokens](README.md#authentication) (HTTP/SSE), or [hosted OAuth DCR](#hosted-mcp-server-with-dcr-auth-beta)
+are not viable—for example when you can access console.redhat.com with a personal account but
+cannot obtain a service account with the required roles.
+
+**Requirements:**
+
+- STDIO transport (credentials via environment variables, same as service-account STDIO setups)
+- `INSIGHTS_REFRESH_TOKEN` or `LIGHTSPEED_REFRESH_TOKEN` set to a valid Red Hat SSO refresh token
+  (`INSIGHTS_REFRESH_TOKEN` takes precedence when both are set)
+- `INSIGHTS_CLIENT_ID` defaults to `rhsm-api` when unset (optional; separate from the refresh-token
+  environment variable — do not set it to your service-account client ID; it must match the client that
+  originally issued the refresh token)
+
+#### How to obtain a refresh token
+
+Red Hat issues this token from the Customer Portal as an **offline token**.
+For Insights MCP, set it as `INSIGHTS_REFRESH_TOKEN` or `LIGHTSPEED_REFRESH_TOKEN`.
+The server exchanges it automatically for short-lived access tokens; you do not
+need to run curl during normal MCP use.
+
+**Steps:**
+
+1. Sign in at [Red Hat API Tokens](https://access.redhat.com/management/api)
+   (Customer Portal — not console.redhat.com → Service Accounts).
+2. Click **Generate Token**.
+3. Copy the token immediately — it is shown **once** and not stored by Red Hat.
+
+**Why `rhsm-api`?** `INSIGHTS_CLIENT_ID` is not a label for the MCP server. It is the OAuth/OIDC
+client identifier in Red Hat SSO (`redhat-external` realm) that must match the client that
+originally issued the refresh token. Personal console.redhat.com sessions typically use the
+registered `rhsm-api` client (Red Hat console / Insights APIs). Service accounts use
+a different client ID (from Settings → Service Accounts) with the `client_credentials` grant,
+not this refresh-token flow.
+
+**Risks (why this is discouraged):**
+
+- Authenticates as your personal Red Hat account, typically with broader privileges than a
+  dedicated service account
+- Long-lived secret in environment or static client configuration (leakage, rotation burden)
+- Actions are attributed to your user, not a named automation principal (audit / impersonation)
+- Harder emergency revocation than deleting or resetting a service account
+- Not suitable for shared or hosted MCP deployments
+- Not listed among the supported authentication methods in [README.md](README.md); may be removed
+  in future
+
 ## Architecture
 
 ### Application Structure

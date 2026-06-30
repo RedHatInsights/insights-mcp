@@ -343,6 +343,15 @@ def get_latest_release_tag() -> str:
     return response.json()["tag_name"]
 
 
+def _env_credential(value: str | None) -> str | None:
+    """Return None for unset environment credential values.
+
+    Config maps missing env vars to empty strings; OAuth clients treat None as
+    "use the constructor default" (for example rhsm-api for refresh-token auth).
+    """
+    return value or None
+
+
 def setup_credentials(mcp_server_config: dict, logger: logging.Logger) -> None:
     """Set up client credentials based on OAuth mode.
 
@@ -370,9 +379,9 @@ def setup_credentials(mcp_server_config: dict, logger: logging.Logger) -> None:
         # Traditional mode - use service account credentials
         mcp_server_config.update(
             {
-                "client_id": getattr(config, "INSIGHTS_CLIENT_ID", None),
-                "client_secret": getattr(config, "INSIGHTS_CLIENT_SECRET", None),
-                "refresh_token": getattr(config, "INSIGHTS_REFRESH_TOKEN", None),
+                "client_id": _env_credential(getattr(config, "INSIGHTS_CLIENT_ID", None)),
+                "client_secret": _env_credential(getattr(config, "INSIGHTS_CLIENT_SECRET", None)),
+                "refresh_token": _env_credential(getattr(config, "INSIGHTS_REFRESH_TOKEN", None)),
                 "token_endpoint": config.SSO_TOKEN_ENDPOINT,
             }
         )
