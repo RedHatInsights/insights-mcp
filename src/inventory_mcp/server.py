@@ -82,7 +82,9 @@ async def load_inventory_dashboard(ctx: Context, hosts: list[dict[str, Any]]) ->
         hosts: List of host objects from a list_hosts response (the 'results' array).
     """
     n = len(hosts)
-    if ctx.client_supports_extension(UI_EXTENSION_ID):
+    ui_supported = ctx.client_supports_extension(UI_EXTENSION_ID)
+    await ctx.info(f"load_inventory_dashboard called | UI supported: {ui_supported} | hosts: {n}")
+    if ui_supported:
         return ToolResult(
             content=(
                 f"Dashboard rendered with {n} hosts. "
