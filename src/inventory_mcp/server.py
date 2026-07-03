@@ -4,17 +4,16 @@ MCP server for host inventory data via Red Hat Insights API.
 Provides tools to get host inventory data for systems connected to Insights.
 """
 
+import logging
 from importlib import resources
 from pathlib import Path
 from typing import Annotated, Any
 
 from fastmcp import Context
-from fastmcp.apps import AppConfig, ResourceCSP, UI_EXTENSION_ID
-from fastmcp.tools.tool import ToolResult
-from pydantic import Field
-
-import logging
+from fastmcp.apps import UI_EXTENSION_ID, AppConfig, ResourceCSP
+from fastmcp.tools import ToolResult
 from fastmcp.utilities.logging import get_logger
+from pydantic import Field
 
 from insights_mcp.mcp import InsightsMCP
 
