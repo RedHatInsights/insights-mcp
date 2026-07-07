@@ -64,9 +64,9 @@ where = ["src", "scripts"]
 "" = "src"
 
 [tool.setuptools.package-data]
-insights_mcp = ["assets/*.png"]
-inventory_mcp = ["*.html"]
-vulnerability_mcp = ["*.html"]
+insights_mcp = ["assets/*"]
+inventory_mcp = ["*.html", "*.css"]
+vulnerability_mcp = ["*.html", "*.css"]
 
 [tool.pylint.format]
 max-line-length = 120

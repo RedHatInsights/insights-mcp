@@ -5,7 +5,6 @@ Provides tools to get host inventory data for systems connected to Insights.
 """
 
 import logging
-from importlib import resources
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -15,6 +14,7 @@ from fastmcp.tools import ToolResult
 from fastmcp.utilities.logging import get_logger
 from pydantic import Field
 
+from insights_mcp.dashboard_ui import load_dashboard_html
 from insights_mcp.mcp import InsightsMCP
 
 _to_client_logger = get_logger(name="fastmcp.server.context.to_client")
@@ -27,10 +27,12 @@ INVENTORY_DASHBOARD_MOUNTED_URI = "ui://inventory_/inventory-dashboard"
 
 def _load_inventory_dashboard_html() -> str:
     """Load the inventory dashboard HTML."""
-    try:
-        return resources.files("inventory_mcp").joinpath("inventory_dashboard.html").read_text(encoding="utf-8")
-    except (FileNotFoundError, ModuleNotFoundError, AttributeError, TypeError):
-        return (Path(__file__).parent / "inventory_dashboard.html").read_text(encoding="utf-8")
+    return load_dashboard_html(
+        "inventory_mcp",
+        "inventory_dashboard.html",
+        "inventory_dashboard.css",
+        Path(__file__).parent,
+    )
 
 
 EMBEDDED_INVENTORY_DASHBOARD_HTML = _load_inventory_dashboard_html()
