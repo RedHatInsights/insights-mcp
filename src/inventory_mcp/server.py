@@ -32,6 +32,7 @@ def _load_inventory_dashboard_html() -> str:
         "inventory_dashboard.html",
         "inventory_dashboard.css",
         Path(__file__).parent,
+        dashboard_title="Inventory",
     )
 
 

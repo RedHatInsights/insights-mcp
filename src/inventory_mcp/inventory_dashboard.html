@@ -4,16 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory Dashboard</title>
-    <link rel="stylesheet" href="https://unpkg.com/@patternfly/patternfly@5.4.2/patternfly.min.css">
+    <!-- INSIGHTS_PATTERNFLY_CSS -->
     <!-- INSIGHTS_DASHBOARD_CSS -->
 </head>
 <body>
     <div class="header">
-        <span class="header-title"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAABGdBTUEAALGPC/xhBQAAAAFzUkdCAdnJLH8AAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB+kHHQcvBP3yWUkAAASbSURBVGje7dl5iFVVHAfwz5k3Y+OS5jNN29Boo73Esn0RKouIVtqJVuwPkQiigooWKdIsqKiICoMKIioKyRawohXbixYyKiTavNrY4ujMO/1xjvEcxnlvxvfGgvnCgffuPffc3/ec334ZwhCG8L9GaObiBSMxFh1YXSb+ZwgUbIuTMREf4rUyK6vu74ZbMRU/4V28gvfwa6PIhAEKPxEPY2a+1JkFeyKT2RFXYVqPR9fgK7yIZ/FROV0bdALX4ZZeblXwF4bl0RdW4jU8hlfL/D4oBPLuL8Y+DVLjNXgb92FROW1A3WgZwAunS/rdKLTjaCzEAwVTmkagSPNPxBZNcFrDcR7uKRjXrBPYAUc12bUfi+OaReBw/TziAaAVRzScQJEWPgGlQQiw+xaMbvQJ7IRDBylDmJLVtXEEvuWoWOeiDcA47NFIAiNv57TVhDA4BFpxQL0Te+p6wJaYgAkjGHs9e93N9P0xK0e/2HwS+xe010o1WqsEH4XDsp+fhu0xppMthtPSSekOjCaeTWhpPoldc6L4XU0CBXvhpux/R1RPiPgly7oS1xJ+JV6GUYTu5hGYiF1qEWjJae9DOKWn8OuTpWrH34G5hNn4glhqXlExvLMOO2jBbBy0sQkRM7Bzlcasw9OEc3A/sWgSkU9TLdHa15zS1SzQR+4R080wAksI6zbMh8MSwts5uk3KatUI++jGI5S2ZvHXrOjrBMbUWiziTMIcYnuPe12p1AqzCWdgAfEz4tq8df09mZCfe4e4iF1m8eSfXFFQ7nV+wSfYu56F1+JB4nzCqj7mjSdOzQnNVEzGVoRhNQJPd3Io8SXMT8EzPEw8le4uluBGvFVdjoaCebiyno0KueRaTJyLz2o8E5JKxe1yHjIl+ea4dbqulPn8TeVnwldYii8JnXmNO+m+hFJX+rsc1+DxchKFIiVO3xTZGOsZvxM/pjKLyri0UOzPCMRWYlsepY3MG0Z8gkrHhu8vCi7YoKQskieah7b+pLFdeJ/4KF7CigY7okOIC7MT6eEUfsRZZd4IVVH4LlzUX29YyrbxKfE5vIxlVSowUOxJXIADCZXepyzCuaEqlZiAe3HaQFx6KdvHL8QPcrthaQ6jqwhddZ7qJOJMXJ7C8MaEhz9xceiRyG2D23Jt2jrQNkcpe5QO4vJ0IpYRf0gEQwdxTVKL0EZlLGHH3OaYlgw+rN+QGlgYeslGR2evNKeeGFGLTEvVcXZnu1lH7MqXS8mQ/3WxlfoEX483Qx/l40m4Afs2uym7CVH79V7jSpmuMs/kBO+epMaNRbW/3AQsC3UU8204MqvUjNyI+i9gDS4N/ehKjMrN3Mty4bO5ibyB0wfSGx2NY3B+bgmO3QzCF7iwzPOb8n2gHfvh1Hwyu6rdkW4EVkrd8QfKVEIDtiJI8WM6js/qtVPudTYSFenbw814oZy8cmNzl9z8HZ/T84NTJmD3XN+OHOD7OlKm4ik8VU550KB9IxuW2zOTs4rtnH9PzLYzMqvd+k7NWvyB3/B9FnwpPt/YB5CwGayvRWrPt+fRVkWgK5UH/kZneVDaT0MYwhA2K/4BI+BgELD+CNsAAAAASUVORK5CYII=" alt="Red Hat" style="height:16px;vertical-align:middle;margin-right:6px;">Red Hat Lightspeed — Inventory</span>
+        <span class="header-title"><!-- INSIGHTS_DASHBOARD_HEADER --></span>
         <span class="header-meta" id="total-count"></span>
     </div>
 
-    <div id="alert" class="alert-danger hidden"></div>
+    <!-- INSIGHTS_DASHBOARD_ALERT -->
 
     <!-- Host List View -->
     <div id="view-list">
@@ -21,8 +21,8 @@
             <div class="card-title">Fleet</div>
             <div class="search-bar">
                 <input type="text" id="search-input" placeholder="Search by hostname or FQDN" onkeydown="if(event.key==='Enter')searchHosts()">
-                <button class="btn btn-secondary" onclick="searchHosts()" style="padding:4px 8px;">Search</button>
-                <button class="btn btn-back" onclick="clearSearch()" style="padding:4px 8px;">Clear</button>
+                <button class="btn btn-secondary btn-compact" onclick="searchHosts()">Search</button>
+                <button class="btn btn-back btn-compact" onclick="clearSearch()">Clear</button>
             </div>
             <div class="filters">
                 <span class="filter-label">Staleness:</span>
@@ -46,10 +46,7 @@
             <div class="card-body" id="host-list">
                 <div class="loading">Loading hosts...</div>
             </div>
-            <div class="pagination hidden" id="pagination">
-                <span id="page-info"></span>
-                <div id="page-buttons" style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;"></div>
-            </div>
+            <!-- INSIGHTS_DASHBOARD_PAGINATION -->
         </div>
     </div>
 
@@ -105,59 +102,18 @@
         </div>
     </div>
 
+    <!-- INSIGHTS_DASHBOARD_JS -->
     <script type="module">
-        import("https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps").then(module => {
-            const App = module.App || module.default?.App || module.default;
-            const app = new (App.App || App)({ name: "Inventory Dashboard", version: "1.0.0" });
-            app.connect();
-            window.mcpApp = app;
+        const { connectMcpApp, parseToolResultArray, callTool, renderPageButtons, renderCveDetailHtml, severityLabel, severityClass } = window.InsightsDashboard;
 
-            app.onhostcontextchanged = (ctx) => {
-                const theme = ctx?.theme || "light";
-                document.documentElement.setAttribute("data-theme", theme === "dark" ? "dark" : "light");
-            };
-
-            app.ontoolresult = (result) => {
-                let hostArray = null;
-
-                // Check structuredContent first (Approach 4 — data separate from text)
-                const sc = result.structuredContent;
-                if (sc) {
-                    const arr = sc.results || sc.data;
-                    if (arr && Array.isArray(arr)) {
-                        hostArray = arr;
-                    }
-                }
-
-                // Fall back to text content
-                if (!hostArray) {
-                    const text = result.content?.find(c => c.type === "text")?.text;
-                    if (text) {
-                        try {
-                            let data = JSON.parse(text);
-                            if (data.content && Array.isArray(data.content)) {
-                                const innerText = data.content.find(c => c.type === "text")?.text;
-                                if (innerText) {
-                                    try { data = JSON.parse(innerText); } catch {}
-                                }
-                            }
-                            const arr = data.results || data.data;
-                            if (arr && Array.isArray(arr)) {
-                                hostArray = arr;
-                            }
-                        } catch { /* initial result may not be JSON */ }
-                    }
-                }
-
-                if (hostArray) {
-                    allHosts = hostArray;
-                    totalHosts = allHosts.length;
-                    document.getElementById("total-count").textContent = totalHosts + " systems";
-                    applyFiltersAndRender();
-                }
-            };
-        }).catch(err => {
-            showError("Failed to load MCP Apps SDK: " + err.message);
+        connectMcpApp("Inventory Dashboard", (result) => {
+            const hostArray = parseToolResultArray(result);
+            if (hostArray) {
+                allHosts = hostArray;
+                totalHosts = allHosts.length;
+                document.getElementById("total-count").textContent = totalHosts + " systems";
+                applyFiltersAndRender();
+            }
         });
 
         let allHosts = [];
@@ -221,33 +177,10 @@
             applyFiltersAndRender();
         }
 
-        function showError(msg) {
-            const el = document.getElementById("alert");
-            el.textContent = msg;
-            el.classList.remove("hidden");
-        }
-
-        function hideError() {
-            document.getElementById("alert").classList.add("hidden");
-        }
-
         function showView(id) {
             ["view-list", "view-detail", "view-cves", "view-cve-detail", "view-profile"].forEach(v => {
                 document.getElementById(v).classList.toggle("hidden", v !== id);
             });
-        }
-
-        async function callTool(name, args) {
-            if (!window.mcpApp) { showError("MCP App not connected"); return null; }
-            try {
-                const result = await window.mcpApp.callServerTool({ name, arguments: args });
-                const text = result.content?.find(c => c.type === "text")?.text;
-                if (!text) { showError("No response from server"); return null; }
-                try { return JSON.parse(text); } catch { showError(text); return null; }
-            } catch (e) {
-                showError(e.message || "Tool call failed");
-                return null;
-            }
         }
 
         function stalenessInfo(host) {
@@ -266,8 +199,6 @@
             if (!bytes) return "N/A";
             return (bytes / (1024 * 1024 * 1024)).toFixed(1) + " GB";
         }
-
-        // --- Host List ---
 
         window.searchHosts = function() {
             currentSearch = document.getElementById("search-input").value.trim();
@@ -295,8 +226,8 @@
 
             container.innerHTML = data.results.map(host => {
                 const staleness = stalenessInfo(host);
-                return `<div class="host-row" onclick="showDetail('${host.id}')">
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                return `<div class="base-row" onclick="showDetail('${host.id}')">
+                    <div class="row-header">
                         <div>
                             <span class="host-name">${host.display_name || host.fqdn || host.id}</span>
                             <div class="host-meta">${host.fqdn || "No FQDN"}</div>
@@ -306,27 +237,11 @@
                 </div>`;
             }).join("");
 
-            // Pagination
             const pag = document.getElementById("pagination");
             pag.classList.remove("hidden");
             const totalPages = Math.ceil(filteredTotal / currentPerPage);
             document.getElementById("page-info").textContent = `Page ${currentPage} of ${totalPages}`;
             renderPageButtons(currentPage, totalPages);
-        }
-
-        function renderPageButtons(current, total) {
-            const container = document.getElementById("page-buttons");
-            const show = new Set([1, total, current, current - 1, current + 1]);
-            const sorted = [...show].filter(p => p >= 1 && p <= total).sort((a, b) => a - b);
-            let html = `<button class="btn btn-back" onclick="goToPage(${current - 1})" ${current === 1 ? 'disabled' : ''}>&laquo;</button>`;
-            let prev = 0;
-            for (const p of sorted) {
-                if (prev && p - prev > 1) html += `<span style="font-size:11px;color:#4d4d4d;padding:0 2px;">...</span>`;
-                html += `<button class="btn ${p === current ? 'btn-secondary' : 'btn-back'}" onclick="goToPage(${p})" style="min-width:28px;padding:4px 6px;">${p}</button>`;
-                prev = p;
-            }
-            html += `<button class="btn btn-back" onclick="goToPage(${current + 1})" ${current === total ? 'disabled' : ''}>&raquo;</button>`;
-            container.innerHTML = html;
         }
 
         window.goToPage = function(p) {
@@ -337,8 +252,6 @@
         window.showList = function() {
             showView("view-list");
         }
-
-        // --- Host Detail ---
 
         window.showDetail = async function(hostId) {
             window.currentHostId = hostId;
@@ -360,7 +273,7 @@
                     <span class="detail-label">FQDN</span>
                     <span class="detail-value">${host.fqdn || "N/A"}</span>
                     <span class="detail-label">ID</span>
-                    <span class="detail-value" style="font-size:11px;font-family:monospace;">${host.id}</span>
+                    <span class="detail-value mono-id">${host.id}</span>
                     <span class="detail-label">Created</span>
                     <span class="detail-value">${new Date(host.created).toLocaleString()}</span>
                     <span class="detail-label">Updated</span>
@@ -368,14 +281,12 @@
                     <span class="detail-label">Reporter</span>
                     <span class="detail-value">${host.reporter || "N/A"}</span>
                 </div>
-                <div style="padding:12px;display:flex;gap:8px;">
+                <div class="detail-actions">
                     <button class="btn btn-secondary" onclick="showProfile('${hostId}')">System Profile</button>
                     <button class="btn btn-secondary" onclick="showHostCves('${hostId}')">View CVEs</button>
                 </div>
             `;
         }
-
-        // --- System Profile ---
 
         window.showProfile = async function(hostId) {
             window.currentHostId = hostId;
@@ -387,7 +298,6 @@
             if (!data || !data.results || data.results.length === 0) return;
 
             const profile = data.results[0].system_profile || {};
-
             let html = '<div class="detail-grid">';
 
             if (profile.os_release) {
@@ -422,27 +332,6 @@
             document.getElementById("system-profile").innerHTML = html;
         }
 
-        // --- Host CVEs ---
-
-        function severityLabel(impact) {
-            if (typeof impact === "string") return impact;
-            const map = { 7: "Critical", 5: "Important", 4: "Moderate", 2: "Low", 1: "None", 0: "NotSet" };
-            return map[impact] || "Unknown";
-        }
-
-        function severityClass(impact) {
-            const label = (typeof impact === "string" ? impact : severityLabel(impact)).toLowerCase();
-            const map = {
-                critical: "severity-critical",
-                important: "severity-important",
-                moderate: "severity-moderate",
-                low: "severity-low",
-                none: "severity-none",
-                notset: "severity-none",
-            };
-            return map[label] || "severity-none";
-        }
-
         window.showHostCves = async function(hostId) {
             window.currentHostId = hostId;
             showView("view-cves");
@@ -461,10 +350,10 @@
                 const attrs = cve.attributes || {};
                 const impact = attrs.impact || 0;
                 const cvss = parseFloat(attrs.cvss3_score) || parseFloat(attrs.cvss2_score) || "N/A";
-                return `<div class="host-row" onclick="showCveDetail('${cve.id}')">
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <span class="cve-id-inline">${cve.id}</span>
-                        <div style="display:flex;gap:8px;align-items:center;">
+                return `<div class="base-row" onclick="showCveDetail('${cve.id}')">
+                    <div class="row-header">
+                        <span class="cve-id">${cve.id}</span>
+                        <div class="row-actions">
                             <span class="severity ${severityClass(impact)}">${severityLabel(impact)}</span>
                             <span class="cvss">${cvss}</span>
                         </div>
@@ -472,8 +361,6 @@
                 </div>`;
             }).join("");
         }
-
-        // --- CVE Detail ---
 
         window.showCveDetail = async function(cveId) {
             showView("view-cve-detail");
@@ -483,36 +370,7 @@
             const data = await callTool("vulnerability__get_cve", { cve: cveId });
             if (!data || !data.data) return;
 
-            const attrs = data.data.attributes || {};
-            const impact = attrs.impact || 0;
-            const cvss3 = attrs.cvss3_score || "N/A";
-            const cvss2 = attrs.cvss2_score || "N/A";
-            const published = attrs.public_date ? new Date(attrs.public_date).toLocaleDateString() : "N/A";
-            const modified = attrs.modified_date ? new Date(attrs.modified_date).toLocaleDateString() : "N/A";
-            const desc = attrs.description || "No description available.";
-            const advisories = attrs.advisories_list || [];
-            const redhatUrl = `https://access.redhat.com/security/cve/${cveId}`;
-
-            document.getElementById("cve-detail-content").innerHTML = `
-                <div style="padding:12px;">
-                    <p style="margin-bottom:12px;font-size:12px;color:#4d4d4d;">${desc}</p>
-                </div>
-                <div class="detail-grid">
-                    <span class="detail-label">Severity</span>
-                    <span class="detail-value"><span class="severity ${severityClass(impact)}">${severityLabel(impact)}</span></span>
-                    <span class="detail-label">CVSS 3</span>
-                    <span class="detail-value" style="font-family:monospace;font-weight:600;">${cvss3}</span>
-                    <span class="detail-label">CVSS 2</span>
-                    <span class="detail-value" style="font-family:monospace;font-weight:600;">${cvss2}</span>
-                    <span class="detail-label">Published</span>
-                    <span class="detail-value">${published}</span>
-                    <span class="detail-label">Modified</span>
-                    <span class="detail-value">${modified}</span>
-                    <span class="detail-label">Red Hat</span>
-                    <span class="detail-value"><a href="${redhatUrl}" target="_blank" style="color:#ee0000;">${redhatUrl}</a></span>
-                    ${advisories.length ? `<span class="detail-label">Advisories</span><span class="detail-value">${advisories.map(a => `<a href="${a}" target="_blank" style="color:#ee0000;">${a.split('/').pop()}</a>`).join(', ')}</span>` : ''}
-                </div>
-            `;
+            document.getElementById("cve-detail-content").innerHTML = renderCveDetailHtml(cveId, data.data.attributes || {}, "");
         }
     </script>
 </body>
