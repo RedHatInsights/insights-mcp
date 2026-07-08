@@ -110,6 +110,42 @@ E.g. replace `podman` with the full path. Should be something like
 
 You can find the path by running `which podman` in your terminal.
 
+### Goose Desktop
+
+First check the [prerequisites](#prerequisites) section.
+
+#### Option 1: One-click installation (easiest)
+
+[![Install in Goose](https://block.github.io/goose/img/extension-install-dark.svg)](https://block.github.io/goose/extension?cmd=docker&arg=run&arg=--env&arg=LIGHTSPEED_CLIENT_ID&arg=--env&arg=LIGHTSPEED_CLIENT_SECRET&arg=--interactive&arg=--rm&arg=quay.io%2Fredhat-services-prod%2Finsights-management-tenant%2Finsights-mcp%2Fred-hat-lightspeed-mcp%3Alatest&id=red-hat-lightspeed-mcp&name=Red%20Hat%20Lightspeed%20MCP&description=Red%20Hat%20Lightspeed%20MCP%20server%20integration&env=LIGHTSPEED_CLIENT_ID%3DRed%20Hat%20Lightspeed%20Client%20ID&env=LIGHTSPEED_CLIENT_SECRET%3DRed%20Hat%20Lightspeed%20Client%20Secret)
+
+Direct deeplink (opens Goose Desktop when the `goose://` handler is registered):<br>
+[goose://extension?cmd=docker&arg=run&arg=--env&arg=LIGHTSPEED_CLIENT_ID&arg=--env&arg=LIGHTSPEED_CLIENT_SECRET&arg=--interactive&arg=--rm&arg=quay.io%2Fredhat-services-prod%2Finsights-management-tenant%2Finsights-mcp%2Fred-hat-lightspeed-mcp%3Alatest&id=red-hat-lightspeed-mcp&name=Red%20Hat%20Lightspeed%20MCP&description=Red%20Hat%20Lightspeed%20MCP%20server%20integration&env=LIGHTSPEED_CLIENT_ID%3DRed%20Hat%20Lightspeed%20Client%20ID&env=LIGHTSPEED_CLIENT_SECRET%3DRed%20Hat%20Lightspeed%20Client%20Secret](goose://extension?cmd=docker&arg=run&arg=--env&arg=LIGHTSPEED_CLIENT_ID&arg=--env&arg=LIGHTSPEED_CLIENT_SECRET&arg=--interactive&arg=--rm&arg=quay.io%2Fredhat-services-prod%2Finsights-management-tenant%2Finsights-mcp%2Fred-hat-lightspeed-mcp%3Alatest&id=red-hat-lightspeed-mcp&name=Red%20Hat%20Lightspeed%20MCP&description=Red%20Hat%20Lightspeed%20MCP%20server%20integration&env=LIGHTSPEED_CLIENT_ID%3DRed%20Hat%20Lightspeed%20Client%20ID&env=LIGHTSPEED_CLIENT_SECRET%3DRed%20Hat%20Lightspeed%20Client%20Secret)
+
+The badge uses an HTTPS redirect (`block.github.io/goose/extension?...`) with the same parameters as the `goose://` link above. Some browsers handle the HTTPS link more reliably; the direct `goose://` link opens Goose Desktop when your OS has the protocol handler registered.
+
+(Note: this uses the `quay.io` container image and `docker` as the command — Goose deeplinks only support `docker`, not `podman`. Use the manual install below if you rely on Podman.)
+
+After clicking, Goose prompts for `LIGHTSPEED_CLIENT_ID` and `LIGHTSPEED_CLIENT_SECRET`, then installs the extension. Start a new chat session to use it.
+
+#### Option 2: Manual STDIO installation
+
+1. Click the button in the **top-left** to open the sidebar.
+2. Click the **`Extensions`** button on the sidebar.
+3. Under **`Extensions`**, click **`Add custom extension`**.
+4. On the **`Add custom extension`** modal, enter:
+   - **Type**: `Standard IO`
+   - **ID**: `red-hat-lightspeed-mcp`
+   - **Name**: `Red Hat Lightspeed MCP`
+   - **Description**: `Red Hat Lightspeed MCP server integration`
+   - **Command**: `podman run --env LIGHTSPEED_CLIENT_ID --env LIGHTSPEED_CLIENT_SECRET --interactive --rm ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest`
+   - **Environment variables**: click **`Add`** for each:
+     - `LIGHTSPEED_CLIENT_ID` — Red Hat Lightspeed Client ID
+     - `LIGHTSPEED_CLIENT_SECRET` — Red Hat Lightspeed Client Secret
+   - **Timeout**: leave default (300s) unless needed
+5. Click **`Add`**.
+
+Docker users can replace `podman` with `docker` in the command. On macOS, if Goose cannot find `podman`, use the full path from `which podman` (see [prerequisites](#prerequisites)).
+
 ### Cursor
 
 First check the [prerequisites](#prerequisites) section.

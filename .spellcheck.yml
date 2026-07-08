@@ -26,3 +26,6 @@ matrix:
             # Ignore text between inline back ticks
             - open: '(?P<open>`+)'
               close: '(?P=open)'
+            # Ignore full line links
+            - open: '^\['
+              close: '\)'
