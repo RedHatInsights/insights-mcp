@@ -134,6 +134,147 @@ For multiuser scenarios (SSE/HTTP transports with header-based authentication), 
 
 **Used by:** `InsightsHeadersBasedClient` for SSE/HTTP transports when service account credentials are provided via request headers. JWT Bearer token authentication bypasses the cache since no token exchange is needed.
 
+## MCP Apps
+
+[MCP Apps](https://modelcontextprotocol.io/extensions/apps/overview) is an MCP extension (`io.modelcontextprotocol/ui`) that lets MCP servers return interactive HTML interfaces (data visualizations, forms, dashboards) that render directly in the chat. Clients with MCP Apps support include Cursor, VS Code Copilot, Claude Desktop, and [others](https://modelcontextprotocol.io/extensions/client-matrix). CLI and TUI clients (e.g. Claude Code, Copilot CLI, OpenCode) do not support UI rendering.
+
+### How It Works
+
+1. The server registers an HTML page as a **UI resource** (`@mcp.resource`).
+2. The server registers a **tool that references it** (`@mcp.tool` with `AppConfig`).
+3. When a client calls the tool, the server returns a `ToolResult` with `content` and `structured_content`. To handle clients that don't support UI rendering, the server can use `ctx.client_supports_extension(UI_EXTENSION_ID)` to detect support and adapt the response accordingly.
+4. The app HTML connects to the MCP Apps SDK and can interact with the server in two ways:
+   - Via `ontoolresult` — receives the tool call result.
+   - Via `callServerTool` — invokes MCP tools directly from the HTML (e.g. to fetch additional data or drill into details).
+
+### Adding a New MCP App
+
+#### 1. Create the HTML file
+
+Create `src/<toolset_mcp>/<app_name>.html`.
+
+#### 2. Load the HTML at module level
+
+In `src/<toolset_mcp>/server.py`:
+
+```python
+from importlib import resources
+from pathlib import Path
+
+def _load_my_app_html() -> str:
+    try:
+        return resources.files("my_toolset_mcp").joinpath("my_app.html").read_text(encoding="utf-8")
+    except (FileNotFoundError, ModuleNotFoundError, AttributeError, TypeError):
+        return (Path(__file__).parent / "my_app.html").read_text(encoding="utf-8")
+
+EMBEDDED_MY_APP_HTML = _load_my_app_html()
+```
+
+#### 3. Define resource and mounted URIs
+
+```python
+MY_APP_RESOURCE_URI = "ui://my-app"
+MY_APP_MOUNTED_URI = "ui://my_toolset_/my-app"
+```
+
+The mounted URI follows the convention `ui://<toolset_name>_/<app-name>`, matching how FastMCP mounts toolset tools.
+
+#### 4. Register the resource
+
+```python
+from fastmcp.apps import AppConfig, ResourceCSP
+
+@mcp.resource(
+    MY_APP_RESOURCE_URI,
+    app=AppConfig(csp=ResourceCSP(resource_domains=["https://unpkg.com"])),
+)
+def my_app_ui() -> str:
+    """My App UI description."""
+    return EMBEDDED_MY_APP_HTML
+```
+
+Since the HTML is embedded in the Python package, external dependencies like PatternFly CSS should be loaded from a CDN rather than bundled inline. The `ResourceCSP` whitelist must include any CDN domains used.
+
+#### 5. Register the tool with a UI resource
+
+```python
+from fastmcp import Context
+from fastmcp.apps import UI_EXTENSION_ID, AppConfig
+from fastmcp.tools import ToolResult
+
+@mcp.tool(
+    annotations={"readOnlyHint": True},
+    app=AppConfig(resource_uri=MY_APP_MOUNTED_URI),
+)
+async def load_my_app(ctx: Context, ...) -> ToolResult:
+    """Render data in the interactive app."""
+    ui_supported = ctx.client_supports_extension(UI_EXTENSION_ID)
+    if not ui_supported:
+        return ToolResult(
+            content="Client does not support MCP Apps.",  # fallback instructions for non-UI clients
+        )
+    return ToolResult(
+        content="...",  # optional message for the model (also available for the HTML via result.content)
+        structured_content={...},  # data for the HTML via result.structuredContent
+    )
+```
+
+
+#### 6. Connect the HTML to MCP Apps SDK
+
+> **Dark mode:** Use CSS variables on `:root` (light) and `[data-theme="dark"]` (dark), toggled by the `onhostcontextchanged` callback. Use `background: transparent` on body to inherit the host app's background.
+
+```html
+<link rel="stylesheet" href="https://unpkg.com/@patternfly/patternfly@5.4.2/patternfly.min.css">
+
+<script type="module">
+    import("https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps").then(module => {
+        const App = module.App || module.default?.App || module.default;
+        const app = new (App.App || App)({ name: "My App", version: "1.0.0" });
+        app.connect();
+        window.mcpApp = app;
+
+        app.onhostcontextchanged = (ctx) => {
+            const theme = ctx?.theme || "light";
+            document.documentElement.setAttribute("data-theme", theme === "dark" ? "dark" : "light");
+        };
+
+        app.ontoolresult = (result) => {
+            const data = result.structuredContent;  // structured_content from the ToolResult
+            const content = result.content;             // content from the ToolResult
+            // render data
+        };
+    });
+</script>
+```
+
+#### 7. Calling tools from the app
+
+Apps can invoke MCP tools directly for drill-downs or fetching additional data. Only tools on the same MCP server as the resource can be called — cross-server tool calls are not supported.
+
+```javascript
+const result = await window.mcpApp.callServerTool({
+    name: "toolset__tool_name",
+    arguments: { param: "value" }
+});
+const text = result.content?.find(c => c.type === "text")?.text;
+```
+
+#### 8. Add test prompts
+
+Add 1-2 example prompts to `src/<toolset_mcp>/test_prompts.md` that exercise the app.
+
+### Design Resources
+
+- [PatternFly](https://www.patternfly.org/) — CSS framework used for styling MCP Apps in this project
+
+### Existing Apps
+
+Use these as reference implementations:
+
+- **CVE Dashboard**: [`src/vulnerability_mcp/cve_dashboard.html`](src/vulnerability_mcp/cve_dashboard.html) + [`server.py`](src/vulnerability_mcp/server.py)
+- **Inventory Dashboard**: [`src/inventory_mcp/inventory_dashboard.html`](src/inventory_mcp/inventory_dashboard.html) + [`server.py`](src/inventory_mcp/server.py)
+
 ## Important notes
 * When changing some code you might want to use `make build-prod` so the container is built with
   the upstream container tag and you don't need to change it in your MCP client (like VSCode).
