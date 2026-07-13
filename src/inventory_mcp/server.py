@@ -88,7 +88,8 @@ async def load_inventory_dashboard(ctx: Context, hosts: list[dict[str, Any]]) ->
             content=(
                 f"Dashboard rendered with {n} hosts. "
                 "Do NOT print a full host table — the user can see it in the dashboard. "
-                "Print only a brief summary and suggest next steps."
+                "Print only a brief summary (total count, staleness breakdown, provider types) "
+                "and suggest next steps."
             ),
             structured_content={"results": hosts},
         )
