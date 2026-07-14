@@ -119,8 +119,11 @@ postgresql
 nodejs
 requester's
 Ansible
+CDN
 env
 Mitigations
 permissioned
+SDK
 triaging
+TUI
 UI
