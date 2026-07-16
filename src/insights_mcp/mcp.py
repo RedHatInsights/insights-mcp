@@ -8,7 +8,6 @@ Insights-specific MCP tools and resources.
 import asyncio
 
 from fastmcp import FastMCP
-from fastmcp.server.auth import AuthProvider
 
 from insights_mcp.client import InsightsClient
 from insights_mcp.config import INSIGHTS_BASE_URL, SSO_TOKEN_ENDPOINT
@@ -62,16 +61,10 @@ class InsightsMCP(FastMCP):
         refresh_token: str | None = None,
         proxy_url: str | None = None,
         headers: dict[str, str] | None = None,
-        oauth_enabled: bool = False,
-        oauth_provider: AuthProvider | None = None,
         mcp_transport: str | None = None,
         token_endpoint: str = SSO_TOKEN_ENDPOINT,
     ):
         """Initialize the authenticated Insights client.
-
-        This method sets up an authenticated InsightsClient instance for making
-        API calls to Red Hat Insights. Either refresh_token or client_secret
-        must be provided unless oauth_enabled is True.
 
         Args:
             base_url: Base URL for the Insights API
@@ -80,11 +73,7 @@ class InsightsMCP(FastMCP):
             refresh_token: OAuth refresh token for authentication
             proxy_url: Optional proxy URL for requests
             headers: Optional additional HTTP headers
-            oauth_enabled: Whether OAuth authentication is enabled
             mcp_transport: Optional MCP transport configuration
-
-        Raises:
-            ValueError: If authentication credentials are not provided
         """
         # merge headers with self.headers
         if headers is not None:
@@ -99,8 +88,6 @@ class InsightsMCP(FastMCP):
             refresh_token=refresh_token,
             proxy_url=proxy_url,
             headers=self.headers,
-            oauth_enabled=oauth_enabled,
-            oauth_provider=oauth_provider,
             mcp_transport=mcp_transport,
             token_endpoint=token_endpoint,
         )

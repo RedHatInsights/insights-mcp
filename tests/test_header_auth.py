@@ -243,7 +243,7 @@ class TestProductionWarning:
 
     def test_production_warning_for_http_with_env_credentials(self):
         """Test that warning is emitted for HTTP transport with env credentials."""
-        mcp_server_config = {"oauth_enabled": False, "mcp_transport": "http"}
+        mcp_server_config = {"mcp_transport": "http"}
         logger = MagicMock()
 
         with patch("insights_mcp.server.config") as mock_config:
@@ -262,7 +262,7 @@ class TestProductionWarning:
 
     def test_production_warning_for_sse_with_env_credentials(self):
         """Test that warning is emitted for SSE transport with env credentials."""
-        mcp_server_config = {"oauth_enabled": False, "mcp_transport": "sse"}
+        mcp_server_config = {"mcp_transport": "sse"}
         logger = MagicMock()
 
         with patch("insights_mcp.server.config") as mock_config:
@@ -281,7 +281,7 @@ class TestProductionWarning:
 
     def test_no_warning_for_stdio_with_env_credentials(self):
         """Test that NO warning is emitted for STDIO transport with env credentials."""
-        mcp_server_config = {"oauth_enabled": False, "mcp_transport": "stdio"}
+        mcp_server_config = {"mcp_transport": "stdio"}
         logger = MagicMock()
 
         with patch("insights_mcp.server.config") as mock_config:
@@ -293,24 +293,6 @@ class TestProductionWarning:
             setup_credentials(mcp_server_config, logger)
 
             # Check that warning was NOT logged
-            warning_calls = [
-                call for call in logger.warning.call_args_list if "THIS SHOULD NOT BE USED IN PRODUCTION" in str(call)
-            ]
-            assert len(warning_calls) == 0
-
-    def test_no_warning_for_http_with_oauth_enabled(self):
-        """Test that NO warning is emitted for HTTP transport with OAuth proxy enabled."""
-
-        mcp_server_config = {"oauth_enabled": True, "mcp_transport": "http"}
-        logger = MagicMock()
-
-        with patch("insights_mcp.server.config") as mock_config:
-            mock_config.SSO_CLIENT_ID = "test-id"
-            mock_config.SSO_CLIENT_SECRET = "test-secret"
-
-            setup_credentials(mcp_server_config, logger)
-
-            # Check that warning was NOT logged (OAuth mode is production-safe)
             warning_calls = [
                 call for call in logger.warning.call_args_list if "THIS SHOULD NOT BE USED IN PRODUCTION" in str(call)
             ]
