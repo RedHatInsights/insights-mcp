@@ -350,6 +350,17 @@ def get_latest_release_tag() -> str:
     return response.json()["tag_name"]
 
 
+def validate_oauth_config(logger: logging.Logger) -> None:
+    """Fail fast with a clear message when AUTH_SERVER is set but AUTH_ISSUER is missing."""
+    if config.AUTH_SERVER and not config.AUTH_ISSUER:
+        logger.error(
+            "AUTH_SERVER is set but AUTH_ISSUER is missing. "
+            "Set AUTH_ISSUER to the JWT issuer claim of your SSO realm "
+            "(e.g. https://sso.redhat.com/auth/realms/redhat-external)."
+        )
+        sys.exit(1)
+
+
 def setup_credentials(mcp_server_config: dict, logger: logging.Logger) -> None:
     """Set up client credentials from environment.
 
@@ -549,6 +560,7 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
 
     # Set client credentials based on OAuth mode
     setup_credentials(mcp_server_config, logger)
+    validate_oauth_config(logger)
 
     toolset = args.toolset or config.INSIGHTS_MCP_TOOLSET
     if toolset == "all":

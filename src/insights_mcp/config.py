@@ -24,17 +24,18 @@ SSO_TOKEN_ENDPOINT = (
 )
 SSO_OAUTH_TIMEOUT_SECONDS = int(os.getenv("SSO_OAUTH_TIMEOUT_SECONDS", "30"))
 
-# HTTP transport auth provider (rh_mcp_commons.auth.mcp_auth.build_auth_provider)
-# These are read directly by rh-mcp-commons; listed here for discoverability.
-# AUTH_SERVER: OAuth authorization server base URL (e.g. https://sso.redhat.com/auth/realms/redhat-external)
-# AUTH_ISSUER:  JWT issuer claim — must match the SSO realm issuer
-# AUTH_RESOURCE: MCP server resource URL (defaults to {MCP_BASE_URL}/mcp)
-# MCP_BASE_URL: Public base URL of this MCP server (defaults to http://localhost:8080)
-# AUTH_SCOPES:  Comma-separated required scopes (recommended: openid,api.console,api.ocm)
-# AUTH_AUDIENCE: Comma-separated accepted JWT audiences (optional)
-# MCP_BASE_URL: Public base URL of this MCP server (used in auth metadata endpoints)
+# HTTP transport auth provider (rh_mcp_commons.auth.mcp_auth.build_auth_provider).
+# rh-mcp-commons reads these directly from os.getenv(); exposed here for validation and tests.
 # When AUTH_SERVER is unset, no auth provider is configured and raw Bearer token
 # pass-through is used (backward-compatible with stdio and self-hosted deployments).
+AUTH_SERVER = os.getenv("AUTH_SERVER") or ""
+AUTH_ISSUER = os.getenv("AUTH_ISSUER") or ""
+# Read directly by rh-mcp-commons (no Python binding needed):
+# AUTH_RESOURCE:  MCP server resource URL (defaults to {MCP_BASE_URL}/mcp)
+# MCP_BASE_URL:   Public base URL of this MCP server (defaults to http://localhost:8080)
+# AUTH_SCOPES:    Comma-separated required scopes (recommended: openid,api.console,api.ocm)
+# AUTH_AUDIENCE:  Comma-separated accepted JWT audiences (optional)
+# AUTH_JWKS_URI:  Override JWKS endpoint (otherwise fetched from AUTH_SERVER discovery)
 
 # Traditional service account credentials (stdio transport)
 INSIGHTS_CLIENT_ID = os.getenv("INSIGHTS_CLIENT_ID") or ""
