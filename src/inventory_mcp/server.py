@@ -70,34 +70,55 @@ def inventory_dashboard_ui() -> str:
     annotations={"readOnlyHint": True},
     app=AppConfig(resource_uri=INVENTORY_DASHBOARD_MOUNTED_URI),
 )
-async def load_inventory_dashboard(ctx: Context, hosts: list[dict[str, Any]]) -> ToolResult:
-    """Render host data in the interactive Inventory Dashboard.
+async def load_inventory_dashboard(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    ctx: Context,
+    hostname_or_id: Annotated[str, Field("", description="Filter by display_name, fqdn, or id.")],
+    display_name: Annotated[str, Field("", description="Filter by display name.")],
+    fqdn: Annotated[str, Field("", description="Filter by FQDN.")],
+    tags: Annotated[str, Field("", description="Filter by tags.")],
+    staleness: Annotated[str, Field("", description="Filter by staleness status.")],
+    registered_with: Annotated[str, Field("", description="Filter by reporter.")],
+    provider_type: Annotated[str, Field("", description="Filter by provider type (aws, azure, gcp).")],
+    per_page: Annotated[int, Field(10, description="Number of hosts per page.")],
+    page: Annotated[int, Field(1, description="Page number.")],
+    order_by: Annotated[str, Field("", description="Sort field (display_name, updated, created).")],
+    order_how: Annotated[str, Field("ASC", description="Sort direction (ASC or DESC).")],
+) -> ToolResult:
+    """Show, list, or display fleet inventory in an interactive dashboard.
 
-    Call this tool with host data (the results array from a list_hosts response) to display
-    it in an interactive dashboard with search, staleness filters, host details, system
-    profiles, and cross-linking to CVEs affecting each host.
-
-    Args:
-        hosts: List of host objects from a list_hosts response (the 'results' array).
+    PREFER this tool over list_hosts whenever the user wants to see, show, list, or display hosts or fleet inventory.
+    Use list_hosts only when you need the raw data for analysis or processing.
+    The dashboard fetches data directly from the server. All filter parameters are optional.
     """
-    n = len(hosts)
+    query = {
+        "hostname_or_id": hostname_or_id,
+        "display_name": display_name,
+        "fqdn": fqdn,
+        "tags": tags,
+        "staleness": staleness,
+        "registered_with": registered_with,
+        "provider_type": provider_type,
+        "per_page": per_page,
+        "page": page,
+        "order_by": order_by,
+        "order_how": order_how,
+    }
     ui_supported = ctx.client_supports_extension(UI_EXTENSION_ID)
-    await ctx.info(f"load_inventory_dashboard called | UI supported: {ui_supported} | hosts: {n}")
-    if ui_supported:
+    await ctx.info(f"load_inventory_dashboard called | UI supported: {ui_supported} | query: {query}")
+    if not ui_supported:
         return ToolResult(
             content=(
-                f"Dashboard rendered with {n} hosts. "
-                "Do NOT print a full host table — the user can see it in the dashboard. "
-                "Print only a brief summary (total count, staleness breakdown, provider types) "
-                "and suggest next steps."
+                "Client does not support MCP Apps. "
+                "If you don't already have host data, call list_hosts to fetch it. "
+                "Present the data as text."
             ),
-            structured_content={"results": hosts},
         )
     return ToolResult(
         content=(
-            "Client does not support interactive dashboards. "
-            "Print the full host table as markdown using the data from your previous list_hosts call."
+            "Inventory Dashboard opened and fetching data. "
+            "Do NOT print a host table — the user can see the data in the dashboard."
         ),
+        structured_content={"query": query},
     )
 
 

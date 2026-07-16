@@ -198,42 +198,9 @@
             };
 
             app.ontoolresult = (result) => {
-                let hostArray = null;
-
-                // Check structuredContent first (Approach 4 — data separate from text)
                 const sc = result.structuredContent;
-                if (sc) {
-                    const arr = sc.results || sc.data;
-                    if (arr && Array.isArray(arr)) {
-                        hostArray = arr;
-                    }
-                }
-
-                // Fall back to text content
-                if (!hostArray) {
-                    const text = result.content?.find(c => c.type === "text")?.text;
-                    if (text) {
-                        try {
-                            let data = JSON.parse(text);
-                            if (data.content && Array.isArray(data.content)) {
-                                const innerText = data.content.find(c => c.type === "text")?.text;
-                                if (innerText) {
-                                    try { data = JSON.parse(innerText); } catch {}
-                                }
-                            }
-                            const arr = data.results || data.data;
-                            if (arr && Array.isArray(arr)) {
-                                hostArray = arr;
-                            }
-                        } catch { /* initial result may not be JSON */ }
-                    }
-                }
-
-                if (hostArray) {
-                    allHosts = hostArray;
-                    totalHosts = allHosts.length;
-                    document.getElementById("total-count").textContent = totalHosts + " systems";
-                    applyFiltersAndRender();
+                if (sc && sc.query) {
+                    fetchHostData(sc.query);
                 }
             };
         }).catch(err => {
@@ -328,6 +295,33 @@
                 showError(e.message || "Tool call failed");
                 return null;
             }
+        }
+
+        async function fetchHostData(query) {
+            document.getElementById("host-list").innerHTML = '<div class="loading">Loading hosts...</div>';
+            const args = {};
+            if (query.hostname_or_id) args.hostname_or_id = query.hostname_or_id;
+            if (query.display_name) args.display_name = query.display_name;
+            if (query.fqdn) args.fqdn = query.fqdn;
+            if (query.tags) args.tags = query.tags;
+            if (query.staleness) args.staleness = query.staleness;
+            if (query.registered_with) args.registered_with = query.registered_with;
+            if (query.provider_type) args.provider_type = query.provider_type;
+            args.per_page = query.per_page || 10;
+            args.page = query.page || 1;
+            if (query.order_by) {
+                args.order_by = query.order_by;
+                args.order_how = query.order_how || "ASC";
+            }
+            const result = await callTool("inventory__list_hosts", args);
+            if (!result || !result.results) {
+                showError("No host data received");
+                return;
+            }
+            allHosts = result.results;
+            totalHosts = allHosts.length;
+            document.getElementById("total-count").textContent = totalHosts + " systems";
+            applyFiltersAndRender();
         }
 
         function stalenessInfo(host) {

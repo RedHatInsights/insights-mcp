@@ -130,7 +130,7 @@ spec:
       description: "List hosts with filtering and sorting options."
     - type: tool
       name: inventory__load_inventory_dashboard
-      description: "Render host data in the interactive Inventory Dashboard."
+      description: "Show, list, or display fleet inventory in an interactive dashboard."
     # planning
     - type: tool
       name: planning__get_appstreams_lifecycle
@@ -189,4 +189,4 @@ spec:
       description: "Get list of systems in Red Hat Lightspeed Vulnerability inventory."
     - type: tool
       name: vulnerability__load_cve_dashboard
-      description: "Render CVE data in the interactive CVE Dashboard."
+      description: "Show, list, or display CVEs — account-level or for a specific system — in an interactive dashboard."
