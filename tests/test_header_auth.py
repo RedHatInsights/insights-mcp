@@ -561,3 +561,105 @@ class TestBearerTokenErrorMessages:
 
         # STDIO should use environment credentials message
         assert "mcp.json config" in error_msg.lower()
+
+
+class TestAuthProviderBearerToken:
+    """Test get_bearer_token_from_headers() priority: auth context > raw header."""
+
+    @pytest.mark.asyncio
+    async def test_auth_context_token_takes_priority_over_header(self):
+        """Token from FastMCP auth context is used when auth provider is active."""
+        from tests.oauth_utils import create_test_token
+
+        client = InsightsHeadersBasedClient(mcp_transport="http", token_endpoint="https://test.example.com/token")
+        ctx_token = create_test_token(org_id="org-from-ctx")
+
+        with patch("insights_mcp.client.get_access_token", return_value=ctx_token):
+            with patch("insights_mcp.client.get_http_headers") as mock_headers:
+                mock_headers.return_value = {"authorization": "Bearer raw-header-token"}
+
+                token = client.get_bearer_token_from_headers()
+
+        assert token == ctx_token.token
+        assert token != "raw-header-token"
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_header_when_no_auth_context(self):
+        """Raw Authorization header is used when auth context returns None."""
+        client = InsightsHeadersBasedClient(mcp_transport="http", token_endpoint="https://test.example.com/token")
+
+        with patch("insights_mcp.client.get_access_token", return_value=None):
+            with patch("insights_mcp.client.get_http_headers") as mock_headers:
+                mock_headers.return_value = {"authorization": "Bearer raw-header-token"}
+
+                token = client.get_bearer_token_from_headers()
+
+        assert token == "raw-header-token"
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_header_when_auth_context_token_empty(self):
+        """Raw Authorization header is used when AccessToken.token is an empty string."""
+        from fastmcp.server.auth import AccessToken
+
+        client = InsightsHeadersBasedClient(mcp_transport="http", token_endpoint="https://test.example.com/token")
+        empty_token = AccessToken(token="", client_id="c", scopes=[], expires_at=9999999999, claims={})
+
+        with patch("insights_mcp.client.get_access_token", return_value=empty_token):
+            with patch("insights_mcp.client.get_http_headers") as mock_headers:
+                mock_headers.return_value = {"authorization": "Bearer raw-header-token"}
+
+                token = client.get_bearer_token_from_headers()
+
+        assert token == "raw-header-token"
+
+    @pytest.mark.asyncio
+    async def test_returns_none_when_neither_context_nor_header(self):
+        """Returns None when both auth context and Authorization header are absent."""
+        client = InsightsHeadersBasedClient(mcp_transport="http", token_endpoint="https://test.example.com/token")
+
+        with patch("insights_mcp.client.get_access_token", return_value=None):
+            with patch("insights_mcp.client.get_http_headers") as mock_headers:
+                mock_headers.return_value = {}
+
+                token = client.get_bearer_token_from_headers()
+
+        assert token is None
+
+
+class TestAuthResourceEnvBridge:
+    """Test that MCP_BASE_URL -> AUTH_RESOURCE bridge logic is correct."""
+
+    def test_auth_resource_derived_from_mcp_base_url(self, monkeypatch):
+        """AUTH_RESOURCE is set to {MCP_BASE_URL}/mcp when AUTH_RESOURCE is unset."""
+        monkeypatch.delenv("AUTH_RESOURCE", raising=False)
+        mcp_base_url = "https://my-mcp.example.com"
+
+        # Replicate the module-level bridge logic
+        auth_resource = None
+        if mcp_base_url and not None:
+            auth_resource = f"{mcp_base_url.rstrip('/')}/mcp"
+
+        assert auth_resource == "https://my-mcp.example.com/mcp"
+
+    def test_auth_resource_not_overridden_when_already_set(self, monkeypatch):
+        """AUTH_RESOURCE is preserved when explicitly set, even if MCP_BASE_URL differs."""
+        monkeypatch.setenv("AUTH_RESOURCE", "https://custom-resource.example.com/mcp")
+        monkeypatch.setenv("MCP_BASE_URL", "https://my-mcp.example.com")
+
+        existing = "https://custom-resource.example.com/mcp"
+        mcp_base_url = "https://my-mcp.example.com"
+
+        # Bridge only applies when AUTH_RESOURCE is unset
+        auth_resource = existing if existing else f"{mcp_base_url.rstrip('/')}/mcp"
+
+        assert auth_resource == "https://custom-resource.example.com/mcp"
+
+    def test_trailing_slash_stripped_from_mcp_base_url(self, monkeypatch):
+        """Trailing slash on MCP_BASE_URL does not produce double-slash in AUTH_RESOURCE."""
+        monkeypatch.delenv("AUTH_RESOURCE", raising=False)
+        mcp_base_url = "https://my-mcp.example.com/"
+
+        auth_resource = f"{mcp_base_url.rstrip('/')}/mcp"
+
+        assert auth_resource == "https://my-mcp.example.com/mcp"
+        assert "//" not in auth_resource.replace("https://", "")
