@@ -23,7 +23,7 @@ import httpx
 import jwt
 from authlib.integrations.httpx_client import AsyncOAuth2Client, OAuthError
 from authlib.oauth2.rfc6749 import OAuth2Token
-from fastmcp.server.dependencies import get_context, get_http_headers
+from fastmcp.server.dependencies import get_access_token, get_context, get_http_headers
 
 from insights_mcp.config import (
     BRAND_CLIENT_ID_ENV,
@@ -625,20 +625,22 @@ class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attribute
             return None, None
 
     def get_bearer_token_from_headers(self) -> str | None:
-        """Extract Bearer token from the Authorization HTTP header.
+        """Return bearer token for forwarding to the Insights API.
 
-        This method checks for an Authorization: Bearer <token> header in the
-        current HTTP request, used for SSE/HTTP transports where callers provide
-        a pre-existing JWT token instead of service account credentials.
+        Prefers the token validated by the auth provider (when AUTH_SERVER is
+        configured). Falls back to raw Authorization header extraction for
+        deployments without an auth provider (backward-compatible).
 
         Returns:
-            The bearer token string (without prefix) if found, None otherwise.
-
-        Note:
-            - STDIO transport always returns None as it doesn't support headers
-            - Only SSE/HTTP transports are checked
-            - The "Bearer " prefix is case-insensitive
+            Bearer token string if found, None otherwise.
         """
+        # Prefer token already validated by the commons auth provider
+        access_token = get_access_token()
+        if access_token and access_token.token:
+            self.logger.debug("Bearer token from auth context: present")
+            return access_token.token
+
+        # Fall back to raw header extraction (no auth provider configured)
         bearer_token = _get_authorization_bearer_token(self.mcp_transport)
         self.logger.debug(
             "Bearer token from Authorization header: %s",

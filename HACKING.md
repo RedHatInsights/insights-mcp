@@ -356,6 +356,44 @@ make run-stdio
 You can set the environment variable `IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK` to `True` to avoid adding a hint to newly created image builder blueprints.
 
 
+## Hosted MCP Server with Auth Provider (HTTP transport)
+
+When deploying the MCP server as a hosted service over HTTP/SSE, token validation is handled by
+[`rh-mcp-commons`](https://github.com/dmartinol/mcp-servers-commons) via `build_auth_provider()`.
+When `AUTH_SERVER` is unset, no auth provider is configured and the server falls back to raw
+Bearer token pass-through (backward-compatible with self-hosted and stdio deployments).
+
+### Environment Variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `AUTH_SERVER` | Yes | OAuth authorization server base URL (e.g. `https://sso.redhat.com/auth/realms/redhat-external`) |
+| `AUTH_ISSUER` | Yes | JWT `iss` claim — must match the SSO realm issuer |
+| `MCP_BASE_URL` | No | Public base URL of this MCP server (used in `/.well-known/oauth-protected-resource`); defaults to `http://localhost:8080` |
+| `AUTH_RESOURCE` | No | MCP server resource URL; defaults to `{MCP_BASE_URL}/mcp` if unset |
+| `AUTH_SCOPES` | No | Comma-separated required scopes (default: `api.graphql`) |
+| `AUTH_AUDIENCE` | No | Comma-separated accepted JWT audiences |
+| `AUTH_JWKS_URI` | No | Override JWKS endpoint (otherwise fetched from `AUTH_SERVER` discovery document) |
+
+### How it works
+
+1. `build_auth_provider()` fetches the OIDC discovery document from `AUTH_SERVER` to resolve the JWKS URI and issuer.
+2. FastMCP validates the `Authorization: Bearer <token>` header on every HTTP request against the JWKS.
+3. The validated token is retrieved via `get_access_token()` and forwarded to the Insights API.
+4. If `AUTH_SERVER` is unset, the token is extracted directly from the `Authorization` header without server-side validation (existing behavior).
+
+### Example configuration
+
+```bash
+export AUTH_SERVER="https://sso.redhat.com/auth/realms/redhat-external"
+export AUTH_ISSUER="https://sso.redhat.com/auth/realms/redhat-external"
+export AUTH_SCOPES="openid,api.console,api.ocm"
+# For production: set MCP_BASE_URL to the public URL of this server
+# export MCP_BASE_URL="https://your-mcp-server.example.com"
+
+uv run insights-mcp http --host 0.0.0.0 --port 8000
+```
+
 ## Logging and Compliance
 
 ### Debug Mode

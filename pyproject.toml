@@ -16,16 +16,15 @@ classifiers = [
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.14",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "fastmcp>=3.0",
     "requests",
     "PyJWT",
+    "rh-mcp-commons @ git+https://github.com/dmartinol/mcp-servers-commons.git",
 ]
 
 [project.optional-dependencies]
