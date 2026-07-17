@@ -99,7 +99,7 @@ Make sure you have `podman` installed.<br>
 (Docker is fine too but the commands below have to be adapted accordingly)
 
 You can install it with `sudo dnf install podman` on Fedora/RHEL/CentOS,
-or on macOS use either [Podman Desktop](https://podman-desktop.io/) or `brew install podman`.
+or on macOS follow the instructions of [Podman Desktop](https://podman-desktop.io/) or [Podman](https://podman.io/getting-started/installation).
 
 ⚠️ **Note** if you use Podman on macOS, you sometimes need to set the path to `podman` explicitly.
 E.g. replace `podman` with the full path. Should be something like
