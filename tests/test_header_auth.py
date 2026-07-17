@@ -627,39 +627,34 @@ class TestAuthProviderBearerToken:
 
 
 class TestAuthResourceEnvBridge:
-    """Test that MCP_BASE_URL -> AUTH_RESOURCE bridge logic is correct."""
+    """Test that MCP_BASE_URL is resolved correctly inside build_auth_provider.
 
-    def test_auth_resource_derived_from_mcp_base_url(self, monkeypatch):
-        """AUTH_RESOURCE is set to {MCP_BASE_URL}/mcp when AUTH_RESOURCE is unset."""
-        monkeypatch.delenv("AUTH_RESOURCE", raising=False)
-        mcp_base_url = "https://my-mcp.example.com"
+    The bridge logic now lives in mcp_rh_auth.provider._resolve_mcp_base_url
+    (no longer a pre-import side effect in server.py).
+    """
 
-        # Replicate the module-level bridge logic
-        auth_resource = None
-        if mcp_base_url and not None:
-            auth_resource = f"{mcp_base_url.rstrip('/')}/mcp"
+    def test_mcp_base_url_used_directly(self, monkeypatch):
+        """MCP_BASE_URL is returned as the base URL without modification."""
+        from mcp_rh_auth.provider import _resolve_mcp_base_url
 
-        assert auth_resource == "https://my-mcp.example.com/mcp"
-
-    def test_auth_resource_not_overridden_when_already_set(self, monkeypatch):
-        """AUTH_RESOURCE is preserved when explicitly set, even if MCP_BASE_URL differs."""
-        monkeypatch.setenv("AUTH_RESOURCE", "https://custom-resource.example.com/mcp")
         monkeypatch.setenv("MCP_BASE_URL", "https://my-mcp.example.com")
+        monkeypatch.delenv("AUTH_RESOURCE", raising=False)
+        assert _resolve_mcp_base_url() == "https://my-mcp.example.com"
 
-        existing = "https://custom-resource.example.com/mcp"
-        mcp_base_url = "https://my-mcp.example.com"
+    def test_mcp_base_url_takes_priority_over_auth_resource(self, monkeypatch):
+        """MCP_BASE_URL wins when both MCP_BASE_URL and AUTH_RESOURCE are set."""
+        from mcp_rh_auth.provider import _resolve_mcp_base_url
 
-        # Bridge only applies when AUTH_RESOURCE is unset
-        auth_resource = existing if existing else f"{mcp_base_url.rstrip('/')}/mcp"
-
-        assert auth_resource == "https://custom-resource.example.com/mcp"
+        monkeypatch.setenv("MCP_BASE_URL", "https://my-mcp.example.com")
+        monkeypatch.setenv("AUTH_RESOURCE", "https://custom-resource.example.com/mcp")
+        assert _resolve_mcp_base_url() == "https://my-mcp.example.com"
 
     def test_trailing_slash_stripped_from_mcp_base_url(self, monkeypatch):
-        """Trailing slash on MCP_BASE_URL does not produce double-slash in AUTH_RESOURCE."""
+        """Trailing slash on MCP_BASE_URL is stripped."""
+        from mcp_rh_auth.provider import _resolve_mcp_base_url
+
+        monkeypatch.setenv("MCP_BASE_URL", "https://my-mcp.example.com/")
         monkeypatch.delenv("AUTH_RESOURCE", raising=False)
-        mcp_base_url = "https://my-mcp.example.com/"
-
-        auth_resource = f"{mcp_base_url.rstrip('/')}/mcp"
-
-        assert auth_resource == "https://my-mcp.example.com/mcp"
-        assert "//" not in auth_resource.replace("https://", "")
+        result = _resolve_mcp_base_url()
+        assert result == "https://my-mcp.example.com"
+        assert "//" not in result.replace("https://", "")

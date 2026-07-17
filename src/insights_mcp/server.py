@@ -15,21 +15,15 @@ import requests
 from fastmcp import FastMCP
 from mcp.types import Icon, ToolAnnotations
 
-# rh-mcp-commons reads AUTH_RESOURCE at import time; bridge MCP_BASE_URL for local/ngrok use.
-_mcp_base_url = os.getenv("MCP_BASE_URL", "").rstrip("/")
-if _mcp_base_url and not os.getenv("AUTH_RESOURCE"):
-    os.environ["AUTH_RESOURCE"] = f"{_mcp_base_url}/mcp"
-
-from rh_mcp_commons.auth.mcp_auth import build_auth_provider
-
-# Insights MCP token claims (see tests/oauth_utils.py); override rh-mcp-commons graphql defaults.
-_INSIGHTS_MCP_AUTH_SCOPES = ["openid", "api.console", "api.ocm"]
-_INSIGHTS_MCP_AUTH_AUDIENCE = ["insights-mcp", "api.console"]
-
 from insights_mcp import __version__, config
 from insights_mcp.catalog_tools import catalog_tool_description
 from insights_mcp.mcp import InsightsMCP
 from insights_mcp.toolsets import MCPS
+from mcp_rh_auth import build_auth_provider
+
+# Insights MCP token claims (see tests/oauth_utils.py); override rh-mcp-commons graphql defaults.
+_INSIGHTS_MCP_AUTH_SCOPES = ["openid", "api.console", "api.ocm"]
+_INSIGHTS_MCP_AUTH_AUDIENCE = ["insights-mcp", "api.console"]
 
 
 def _format_server_tools(

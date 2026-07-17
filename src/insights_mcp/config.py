@@ -24,15 +24,15 @@ SSO_TOKEN_ENDPOINT = (
 )
 SSO_OAUTH_TIMEOUT_SECONDS = int(os.getenv("SSO_OAUTH_TIMEOUT_SECONDS", "30"))
 
-# HTTP transport auth provider (rh_mcp_commons.auth.mcp_auth.build_auth_provider).
-# rh-mcp-commons reads these directly from os.getenv(); exposed here for validation and tests.
+# HTTP transport auth provider (mcp_rh_auth.build_auth_provider).
+# mcp_rh_auth reads these directly from os.getenv(); exposed here for validation and tests.
 # When AUTH_SERVER is unset, no auth provider is configured and raw Bearer token
 # pass-through is used (backward-compatible with stdio and self-hosted deployments).
 AUTH_SERVER = os.getenv("AUTH_SERVER") or ""
 AUTH_ISSUER = os.getenv("AUTH_ISSUER") or ""
-# Read directly by rh-mcp-commons (no Python binding needed):
-# AUTH_RESOURCE:  MCP server resource URL (defaults to {MCP_BASE_URL}/mcp)
-# MCP_BASE_URL:   Public base URL of this MCP server (defaults to http://localhost:8080)
+# Read directly by mcp_rh_auth (no Python binding needed here):
+# MCP_BASE_URL:   Public base URL of this MCP server (e.g. https://my-server.example.com)
+# AUTH_RESOURCE:  MCP resource URL fallback (defaults to {MCP_BASE_URL}/mcp)
 # AUTH_SCOPES:    Comma-separated required scopes (recommended: openid,api.console,api.ocm)
 # AUTH_AUDIENCE:  Comma-separated accepted JWT audiences (optional)
 # AUTH_JWKS_URI:  Override JWKS endpoint (otherwise fetched from AUTH_SERVER discovery)

@@ -24,7 +24,8 @@ dependencies = [
     "fastmcp>=3.0",
     "requests",
     "PyJWT",
-    "rh-mcp-commons @ git+https://github.com/dmartinol/mcp-servers-commons.git",
+    "httpx",
+    "certifi",
 ]
 
 [project.optional-dependencies]

@@ -359,7 +359,7 @@ You can set the environment variable `IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATE
 ## Hosted MCP Server with Auth Provider (HTTP transport)
 
 When deploying the MCP server as a hosted service over HTTP/SSE, token validation is handled by
-[`rh-mcp-commons`](https://github.com/dmartinol/mcp-servers-commons) via `build_auth_provider()`.
+[`mcp_rh_auth`](src/mcp_rh_auth/README.md) via `build_auth_provider()`.
 When `AUTH_SERVER` is unset, no auth provider is configured and the server falls back to raw
 Bearer token pass-through (backward-compatible with self-hosted and stdio deployments).
 
