@@ -369,7 +369,7 @@ Bearer token pass-through (backward-compatible with self-hosted and stdio deploy
 |---|---|---|
 | `AUTH_SERVER` | Yes | OAuth authorization server base URL (e.g. `https://sso.redhat.com/auth/realms/redhat-external`) |
 | `AUTH_ISSUER` | Yes | JWT `iss` claim — must match the SSO realm issuer |
-| `MCP_BASE_URL` | No | Public base URL of this MCP server (used in `/.well-known/oauth-protected-resource`); defaults to `http://localhost:8080` |
+| `MCP_BASE_URL` | Yes (hosted) | Public base URL of this MCP server (used in `/.well-known/oauth-protected-resource`); no default — must be set for hosted deployments |
 | `AUTH_RESOURCE` | No | MCP server resource URL; defaults to `{MCP_BASE_URL}/mcp` if unset |
 | `AUTH_SCOPES` | No | Comma-separated required scopes (default: `api.graphql`) |
 | `AUTH_AUDIENCE` | No | Comma-separated accepted JWT audiences |
