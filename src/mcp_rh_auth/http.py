@@ -8,7 +8,7 @@ import ssl
 import certifi
 import httpx
 
-_httpx_async_client: httpx.AsyncClient | None = None
+_httpx_async_client: httpx.AsyncClient | None = None  # pylint: disable=invalid-name
 
 
 def _extra_ca_cert_file() -> str | None:
@@ -40,7 +40,7 @@ def httpx_verify_setting() -> bool | ssl.SSLContext:
 
 def get_httpx_async_client(*, timeout: float = 10.0) -> httpx.AsyncClient:
     """Shared async httpx client (singleton). Used for JWKS fetches."""
-    global _httpx_async_client
+    global _httpx_async_client  # pylint: disable=global-statement
     if _httpx_async_client is None:
         _httpx_async_client = httpx.AsyncClient(
             timeout=timeout,

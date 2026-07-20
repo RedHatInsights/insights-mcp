@@ -513,5 +513,9 @@ Please rename your MCP server name in the MCP configuration file (`mcp.json`) to
 
 This software is provided "as is" without warranty of any kind, either express or implied. Use at your own risk. The authors and contributors are not liable for any damages or issues that may arise from using this software.
 
+## Shared auth package
+
+The [`mcp_rh_auth`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/mcp_rh_auth/README.md) package (vendored under `src/`) provides the OAuth/JWT auth provider used by this server for HTTP transport deployments. It can be reused by other FastMCP-based MCP servers — see its [README](https://github.com/RedHatInsights/insights-mcp/blob/main/src/mcp_rh_auth/README.md) for usage and environment variable reference.
+
 ## Contributing
 Please refer to the [hacking guide](HACKING.md) to learn more.

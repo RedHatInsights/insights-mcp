@@ -13,6 +13,8 @@ from typing import Any
 
 import requests
 from fastmcp import FastMCP
+from fastmcp.server.providers.fastmcp_provider import FastMCPProvider
+from fastmcp.server.transforms.namespace import Namespace
 from mcp.types import Icon, ToolAnnotations
 
 from insights_mcp import __version__, config
@@ -127,9 +129,6 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
 
     def add_provider(self, provider: Any, *, namespace: str = "") -> None:
         """Mount providers and align MCP App resource URIs with namespaced resources."""
-        from fastmcp.server.providers.fastmcp_provider import FastMCPProvider
-        from fastmcp.server.transforms.namespace import Namespace
-
         if isinstance(provider, FastMCP):
             provider = FastMCPProvider(provider)
 

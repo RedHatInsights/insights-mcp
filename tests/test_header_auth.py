@@ -5,9 +5,12 @@ from unittest.mock import MagicMock, patch
 
 import jwt as pyjwt
 import pytest
+from fastmcp.server.auth import AccessToken
 
 from insights_mcp.client import InsightsBearerTokenClient, InsightsHeadersBasedClient, InsightsOAuth2Client
 from insights_mcp.server import setup_credentials
+from mcp_rh_auth.provider import _resolve_mcp_base_url
+from tests.oauth_utils import create_test_token
 
 
 class TestHeaderBasedAuthentication:
@@ -569,8 +572,6 @@ class TestAuthProviderBearerToken:
     @pytest.mark.asyncio
     async def test_auth_context_token_takes_priority_over_header(self):
         """Token from FastMCP auth context is used when auth provider is active."""
-        from tests.oauth_utils import create_test_token
-
         client = InsightsHeadersBasedClient(mcp_transport="http", token_endpoint="https://test.example.com/token")
         ctx_token = create_test_token(org_id="org-from-ctx")
 
@@ -599,8 +600,6 @@ class TestAuthProviderBearerToken:
     @pytest.mark.asyncio
     async def test_falls_back_to_header_when_auth_context_token_empty(self):
         """Raw Authorization header is used when AccessToken.token is an empty string."""
-        from fastmcp.server.auth import AccessToken
-
         client = InsightsHeadersBasedClient(mcp_transport="http", token_endpoint="https://test.example.com/token")
         empty_token = AccessToken(token="", client_id="c", scopes=[], expires_at=9999999999, claims={})
 
@@ -635,24 +634,18 @@ class TestAuthResourceEnvBridge:
 
     def test_mcp_base_url_used_directly(self, monkeypatch):
         """MCP_BASE_URL is returned as the base URL without modification."""
-        from mcp_rh_auth.provider import _resolve_mcp_base_url
-
         monkeypatch.setenv("MCP_BASE_URL", "https://my-mcp.example.com")
         monkeypatch.delenv("AUTH_RESOURCE", raising=False)
         assert _resolve_mcp_base_url() == "https://my-mcp.example.com"
 
     def test_mcp_base_url_takes_priority_over_auth_resource(self, monkeypatch):
         """MCP_BASE_URL wins when both MCP_BASE_URL and AUTH_RESOURCE are set."""
-        from mcp_rh_auth.provider import _resolve_mcp_base_url
-
         monkeypatch.setenv("MCP_BASE_URL", "https://my-mcp.example.com")
         monkeypatch.setenv("AUTH_RESOURCE", "https://custom-resource.example.com/mcp")
         assert _resolve_mcp_base_url() == "https://my-mcp.example.com"
 
     def test_trailing_slash_stripped_from_mcp_base_url(self, monkeypatch):
         """Trailing slash on MCP_BASE_URL is stripped."""
-        from mcp_rh_auth.provider import _resolve_mcp_base_url
-
         monkeypatch.setenv("MCP_BASE_URL", "https://my-mcp.example.com/")
         monkeypatch.delenv("AUTH_RESOURCE", raising=False)
         result = _resolve_mcp_base_url()
