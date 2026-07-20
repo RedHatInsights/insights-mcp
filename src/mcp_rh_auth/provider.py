@@ -93,7 +93,7 @@ def build_auth_provider(
     """
     auth_server = os.getenv("AUTH_SERVER", "")
     if not auth_server:
-        logger.error("AUTH_SERVER is required")
+        logger.debug("AUTH_SERVER not set — auth provider disabled (stdio/no-auth mode)")
         return None
 
     resolved_scopes = _resolve_scopes("AUTH_SCOPES", required_scopes)
