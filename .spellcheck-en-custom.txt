@@ -41,6 +41,7 @@ Lightspeed
 LLM
 LLM's
 Makefile
+mcp
 MCP
 MCPS
 md
@@ -71,6 +72,7 @@ README
 remediations
 repo
 RESTful
+rh
 rhel
 RHEL
 rhsm
@@ -85,6 +87,7 @@ Streamable
 summarization
 Summarization
 Tekton
+TLS
 toml
 toolset
 Toolset
@@ -94,6 +97,7 @@ TTL
 URI
 UUID
 UUIDs
+vendored
 verifier
 remediatable
 requester's

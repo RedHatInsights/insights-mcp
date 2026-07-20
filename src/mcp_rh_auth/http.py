@@ -6,10 +6,11 @@ import logging
 import os
 import ssl
 
-logger = logging.getLogger(__name__)
-
 import certifi
 import httpx
+
+logger = logging.getLogger(__name__)
+
 
 _httpx_async_client: httpx.AsyncClient | None = None  # pylint: disable=invalid-name
 
