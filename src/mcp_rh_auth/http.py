@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import ssl
+
+logger = logging.getLogger(__name__)
 
 import certifi
 import httpx
@@ -29,6 +32,7 @@ def httpx_verify_setting() -> bool | ssl.SSLContext:
     disable TLS verification entirely (development only).
     """
     if os.getenv("SSL_VERIFY", "true").strip().lower() in {"0", "false", "no", "off"}:
+        logger.warning("TLS verification disabled via SSL_VERIFY — do not use in production")
         return False
 
     context = ssl.create_default_context(cafile=certifi.where())
