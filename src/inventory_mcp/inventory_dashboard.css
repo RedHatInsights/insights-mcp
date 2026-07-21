@@ -1,0 +1,18 @@
+.host-name { font-weight: 600; font-size: 13px; color: var(--text-primary); }
+.host-meta { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+.staleness {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.staleness-fresh { background: #3d7317; }
+.staleness-stale { background: #a60000; }
+.staleness-warning { background: #ca6c0f; }
+.staleness-unknown { background: #a3a3a3; }
+
+.nic-row { font-size: 11px; margin-bottom: 2px; }

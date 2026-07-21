@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Dashboard</title>
+    <!-- INSIGHTS_PATTERNFLY_CSS -->
+    <!-- INSIGHTS_DASHBOARD_CSS -->
+</head>
+<body>
+    <div class="header">
+        <span class="header-title"><!-- INSIGHTS_DASHBOARD_HEADER --></span>
+        <span class="header-meta" id="total-count"></span>
+    </div>
+
+    <!-- INSIGHTS_DASHBOARD_ALERT -->
+
+    <!-- Host List View -->
+    <div id="view-list">
+        <div class="card">
+            <div class="card-title">Fleet</div>
+            <div class="search-bar">
+                <input type="text" id="search-input" placeholder="Search by hostname or FQDN" onkeydown="if(event.key==='Enter')searchHosts()">
+                <button class="btn btn-secondary btn-compact" onclick="searchHosts()">Search</button>
+                <button class="btn btn-back btn-compact" onclick="clearSearch()">Clear</button>
+            </div>
+            <div class="filters">
+                <span class="filter-label">Staleness:</span>
+                <button class="filter-btn active" data-staleness="" onclick="filterStaleness(this)">All</button>
+                <button class="filter-btn" data-staleness="fresh" onclick="filterStaleness(this)">Fresh</button>
+                <button class="filter-btn" data-staleness="stale" onclick="filterStaleness(this)">Stale</button>
+                <button class="filter-btn" data-staleness="stale_warning" onclick="filterStaleness(this)">Stale warning</button>
+                <span class="filter-divider">
+                    <label class="filter-label">Sort:
+                        <select id="sort-select" onchange="changeSort()">
+                            <option value="display_name" data-dir="ASC">Name (A-Z)</option>
+                            <option value="display_name" data-dir="DESC">Name (Z-A)</option>
+                            <option value="updated" data-dir="DESC" selected>Updated (newest)</option>
+                            <option value="updated" data-dir="ASC">Updated (oldest)</option>
+                            <option value="created" data-dir="DESC">Created (newest)</option>
+                            <option value="created" data-dir="ASC">Created (oldest)</option>
+                        </select>
+                    </label>
+                </span>
+            </div>
+            <div class="card-body" id="host-list">
+                <div class="loading">Loading hosts...</div>
+            </div>
+            <!-- INSIGHTS_DASHBOARD_PAGINATION -->
+        </div>
+    </div>
+
+    <!-- Host Detail View -->
+    <div id="view-detail" class="hidden">
+        <div class="card">
+            <div class="card-title">
+                <button class="btn btn-back" onclick="showList()">&#8592; Back</button>
+                <span id="detail-host-name"></span>
+            </div>
+            <div class="card-body" id="host-detail">
+                <div class="loading">Loading host details...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Host CVEs View -->
+    <div id="view-cves" class="hidden">
+        <div class="card">
+            <div class="card-title">
+                <button class="btn btn-back" onclick="showDetail(window.currentHostId)">&#8592; Back</button>
+                <span id="cves-host-name"></span>
+            </div>
+            <div class="card-body" id="host-cves">
+                <div class="loading">Loading CVEs...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CVE Detail View -->
+    <div id="view-cve-detail" class="hidden">
+        <div class="card">
+            <div class="card-title">
+                <button class="btn btn-back" onclick="showHostCves(window.currentHostId)">&#8592; Back</button>
+                <span id="cve-detail-id"></span>
+            </div>
+            <div class="card-body" id="cve-detail-content">
+                <div class="loading">Loading CVE details...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Profile View -->
+    <div id="view-profile" class="hidden">
+        <div class="card">
+            <div class="card-title">
+                <button class="btn btn-back" onclick="showDetail(window.currentHostId)">&#8592; Back</button>
+                <span id="profile-host-name"></span>
+            </div>
+            <div class="card-body" id="system-profile">
+                <div class="loading">Loading system profile...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- INSIGHTS_DASHBOARD_JS -->
+    <script type="module">
+        const { connectMcpApp, parseToolResultArray, callTool, renderPageButtons, renderCveDetailHtml, severityLabel, severityClass } = window.InsightsDashboard;
+
+        connectMcpApp("Inventory Dashboard", (result) => {
+            const hostArray = parseToolResultArray(result);
+            if (hostArray) {
+                allHosts = hostArray;
+                totalHosts = allHosts.length;
+                document.getElementById("total-count").textContent = totalHosts + " systems";
+                applyFiltersAndRender();
+            }
+        });
+
+        let allHosts = [];
+        let currentPage = 1;
+        let currentPerPage = 10;
+        let currentSearch = "";
+        let currentStalenessFilter = "";
+        let currentOrderBy = "updated";
+        let currentOrderHow = "DESC";
+        let totalHosts = 0;
+        window.currentHostId = "";
+        window.currentHostName = "";
+
+        function applyFiltersAndRender() {
+            let filtered = allHosts;
+            if (currentSearch) {
+                const q = currentSearch.toLowerCase();
+                filtered = filtered.filter(h => {
+                    const name = (h.display_name || "").toLowerCase();
+                    const fqdn = (h.fqdn || "").toLowerCase();
+                    const id = (h.id || "").toLowerCase();
+                    return name.includes(q) || fqdn.includes(q) || id.includes(q);
+                });
+            }
+            if (currentStalenessFilter) {
+                filtered = filtered.filter(h => {
+                    const s = stalenessInfo(h).label.toLowerCase().replace(" ", "_");
+                    return s === currentStalenessFilter;
+                });
+            }
+            filtered.sort((a, b) => {
+                let va, vb;
+                if (currentOrderBy === "display_name") { va = (a.display_name || "").toLowerCase(); vb = (b.display_name || "").toLowerCase(); }
+                else if (currentOrderBy === "updated") { va = a.updated || ""; vb = b.updated || ""; }
+                else if (currentOrderBy === "created") { va = a.created || ""; vb = b.created || ""; }
+                else { va = ""; vb = ""; }
+                const desc = currentOrderHow === "DESC";
+                if (va < vb) return desc ? 1 : -1;
+                if (va > vb) return desc ? -1 : 1;
+                return 0;
+            });
+            const start = (currentPage - 1) * currentPerPage;
+            const page = filtered.slice(start, start + currentPerPage);
+            renderHostList({ results: page, total: filtered.length });
+        }
+
+        window.filterStaleness = function(btn) {
+            document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            currentStalenessFilter = btn.dataset.staleness;
+            currentPage = 1;
+            applyFiltersAndRender();
+        }
+
+        window.changeSort = function() {
+            const sel = document.getElementById("sort-select");
+            const opt = sel.options[sel.selectedIndex];
+            currentOrderBy = opt.value;
+            currentOrderHow = opt.dataset.dir;
+            currentPage = 1;
+            applyFiltersAndRender();
+        }
+
+        function showView(id) {
+            ["view-list", "view-detail", "view-cves", "view-cve-detail", "view-profile"].forEach(v => {
+                document.getElementById(v).classList.toggle("hidden", v !== id);
+            });
+        }
+
+        function stalenessInfo(host) {
+            const now = Date.now();
+            const stale = host.stale_timestamp ? new Date(host.stale_timestamp).getTime() : null;
+            const warning = host.stale_warning_timestamp ? new Date(host.stale_warning_timestamp).getTime() : null;
+            const culled = host.culled_timestamp ? new Date(host.culled_timestamp).getTime() : null;
+
+            if (culled && now > culled) return { label: "Culled", cls: "staleness-stale" };
+            if (warning && now > warning) return { label: "Stale warning", cls: "staleness-warning" };
+            if (stale && now > stale) return { label: "Stale", cls: "staleness-stale" };
+            return { label: "Fresh", cls: "staleness-fresh" };
+        }
+
+        function formatBytes(bytes) {
+            if (!bytes) return "N/A";
+            return (bytes / (1024 * 1024 * 1024)).toFixed(1) + " GB";
+        }
+
+        window.searchHosts = function() {
+            currentSearch = document.getElementById("search-input").value.trim();
+            currentPage = 1;
+            applyFiltersAndRender();
+        }
+
+        window.clearSearch = function() {
+            document.getElementById("search-input").value = "";
+            currentSearch = "";
+            currentPage = 1;
+            applyFiltersAndRender();
+        }
+
+        function renderHostList(data) {
+            const container = document.getElementById("host-list");
+            const filteredTotal = data.total || 0;
+            document.getElementById("total-count").textContent = filteredTotal + " systems";
+
+            if (!data.results || data.results.length === 0) {
+                container.innerHTML = '<div class="loading">No hosts found.</div>';
+                document.getElementById("pagination").classList.add("hidden");
+                return;
+            }
+
+            container.innerHTML = data.results.map(host => {
+                const staleness = stalenessInfo(host);
+                return `<div class="base-row" onclick="showDetail('${host.id}')">
+                    <div class="row-header">
+                        <div>
+                            <span class="host-name">${host.display_name || host.fqdn || host.id}</span>
+                            <div class="host-meta">${host.fqdn || "No FQDN"}</div>
+                        </div>
+                        <span class="staleness ${staleness.cls}">${staleness.label}</span>
+                    </div>
+                </div>`;
+            }).join("");
+
+            const pag = document.getElementById("pagination");
+            pag.classList.remove("hidden");
+            const totalPages = Math.ceil(filteredTotal / currentPerPage);
+            document.getElementById("page-info").textContent = `Page ${currentPage} of ${totalPages}`;
+            renderPageButtons(currentPage, totalPages);
+        }
+
+        window.goToPage = function(p) {
+            currentPage = p;
+            applyFiltersAndRender();
+        }
+
+        window.showList = function() {
+            showView("view-list");
+        }
+
+        window.showDetail = async function(hostId) {
+            window.currentHostId = hostId;
+            showView("view-detail");
+            document.getElementById("detail-host-name").textContent = "Loading...";
+            document.getElementById("host-detail").innerHTML = '<div class="loading">Loading host details...</div>';
+
+            const data = await callTool("inventory__get_host_details", { host_ids: hostId });
+            if (!data || !data.results || data.results.length === 0) return;
+
+            const host = data.results[0];
+            window.currentHostName = host.display_name || host.fqdn || hostId;
+            document.getElementById("detail-host-name").textContent = window.currentHostName;
+
+            document.getElementById("host-detail").innerHTML = `
+                <div class="detail-grid">
+                    <span class="detail-label">Display Name</span>
+                    <span class="detail-value">${host.display_name || "N/A"}</span>
+                    <span class="detail-label">FQDN</span>
+                    <span class="detail-value">${host.fqdn || "N/A"}</span>
+                    <span class="detail-label">ID</span>
+                    <span class="detail-value mono-id">${host.id}</span>
+                    <span class="detail-label">Created</span>
+                    <span class="detail-value">${new Date(host.created).toLocaleString()}</span>
+                    <span class="detail-label">Updated</span>
+                    <span class="detail-value">${new Date(host.updated).toLocaleString()}</span>
+                    <span class="detail-label">Reporter</span>
+                    <span class="detail-value">${host.reporter || "N/A"}</span>
+                </div>
+                <div class="detail-actions">
+                    <button class="btn btn-secondary" onclick="showProfile('${hostId}')">System Profile</button>
+                    <button class="btn btn-secondary" onclick="showHostCves('${hostId}')">View CVEs</button>
+                </div>
+            `;
+        }
+
+        window.showProfile = async function(hostId) {
+            window.currentHostId = hostId;
+            showView("view-profile");
+            document.getElementById("profile-host-name").textContent = window.currentHostName + " — System Profile";
+            document.getElementById("system-profile").innerHTML = '<div class="loading">Loading system profile...</div>';
+
+            const data = await callTool("inventory__get_host_system_profile", { host_ids: hostId });
+            if (!data || !data.results || data.results.length === 0) return;
+
+            const profile = data.results[0].system_profile || {};
+            let html = '<div class="detail-grid">';
+
+            if (profile.os_release) {
+                html += `<span class="detail-label">OS</span><span class="detail-value">${profile.os_release}</span>`;
+            }
+            if (profile.arch) {
+                html += `<span class="detail-label">Architecture</span><span class="detail-value">${profile.arch}</span>`;
+            }
+            if (profile.os_kernel_version) {
+                html += `<span class="detail-label">Kernel</span><span class="detail-value">${profile.os_kernel_version}</span>`;
+            }
+            if (profile.number_of_cpus != null) {
+                html += `<span class="detail-label">CPUs</span><span class="detail-value">${profile.number_of_cpus}${profile.cores_per_socket ? ` (${profile.cores_per_socket} cores/socket)` : ""}</span>`;
+            }
+            if (profile.system_memory_bytes != null) {
+                html += `<span class="detail-label">Memory</span><span class="detail-value">${formatBytes(profile.system_memory_bytes)}</span>`;
+            }
+            if (profile.infrastructure_type) {
+                html += `<span class="detail-label">Infrastructure</span><span class="detail-value">${profile.infrastructure_type}${profile.infrastructure_vendor ? ` (${profile.infrastructure_vendor})` : ""}</span>`;
+            }
+            if (profile.bios_vendor) {
+                html += `<span class="detail-label">BIOS</span><span class="detail-value">${profile.bios_vendor}${profile.bios_version ? ` ${profile.bios_version}` : ""}</span>`;
+            }
+            if (profile.network_interfaces && profile.network_interfaces.length > 0) {
+                const nics = profile.network_interfaces.map(nic =>
+                    `<div class="nic-row">${nic.name || "?"}${nic.ipv4_addresses?.length ? `: ${nic.ipv4_addresses.join(", ")}` : ""}</div>`
+                ).join("");
+                html += `<span class="detail-label">Network</span><span class="detail-value">${nics}</span>`;
+            }
+
+            html += '</div>';
+            document.getElementById("system-profile").innerHTML = html;
+        }
+
+        window.showHostCves = async function(hostId) {
+            window.currentHostId = hostId;
+            showView("view-cves");
+            document.getElementById("cves-host-name").textContent = window.currentHostName + " — CVEs";
+            document.getElementById("host-cves").innerHTML = '<div class="loading">Loading CVEs...</div>';
+
+            const data = await callTool("vulnerability__get_system_cves", { system_uuid: hostId });
+            if (!data || !data.data) return;
+
+            if (data.data.length === 0) {
+                document.getElementById("host-cves").innerHTML = '<div class="loading">No CVEs found for this host.</div>';
+                return;
+            }
+
+            document.getElementById("host-cves").innerHTML = data.data.map(cve => {
+                const attrs = cve.attributes || {};
+                const impact = attrs.impact || 0;
+                const cvss = parseFloat(attrs.cvss3_score) || parseFloat(attrs.cvss2_score) || "N/A";
+                return `<div class="base-row" onclick="showCveDetail('${cve.id}')">
+                    <div class="row-header">
+                        <span class="cve-id">${cve.id}</span>
+                        <div class="row-actions">
+                            <span class="severity ${severityClass(impact)}">${severityLabel(impact)}</span>
+                            <span class="cvss">${cvss}</span>
+                        </div>
+                    </div>
+                </div>`;
+            }).join("");
+        }
+
+        window.showCveDetail = async function(cveId) {
+            showView("view-cve-detail");
+            document.getElementById("cve-detail-id").textContent = cveId;
+            document.getElementById("cve-detail-content").innerHTML = '<div class="loading">Loading CVE details...</div>';
+
+            const data = await callTool("vulnerability__get_cve", { cve: cveId });
+            if (!data || !data.data) return;
+
+            document.getElementById("cve-detail-content").innerHTML = renderCveDetailHtml(cveId, data.data.attributes || {}, "");
+        }
+    </script>
+</body>
+</html>

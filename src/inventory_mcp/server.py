@@ -4,11 +4,39 @@ MCP server for host inventory data via Red Hat Insights API.
 Provides tools to get host inventory data for systems connected to Insights.
 """
 
+import logging
+from pathlib import Path
 from typing import Annotated, Any
 
+from fastmcp import Context
+from fastmcp.apps import UI_EXTENSION_ID, AppConfig, ResourceCSP
+from fastmcp.tools import ToolResult
+from fastmcp.utilities.logging import get_logger
 from pydantic import Field
 
+from insights_mcp.dashboard_ui import load_dashboard_html
 from insights_mcp.mcp import InsightsMCP
+
+_to_client_logger = get_logger(name="fastmcp.server.context.to_client")
+_to_client_logger.setLevel(level=logging.DEBUG)
+
+# --- MCP Apps UI resource URIs ---
+INVENTORY_DASHBOARD_RESOURCE_URI = "ui://inventory-dashboard"
+INVENTORY_DASHBOARD_MOUNTED_URI = "ui://inventory_/inventory-dashboard"
+
+
+def _load_inventory_dashboard_html() -> str:
+    """Load the inventory dashboard HTML."""
+    return load_dashboard_html(
+        "inventory_mcp",
+        "inventory_dashboard.html",
+        "inventory_dashboard.css",
+        Path(__file__).parent,
+        dashboard_title="Inventory",
+    )
+
+
+EMBEDDED_INVENTORY_DASHBOARD_HTML = _load_inventory_dashboard_html()
 
 # For the API documentation, see:
 # https://github.com/RedHatInsights/insights-host-inventory/tree/master/swagger
@@ -24,8 +52,55 @@ mcp = InsightsMCP(
     $container_brand_long Host Inventory requires correct RBAC permissions to be able to use the tools. Ensure that your
     Service Account has at least this role:
     - Inventory Hosts viewer
+
     """,
 )
+
+
+# --- MCP Apps resource registration ---
+
+
+@mcp.resource(
+    INVENTORY_DASHBOARD_RESOURCE_URI,
+    app=AppConfig(csp=ResourceCSP(resource_domains=["https://unpkg.com"])),
+)
+def inventory_dashboard_ui() -> str:
+    """Inventory Dashboard UI for browsing fleet and system profiles."""
+    return EMBEDDED_INVENTORY_DASHBOARD_HTML
+
+
+@mcp.tool(
+    annotations={"readOnlyHint": True},
+    app=AppConfig(resource_uri=INVENTORY_DASHBOARD_MOUNTED_URI),
+)
+async def load_inventory_dashboard(ctx: Context, hosts: list[dict[str, Any]]) -> ToolResult:
+    """Render host data in the interactive Inventory Dashboard.
+
+    Call this tool with host data (the results array from a list_hosts response) to display
+    it in an interactive dashboard with search, staleness filters, host details, system
+    profiles, and cross-linking to CVEs affecting each host.
+
+    Args:
+        hosts: List of host objects from a list_hosts response (the 'results' array).
+    """
+    n = len(hosts)
+    ui_supported = ctx.client_supports_extension(UI_EXTENSION_ID)
+    await ctx.info(f"load_inventory_dashboard called | UI supported: {ui_supported} | hosts: {n}")
+    if ui_supported:
+        return ToolResult(
+            content=(
+                f"Dashboard rendered with {n} hosts. "
+                "Do NOT print a full host table — the user can see it in the dashboard. "
+                "Print only a brief summary and suggest next steps."
+            ),
+            structured_content={"results": hosts},
+        )
+    return ToolResult(
+        content=(
+            "Client does not support interactive dashboards. "
+            "Print the full host table as markdown using the data from your previous list_hosts call."
+        ),
+    )
 
 
 @mcp.tool(annotations={"readOnlyHint": True})

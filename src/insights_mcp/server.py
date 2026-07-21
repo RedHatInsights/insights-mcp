@@ -2,8 +2,6 @@
 
 import argparse
 import asyncio
-import base64
-import importlib.resources
 import logging
 import os
 import re
@@ -17,6 +15,7 @@ from mcp.types import Icon, ToolAnnotations
 
 from insights_mcp import __version__, config
 from insights_mcp.catalog_tools import catalog_tool_description
+from insights_mcp.dashboard_ui import get_icon_data_uri
 from insights_mcp.mcp import InsightsMCP
 from insights_mcp.oauth import create_oauth_provider
 from insights_mcp.toolsets import MCPS
@@ -58,13 +57,6 @@ def _format_all_tool_descriptions(
     _format_server_tools(root_server, format_kwargs=format_kwargs)
     for mcp in MCPS:
         _format_server_tools(mcp, format_kwargs=format_kwargs)
-
-
-def get_icon_data_uri() -> str:
-    """Load the package icon as a base64 data URI for consent screen branding."""
-    icon_data = importlib.resources.files("insights_mcp.assets").joinpath("icon.png").read_bytes()
-    icon_b64 = base64.b64encode(icon_data).decode("utf-8")
-    return f"data:image/png;base64,{icon_b64}"
 
 
 class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attributes
