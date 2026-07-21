@@ -183,6 +183,7 @@ run-stdio: build ## Run the MCP server with stdio transport
 	# environment variables in case you really need to
 	# contact another server than production
 	podman run --interactive --tty --rm \
+	  --env INSIGHTS_REFRESH_TOKEN \
 	  --env INSIGHTS_CLIENT_ID \
 	  --env INSIGHTS_CLIENT_SECRET \
 	  --env INSIGHTS_PROXY_URL \

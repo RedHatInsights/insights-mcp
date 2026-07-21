@@ -384,6 +384,8 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
         token_endpoint: str = SSO_TOKEN_ENDPOINT,
     ):
         InsightsClientBase.__init__(self, base_url=base_url, proxy_url=proxy_url, mcp_transport=mcp_transport)
+        if refresh_token and not client_id:
+            client_id = "rhsm-api"
         token_dict = {"refresh_token": refresh_token} if refresh_token else {}
         token = OAuth2Token(token_dict)
         grant_type = "refresh_token" if refresh_token else "client_credentials"
