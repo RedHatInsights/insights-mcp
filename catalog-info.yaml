@@ -33,6 +33,9 @@ metadata:
     - url: https://catalog.redhat.com/en/software/container-stacks/detail/69441d9d0df8059c340fa3f1
       title: View on Red Hat Catalog
       type: documentation
+    - url: https://github.com/RedHatInsights/insights-mcp/blob/main/docs/mkdocs/lean-business-case.md
+      title: Lean Business Case
+      type: documentation
 
 spec:
   type: local
