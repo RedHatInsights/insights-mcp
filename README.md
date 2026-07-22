@@ -118,10 +118,7 @@ First check the [prerequisites](#prerequisites) section.
 
 [![Install in Goose](https://goose-docs.ai/img/extension-install-dark.svg)](https://goose-docs.ai/extension?cmd=docker&arg=run&arg=--env&arg=LIGHTSPEED_CLIENT_ID&arg=--env&arg=LIGHTSPEED_CLIENT_SECRET&arg=--interactive&arg=--rm&arg=quay.io%2Fredhat-services-prod%2Finsights-management-tenant%2Finsights-mcp%2Fred-hat-lightspeed-mcp%3Alatest&id=red-hat-lightspeed-mcp&name=Red%20Hat%20Lightspeed%20MCP&description=Red%20Hat%20Lightspeed%20MCP%20server%20integration&env=LIGHTSPEED_CLIENT_ID%3DRed%20Hat%20Lightspeed%20Client%20ID&env=LIGHTSPEED_CLIENT_SECRET%3DRed%20Hat%20Lightspeed%20Client%20Secret)
 
-Direct deeplink (opens Goose Desktop when the `goose://` handler is registered):<br>
-[Install Red Hat Lightspeed MCP](goose://extension?cmd=docker&arg=run&arg=--env&arg=LIGHTSPEED_CLIENT_ID&arg=--env&arg=LIGHTSPEED_CLIENT_SECRET&arg=--interactive&arg=--rm&arg=quay.io%2Fredhat-services-prod%2Finsights-management-tenant%2Finsights-mcp%2Fred-hat-lightspeed-mcp%3Alatest&id=red-hat-lightspeed-mcp&name=Red%20Hat%20Lightspeed%20MCP&description=Red%20Hat%20Lightspeed%20MCP%20server%20integration&env=LIGHTSPEED_CLIENT_ID%3DRed%20Hat%20Lightspeed%20Client%20ID&env=LIGHTSPEED_CLIENT_SECRET%3DRed%20Hat%20Lightspeed%20Client%20Secret)
-
-The badge uses an HTTPS redirect (`goose-docs.ai/extension?...`) with the same parameters as the `goose://` link above. Some browsers handle the HTTPS link more reliably; the direct `goose://` link opens Goose Desktop when your OS has the protocol handler registered.
+The badge uses an HTTPS redirect (`goose-docs.ai/extension?...`) that opens Goose Desktop's extension install flow.
 
 (Note: this uses the `quay.io` container image and `docker` as the command — Goose deeplinks only support `docker`, not `podman`. Use the manual install below if you rely on Podman.)
 
