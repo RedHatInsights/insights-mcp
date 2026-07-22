@@ -235,6 +235,7 @@ insights-mcp --toolset=image-builder,vulnerability # Multiple specific toolsets
 3. Add type annotations and parameter validation
 4. Add behavioral color coding (🟢/🔴) in descriptions
 5. Write unit and integration tests
+6. If the tool includes an interactive UI, follow the [MCP Apps guide in HACKING.md](HACKING.md#mcp-apps)
 
 ### Debugging Authentication
 - Check service account credentials in Red Hat console
@@ -297,5 +298,6 @@ podman run -it --rm insights-mcp /bin/bash
 4. **Code Style**: stick to the settings in `pyproject.toml` and `.editorconfig`
 5. **Dependencies**: Check `pyproject.toml` for current dependencies
 6. **Compliance**: For logging, debug mode, and ISO alignment (27001, 27017, 27018, 42001), see [HACKING.md - Logging and Compliance](HACKING.md#logging-and-compliance)
+7. **MCP Apps**: For adding or maintaining interactive UI apps, see [HACKING.md - MCP Apps](HACKING.md#mcp-apps)
 
 This guide supplements the README with development-specific information for AI coding assistants working on the Insights MCP project. The architecture supports multiple Red Hat Insights service toolsets through a unified server interface.

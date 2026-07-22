@@ -9,3 +9,5 @@
 - Find all hosts with `FQDN` ending in `.example.com`
 - Show me all enabled repositories on host `XXX`
 - Find hosts with more than 16GB of memory running on AWS
+- Open the inventory dashboard
+- Show me my fleet

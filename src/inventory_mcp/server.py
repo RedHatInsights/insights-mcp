@@ -4,11 +4,36 @@ MCP server for host inventory data via Red Hat Insights API.
 Provides tools to get host inventory data for systems connected to Insights.
 """
 
+import logging
+from importlib import resources
+from pathlib import Path
 from typing import Annotated, Any
 
+from fastmcp import Context
+from fastmcp.apps import UI_EXTENSION_ID, AppConfig, ResourceCSP
+from fastmcp.tools import ToolResult
+from fastmcp.utilities.logging import get_logger
 from pydantic import Field
 
 from insights_mcp.mcp import InsightsMCP
+
+_to_client_logger = get_logger(name="fastmcp.server.context.to_client")
+_to_client_logger.setLevel(level=logging.DEBUG)
+
+# --- MCP Apps UI resource URIs ---
+INVENTORY_DASHBOARD_RESOURCE_URI = "ui://inventory-dashboard"
+INVENTORY_DASHBOARD_MOUNTED_URI = "ui://inventory_/inventory-dashboard"
+
+
+def _load_inventory_dashboard_html() -> str:
+    """Load the inventory dashboard HTML."""
+    try:
+        return resources.files("inventory_mcp").joinpath("inventory_dashboard.html").read_text(encoding="utf-8")
+    except (FileNotFoundError, ModuleNotFoundError, AttributeError, TypeError):
+        return (Path(__file__).parent / "inventory_dashboard.html").read_text(encoding="utf-8")
+
+
+EMBEDDED_INVENTORY_DASHBOARD_HTML = _load_inventory_dashboard_html()
 
 # For the API documentation, see:
 # https://github.com/RedHatInsights/insights-host-inventory/tree/master/swagger
@@ -24,8 +49,77 @@ mcp = InsightsMCP(
     $container_brand_long Host Inventory requires correct RBAC permissions to be able to use the tools. Ensure that your
     Service Account has at least this role:
     - Inventory Hosts viewer
+
     """,
 )
+
+
+# --- MCP Apps resource registration ---
+
+
+@mcp.resource(
+    INVENTORY_DASHBOARD_RESOURCE_URI,
+    app=AppConfig(csp=ResourceCSP(resource_domains=["https://unpkg.com"])),
+)
+def inventory_dashboard_ui() -> str:
+    """Inventory Dashboard UI for browsing fleet and system profiles."""
+    return EMBEDDED_INVENTORY_DASHBOARD_HTML
+
+
+@mcp.tool(
+    annotations={"readOnlyHint": True},
+    app=AppConfig(resource_uri=INVENTORY_DASHBOARD_MOUNTED_URI),
+)
+async def load_inventory_dashboard(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    ctx: Context,
+    hostname_or_id: Annotated[str, Field("", description="Filter by display_name, fqdn, or id.")],
+    display_name: Annotated[str, Field("", description="Filter by display name.")],
+    fqdn: Annotated[str, Field("", description="Filter by FQDN.")],
+    tags: Annotated[str, Field("", description="Filter by tags.")],
+    staleness: Annotated[str, Field("", description="Filter by staleness status.")],
+    registered_with: Annotated[str, Field("", description="Filter by reporter.")],
+    provider_type: Annotated[str, Field("", description="Filter by provider type (aws, azure, gcp).")],
+    per_page: Annotated[int, Field(10, description="Number of hosts per page.")],
+    page: Annotated[int, Field(1, description="Page number.")],
+    order_by: Annotated[str, Field("", description="Sort field (display_name, updated, created).")],
+    order_how: Annotated[str, Field("ASC", description="Sort direction (ASC or DESC).")],
+) -> ToolResult:
+    """Show, list, or display fleet inventory in an interactive dashboard.
+
+    PREFER this tool over list_hosts whenever the user wants to see, show, list, or display hosts or fleet inventory.
+    Use list_hosts only when you need the raw data for analysis or processing.
+    The dashboard fetches data directly from the server. All filter parameters are optional.
+    """
+    query = {
+        "hostname_or_id": hostname_or_id,
+        "display_name": display_name,
+        "fqdn": fqdn,
+        "tags": tags,
+        "staleness": staleness,
+        "registered_with": registered_with,
+        "provider_type": provider_type,
+        "per_page": per_page,
+        "page": page,
+        "order_by": order_by,
+        "order_how": order_how,
+    }
+    ui_supported = ctx.client_supports_extension(UI_EXTENSION_ID)
+    await ctx.info(f"load_inventory_dashboard called | UI supported: {ui_supported} | query: {query}")
+    if not ui_supported:
+        return ToolResult(
+            content=(
+                "Client does not support MCP Apps. "
+                "If you don't already have host data, call list_hosts to fetch it. "
+                "Present the data as text."
+            ),
+        )
+    return ToolResult(
+        content=(
+            "Inventory Dashboard opened and fetching data. "
+            "Do NOT print a host table — the user can see the data in the dashboard."
+        ),
+        structured_content={"query": query},
+    )
 
 
 @mcp.tool(annotations={"readOnlyHint": True})

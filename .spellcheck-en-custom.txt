@@ -117,10 +117,14 @@ Appstreams
 js
 postgresql
 nodejs
+remediatable
 requester's
 Ansible
+CDN
 env
 Mitigations
 permissioned
+SDK
 triaging
+TUI
 UI
