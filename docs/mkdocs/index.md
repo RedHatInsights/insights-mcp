@@ -110,60 +110,38 @@ E.g. replace `podman` with the full path. Should be something like
 
 You can find the path by running `which podman` in your terminal.
 
-### VSCode
+### Goose Desktop
 
 First check the [prerequisites](#prerequisites) section.
 
 #### Option 1: One-click installation (easiest)
 
-[![Install with Podman in VS Code](https://img.shields.io/badge/VS_Code-Install_Red_Hat_Lightspeed_MCP-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=red-hat-lightspeed-mcp&config=%7B%22type%22%3A%20%22stdio%22%2C%20%22command%22%3A%20%22podman%22%2C%20%22args%22%3A%20%5B%22run%22%2C%20%22--env%22%2C%20%22LIGHTSPEED_CLIENT_ID%22%2C%20%22--env%22%2C%20%22LIGHTSPEED_CLIENT_SECRET%22%2C%20%22--interactive%22%2C%20%22--rm%22%2C%20%22quay.io%2Fredhat-services-prod%2Finsights-management-tenant%2Finsights-mcp%2Fred-hat-lightspeed-mcp%3Alatest%22%5D%2C%20%22env%22%3A%20%7B%22LIGHTSPEED_CLIENT_ID%22%3A%20%22%24%7Binput%3Alightspeed_client_id%7D%22%2C%20%22LIGHTSPEED_CLIENT_SECRET%22%3A%20%22%24%7Binput%3Alightspeed_client_secret%7D%22%7D%7D&inputs=%5B%7B%22id%22%3A%20%22lightspeed_client_id%22%2C%20%22type%22%3A%20%22promptString%22%2C%20%22description%22%3A%20%22Enter%20the%20Red%20Hat%20Lightspeed%20Client%20ID%22%2C%20%22default%22%3A%20%22%22%2C%20%22password%22%3A%20true%7D%2C%20%7B%22id%22%3A%20%22lightspeed_client_secret%22%2C%20%22type%22%3A%20%22promptString%22%2C%20%22description%22%3A%20%22Enter%20the%20Red%20Hat%20Lightspeed%20Client%20Secret%22%2C%20%22default%22%3A%20%22%22%2C%20%22password%22%3A%20true%7D%5D)<br>
-(Note: this uses the `quay.io` container image)
+[![Install in Goose](https://goose-docs.ai/img/extension-install-dark.svg)](https://goose-docs.ai/extension?cmd=docker&arg=run&arg=--env&arg=LIGHTSPEED_CLIENT_ID&arg=--env&arg=LIGHTSPEED_CLIENT_SECRET&arg=--interactive&arg=--rm&arg=quay.io%2Fredhat-services-prod%2Finsights-management-tenant%2Finsights-mcp%2Fred-hat-lightspeed-mcp%3Alatest&id=red-hat-lightspeed-mcp&name=Red%20Hat%20Lightspeed%20MCP&description=Red%20Hat%20Lightspeed%20MCP%20server%20integration&env=LIGHTSPEED_CLIENT_ID%3DRed%20Hat%20Lightspeed%20Client%20ID&env=LIGHTSPEED_CLIENT_SECRET%3DRed%20Hat%20Lightspeed%20Client%20Secret)
+
+The badge uses an HTTPS redirect (`goose-docs.ai/extension?...`) that opens Goose Desktop's extension install flow.
+
+(Note: this uses the `quay.io` container image and `docker` as the command — Goose deeplinks only support `docker`, not `podman`. Use the manual install below if you rely on Podman.)
+
+After clicking, Goose prompts for `LIGHTSPEED_CLIENT_ID` and `LIGHTSPEED_CLIENT_SECRET`, then installs the extension. Start a new chat session to use it.
 
 #### Option 2: Manual STDIO installation
 
-For the usage in your project, create a file called `.vscode/mcp.json` with
-the following content.
+1. Click the button in the **top-left** to open the sidebar.
+2. Click the **`Extensions`** button on the sidebar.
+3. Under **`Extensions`**, click **`Add custom extension`**.
+4. On the **`Add custom extension`** modal, enter:
+   - **Type**: `Standard IO`
+   - **ID**: `red-hat-lightspeed-mcp`
+   - **Name**: `Red Hat Lightspeed MCP`
+   - **Description**: `Red Hat Lightspeed MCP server integration`
+   - **Command**: `podman run --env LIGHTSPEED_CLIENT_ID --env LIGHTSPEED_CLIENT_SECRET --interactive --rm ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest`
+   - **Environment variables**: click **`Add`** for each:
+     - `LIGHTSPEED_CLIENT_ID` — Red Hat Lightspeed Client ID
+     - `LIGHTSPEED_CLIENT_SECRET` — Red Hat Lightspeed Client Secret
+   - **Timeout**: leave default (300s) unless needed
+5. Click **`Add`**.
 
-```
-{
-    "inputs": [
-        {
-            "id": "lightspeed_client_id",
-            "type": "promptString",
-            "description": "Enter the Red Hat Lightspeed Client ID",
-            "default": "",
-            "password": true
-        },
-        {
-            "id": "lightspeed_client_secret",
-            "type": "promptString",
-            "description": "Enter the Red Hat Lightspeed Client Secret",
-            "default": "",
-            "password": true
-        }
-    ],
-    "servers": {
-        "lightspeed-mcp": {
-            "type": "stdio",
-            "command": "podman",
-            "args": [
-                "run",
-                "--env",
-                "LIGHTSPEED_CLIENT_ID",
-                "--env",
-                "LIGHTSPEED_CLIENT_SECRET",
-                "--interactive",
-                "--rm",
-                "ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest"
-            ],
-            "env": {
-                "LIGHTSPEED_CLIENT_ID": "${input:lightspeed_client_id}",
-                "LIGHTSPEED_CLIENT_SECRET": "${input:lightspeed_client_secret}"
-            }
-        }
-    }
-}
-```
+Docker users can replace `podman` with `docker` in the command. On macOS, if Goose cannot find `podman`, use the full path from `which podman` (see [prerequisites](#prerequisites)).
 
 ### Cursor
 
@@ -242,6 +220,61 @@ or alternatively using a **JWT Bearer token**:
             "url": "http://localhost:8000/mcp",
             "headers": {
                 "Authorization": "Bearer <YOUR_JWT_TOKEN>"
+            }
+        }
+    }
+}
+```
+
+### VSCode
+
+First check the [prerequisites](#prerequisites) section.
+
+#### Option 1: One-click installation (easiest)
+
+[![Install with Podman in VS Code](https://img.shields.io/badge/VS_Code-Install_Red_Hat_Lightspeed_MCP-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=red-hat-lightspeed-mcp&config=%7B%22type%22%3A%20%22stdio%22%2C%20%22command%22%3A%20%22podman%22%2C%20%22args%22%3A%20%5B%22run%22%2C%20%22--env%22%2C%20%22LIGHTSPEED_CLIENT_ID%22%2C%20%22--env%22%2C%20%22LIGHTSPEED_CLIENT_SECRET%22%2C%20%22--interactive%22%2C%20%22--rm%22%2C%20%22quay.io%2Fredhat-services-prod%2Finsights-management-tenant%2Finsights-mcp%2Fred-hat-lightspeed-mcp%3Alatest%22%5D%2C%20%22env%22%3A%20%7B%22LIGHTSPEED_CLIENT_ID%22%3A%20%22%24%7Binput%3Alightspeed_client_id%7D%22%2C%20%22LIGHTSPEED_CLIENT_SECRET%22%3A%20%22%24%7Binput%3Alightspeed_client_secret%7D%22%7D%7D&inputs=%5B%7B%22id%22%3A%20%22lightspeed_client_id%22%2C%20%22type%22%3A%20%22promptString%22%2C%20%22description%22%3A%20%22Enter%20the%20Red%20Hat%20Lightspeed%20Client%20ID%22%2C%20%22default%22%3A%20%22%22%2C%20%22password%22%3A%20true%7D%2C%20%7B%22id%22%3A%20%22lightspeed_client_secret%22%2C%20%22type%22%3A%20%22promptString%22%2C%20%22description%22%3A%20%22Enter%20the%20Red%20Hat%20Lightspeed%20Client%20Secret%22%2C%20%22default%22%3A%20%22%22%2C%20%22password%22%3A%20true%7D%5D)<br>
+(Note: this uses the `quay.io` container image)
+
+#### Option 2: Manual STDIO installation
+
+For the usage in your project, create a file called `.vscode/mcp.json` with
+the following content.
+
+```
+{
+    "inputs": [
+        {
+            "id": "lightspeed_client_id",
+            "type": "promptString",
+            "description": "Enter the Red Hat Lightspeed Client ID",
+            "default": "",
+            "password": true
+        },
+        {
+            "id": "lightspeed_client_secret",
+            "type": "promptString",
+            "description": "Enter the Red Hat Lightspeed Client Secret",
+            "default": "",
+            "password": true
+        }
+    ],
+    "servers": {
+        "lightspeed-mcp": {
+            "type": "stdio",
+            "command": "podman",
+            "args": [
+                "run",
+                "--env",
+                "LIGHTSPEED_CLIENT_ID",
+                "--env",
+                "LIGHTSPEED_CLIENT_SECRET",
+                "--interactive",
+                "--rm",
+                "ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest"
+            ],
+            "env": {
+                "LIGHTSPEED_CLIENT_ID": "${input:lightspeed_client_id}",
+                "LIGHTSPEED_CLIENT_SECRET": "${input:lightspeed_client_secret}"
             }
         }
     }
