@@ -26,10 +26,6 @@ especially handing over environment variables and credentials
 - Default configuration with JWT Bearer token in `Authorization: Bearer <token>` header
 - Custom environment: `INSIGHTS_BASE_URL`, `INSIGHTS_PROXY_URL`, and `INSIGHTS_SSO_BASE_URL` set with credentials in header
 
-### OAuth Mode (see `make run-oauth`)
-- `OAUTH_ENABLED=True`, `SSO_CLIENT_ID` and `SSO_CLIENT_SECRET` set, credentials via OAuth client
-- `OAUTH_ENABLED=True`, `SSO_CLIENT_ID` and `SSO_CLIENT_SECRET` set, with custom environment (`INSIGHTS_BASE_URL`, `INSIGHTS_PROXY_URL`, `INSIGHTS_SSO_BASE_URL`) and credentials via OAuth client
-
 ### SSE HTTP Mode (deprecated but some MCP clients still need this, see `make run-sse`)
 - Default configuration with service account credentials in header or JWT Bearer token
 - Custom environment: `INSIGHTS_BASE_URL` and `INSIGHTS_SSO_BASE_URL` set with credentials in header
@@ -55,19 +51,16 @@ graph TB
         OAuth2Client[InsightsOAuth2Client<br/>direct OAuth]
         HeadersClient[InsightsHeadersBasedClient<br/>multiuser auth]
         BearerClient[InsightsBearerTokenClient<br/>JWT bearer token]
-        OAuthProxyClient[InsightsOAuthProxyClient<br/>DCR proxy]
         SessionCache[SessionCache<br/>token caching]
         InsightsClientBase[InsightsClientBase<br/>HTTP operations]
 
         InsightsClient -->|creates| OAuth2Client
         InsightsClient -->|creates| HeadersClient
-        InsightsClient -->|creates| OAuthProxyClient
         HeadersClient -->|uses| SessionCache
         HeadersClient -->|creates| BearerClient
         OAuth2Client -->|extends| InsightsClientBase
         BearerClient -->|extends| InsightsClientBase
         HeadersClient -->|uses| OAuth2Client
-        OAuthProxyClient -->|extends| InsightsClientBase
     end
     API[Red Hat Insights<br/>REST API]
 
@@ -85,7 +78,6 @@ graph TB
     style OAuth2Client fill:#f3e5f5
     style HeadersClient fill:#f3e5f5
     style BearerClient fill:#f3e5f5
-    style OAuthProxyClient fill:#f3e5f5
     style SessionCache fill:#ffe5f5
     style InsightsClientBase fill:#f3e5f5
     style MCP fill:#e8f5e9
@@ -364,133 +356,43 @@ make run-stdio
 You can set the environment variable `IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK` to `True` to avoid adding a hint to newly created image builder blueprints.
 
 
-## Hosted MCP Server with DCR Auth (Beta)
+## Hosted MCP Server with Auth Provider (HTTP transport)
 
-The Insights MCP server can be deployed as a hosted service with OAuth authentication, enabling secure multi-user access without requiring users to manage their own service account credentials. This approach uses Dynamic Client Registration (DCR) to allow MCP clients to authenticate through Red Hat Single Sign-On (SSO) with their Red Hat accounts.
+When deploying the MCP server as a hosted service over HTTP/SSE, token validation is handled by
+[`mcp_rh_auth`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/mcp_rh_auth/README.md) via `build_auth_provider()`.
+When `AUTH_SERVER` is unset, no auth provider is configured and the server falls back to raw
+Bearer token pass-through (backward-compatible with self-hosted and stdio deployments).
 
-DCR support is built on FastMCP's `OIDCProxy`, which acts as a transparent proxy between MCP clients and Red Hat SSO. It presents a DCR-compliant OAuth interface to clients while translating requests to the upstream Red Hat SSO OAuth provider, which doesn't natively support DCR.
+### Environment Variables
 
-### Setup and Run
+| Variable | Required | Description |
+|---|---|---|
+| `AUTH_SERVER` | Yes | OAuth authorization server base URL (e.g. `https://sso.redhat.com/auth/realms/redhat-external`) |
+| `AUTH_ISSUER` | Yes | JWT `iss` claim — must match the SSO realm issuer |
+| `MCP_BASE_URL` | Yes (hosted) | Public base URL of this MCP server (used in `/.well-known/oauth-protected-resource`); no default — must be set for hosted deployments |
+| `AUTH_RESOURCE` | No | MCP server resource URL; defaults to `{MCP_BASE_URL}/mcp` if unset |
+| `AUTH_SCOPES` | No | Comma-separated required scopes (default: `api.graphql`) |
+| `AUTH_AUDIENCE` | No | Comma-separated accepted JWT audiences |
+| `AUTH_JWKS_URI` | No | Override JWKS endpoint (otherwise fetched from `AUTH_SERVER` discovery document) |
 
-#### Required SSO Authentication
+### How it works
 
-Before running the server with OAuth enabled, you need to register an OAuth application with Red Hat SSO:
+1. `build_auth_provider()` fetches the OIDC discovery document from `AUTH_SERVER` to resolve the JWKS URI and issuer.
+2. FastMCP validates the `Authorization: Bearer <token>` header on every HTTP request against the JWKS.
+3. The validated token is retrieved via `get_access_token()` and forwarded to the Insights API.
+4. If `AUTH_SERVER` is unset, the token is extracted directly from the `Authorization` header without server-side validation (existing behavior).
 
-1. **Register OAuth Client Application**:
-   - Access Red Hat SSO at `https://sso.redhat.com`
-   - Create a new OAuth2/OIDC client application
-   - Configure the authorized redirect URI: `http://localhost:8000/oauth/callback` (or your custom host/port)
-   - Request the following scopes for your client:
-     - `openid` - Standard OIDC identity scope
-     - `api.console` - Access to Red Hat Console APIs
-     - `api.ocm` - Access to OpenShift Cluster Manager APIs
-   - Save the generated `client_id` and `client_secret`
-
-2. **Important Notes**:
-   - The server validates that tokens contain ALL required scopes
-   - By default, only `localhost:8000` and `127.0.0.1:8000` are authorized host/port combinations
-   - To use a different host/port, update `SSO_AUTHORIZED_MCP_SERVER_HOST_PORTS` in `src/insights_mcp/config.py`
-
-#### Required Environment Configuration
-
-Set the following environment variables before starting the server:
+### Example configuration
 
 ```bash
-# Enable OAuth authentication mode
-export OAUTH_ENABLED=True
+export AUTH_SERVER="https://sso.redhat.com/auth/realms/redhat-external"
+export AUTH_ISSUER="https://sso.redhat.com/auth/realms/redhat-external"
+export AUTH_SCOPES="openid,api.console,api.ocm"
+# For production: set MCP_BASE_URL to the public URL of this server
+# export MCP_BASE_URL="https://your-mcp-server.example.com"
 
-# SSO Client credentials (from Red Hat SSO registration)
-export SSO_CLIENT_ID="your-sso-client-id"
-export SSO_CLIENT_SECRET="your-sso-client-secret"
-
-# Optional: Custom SSO base URL (defaults to https://sso.redhat.com)
-export SSO_BASE_URL="https://sso.redhat.com"
-
-# Optional: OAuth timeout in seconds (defaults to 30)
-export SSO_OAUTH_TIMEOUT_SECONDS=30
+uv run insights-mcp http --host 0.0.0.0 --port 8000
 ```
-
-**Important**: When `OAUTH_ENABLED=True`, the server uses SSO credentials for the OAuth proxy. The traditional service account credentials (`INSIGHTS_CLIENT_ID`, `INSIGHTS_CLIENT_SECRET`, `INSIGHTS_REFRESH_TOKEN`) are not used in this mode.
-
-#### Commands to Run the Server
-
-**Using Python directly**:
-
-```bash
-# HTTP streaming transport
-uv run insights-mcp http --host localhost --port 8000
-```
-
-**Note**: The server will log a warning if you specify a host/port combination that isn't in the authorized list, and will fall back to `localhost:8000`.
-
-### The Working Logic
-
-#### OAuth Proxy Architecture
-
-The hosted MCP server implements a sophisticated OAuth proxy pattern that bridges the gap between MCP clients (which expect DCR support) and Red Hat SSO (which doesn't support DCR). Here's how it works:
-
-**1. Client Registration (DCR)**:
-- MCP clients discover OAuth endpoints via `.well-known/oauth-authorization-server`
-- Clients attempt to dynamically register using the DCR endpoint
-- The proxy accepts registration requests and returns the shared SSO client credentials
-- Client redirect URIs (e.g., `http://localhost:55454/callback`) are validated against configured patterns
-
-**2. Authorization Flow**:
-- Client initiates OAuth flow by redirecting user to authorization endpoint
-- Proxy creates a transaction mapping client details (PKCE challenge, redirect URI) to the flow
-- Proxy redirects to Red Hat SSO using its fixed callback URL
-- User authenticates with Red Hat SSO using their Red Hat account
-- Red Hat SSO redirects back to proxy's callback with authorization code
-
-**3. Token Exchange**:
-- Proxy exchanges upstream authorization code for access/refresh tokens (server-side)
-- Proxy generates a new authorization code bound to client's PKCE challenge
-- Proxy redirects to client's original dynamic redirect URI with new code
-- Client exchanges code with proxy using PKCE verifier
-- Proxy returns upstream tokens to client
-
-**4. API Authentication**:
-- Client includes access token in requests to MCP server
-- FastMCP's OAuth middleware validates token using Red Hat SSO's JWKS
-- Proxy forwards validated requests to Insights toolsets
-- Toolsets use token to authenticate with Red Hat Insights APIs
-
-**5. Token Refresh**:
-- When access tokens expire, clients send refresh requests to proxy
-- Proxy forwards refresh requests to Red Hat SSO
-- Updated tokens are returned to client
-
-**Performance Optimization:**
-- `SessionCache` reduces OAuth roundtrips by caching tokens per connection
-- Cached tokens reused across concurrent requests from same client/credentials
-- See [Session Cache documentation](#session-cache-and-token-management) for details
-
-#### OIDCProxy Implementation
-
-The `create_oauth_provider()` function in `src/insights_mcp/oauth.py` creates an `OIDCProxy` instance configured for Red Hat SSO:
-
-```python
-auth_provider = OIDCProxy(
-    config_url="https://sso.redhat.com/auth/realms/redhat-external/.well-known/openid-configuration",
-    client_id=SSO_CLIENT_ID,
-    client_secret=SSO_CLIENT_SECRET,
-    base_url="http://localhost:8000",
-    required_scopes=["openid", "api.console", "api.ocm"],
-    timeout_seconds=30
-)
-```
-
-The proxy maintains minimal state for active OAuth transactions, PKCE challenges, and token mappings using FastMCP's pluggable storage backend. This enables horizontal scaling across multiple server instances.
-
-#### Security Features
-
-- **PKCE enforced end-to-end**: From client to proxy and proxy to upstream
-- **Scope validation**: Tokens without required scopes are rejected
-- **Redirect URI validation**: Only authorized patterns accepted (prevents open redirects)
-- **Token security**: Refresh tokens stored by hash only
-- **Single-use codes**: Authorization codes expire after one use
-- **Cryptographic randomness**: Transaction IDs use secure random generation
-
 
 ## Logging and Compliance
 

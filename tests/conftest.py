@@ -278,20 +278,6 @@ def mock_oauth_token():
 
 
 @pytest.fixture
-def mock_oauth_provider():
-    """Create a mock OAuth AuthProvider for testing.
-
-    Returns:
-        Mock AuthProvider instance
-
-    Example:
-        >>> def test_with_provider(mock_oauth_provider):
-        ...     assert mock_oauth_provider.client_id == "test-sso-client"
-    """
-    return oauth_utils_module.create_mock_oauth_provider()
-
-
-@pytest.fixture
 def multi_user_tokens():
     """Create multiple user tokens for multi-user testing.
 

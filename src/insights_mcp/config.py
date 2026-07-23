@@ -22,20 +22,25 @@ SSO_CONFIG_URL = (
 SSO_TOKEN_ENDPOINT = (
     os.getenv("SSO_TOKEN_ENDPOINT") or f"{SSO_BASE_URL}/auth/realms/redhat-external/protocol/openid-connect/token"
 )
+SSO_OAUTH_TIMEOUT_SECONDS = int(os.getenv("SSO_OAUTH_TIMEOUT_SECONDS", "30"))
 
-# Authentication configuration
-OAUTH_ENABLED = os.getenv("OAUTH_ENABLED", "false").lower() == "true"
+# HTTP transport auth provider (mcp_rh_auth.build_auth_provider).
+# mcp_rh_auth reads these directly from os.getenv(); exposed here for validation and tests.
+# When AUTH_SERVER is unset, no auth provider is configured and raw Bearer token
+# pass-through is used (backward-compatible with stdio and self-hosted deployments).
+AUTH_SERVER = os.getenv("AUTH_SERVER") or ""
+AUTH_ISSUER = os.getenv("AUTH_ISSUER") or ""
+# Read directly by mcp_rh_auth (no Python binding needed here):
+# MCP_BASE_URL:   Public base URL of this MCP server (e.g. https://my-server.example.com)
+# AUTH_RESOURCE:  MCP resource URL fallback (defaults to {MCP_BASE_URL}/mcp)
+# AUTH_SCOPES:    Comma-separated required scopes (recommended: openid,api.console,api.ocm)
+# AUTH_AUDIENCE:  Comma-separated accepted JWT audiences (optional)
+# AUTH_JWKS_URI:  Override JWKS endpoint (otherwise fetched from AUTH_SERVER discovery)
 
-# For OAuth_ENABLED:
-# MCP server provides Dynamic Client Registration (DCR) Authentication via OAuth Proxy
-SSO_CLIENT_ID = os.getenv("SSO_CLIENT_ID") or ""  # default to empty string if not set
-SSO_CLIENT_SECRET = os.getenv("SSO_CLIENT_SECRET") or ""  # default to empty string if not set
-
-# For OAUTH_ENABLED=False:
-# MCP server requires no auth on MCP Client connection
+# Traditional service account credentials (stdio transport)
 INSIGHTS_CLIENT_ID = os.getenv("INSIGHTS_CLIENT_ID") or ""
 INSIGHTS_CLIENT_SECRET = os.getenv("INSIGHTS_CLIENT_SECRET") or ""
-# if non is set, fallback to lightspeed credentials
+# if none is set, fallback to lightspeed credentials
 if not INSIGHTS_CLIENT_ID and not INSIGHTS_CLIENT_SECRET:
     INSIGHTS_CLIENT_ID = os.getenv("LIGHTSPEED_CLIENT_ID") or ""
     INSIGHTS_CLIENT_SECRET = os.getenv("LIGHTSPEED_CLIENT_SECRET") or ""
@@ -43,15 +48,6 @@ INSIGHTS_REFRESH_TOKEN = os.getenv("INSIGHTS_REFRESH_TOKEN") or ""
 
 # Argument toolset
 INSIGHTS_MCP_TOOLSET = os.getenv("INSIGHTS_TOOLSET") or os.getenv("LIGHTSPEED_TOOLSET") or "all"
-
-SSO_OAUTH_TIMEOUT_SECONDS = int(os.getenv("SSO_OAUTH_TIMEOUT_SECONDS", "30"))
-
-FASTMCP_OAUTH_BASE_URL = os.getenv("FASTMCP_OAUTH_BASE_URL") or "http://localhost:8000"
-
-SSO_AUTHORIZED_MCP_SERVER_HOST_PORTS = [
-    ("localhost", 8000),
-    ("127.0.0.1", 8000),
-]
 
 # Brand configuration for dynamic variable naming in user-facing messages
 CONTAINER_BRAND = os.getenv("CONTAINER_BRAND", "insights")

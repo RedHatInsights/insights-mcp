@@ -26,6 +26,8 @@ dependencies = [
     "fastmcp>=3.0",
     "requests",
     "PyJWT",
+    "httpx",
+    "certifi",
 ]
 
 [project.optional-dependencies]

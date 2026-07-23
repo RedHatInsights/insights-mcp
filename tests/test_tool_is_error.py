@@ -24,7 +24,6 @@ def vulnerability_mcp_initialized():
     VulnerabilityMCP.init_insights_client(
         client_id="test-client-id",
         client_secret="test-client-secret",
-        oauth_enabled=False,
     )
     return VulnerabilityMCP
 

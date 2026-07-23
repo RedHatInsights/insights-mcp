@@ -39,7 +39,6 @@ class TestAuthentication:
         mcp_server.init_insights_client(
             client_id="test-client-id",
             client_secret="test-client-secret",
-            oauth_enabled=False,
         )
         mcp_server.register_tools()
 
@@ -66,7 +65,6 @@ class TestAuthentication:
         mcp_server.init_insights_client(
             client_id=None,
             client_secret=None,
-            oauth_enabled=False,
         )
         mcp_server.register_tools()
 
@@ -92,7 +90,6 @@ class TestAuthentication:
         mcp_server.init_insights_client(
             client_id=None,
             client_secret=None,
-            oauth_enabled=False,
             mcp_transport="sse",
         )
         mcp_server.register_tools()
@@ -119,7 +116,6 @@ class TestAuthentication:
         mcp_server.init_insights_client(
             client_id=None,
             client_secret=None,
-            oauth_enabled=False,
             mcp_transport="http",
         )
         mcp_server.register_tools()

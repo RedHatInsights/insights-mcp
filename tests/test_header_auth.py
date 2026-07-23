@@ -5,9 +5,12 @@ from unittest.mock import MagicMock, patch
 
 import jwt as pyjwt
 import pytest
+from fastmcp.server.auth import AccessToken
 
 from insights_mcp.client import InsightsBearerTokenClient, InsightsHeadersBasedClient, InsightsOAuth2Client
 from insights_mcp.server import setup_credentials
+from mcp_rh_auth.provider import _resolve_mcp_base_url
+from tests.oauth_utils import create_test_token
 
 
 class TestHeaderBasedAuthentication:
@@ -243,7 +246,7 @@ class TestProductionWarning:
 
     def test_production_warning_for_http_with_env_credentials(self):
         """Test that warning is emitted for HTTP transport with env credentials."""
-        mcp_server_config = {"oauth_enabled": False, "mcp_transport": "http"}
+        mcp_server_config = {"mcp_transport": "http"}
         logger = MagicMock()
 
         with patch("insights_mcp.server.config") as mock_config:
@@ -262,7 +265,7 @@ class TestProductionWarning:
 
     def test_production_warning_for_sse_with_env_credentials(self):
         """Test that warning is emitted for SSE transport with env credentials."""
-        mcp_server_config = {"oauth_enabled": False, "mcp_transport": "sse"}
+        mcp_server_config = {"mcp_transport": "sse"}
         logger = MagicMock()
 
         with patch("insights_mcp.server.config") as mock_config:
@@ -281,7 +284,7 @@ class TestProductionWarning:
 
     def test_no_warning_for_stdio_with_env_credentials(self):
         """Test that NO warning is emitted for STDIO transport with env credentials."""
-        mcp_server_config = {"oauth_enabled": False, "mcp_transport": "stdio"}
+        mcp_server_config = {"mcp_transport": "stdio"}
         logger = MagicMock()
 
         with patch("insights_mcp.server.config") as mock_config:
@@ -293,24 +296,6 @@ class TestProductionWarning:
             setup_credentials(mcp_server_config, logger)
 
             # Check that warning was NOT logged
-            warning_calls = [
-                call for call in logger.warning.call_args_list if "THIS SHOULD NOT BE USED IN PRODUCTION" in str(call)
-            ]
-            assert len(warning_calls) == 0
-
-    def test_no_warning_for_http_with_oauth_enabled(self):
-        """Test that NO warning is emitted for HTTP transport with OAuth proxy enabled."""
-
-        mcp_server_config = {"oauth_enabled": True, "mcp_transport": "http"}
-        logger = MagicMock()
-
-        with patch("insights_mcp.server.config") as mock_config:
-            mock_config.SSO_CLIENT_ID = "test-id"
-            mock_config.SSO_CLIENT_SECRET = "test-secret"
-
-            setup_credentials(mcp_server_config, logger)
-
-            # Check that warning was NOT logged (OAuth mode is production-safe)
             warning_calls = [
                 call for call in logger.warning.call_args_list if "THIS SHOULD NOT BE USED IN PRODUCTION" in str(call)
             ]
@@ -579,3 +564,90 @@ class TestBearerTokenErrorMessages:
 
         # STDIO should use environment credentials message
         assert "mcp.json config" in error_msg.lower()
+
+
+class TestAuthProviderBearerToken:
+    """Test get_bearer_token_from_headers() priority: auth context > raw header."""
+
+    @pytest.mark.asyncio
+    async def test_auth_context_token_takes_priority_over_header(self):
+        """Token from FastMCP auth context is used when auth provider is active."""
+        client = InsightsHeadersBasedClient(mcp_transport="http", token_endpoint="https://test.example.com/token")
+        ctx_token = create_test_token(org_id="org-from-ctx")
+
+        with patch("insights_mcp.client.get_access_token", return_value=ctx_token):
+            with patch("insights_mcp.client.get_http_headers") as mock_headers:
+                mock_headers.return_value = {"authorization": "Bearer raw-header-token"}
+
+                token = client.get_bearer_token_from_headers()
+
+        assert token == ctx_token.token
+        assert token != "raw-header-token"
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_header_when_no_auth_context(self):
+        """Raw Authorization header is used when auth context returns None."""
+        client = InsightsHeadersBasedClient(mcp_transport="http", token_endpoint="https://test.example.com/token")
+
+        with patch("insights_mcp.client.get_access_token", return_value=None):
+            with patch("insights_mcp.client.get_http_headers") as mock_headers:
+                mock_headers.return_value = {"authorization": "Bearer raw-header-token"}
+
+                token = client.get_bearer_token_from_headers()
+
+        assert token == "raw-header-token"
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_header_when_auth_context_token_empty(self):
+        """Raw Authorization header is used when AccessToken.token is an empty string."""
+        client = InsightsHeadersBasedClient(mcp_transport="http", token_endpoint="https://test.example.com/token")
+        empty_token = AccessToken(token="", client_id="c", scopes=[], expires_at=9999999999, claims={})
+
+        with patch("insights_mcp.client.get_access_token", return_value=empty_token):
+            with patch("insights_mcp.client.get_http_headers") as mock_headers:
+                mock_headers.return_value = {"authorization": "Bearer raw-header-token"}
+
+                token = client.get_bearer_token_from_headers()
+
+        assert token == "raw-header-token"
+
+    @pytest.mark.asyncio
+    async def test_returns_none_when_neither_context_nor_header(self):
+        """Returns None when both auth context and Authorization header are absent."""
+        client = InsightsHeadersBasedClient(mcp_transport="http", token_endpoint="https://test.example.com/token")
+
+        with patch("insights_mcp.client.get_access_token", return_value=None):
+            with patch("insights_mcp.client.get_http_headers") as mock_headers:
+                mock_headers.return_value = {}
+
+                token = client.get_bearer_token_from_headers()
+
+        assert token is None
+
+
+class TestAuthResourceEnvBridge:
+    """Test that MCP_BASE_URL is resolved correctly inside build_auth_provider.
+
+    The bridge logic now lives in mcp_rh_auth.provider._resolve_mcp_base_url
+    (no longer a pre-import side effect in server.py).
+    """
+
+    def test_mcp_base_url_used_directly(self, monkeypatch):
+        """MCP_BASE_URL is returned as the base URL without modification."""
+        monkeypatch.setenv("MCP_BASE_URL", "https://my-mcp.example.com")
+        monkeypatch.delenv("AUTH_RESOURCE", raising=False)
+        assert _resolve_mcp_base_url() == "https://my-mcp.example.com"
+
+    def test_mcp_base_url_takes_priority_over_auth_resource(self, monkeypatch):
+        """MCP_BASE_URL wins when both MCP_BASE_URL and AUTH_RESOURCE are set."""
+        monkeypatch.setenv("MCP_BASE_URL", "https://my-mcp.example.com")
+        monkeypatch.setenv("AUTH_RESOURCE", "https://custom-resource.example.com/mcp")
+        assert _resolve_mcp_base_url() == "https://my-mcp.example.com"
+
+    def test_trailing_slash_stripped_from_mcp_base_url(self, monkeypatch):
+        """Trailing slash on MCP_BASE_URL is stripped."""
+        monkeypatch.setenv("MCP_BASE_URL", "https://my-mcp.example.com/")
+        monkeypatch.delenv("AUTH_RESOURCE", raising=False)
+        result = _resolve_mcp_base_url()
+        assert result == "https://my-mcp.example.com"
+        assert "//" not in result.replace("https://", "")

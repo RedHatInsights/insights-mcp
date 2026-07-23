@@ -15,7 +15,6 @@ Classes:
 
 import gzip
 import json as json_lib
-import time
 import uuid
 from logging import getLogger
 from typing import Any
@@ -24,7 +23,6 @@ import httpx
 import jwt
 from authlib.integrations.httpx_client import AsyncOAuth2Client, OAuthError
 from authlib.oauth2.rfc6749 import OAuth2Token
-from fastmcp.server.auth import AuthProvider
 from fastmcp.server.dependencies import get_access_token, get_context, get_http_headers
 
 from insights_mcp.config import (
@@ -34,7 +32,6 @@ from insights_mcp.config import (
     BRAND_CLIENT_SECRET_HEADER,
     INSIGHTS_BASE_URL,
     INSIGHTS_PROXY_URL,
-    OAUTH_ENABLED,
     SSO_TOKEN_ENDPOINT,
 )
 from insights_mcp.errors import InsightsApiError
@@ -46,6 +43,24 @@ USER_AGENT = f"insights-mcp/{__version__}"
 
 # SSO claim keys containing PII (personally identifiable information); masked in logs for ISO 27018 compliance
 _PII_CLAIM_KEYS = frozenset({"subject", "account_id", "username", "email"})
+
+
+def _extract_bearer_token_from_auth_header(auth_header: str) -> str:
+    if auth_header and auth_header.lower().startswith("bearer "):
+        return auth_header[7:].strip()
+    return ""
+
+
+def _get_authorization_bearer_token(mcp_transport: str | None) -> str:
+    """Return bearer token from the Authorization header, or empty string."""
+    if mcp_transport not in ("sse", "http"):
+        return ""
+    try:
+        headers = get_http_headers(include={"authorization"})
+        auth_header = headers.get("authorization") or headers.get("Authorization") or ""
+        return _extract_bearer_token_from_auth_header(auth_header)
+    except (RuntimeError, KeyError, AttributeError):
+        return ""
 
 
 class InsightsClientBase(httpx.AsyncClient):
@@ -358,7 +373,6 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
     1. Service account (client credentials) flow - uses client_id + client_secret
     2. Refresh token flow - uses refresh_token for long-lived sessions
 
-    For FastMCP OAuth proxy integration, use InsightsOAuthProxyClient instead.
 
     Args:
         base_url: Base URL for the Insights API
@@ -366,7 +380,6 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
         client_secret: OAuth2 client secret for service account authentication
         refresh_token: OAuth2 refresh token for user authentication
         proxy_url: Optional proxy URL for requests
-        oauth_enabled: Legacy parameter (use InsightsOAuthProxyClient for proxy mode)
         mcp_transport: MCP transport type for error message customization
         token_endpoint: OAuth2 token endpoint URL
     """
@@ -379,7 +392,6 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
         client_secret: str | None = None,
         refresh_token: str | None = None,
         proxy_url: str | None = None,
-        oauth_enabled: bool = False,
         mcp_transport: str | None = None,
         token_endpoint: str = SSO_TOKEN_ENDPOINT,
     ):
@@ -398,7 +410,6 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
             headers=self.headers,
             proxy=self.proxy_url,
         )
-        self.oauth_enabled = oauth_enabled
         # Cache whether we're using environment credentials (set once at init)
         self._using_env_credentials = bool(client_id or client_secret)
         self._request_auth_method = "oauth2_client_credentials_auth"
@@ -406,7 +417,6 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
         # Verify proxy configuration after initialization
         if proxy_url:
             self.logger.debug("InsightsOAuth2Client initialized with proxy: %s", proxy_url)
-            # Verify httpx client has proxy configured
             if hasattr(self, "_transport") and hasattr(self._transport, "_pool"):
                 self.logger.debug("Proxy verification: httpx transport configured")
             elif hasattr(self, "_mounts"):
@@ -415,20 +425,9 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
             self.logger.debug("InsightsOAuth2Client initialized without proxy")
 
     async def refresh_auth(self) -> None:
-        """Refresh the authentication token.
-
-        For SSE/HTTP transports without instance credentials, this will attempt to
-        extract credentials from request headers to support per-request authentication.
-        """
+        """Refresh the authentication token."""
         self.logger.debug("Starting token refresh")
-        if self.oauth_enabled:  # TODO: unify client oauth and oauth middleware
-            self.logger.debug("OAuth is enabled, skipping token management")
-            caller_headers_auth = get_http_headers(include={"authorization"}).get("authorization")
-            if caller_headers_auth:
-                # If the request is authenticated, use the caller's authorization header
-                # This is useful for OAuth flows where the client is already authenticated
-                self.headers["authorization"] = caller_headers_auth
-        elif "access_token" not in self.token or self.token.is_expired():
+        if "access_token" not in self.token or self.token.is_expired():
             self.logger.debug("Token is expired, refreshing token")
             try:
                 if "refresh_token" in self.token:
@@ -453,7 +452,7 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
         Returns:
             JSON response data or error information
         """
-        if not self.oauth_enabled and self.refresh_token is None and self.client_secret is None:
+        if self.refresh_token is None and self.client_secret is None:
             raise InsightsApiError(self.no_auth_error(ValueError("Client not authenticated")))
 
         await self.refresh_auth()
@@ -507,438 +506,6 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
         if payload:
             return payload.get("rh-user-id")
         return None
-
-
-class InsightsOAuthProxyClient(InsightsClientBase, AsyncOAuth2Client):
-    """HTTP client for Red Hat Insights APIs using FastMCP OAuth proxy authentication.
-
-    This client is designed to work seamlessly with FastMCP's OAuth proxy middleware,
-    extracting authentication tokens from the current MCP request context and using
-    them for Insights API calls. It provides comprehensive logging and debugging
-    capabilities for OAuth proxy scenarios.
-
-    The client operates by:
-    1. Extracting FastMCP JWT tokens from the current request context
-    2. Converting them to OAuth2Token format for API authentication
-    3. Performing token expiration checking and validation
-    4. Providing detailed request/token logging for debugging
-
-    Key features:
-    - Automatic token extraction from FastMCP request context
-    - Token expiration monitoring and warnings
-    - Comprehensive request and token information logging
-    - Seamless integration with FastMCP's OAuth proxy middleware
-    - Support for Red Hat Insights API authentication patterns
-
-    Args:
-        base_url: Base URL for the Insights API (defaults to production)
-        proxy_url: Optional HTTP proxy URL for requests
-        mcp_transport: MCP transport type for error message customization
-        oauth_provider: AuthProvider instance from FastMCP server (optional)
-
-    Note:
-        This client is specifically designed for OAuth proxy scenarios where
-        authentication is handled by FastMCP middleware. It does not handle
-        traditional OAuth2 flows like client credentials or refresh tokens.
-    """
-
-    def __init__(  # pylint: disable=too-many-arguments
-        self,
-        *,
-        base_url: str = INSIGHTS_BASE_URL,
-        proxy_url: str | None = None,
-        mcp_transport: str | None = None,
-        oauth_provider: AuthProvider | None = None,
-    ):
-        """Initialize the FastMCP OAuth proxy client.
-
-        Note: This client is designed for OAuth proxy scenarios where
-        authentication is handled by FastMCP middleware. Traditional OAuth2
-        parameters (client_secret, refresh_token) are typically not needed.
-        """
-
-        InsightsClientBase.__init__(self, base_url=base_url, proxy_url=proxy_url, mcp_transport=mcp_transport)
-
-        AsyncOAuth2Client.__init__(
-            self,
-            grant_type="client_credentials",
-            token=OAuth2Token({}),
-            headers=self.headers,
-            proxy=self.proxy_url,
-        )
-
-        # Note: this self.token will be reset on each make_request call by the
-        #   _extract_access_token_from_request() method, which is called by refresh_auth().
-        self.token = None  # OAuth2Token({})
-
-        self.oauth_provider = oauth_provider
-        self.logger = getLogger("InsightsOAuthProxyClient")
-
-    async def refresh_auth(self) -> None:
-        """Extract and prepare authentication token from FastMCP request context.
-
-        This method extracts the FastMCP JWT token from the current MCP request
-        context using FastMCP's dependency injection system. The token is then
-        converted to OAuth2Token format for use with Insights API calls.
-
-        The method:
-        1. Extracts FastMCP JWT token from the current request context
-        2. Validates the token is present and accessible
-        3. Converts the token to OAuth2Token format for API authentication
-        4. Logs token metadata for debugging purposes
-
-        Raises:
-            ValueError: If no access token is found in the request context
-
-        Note:
-            This method relies on FastMCP's get_access_token() dependency to
-            retrieve the authenticated token from the current request scope.
-        """
-        self.logger.debug("Starting OAuth proxy token exchange")
-
-        # Important: Reset the token to None, to avoid using the previous token
-        self.token = None
-
-        # Get access_token from fastmcp request context
-        await self._extract_access_token_from_request()
-        if not self.token:
-            self.logger.error("No access token found in request")
-            raise ValueError(self.no_auth_error(ValueError("No access token in request")))
-
-        self.logger.debug("Successfully retrived SSO token for Insights API authentication")
-
-    def _mask_pii_in_claims(self, claims: dict[str, Any]) -> dict[str, Any]:
-        """Mask PII in SSO claims for logging (ISO 27018)."""
-        return {k: "***MASKED***" if k in _PII_CLAIM_KEYS else v for k, v in claims.items()}
-
-    async def log_request_and_token_info(  # pylint: disable=too-many-locals
-        self, operation_name: str
-    ) -> dict[str, Any]:
-        """Log comprehensive token and request information for debugging OAuth proxy operations.
-
-        Provides detailed logging and analysis of the current authentication state,
-        including token metadata, request headers, Red Hat SSO claims, and token
-        expiration status. This method is essential for debugging OAuth proxy
-        authentication issues and monitoring token health.
-
-        Logging includes:
-        1. Request headers (with sensitive data masked for security)
-        2. OAuth2Token metadata (client_id, scopes, expiration)
-        3. Red Hat SSO claims (org_id, account_id, roles, etc.)
-        4. Token expiration analysis and warnings
-        5. Organizational context for request processing
-
-        Args:
-            operation_name: Description of the operation being performed
-                          (e.g., "GET /api/vulnerability/v1/cves")
-
-        Returns:
-            dict: Comprehensive information dictionary containing:
-                - operation_name: The operation being performed
-                - request_headers: HTTP headers (sensitive data masked)
-                - access_token_info: Token metadata and expiration info
-                - redhat_sso_claims: Extracted Red Hat SSO user/org claims
-
-        Note:
-            Sensitive information (authorization headers, client secrets, PII in
-            SSO claims) is masked in logs for ISO 27001/27018 compliance. The
-            method never raises exceptions to avoid disrupting the main request
-            flow, logging warnings for any extraction failures.
-        """
-        info = {
-            "operation_name": operation_name,
-            "request_headers": {},
-            "access_token_info": {},
-            "redhat_sso_claims": {},
-            "enhanced_client_debug": {},
-        }
-
-        self.logger.debug("=== OAuth Proxy Request: %s ===", operation_name)
-
-        # 1. Extract and log request headers
-        try:
-            request_headers = get_http_headers(include={"authorization"})
-            request_headers_dict: dict[str, str] = {}
-            info["request_headers"] = request_headers_dict
-
-            self.logger.debug("Request headers received:")
-            for header_name, header_value in request_headers.items():
-                # Security: mask sensitive headers but keep them in debug info
-                if header_name.lower() in ["authorization", "x-api-key", "bearer"]:
-                    if len(header_value) > 20:
-                        masked_value = f"{header_value[:10]}...{header_value[-6:]}"
-                    else:
-                        masked_value = "***MASKED***"
-                    self.logger.debug("  %s: %s", header_name, masked_value)
-                    request_headers_dict[header_name] = masked_value
-                else:
-                    self.logger.debug("  %s: %s", header_name, header_value)
-                    request_headers_dict[header_name] = header_value
-
-        except (RuntimeError, KeyError, AttributeError) as e:
-            self.logger.warning("Failed to get request headers: %s", e)
-            error_dict: dict[str, str] = {"error": str(e)}
-            info["request_headers"] = error_dict
-
-        # 2. Extract access token from the current token
-        try:
-            access_token = self.token
-            if access_token:
-                info["access_token_info"] = {
-                    "client_id": access_token.get("client_id"),
-                    "scopes": access_token.get("scopes"),
-                    "expires_at": access_token.get("expires_at"),
-                    "token_length": len(access_token.get("access_token")),
-                }
-
-                self.logger.debug("FastMCP Access token extracted:")
-                self.logger.debug("  Client ID: %s", access_token.get("client_id"))
-                self.logger.debug("  Scopes: %s", access_token.get("scopes"))
-                self.logger.debug("  Expires at: %s", access_token.get("expires_at"))
-
-                # 3. Extract Red Hat SSO claims if available
-                claims = access_token.get("claims")
-                if claims:
-                    claims_dict = {
-                        "issuer": claims.get("iss"),
-                        "subject": claims.get("sub"),
-                        "org_id": claims.get("org_id"),
-                        "account_id": claims.get("account_id"),
-                        "username": claims.get("preferred_username"),
-                        "email": claims.get("email"),
-                        "realm_roles": claims.get("realm_access", {}).get("roles", []),
-                        "resource_access": list(claims.get("resource_access", {}).keys()),
-                        "groups": claims.get("groups", []),
-                    }
-                    claims_for_log = self._mask_pii_in_claims(claims_dict)
-                    info["redhat_sso_claims"] = claims_for_log
-
-                    self.logger.debug("Red Hat SSO claims:")
-                    for key, value in claims_for_log.items():
-                        if value:  # Only log non-empty values
-                            self.logger.debug("  %s: %s", key, value)
-
-            else:
-                self.logger.warning("No access token found in request")
-                info["access_token_info"] = {"error": "No token found"}
-
-        except (KeyError, TypeError, AttributeError) as e:
-            self.logger.error("Failed to extract access token: %s", e)
-            info["access_token_info"] = {"error": str(e)}
-
-        self.logger.debug("OAuth proxy request info: %s", info)
-        self.logger.debug("=== End OAuth Proxy Request Logging ===")
-        return info
-
-    async def make_request(self, fn, *args, **kwargs) -> dict[str, Any] | str:
-        """Execute HTTP request with FastMCP OAuth proxy authentication and logging.
-
-        This method orchestrates the complete request lifecycle for OAuth proxy scenarios:
-        1. Resets any previous token state to ensure clean token extraction
-        2. Performs token extraction and authentication setup via refresh_auth()
-        3. Logs comprehensive request and token information for debugging
-        4. Executes the actual HTTP request with proper authentication headers
-        5. Provides token expiration monitoring and warnings
-
-        Args:
-            fn: HTTP method function to call (e.g., self.get, self.post)
-            *args: Positional arguments for the HTTP method
-            **kwargs: Keyword arguments for the HTTP method
-
-        Returns:
-            JSON response data as dict, plain text as str, or error information
-
-        Raises:
-            ValueError: If token extraction or authentication setup fails
-            httpx.HTTPStatusError: If the API request fails with HTTP error
-            Exception: For other request-related failures
-
-        Note:
-            Each request starts with a clean token state to ensure proper
-            token extraction from the current MCP request context.
-        """
-        # Generate operation description for logging
-        method_name = getattr(fn, "__name__", "unknown_method")
-        url = kwargs.get("url", args[0] if args else "unknown_url")
-        operation_name = f"{method_name.upper()} {url}"
-
-        # Always perform token exchange for proxy clients
-        try:
-            await self.refresh_auth()
-            self.logger.debug("Token exchange completed successfully for %s", operation_name)
-        except Exception as e:
-            self.logger.error("Token exchange failed for %s: %s", operation_name, e)
-            raise
-
-        # TODO: This log block is for debugging purposes, comment it out in production.
-        # Log comprehensive request and token information
-        try:
-            request_info = await self.log_request_and_token_info(operation_name)
-
-            # Extract useful information for request processing
-            org_id = request_info.get("redhat_sso_claims", {}).get("org_id")
-            if org_id:
-                self.logger.info("Processing request for Red Hat organization: %s", org_id)
-
-            # Check token freshness for security-sensitive operations
-            token_info = request_info.get("access_token_info", {})
-            if token_info.get("expires_at"):
-                current_time = int(time.time())
-                expires_at = token_info["expires_at"]
-                if expires_at < current_time:
-                    self.logger.warning(
-                        "Access token has expired (expires_at: %s, current: %s)", expires_at, current_time
-                    )
-                elif (expires_at - current_time) < 300:  # Less than 5 minutes remaining
-                    self.logger.debug("Access token expires soon (in %d seconds)", expires_at - current_time)
-                else:
-                    self.logger.debug(
-                        "Access token is valid (expires_at: %s, current: %s), expire in %d seconds",
-                        expires_at,
-                        current_time,
-                        expires_at - current_time,
-                    )
-
-        except (RuntimeError, KeyError, AttributeError) as e:
-            self.logger.warning("Failed to log request information: %s", e)
-
-        # Execute the actual HTTP request
-        try:
-            self.logger.debug("Executing %s request", operation_name)
-            result = await super().make_request(fn, *args, **kwargs)
-            self.logger.debug("Successfully completed %s request", operation_name)
-            return result
-
-        except Exception as e:
-            self.logger.error("HTTP request failed for %s: %s", operation_name, e)
-            raise
-
-    async def _extract_access_token_from_request(self) -> str | None:
-        """Extract FastMCP access token from the current MCP request context.
-
-        Retrieves the authenticated token from FastMCP's dependency injection system
-        and converts it to the appropriate format for OAuth2 API calls. The method
-        also stores token metadata in the OAuth2Token format for request authentication.
-
-        Process:
-        1. Uses get_access_token() to retrieve AccessToken from FastMCP dependencies
-        2. Extracts the JWT token string from the AccessToken object
-        3. Converts AccessToken metadata to OAuth2Token format
-        4. Stores the OAuth2Token for use in API authentication
-        5. Logs token metadata for debugging purposes
-
-        Returns:
-            str: The FastMCP JWT token string if successfully extracted
-            None: If no token is available in the request context
-
-        Note:
-            This method relies on FastMCP's request-scoped dependency injection.
-            It will return None if called outside of an MCP request context or
-            if no authenticated token is available. The method does not raise
-            exceptions to allow graceful handling of missing tokens.
-        """
-        self.logger.debug("Extracting FastMCP access token from request")
-
-        try:
-            access_token_obj = get_access_token()
-            if access_token_obj and access_token_obj.token:
-                token_length = len(access_token_obj.token)
-                self.logger.debug(
-                    "Successfully retrieved access token from FastMCP dependencies (length: %d)", token_length
-                )
-
-                # Log token metadata for debugging
-                self.logger.debug(
-                    "Token metadata: client_id=%s, scopes=%s, expires_at=%s",
-                    access_token_obj.client_id,
-                    access_token_obj.scopes,
-                    access_token_obj.expires_at,
-                )
-
-                access_token_dict = access_token_obj.model_dump()
-                # Customize the AccessToken dictionary for OAuth2Token
-                access_token_dict["access_token"] = access_token_obj.token
-
-                # Store the AccessToken object for later use in the make_request lifecycle
-                self.token = OAuth2Token(access_token_dict)
-
-                return self.token
-
-            self.logger.debug("AccessToken object found but no token present")
-            return None
-
-        except (RuntimeError, AttributeError, KeyError) as e:
-            self.logger.debug("Failed to get access token from FastMCP dependencies: %s", e)
-            return None
-
-    async def get_org_id(self) -> str | None:
-        """Extract Red Hat organization ID from the current request token.
-
-        Retrieves the organization ID from the authentication token using a comprehensive
-        two-tier extraction strategy. This method ensures tokens are properly refreshed
-        from the current MCP request context and provides robust fallback mechanisms
-        for accessing organization claims.
-
-        Process:
-        1. Calls refresh_auth() to extract/refresh token from current request context
-        2. Validates that authentication token is available
-        3. Primary: Attempts to extract org_id from pre-parsed token claims
-        4. Fallback: Decodes JWT token directly if pre-parsed claims unavailable
-        5. Extracts organization ID from claims.organization.id structure
-        6. Comprehensive error handling with detailed logging throughout
-
-        Returns:
-            str: Red Hat organization ID extracted from token claims
-
-        Raises:
-            ValueError: If no access token can be fetched from the request context
-            ValueError: If organization ID is not found in any token claims structure
-
-        Note:
-            The organization ID is critical for Red Hat's multi-tenant architecture,
-            ensuring users only access resources within their organization. This method
-            provides interface compatibility with other Insights client implementations
-            while leveraging FastMCP's OAuth proxy authentication system.
-
-            The method expects the organization ID to be located at:
-            `claims.organization.id` in the token claims structure.
-        """
-        try:
-            self.logger.debug("Starting `get_org_id()` request to retrieve organization ID")
-            # Retrive token on this request
-            await self.refresh_auth()
-            if not self.token:
-                error_message = "No access token found for this `get_org_id()` request"
-                self.logger.error(error_message)
-                raise ValueError(self.no_auth_error(ValueError(error_message)))
-
-            self.logger.debug("Extracting org_id from token claims")
-            # Prepare claims from token
-            claims = self.token.get("claims")
-            if not claims:
-                # Fallback to decode JWT token for claims if claims are not found
-                self.logger.debug("fallback to decode JWT token for claims")
-                payload = jwt.decode(
-                    self.token.get("access_token"),
-                    options={"verify_signature": False, "verify_exp": False},
-                    algorithms=["HS256", "RS256"],
-                )
-                claims = payload.get("claims")
-            # Extract org_id from claims
-            if claims:
-                self.logger.debug("claims found in token: %s", claims)
-                org_id = claims.get("organization", {}).get("id")
-                if org_id:
-                    self.logger.debug("org_id found in token claims: %s", org_id)
-                    return org_id
-            # If org_id is not found, raise an error
-            self.logger.error("No org_id found in token claims: %s", claims)
-            error = ValueError("No org_id found in token claims")
-            raise ValueError(self.no_auth_error(error)) from error
-
-        except ValueError as e:
-            self.logger.error("No org_id found in token claims: %s", e)
-            raise ValueError(self.no_auth_error(e)) from e
 
 
 class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attributes
@@ -1002,7 +569,6 @@ class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attribute
             client_secret=None,
             refresh_token=None,
             proxy_url=proxy_url,
-            oauth_enabled=False,
             mcp_transport=mcp_transport,
             token_endpoint=token_endpoint,
         )
@@ -1059,41 +625,28 @@ class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attribute
             return None, None
 
     def get_bearer_token_from_headers(self) -> str | None:
-        """Extract Bearer token from the Authorization HTTP header.
+        """Return bearer token for forwarding to the Insights API.
 
-        This method checks for an Authorization: Bearer <token> header in the
-        current HTTP request, used for SSE/HTTP transports where callers provide
-        a pre-existing JWT token instead of service account credentials.
+        Prefers the token validated by the auth provider (when AUTH_SERVER is
+        configured). Falls back to raw Authorization header extraction for
+        deployments without an auth provider (backward-compatible).
 
         Returns:
-            The bearer token string (without prefix) if found, None otherwise.
-
-        Note:
-            - STDIO transport always returns None as it doesn't support headers
-            - Only SSE/HTTP transports are checked
-            - The "Bearer " prefix is case-insensitive
+            Bearer token string if found, None otherwise.
         """
-        if self.mcp_transport == "stdio":
-            return None
+        # Prefer token already validated by the commons auth provider
+        access_token = get_access_token()
+        if access_token and access_token.token:
+            self.logger.debug("Bearer token from auth context: present")
+            return access_token.token
 
-        if self.mcp_transport not in ["sse", "http"]:
-            return None
-
-        try:
-            headers = get_http_headers(include={"authorization"})
-            auth_header = headers.get("authorization") or headers.get("Authorization")
-            if auth_header and auth_header.lower().startswith("bearer "):
-                token = auth_header[7:].strip()
-                if token:
-                    self.logger.debug(
-                        "Extracted Bearer token from Authorization header (length: %d)",
-                        len(token),
-                    )
-                    return token
-            return None
-        except (RuntimeError, KeyError, AttributeError) as e:
-            self.logger.debug("Failed to extract Bearer token from headers: %s", e)
-            return None
+        # Fall back to raw header extraction (no auth provider configured)
+        bearer_token = _get_authorization_bearer_token(self.mcp_transport)
+        self.logger.debug(
+            "Bearer token from Authorization header: %s",
+            f"present ({len(bearer_token)} chars)" if bearer_token else "absent",
+        )
+        return bearer_token or None
 
     async def _get_authenticated_client(
         self, session_id: str, client_id: str, client_secret: str
@@ -1416,13 +969,11 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
         refresh_token: OAuth2 refresh token
         headers: Additional HTTP headers
         proxy_url: Optional proxy URL for requests
-        oauth_enabled: Whether OAuth middleware is handling authentication
-        oauth_provider: AuthProvider instance for OAuth authentication
         mcp_transport: MCP transport type for error message customization
     """
 
     # mypy type annotation: client is always initialized, never None
-    client: InsightsOAuthProxyClient | InsightsOAuth2Client | InsightsHeadersBasedClient
+    client: InsightsOAuth2Client | InsightsHeadersBasedClient
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
@@ -1434,8 +985,6 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
         refresh_token: str | None = None,
         headers: dict[str, str] | None = None,
         proxy_url: str | None = INSIGHTS_PROXY_URL,
-        oauth_enabled: bool = OAUTH_ENABLED,
-        oauth_provider: AuthProvider | None = None,
         mcp_transport: str | None = None,  # TODO: get rid of mcp_transport in client
         token_endpoint: str = SSO_TOKEN_ENDPOINT,
     ):
@@ -1444,8 +993,6 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
         # TBD: hand over toolset_name for better logging
         self.logger.info("Initializing insights client for %s", api_path)
 
-        # NOTE: probably we don't need to set all these variables,
-        # but set them before refactor of ImageBuilderMCP
         self.insights_base_url = base_url
         self.api_path = api_path
         self.client_id = client_id
@@ -1453,31 +1000,19 @@ class InsightsClient:  # pylint: disable=too-many-instance-attributes
         self.refresh_token = refresh_token
         self.headers = headers
         self.proxy_url = proxy_url
-        self.oauth_enabled = oauth_enabled
-        self.oauth_provider = oauth_provider
         self.mcp_transport = mcp_transport
         self.token_endpoint = token_endpoint
 
         self.client_noauth = InsightsNoauthClient(base_url=base_url, proxy_url=proxy_url, mcp_transport=mcp_transport)
 
-        if oauth_enabled:
-            # Use dedicated OAuth proxy client for FastMCP integration
-            self.client = InsightsOAuthProxyClient(
-                base_url=base_url,
-                proxy_url=proxy_url,
-                mcp_transport=mcp_transport,
-                oauth_provider=oauth_provider,
-            )
-        elif refresh_token or client_secret:
+        if refresh_token or client_secret:
             # Use traditional OAuth2 client for service account/refresh token flows
-            # pylint: disable=duplicate-code
             self.client = InsightsOAuth2Client(
                 base_url=base_url,
                 client_id=client_id,
                 client_secret=client_secret,
                 refresh_token=refresh_token,
                 proxy_url=proxy_url,
-                oauth_enabled=False,  # Explicitly disable for traditional flow
                 mcp_transport=mcp_transport,
                 token_endpoint=token_endpoint,
             )
