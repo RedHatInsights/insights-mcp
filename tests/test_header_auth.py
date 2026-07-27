@@ -1,6 +1,7 @@
 """Test suite for header-based authentication functionality."""
 # pylint: disable=protected-access  # Testing internal authentication methods
 
+import os
 from unittest.mock import MagicMock, patch
 
 import jwt as pyjwt
@@ -8,8 +9,7 @@ import pytest
 from fastmcp.server.auth import AccessToken
 
 from insights_mcp.client import InsightsBearerTokenClient, InsightsHeadersBasedClient, InsightsOAuth2Client
-from insights_mcp.server import setup_credentials
-from mcp_rh_auth.provider import _resolve_mcp_base_url
+from insights_mcp.server import configure_auth_env_defaults, setup_credentials
 from tests.oauth_utils import create_test_token
 
 
@@ -626,28 +626,58 @@ class TestAuthProviderBearerToken:
 
 
 class TestAuthResourceEnvBridge:
-    """Test that MCP_BASE_URL is resolved correctly inside build_auth_provider.
+    """Test insights_mcp.server.configure_auth_env_defaults().
 
-    The bridge logic now lives in mcp_rh_auth.provider._resolve_mcp_base_url
-    (no longer a pre-import side effect in server.py).
+    rh_fastmcp_server_commons.env reads AUTH_RESOURCE/AUTH_REQUIRED_SCOPES/AUTH_AUDIENCE
+    from os.environ at import time, so insights_mcp.server bridges/defaults these vars
+    itself (in plain os.environ, testable independent of that library's own import-time
+    caching) before importing rh_fastmcp_server_commons anywhere in the process.
     """
 
-    def test_mcp_base_url_used_directly(self, monkeypatch):
-        """MCP_BASE_URL is returned as the base URL without modification."""
+    def test_mcp_base_url_bridged_to_auth_resource(self, monkeypatch):
+        """MCP_BASE_URL is bridged to AUTH_RESOURCE (with /mcp suffix) when unset."""
         monkeypatch.setenv("MCP_BASE_URL", "https://my-mcp.example.com")
         monkeypatch.delenv("AUTH_RESOURCE", raising=False)
-        assert _resolve_mcp_base_url() == "https://my-mcp.example.com"
+        configure_auth_env_defaults()
+        assert os.environ["AUTH_RESOURCE"] == "https://my-mcp.example.com/mcp"
 
     def test_mcp_base_url_takes_priority_over_auth_resource(self, monkeypatch):
-        """MCP_BASE_URL wins when both MCP_BASE_URL and AUTH_RESOURCE are set."""
+        """MCP_BASE_URL overrides an already-set AUTH_RESOURCE when both are set."""
         monkeypatch.setenv("MCP_BASE_URL", "https://my-mcp.example.com")
         monkeypatch.setenv("AUTH_RESOURCE", "https://custom-resource.example.com/mcp")
-        assert _resolve_mcp_base_url() == "https://my-mcp.example.com"
+        configure_auth_env_defaults()
+        assert os.environ["AUTH_RESOURCE"] == "https://my-mcp.example.com/mcp"
 
     def test_trailing_slash_stripped_from_mcp_base_url(self, monkeypatch):
-        """Trailing slash on MCP_BASE_URL is stripped."""
+        """Trailing slash on MCP_BASE_URL is stripped before appending /mcp."""
         monkeypatch.setenv("MCP_BASE_URL", "https://my-mcp.example.com/")
         monkeypatch.delenv("AUTH_RESOURCE", raising=False)
-        result = _resolve_mcp_base_url()
-        assert result == "https://my-mcp.example.com"
-        assert "//" not in result.replace("https://", "")
+        configure_auth_env_defaults()
+        assert os.environ["AUTH_RESOURCE"] == "https://my-mcp.example.com/mcp"
+
+    def test_no_bridge_when_mcp_base_url_unset(self, monkeypatch):
+        """AUTH_RESOURCE is left untouched when MCP_BASE_URL is not set."""
+        monkeypatch.delenv("MCP_BASE_URL", raising=False)
+        monkeypatch.delenv("AUTH_RESOURCE", raising=False)
+        configure_auth_env_defaults()
+        assert "AUTH_RESOURCE" not in os.environ
+
+    def test_default_scopes_and_audience_set_when_unconfigured(self, monkeypatch):
+        """AUTH_REQUIRED_SCOPES/AUTH_AUDIENCE default to the Insights MCP token claims."""
+        monkeypatch.delenv("AUTH_REQUIRED_SCOPES", raising=False)
+        monkeypatch.delenv("AUTH_AUDIENCE", raising=False)
+        configure_auth_env_defaults()
+        assert os.environ["AUTH_REQUIRED_SCOPES"] == "openid,api.console,api.ocm"
+        assert os.environ["AUTH_AUDIENCE"] == "insights-mcp,api.console"
+
+    def test_operator_configured_scopes_and_audience_are_overridden(self, monkeypatch):
+        """Insights MCP defaults always override any operator-set AUTH_REQUIRED_SCOPES/AUTH_AUDIENCE.
+
+        Matches the previous vendored behavior, where these were hardcoded Python args
+        passed to build_auth_provider() that always took priority over the environment.
+        """
+        monkeypatch.setenv("AUTH_REQUIRED_SCOPES", "custom.scope")
+        monkeypatch.setenv("AUTH_AUDIENCE", "custom-audience")
+        configure_auth_env_defaults()
+        assert os.environ["AUTH_REQUIRED_SCOPES"] == "openid,api.console,api.ocm"
+        assert os.environ["AUTH_AUDIENCE"] == "insights-mcp,api.console"

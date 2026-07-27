@@ -63,6 +63,7 @@ postgresql
 pre
 Pre
 proxying
+PyPI
 pyproject
 pytest
 Pytest

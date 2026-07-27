@@ -515,7 +515,10 @@ This software is provided "as is" without warranty of any kind, either express o
 
 ## Shared auth package
 
-The [`mcp_rh_auth`](src/mcp_rh_auth/README.md) package (vendored under `src/`) provides the OAuth/JWT auth provider used by this server for HTTP transport deployments. It can be reused by other FastMCP-based MCP servers — see its [README](src/mcp_rh_auth/README.md) for usage and environment variable reference.
+The OAuth/JWT auth provider used by this server for HTTP transport deployments is provided by
+[`rh-fastmcp-server-commons`](https://pypi.org/project/rh-fastmcp-server-commons/), a PyPI package
+shared across Red Hat FastMCP servers. See [HACKING.md](HACKING.md#hosted-mcp-server-with-auth-provider-http-transport)
+for usage and environment variable reference.
 
 ## Contributing
 Please refer to the [hacking guide](HACKING.md) to learn more.
