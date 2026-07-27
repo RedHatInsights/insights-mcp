@@ -20,7 +20,7 @@ repos:
       - id: pyspelling
         args: ["--config", ".spellcheck.yml"]
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: 'v2.1.0'
+    rev: 'v2.3.0'
     hooks:
       - id: mypy
         additional_dependencies:
