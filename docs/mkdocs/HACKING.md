@@ -141,25 +141,43 @@ For multiuser scenarios (SSE/HTTP transports with header-based authentication), 
 
 ### Adding a New MCP App
 
-#### 1. Create the HTML file
+#### 1. Create the HTML template and dashboard-specific CSS
 
-Create `src/<toolset_mcp>/<app_name>.html`.
+Create `src/<toolset_mcp>/<app_name>.html` and `src/<toolset_mcp>/<app_name>.css`.
+
+The HTML template uses placeholders that get replaced at load time with shared assets:
+
+- `/* __DASHBOARD_BASE_CSS__ */` — shared base CSS (themes, layout, buttons, severity badges, pagination)
+- `/* __DASHBOARD_EXTRA_CSS__ */` — dashboard-specific CSS from the `.css` file
+- `/* __DASHBOARD_COMMON_JS__ */` — shared JS utilities (`callTool`, `showError`, `severityLabel`, `connectMcpApp`, etc.)
+- `<!-- __DASHBOARD_ICON__ -->` — Red Hat icon `<img>` tag
+
+Shared assets live in `src/insights_mcp/assets/` (`dashboard_base.css`, `dashboard_common.js`). Dashboard-specific styles go in the `.css` file alongside the template. Use CSS variables from the base CSS (e.g., `var(--text-primary)`, `var(--border-light)`) — never hardcode theme-dependent colors in templates or inline styles.
+
+Use `connectMcpApp()` from the common JS instead of manually loading the MCP Apps SDK:
+
+```javascript
+connectMcpApp("My App", "1.0.0", (query) => fetchMyData(query));
+```
 
 #### 2. Load the HTML at module level
 
 In `src/<toolset_mcp>/server.py`:
 
 ```python
-from importlib import resources
-from pathlib import Path
+from insights_mcp.dashboard_ui import load_dashboard_html
 
-def _load_my_app_html() -> str:
-    try:
-        return resources.files("my_toolset_mcp").joinpath("my_app.html").read_text(encoding="utf-8")
-    except (FileNotFoundError, ModuleNotFoundError, AttributeError, TypeError):
-        return (Path(__file__).parent / "my_app.html").read_text(encoding="utf-8")
+EMBEDDED_MY_APP_HTML = load_dashboard_html(
+    "my_toolset_mcp",
+    "my_app.html",
+    "my_app.css",
+)
+```
 
-EMBEDDED_MY_APP_HTML = _load_my_app_html()
+Update `pyproject.toml` to include the new file types in `[tool.setuptools.package-data]`:
+
+```toml
+my_toolset_mcp = ["*.html", "*.css"]
 ```
 
 #### 3. Define resource and mounted URIs
@@ -214,29 +232,27 @@ async def load_my_app(ctx: Context, ...) -> ToolResult:
 
 #### 6. Connect the HTML to MCP Apps SDK
 
-> **Dark mode:** Use CSS variables on `:root` (light) and `[data-theme="dark"]` (dark), toggled by the `onhostcontextchanged` callback. Use `background: transparent` on body to inherit the host app's background.
+> **Dark mode:** The shared base CSS defines CSS variables on `:root` (light) and `[data-theme="dark"]` (dark). The `connectMcpApp()` utility from `dashboard_common.js` handles theme switching automatically. Use `background: transparent` on body to inherit the host app's background. Use CSS variables (e.g., `var(--text-secondary)`) — never hardcode theme-dependent colors.
+
+The shared `dashboard_common.js` (injected via the `/* __DASHBOARD_COMMON_JS__ */` placeholder) provides:
+
+- `connectMcpApp(appName, version, onToolResult)` — loads the MCP Apps SDK, handles theme, wires `ontoolresult`
+- `callTool(name, args)` — wraps `callServerTool` with error handling and JSON parsing
+- `showError(msg)` / `hideError()` — alert banner management
+- `severityLabel(impact)` / `severityClass(impact)` — severity badge mapping
+- `renderPageButtons(current, total, containerEl)` — pagination with ellipsis
+- `escapeHtml(str)` — HTML escaping
 
 ```html
-<link rel="stylesheet" href="https://unpkg.com/@patternfly/patternfly@5.4.2/patternfly.min.css">
-
 <script type="module">
-    import("https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps").then(module => {
-        const App = module.App || module.default?.App || module.default;
-        const app = new (App.App || App)({ name: "My App", version: "1.0.0" });
-        app.connect();
-        window.mcpApp = app;
+/* __DASHBOARD_COMMON_JS__ */
 
-        app.onhostcontextchanged = (ctx) => {
-            const theme = ctx?.theme || "light";
-            document.documentElement.setAttribute("data-theme", theme === "dark" ? "dark" : "light");
-        };
+    connectMcpApp("My App", "1.0.0", (query) => fetchMyData(query));
 
-        app.ontoolresult = (result) => {
-            const data = result.structuredContent;  // structured_content from the ToolResult
-            const content = result.content;             // content from the ToolResult
-            // render data
-        };
-    });
+    async function fetchMyData(query) {
+        const result = await callTool("my_toolset__my_tool", { param: query.param });
+        // render result
+    }
 </script>
 ```
 
@@ -260,12 +276,21 @@ Add 1-2 example prompts to `src/<toolset_mcp>/test_prompts.md` that exercise the
 
 - [PatternFly](https://www.patternfly.org/) — CSS framework used for styling MCP Apps in this project
 
+### Shared Dashboard Assets
+
+Shared CSS and JS live in [`src/insights_mcp/assets/`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/insights_mcp/assets/):
+
+- [`dashboard_base.css`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/insights_mcp/assets/dashboard_base.css) — theme variables, layout, buttons, severity badges, pagination, filters
+- [`dashboard_common.js`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/insights_mcp/assets/dashboard_common.js) — `callTool`, `showError`, `severityLabel`, `connectMcpApp`, etc.
+
+The composition helper [`src/insights_mcp/dashboard_ui.py`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/insights_mcp/dashboard_ui.py) replaces placeholders in HTML templates with these shared assets, producing self-contained HTML for MCP Apps.
+
 ### Existing Apps
 
 Use these as reference implementations:
 
-- **CVE Dashboard**: [`src/vulnerability_mcp/cve_dashboard.html`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/vulnerability_mcp/cve_dashboard.html) + [`server.py`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/vulnerability_mcp/server.py)
-- **Inventory Dashboard**: [`src/inventory_mcp/inventory_dashboard.html`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/inventory_mcp/inventory_dashboard.html) + [`server.py`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/inventory_mcp/server.py)
+- **CVE Dashboard**: [`cve_dashboard.html`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/vulnerability_mcp/cve_dashboard.html) + [`cve_dashboard.css`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/vulnerability_mcp/cve_dashboard.css) + [`server.py`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/vulnerability_mcp/server.py)
+- **Inventory Dashboard**: [`inventory_dashboard.html`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/inventory_mcp/inventory_dashboard.html) + [`inventory_dashboard.css`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/inventory_mcp/inventory_dashboard.css) + [`server.py`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/inventory_mcp/server.py)
 
 ## Important notes
 * When changing some code you might want to use `make build-prod` so the container is built with
