@@ -21,11 +21,45 @@ from insights_mcp import __version__, config
 from insights_mcp.catalog_tools import catalog_tool_description
 from insights_mcp.mcp import InsightsMCP
 from insights_mcp.toolsets import MCPS
-from mcp_rh_auth import build_auth_provider
 
-# Insights MCP token claims (see tests/oauth_utils.py); override rh-mcp-commons graphql defaults.
-_INSIGHTS_MCP_AUTH_SCOPES = ["openid", "api.console", "api.ocm"]
-_INSIGHTS_MCP_AUTH_AUDIENCE = ["insights-mcp", "api.console"]
+# Insights MCP token claims (see tests/oauth_utils.py).
+_INSIGHTS_MCP_AUTH_SCOPES = "openid,api.console,api.ocm"
+_INSIGHTS_MCP_AUTH_AUDIENCE = "insights-mcp,api.console"
+
+
+def configure_auth_env_defaults() -> None:
+    """Bridge/default env vars read by ``rh_fastmcp_server_commons.env`` at import time.
+
+    ``rh_fastmcp_server_commons`` reads ``AUTH_RESOURCE``/``AUTH_REQUIRED_SCOPES``/
+    ``AUTH_AUDIENCE`` from ``os.environ`` once, when its ``env`` module is first
+    imported — so this must run before importing ``rh_fastmcp_server_commons``
+    anywhere in the process.
+
+    - Bridges ``MCP_BASE_URL`` -> ``AUTH_RESOURCE`` (the library only understands
+      ``AUTH_RESOURCE`` / ``LIGHTRAIL_ROUTE_*``, not ``MCP_BASE_URL``); ``MCP_BASE_URL``
+      always wins when set, matching the previous vendored ``mcp_rh_auth`` behavior.
+    - Sets ``AUTH_REQUIRED_SCOPES``/``AUTH_AUDIENCE`` to the Insights MCP token claims,
+      matching the previous vendored behavior of always using these fixed values.
+    """
+    mcp_base_url = os.getenv("MCP_BASE_URL", "").rstrip("/")
+    if mcp_base_url:
+        os.environ["AUTH_RESOURCE"] = f"{mcp_base_url}/mcp"
+
+    os.environ["AUTH_REQUIRED_SCOPES"] = _INSIGHTS_MCP_AUTH_SCOPES
+    os.environ["AUTH_AUDIENCE"] = _INSIGHTS_MCP_AUTH_AUDIENCE
+
+    # rh_fastmcp_server_commons.env logs ERROR at import time when GRAPHQL_ENDPOINT or
+    # AUTH_SERVER are unset. Insights MCP never uses GRAPHQL_ENDPOINT, and AUTH_SERVER is
+    # normally unset for stdio/self-hosted deployments — neither is an actual error here.
+    logging.getLogger("rh_fastmcp_server_commons.env").setLevel(logging.CRITICAL + 1)
+
+
+configure_auth_env_defaults()
+
+from rh_fastmcp_server_commons.auth import (  # noqa: E402  pylint: disable=wrong-import-position,wrong-import-order
+    build_auth_provider,
+    build_scope_enforcement_middleware,
+)
 
 
 def _format_server_tools(
@@ -108,16 +142,18 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
         name = name or "Red Hat Insights"
         server_version = __version__ if __version__ else "0.0.0-dev"
 
+        # rh_fastmcp_server_commons.auth.build_auth_provider() raises ValueError when
+        # AUTH_SERVER is unset; only call it when hosted auth is actually configured so
+        # stdio / self-hosted deployments keep the raw Bearer token pass-through.
+        auth_provider = build_auth_provider() if config.AUTH_SERVER else None
+
         super().__init__(
             name=name,
             instructions=instructions,
             version=server_version,
             icons=[Icon(src=get_icon_data_uri())],
             website_url="https://console.redhat.com",
-            auth=build_auth_provider(
-                required_scopes=_INSIGHTS_MCP_AUTH_SCOPES,
-                audience=_INSIGHTS_MCP_AUTH_AUDIENCE,
-            ),
+            auth=auth_provider,
         )
         self.base_url = base_url
         self.client_id = client_id
@@ -442,6 +478,21 @@ def get_mcp_version() -> str:
     )
 
 
+def _http_scope_middleware(mcp_server: "InsightsMCPServer") -> list[Any] | None:
+    """Build the scope-enforcement middleware required for HTTP/SSE transports.
+
+    ``rh_fastmcp_server_commons.auth`` installs a guard on ``FastMCP.http_app()``
+    that raises ``RuntimeError`` when ``mcp.auth.required_scopes`` is set (or a
+    tool uses ``@require_tool_scopes``) without ``ScopeEnforcementMiddleware``
+    wired in. Returns None when no auth provider is configured (``mcp.auth`` is
+    None), in which case the middleware would be a no-op anyway.
+    """
+    if mcp_server.auth is None:
+        return None
+    scope_middleware = build_scope_enforcement_middleware(mcp=mcp_server)
+    return [scope_middleware] if scope_middleware else None
+
+
 def get_container_brand() -> tuple[str, str]:
     """Get container brand and long name."""
     container_brand = os.getenv("CONTAINER_BRAND", "insights")
@@ -604,10 +655,16 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     _format_all_tool_descriptions(mcp_server, container_brand_long=container_brand_long)
 
     if args.transport == "sse":
-        mcp_server.run(transport="sse", host=mcp_host, port=mcp_port)
+        mcp_server.run(transport="sse", host=mcp_host, port=mcp_port, middleware=_http_scope_middleware(mcp_server))
     elif args.transport == "http":
         logger.info("Running HTTP transport on host: %s, port: %s", mcp_host, mcp_port)
-        mcp_server.run(transport="http", host=mcp_host, port=mcp_port, log_level=log_level)
+        mcp_server.run(
+            transport="http",
+            host=mcp_host,
+            port=mcp_port,
+            log_level=log_level,
+            middleware=_http_scope_middleware(mcp_server),
+        )
     else:
         mcp_server.run()
 

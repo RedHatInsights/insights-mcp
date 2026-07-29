@@ -384,7 +384,10 @@ You can set the environment variable `IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATE
 ## Hosted MCP Server with Auth Provider (HTTP transport)
 
 When deploying the MCP server as a hosted service over HTTP/SSE, token validation is handled by
-[`mcp_rh_auth`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/mcp_rh_auth/README.md) via `build_auth_provider()`.
+[`rh-fastmcp-server-commons`](https://pypi.org/project/rh-fastmcp-server-commons/) via
+`build_auth_provider()`. `insights_mcp.server.configure_auth_env_defaults()` bridges
+`MCP_BASE_URL` to `AUTH_RESOURCE` and sets the Insights MCP default scopes/audience before that
+package is imported (it reads its environment variables once, at import time).
 When `AUTH_SERVER` is unset, no auth provider is configured and the server falls back to raw
 Bearer token pass-through (backward-compatible with self-hosted and stdio deployments).
 
@@ -396,8 +399,8 @@ Bearer token pass-through (backward-compatible with self-hosted and stdio deploy
 | `AUTH_ISSUER` | Yes | JWT `iss` claim — must match the SSO realm issuer |
 | `MCP_BASE_URL` | Yes (hosted) | Public base URL of this MCP server (used in `/.well-known/oauth-protected-resource`); no default — must be set for hosted deployments |
 | `AUTH_RESOURCE` | No | MCP server resource URL; defaults to `{MCP_BASE_URL}/mcp` if unset |
-| `AUTH_SCOPES` | No | Comma-separated required scopes (default: `api.graphql`) |
-| `AUTH_AUDIENCE` | No | Comma-separated accepted JWT audiences |
+| `AUTH_REQUIRED_SCOPES` | No | Comma-separated required scopes (default: `openid,api.console,api.ocm`) |
+| `AUTH_AUDIENCE` | No | Comma-separated accepted JWT audiences (default: `insights-mcp,api.console`) |
 | `AUTH_JWKS_URI` | No | Override JWKS endpoint (otherwise fetched from `AUTH_SERVER` discovery document) |
 
 ### How it works
@@ -406,13 +409,16 @@ Bearer token pass-through (backward-compatible with self-hosted and stdio deploy
 2. FastMCP validates the `Authorization: Bearer <token>` header on every HTTP request against the JWKS.
 3. The validated token is retrieved via `get_access_token()` and forwarded to the Insights API.
 4. If `AUTH_SERVER` is unset, the token is extracted directly from the `Authorization` header without server-side validation (existing behavior).
+5. `build_scope_enforcement_middleware()` is wired into the HTTP/SSE app so the `WWW-Authenticate`
+   header on 401/403 responses includes the required `scope=` (RFC 6750); `rh-fastmcp-server-commons`
+   raises at startup if `AUTH_REQUIRED_SCOPES` is set without this middleware installed.
 
 ### Example configuration
 
 ```bash
 export AUTH_SERVER="https://sso.redhat.com/auth/realms/redhat-external"
 export AUTH_ISSUER="https://sso.redhat.com/auth/realms/redhat-external"
-export AUTH_SCOPES="openid,api.console,api.ocm"
+export AUTH_REQUIRED_SCOPES="openid,api.console,api.ocm"
 # For production: set MCP_BASE_URL to the public URL of this server
 # export MCP_BASE_URL="https://your-mcp-server.example.com"
 

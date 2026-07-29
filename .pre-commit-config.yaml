@@ -30,6 +30,7 @@ repos:
           - fastmcp>=3.0
           - requests
           - PyJWT
+          - rh-fastmcp-server-commons>=0.3.1
           - deepeval
           - llama-index
           - llama-index-core
@@ -61,6 +62,7 @@ repos:
           - fastmcp>=3.0
           - requests
           - PyJWT
+          - rh-fastmcp-server-commons>=0.3.1
           - deepeval
           - llama-index
           - llama-index-core

@@ -56,7 +56,7 @@ The project uses a **toolset-based architecture** where each service is implemen
 
 ### Quick Setup
 ```bash
-# Prerequisites: Python 3.10+, uv package manager
+# Prerequisites: Python 3.12+, uv package manager
 uv venv && source .venv/bin/activate
 make install-test-deps  # Installs all dev dependencies
 ```

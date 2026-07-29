@@ -16,18 +16,18 @@ classifiers = [
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.14",
 ]
-requires-python = ">=3.10"
+# rh-fastmcp-server-commons requires Python >=3.12,<4.0
+requires-python = ">=3.12"
 dependencies = [
     "fastmcp>=3.0",
     "requests",
     "PyJWT",
     "httpx",
     "certifi",
+    "rh-fastmcp-server-commons>=0.3.1",
 ]
 
 [project.optional-dependencies]

@@ -24,18 +24,20 @@ SSO_TOKEN_ENDPOINT = (
 )
 SSO_OAUTH_TIMEOUT_SECONDS = int(os.getenv("SSO_OAUTH_TIMEOUT_SECONDS", "30"))
 
-# HTTP transport auth provider (mcp_rh_auth.build_auth_provider).
-# mcp_rh_auth reads these directly from os.getenv(); exposed here for validation and tests.
-# When AUTH_SERVER is unset, no auth provider is configured and raw Bearer token
-# pass-through is used (backward-compatible with stdio and self-hosted deployments).
+# HTTP transport auth provider (rh_fastmcp_server_commons.auth.build_auth_provider).
+# rh_fastmcp_server_commons reads these directly from os.getenv() at import time
+# (see insights_mcp.server.configure_auth_env_defaults()); exposed here for validation
+# and tests. When AUTH_SERVER is unset, no auth provider is configured and raw Bearer
+# token pass-through is used (backward-compatible with stdio and self-hosted deployments).
 AUTH_SERVER = os.getenv("AUTH_SERVER") or ""
 AUTH_ISSUER = os.getenv("AUTH_ISSUER") or ""
-# Read directly by mcp_rh_auth (no Python binding needed here):
-# MCP_BASE_URL:   Public base URL of this MCP server (e.g. https://my-server.example.com)
-# AUTH_RESOURCE:  MCP resource URL fallback (defaults to {MCP_BASE_URL}/mcp)
-# AUTH_SCOPES:    Comma-separated required scopes (recommended: openid,api.console,api.ocm)
-# AUTH_AUDIENCE:  Comma-separated accepted JWT audiences (optional)
-# AUTH_JWKS_URI:  Override JWKS endpoint (otherwise fetched from AUTH_SERVER discovery)
+# Read directly by rh_fastmcp_server_commons (no Python binding needed here):
+# MCP_BASE_URL:        Public base URL of this MCP server (e.g. https://my-server.example.com);
+#                      bridged to AUTH_RESOURCE by insights_mcp.server before import.
+# AUTH_RESOURCE:       MCP resource URL fallback (defaults to {MCP_BASE_URL}/mcp)
+# AUTH_REQUIRED_SCOPES: Comma-separated required scopes (recommended: openid,api.console,api.ocm)
+# AUTH_AUDIENCE:       Comma-separated accepted JWT audiences (optional)
+# AUTH_JWKS_URI:       Override JWKS endpoint (otherwise fetched from AUTH_SERVER discovery)
 
 # Traditional service account credentials (stdio transport)
 INSIGHTS_CLIENT_ID = os.getenv("INSIGHTS_CLIENT_ID") or ""
