@@ -39,7 +39,12 @@ cannot obtain a service account with the required roles.
 
 **Requirements:**
 
-- STDIO transport (credentials via environment variables, same as service-account STDIO setups)
+- Prefer STDIO with credentials via environment variables (same pattern as
+  service-account STDIO setups)
+- HTTP/SSE can also use the same environment variables at server start; clients then need no
+  auth headers, but all connecting clients share that one Insights identity —
+  strongly discouraged for any multi-user or hosted setup (prefer per-client
+  headers, JWT Bearer, or OAuth DCR instead)
 - `INSIGHTS_REFRESH_TOKEN` or `LIGHTSPEED_REFRESH_TOKEN` set to a valid Red Hat SSO refresh token
   (`INSIGHTS_REFRESH_TOKEN` takes precedence when both are set)
 - `INSIGHTS_CLIENT_ID` defaults to `rhsm-api` when unset (optional; separate from the refresh-token

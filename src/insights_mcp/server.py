@@ -391,7 +391,7 @@ def validate_oauth_config(logger: logging.Logger) -> None:
 
 
 def _env_credential(value: str | None) -> str | None:
-    """Return None for unset environment credential values.
+    """Return None for unset or empty environment credential values.
 
     Config maps missing env vars to empty strings; OAuth clients treat None as
     "use the constructor default" (for example rhsm-api for refresh-token auth).
