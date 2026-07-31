@@ -23,12 +23,8 @@ def assert_mcp_tool_descriptions_and_annotations(
         expected_desc: Expected start of the tool description
         params: Dictionary of parameter names to their expected schema properties
     """
-    tools = mcp_tools
-
-    # Build map for quick lookup
-    name_to_tool = {getattr(t.metadata, "name", ""): t for t in tools}
-    assert tool_name in name_to_tool, f"Tool not found: {tool_name}"
-    tool = name_to_tool[tool_name]
+    tool = next((t for t in mcp_tools if getattr(t.metadata, "name", "") == tool_name), None)
+    assert tool is not None, f"Tool not found: {tool_name}"
 
     # Description check
     desc = getattr(tool.metadata, "description", "") or ""
@@ -63,12 +59,8 @@ def assert_transport_types_expose_tool(mcp_tools, request, tool_name: str):
     # Get transport from the fixture parameter
     transport = request.node.callspec.params["mcp_server_url"]
 
-    # Build map for quick lookup
-    tool_names = {getattr(t.metadata, "name", "") for t in mcp_tools}
-
-    # Verify tool is available
-    assert tool_name in tool_names, (
-        f"{tool_name} not found in tools for {transport} transport. Available tools: {tool_names}"
+    assert any(getattr(t.metadata, "name", "") == tool_name for t in mcp_tools), (
+        f"{tool_name} not found in tools for {transport} transport."
     )
 
 
@@ -79,8 +71,6 @@ def assert_stdio_transport_exposes_tool(mcp_tools, tool_name: str):
         mcp_tools: List of MCP tools from the mcp_tools fixture
         tool_name: Name of the tool to verify (e.g., "image-builder__get_blueprints")
     """
-    # Build map for quick lookup
-    tool_names = {getattr(t.metadata, "name", "") for t in mcp_tools}
-
-    # Verify tool is available
-    assert tool_name in tool_names, f"{tool_name} not found in tools for stdio transport. Available tools: {tool_names}"
+    assert any(getattr(t.metadata, "name", "") == tool_name for t in mcp_tools), (
+        f"{tool_name} not found in tools for stdio transport."
+    )
