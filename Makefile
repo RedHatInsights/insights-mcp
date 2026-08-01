@@ -112,6 +112,11 @@ test-llm-verbose: ## Run only @pytest.mark.llm behavioral tests (needs test_conf
 	@echo "Running LLM tests (pytest -m llm)..."
 	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -vv -o log_cli=true
 
+.PHONY: test-llm-very-verbose
+test-llm-very-verbose: ## Run only @pytest.mark.llm behavioral tests showing all intermediate agent steps
+	@echo "Running LLM tests with debug output (pytest -m llm)..."
+	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -vvv -o log_cli=true
+
 # Define a reusable check function for container sanity tests
 # $(1) = image URL, $(2) = expected CONTAINER_BRAND value
 define check_container
