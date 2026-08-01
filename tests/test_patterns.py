@@ -39,11 +39,13 @@ def assert_mcp_tool_descriptions_and_annotations(
     props = schema_obj.get("properties", {}) or {}
     for param_name, expected_param_desc in params.items():
         with subtests.test(param=param_name):
-            desc = props.get(param_name, {}).get("description", "")
+            assert param_name in props, f"{tool_name}: parameter '{param_name}' not found in schema"
+            param_schema = props[param_name]
+            desc = param_schema.get("description", "")
             assert desc.startswith(expected_param_desc.get("description", ""))
-            assert props.get(param_name, {}).get("default") == expected_param_desc.get("default")
-            assert props.get(param_name, {}).get("type") == expected_param_desc.get("type")
-            assert props.get(param_name, {}).get("anyOf") == expected_param_desc.get("anyOf")
+            assert param_schema.get("default") == expected_param_desc.get("default")
+            assert param_schema.get("type") == expected_param_desc.get("type")
+            assert param_schema.get("anyOf") == expected_param_desc.get("anyOf")
     # Note: Testing defaults would be ideal but
     # default is null in FastMCP schema by design; actual defaulting occurs server-side
 
