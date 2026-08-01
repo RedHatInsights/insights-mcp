@@ -3,7 +3,6 @@
 import asyncio
 import logging
 from contextlib import contextmanager
-from typing import Dict
 from unittest.mock import Mock, patch
 
 import pytest
@@ -29,7 +28,7 @@ from tests.llm_tracing import enable_llm_test_tracing
 from tests.utils import load_llm_configurations
 
 
-def gpt_model_from_config(config: Dict[str, str]) -> GPTModel:
+def gpt_model_from_config(config: dict[str, str]) -> GPTModel:
     """Build deepeval GPTModel for OpenAI-compatible endpoints from test config."""
     return GPTModel(
         model=config["MODEL_ID"],
@@ -62,7 +61,7 @@ def llm_test_tracing(request):
     yield
 
 
-def _insights_mcp_http_headers() -> Dict[str, str] | None:
+def _insights_mcp_http_headers() -> dict[str, str] | None:
     """HTTP headers for Insights MCP when service account credentials are in the environment."""
     if INSIGHTS_CLIENT_ID and INSIGHTS_CLIENT_SECRET:
         return {

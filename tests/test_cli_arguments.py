@@ -4,7 +4,7 @@ This module tests the --toolset command line argument to ensure that the correct
 set of tools is available based on the toolset configuration.
 """
 
-from typing import Any, Dict, List, Set
+from typing import Any
 
 import pytest
 
@@ -16,7 +16,7 @@ def get_mcp_tools_with_toolset(
     toolset: str | None = None,
     readonly: bool = False,
     container_brand: str | None = None,
-) -> List[Any]:
+) -> list[Any]:
     """Get MCP tools for a specific transport and toolset configuration."""
     return fetch_mcp_tools(
         transport=transport,
@@ -30,7 +30,7 @@ class TestCliArguments:
     """Test class for command line argument functionality."""
 
     # Expected tools for each toolset
-    EXPECTED_TOOLS: Dict[str, Set[str]] = {
+    EXPECTED_TOOLS: dict[str, set[str]] = {
         "insights-mcp": {
             "get_mcp_version",
         },

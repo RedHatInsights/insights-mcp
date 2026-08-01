@@ -1,6 +1,6 @@
 """Extract DeepEval ``ToolCall`` records from LlamaIndex agent runs."""
 
-from typing import Any, List
+from typing import Any
 
 from deepeval.test_case import ToolCall
 from deepeval.tracing.tracing import trace_manager
@@ -33,7 +33,7 @@ class WorkflowToolCallCollector:
     """Accumulate tool invocations from workflow ``stream_events()``."""
 
     def __init__(self) -> None:
-        self._calls: List[ToolCall] = []
+        self._calls: list[ToolCall] = []
 
     def record(self, tool_name: str, tool_kwargs: dict[str, Any] | None = None) -> None:
         """Append a tool call."""
@@ -45,7 +45,7 @@ class WorkflowToolCallCollector:
         if tool_call is not None:
             self.record(tool_call.name, tool_call.input_parameters)
 
-    def as_list(self) -> List[ToolCall]:
+    def as_list(self) -> list[ToolCall]:
         """Return collected tool calls."""
         return list(self._calls)
 
@@ -54,11 +54,11 @@ class WorkflowToolCallCollector:
         self._calls.clear()
 
 
-def tools_called_from_agent_output(response: Any) -> List[ToolCall]:
+def tools_called_from_agent_output(response: Any) -> list[ToolCall]:
     """Map ``AgentOutput.tool_calls`` to DeepEval ``ToolCall`` instances."""
     if AgentOutput is None or not isinstance(response, AgentOutput):
         return []
-    tool_calls: List[ToolCall] = []
+    tool_calls: list[ToolCall] = []
     for selection in response.tool_calls or []:
         tool_calls.append(
             ToolCall(
@@ -69,8 +69,8 @@ def tools_called_from_agent_output(response: Any) -> List[ToolCall]:
     return tool_calls
 
 
-def _collect_tool_calls_from_span(span: BaseSpan) -> List[ToolCall]:
-    collected: List[ToolCall] = []
+def _collect_tool_calls_from_span(span: BaseSpan) -> list[ToolCall]:
+    collected: list[ToolCall] = []
     if span.tools_called:
         collected.extend(span.tools_called)
     if isinstance(span, ToolSpan):
@@ -96,13 +96,13 @@ def _collect_tool_calls_from_span(span: BaseSpan) -> List[ToolCall]:
     return collected
 
 
-def tools_called_from_deepeval_traces() -> List[ToolCall]:
+def tools_called_from_deepeval_traces() -> list[ToolCall]:
     """Aggregate tool calls from the most recent DeepEval trace (``instrument_llama_index``)."""
     traces = list(trace_manager.active_traces.values()) + list(trace_manager.traces)
     if not traces:
         return []
     trace = traces[-1]
-    collected: List[ToolCall] = []
+    collected: list[ToolCall] = []
     if trace.tools_called:
         collected.extend(trace.tools_called)
     for root_span in trace.root_spans:
@@ -113,7 +113,7 @@ def tools_called_from_deepeval_traces() -> List[ToolCall]:
 def tools_called_from_agent_run(
     response: Any,
     workflow_collector: WorkflowToolCallCollector | None = None,
-) -> List[ToolCall]:
+) -> list[ToolCall]:
     """Return tools invoked during an agent run.
 
     Prefer workflow stream events (multi-step), then DeepEval traces, then ``AgentOutput``.

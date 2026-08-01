@@ -4,7 +4,7 @@ This module contains generic test functions that can be reused across different 
 The actual test parameters are defined in the specific module test files.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 
 def assert_mcp_tool_descriptions_and_annotations(
@@ -12,7 +12,7 @@ def assert_mcp_tool_descriptions_and_annotations(
     subtests,
     tool_name: str,
     expected_desc: str,
-    params: Dict[str, Dict[str, Any]],
+    params: dict[str, dict[str, Any]],
 ):
     """Reusable test function to verify MCP tools include proper descriptions and annotations.
 

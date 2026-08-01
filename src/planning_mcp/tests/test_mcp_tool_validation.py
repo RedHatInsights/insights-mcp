@@ -4,7 +4,7 @@ This module provides parametrized tests for planning tools using
 the reusable test patterns from the top-level tests package.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 
@@ -57,7 +57,7 @@ def test_mcp_tools_include_descriptions_and_annotations(
     subtests,
     tool_name: str,
     expected_desc: str,
-    params: Dict[str, Dict[str, Any]],
+    params: dict[str, dict[str, Any]],
 ):  # pylint: disable=redefined-outer-name
     """Test that the planning MCP tools include descriptions and annotations."""
     assert_mcp_tool_descriptions_and_annotations(mcp_tools, subtests, tool_name, expected_desc, params)

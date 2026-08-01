@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 from llama_index.core.llms import ChatMessage
 
@@ -14,7 +14,7 @@ def should_skip_llm_tests() -> bool:
     return not all(os.getenv(var) for var in required_vars)
 
 
-def load_llm_configurations() -> Tuple[List[Dict[str, Optional[str]]], Optional[Dict[str, str]]]:
+def load_llm_configurations() -> tuple[list[dict[str, Optional[str]]], Optional[dict[str, str]]]:
     """Load LLM configurations from test_config.json file."""
     config_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_config.json")
 
@@ -38,7 +38,7 @@ def load_llm_configurations() -> Tuple[List[Dict[str, Optional[str]]], Optional[
         configurations = []
         for llm_config in config.get("llm_configurations", []):
             # Substitute environment variables in configuration
-            resolved_config: Dict[str, Optional[str]] = {}
+            resolved_config: dict[str, Optional[str]] = {}
             for key, value in llm_config.items():
                 if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
                     env_var = value[2:-1]  # Remove ${ and }
@@ -54,7 +54,7 @@ def load_llm_configurations() -> Tuple[List[Dict[str, Optional[str]]], Optional[
             # Only add configuration if all required variables are present
             if all(key in resolved_config and resolved_config[key] for key in ["MODEL_API", "MODEL_ID", "USER_KEY"]):
                 configurations.append(resolved_config)
-        guardian_llm: Optional[Dict[str, str]] = config.get("guardian_llm")
+        guardian_llm: Optional[dict[str, str]] = config.get("guardian_llm")
         return configurations, guardian_llm
 
     except (json.JSONDecodeError, FileNotFoundError, KeyError) as e:
@@ -91,7 +91,7 @@ def should_skip_insights_llm_tests() -> bool:
 
 
 def pretty_print_chat_history(
-    conversation_history: List[ChatMessage], llm_name: str, verbose_logger: logging.Logger
+    conversation_history: list[ChatMessage], llm_name: str, verbose_logger: logging.Logger
 ) -> None:
     """Pretty print chat history for debugging."""
     verbose_logger.info("Full conversation history:")
