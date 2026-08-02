@@ -8,7 +8,7 @@ from typing import Any, Optional, Sequence, cast
 import httpx
 from llama_index.core.agent.workflow.function_agent import FunctionAgent
 from llama_index.core.agent.workflow.workflow_events import AgentOutput
-from llama_index.core.base.llms.types import ChatResponse
+from llama_index.core.base.llms.types import ChatResponse, ToolCallBlock
 from llama_index.core.llms import ChatMessage
 from llama_index.core.llms.function_calling import FunctionCallingLLM
 from llama_index.core.memory import Memory
@@ -71,6 +71,23 @@ def _chat_history_without_system(messages: list[ChatMessage]) -> list[ChatMessag
     return [message for message in messages if message.role != "system"]
 
 
+def _preserve_tool_call_metadata(messages: list[ChatMessage]) -> list[ChatMessage]:
+    """Ensure provider-specific tool call metadata survives message serialization.
+
+    llama-index reconstructs tool calls from ToolCallBlocks, dropping any extra fields
+    the provider included (e.g. Gemini thought_signature). When the original raw tool_calls
+    are available in additional_kwargs, remove the ToolCallBlocks so the serializer uses the
+    complete originals instead.
+    """
+    patched: list[ChatMessage] = []
+    for msg in messages:
+        if msg.role == "assistant" and "tool_calls" in msg.additional_kwargs:
+            blocks = [b for b in msg.blocks if not isinstance(b, ToolCallBlock)]
+            msg = ChatMessage(role=msg.role, blocks=blocks, additional_kwargs=msg.additional_kwargs)
+        patched.append(msg)
+    return patched
+
+
 class ToolRequiredFunctionAgent(FunctionAgent):
     """FunctionAgent that sets OpenAI ``tool_choice: required`` before the first tool result.
 
@@ -87,7 +104,7 @@ class ToolRequiredFunctionAgent(FunctionAgent):
         # Require a tool call only before any tool output is in context; later turns need room for history.
         tool_required = not any(message.role == "tool" for message in current_llm_input)
         chat_kwargs: dict[str, Any] = {
-            "chat_history": current_llm_input,
+            "chat_history": _preserve_tool_call_metadata(current_llm_input),
             "allow_parallel_tool_calls": self.allow_parallel_tool_calls,
             "tools": tools,
             "tool_required": tool_required,
