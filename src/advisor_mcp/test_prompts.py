@@ -53,6 +53,6 @@ PROMPTS = PromptRegistry(
     ),
     huge_pages_risk=(
         "Explain the risk associated with the 'Disable Transparent Huge Pages' recommendation.",
-        ("advisor__get_rule_details", "advisor__get_active_rules"),
+        ("advisor__get_rule_by_text_search", "advisor__get_active_rules"),
     ),
 )
