@@ -74,16 +74,22 @@ def _chat_history_without_system(messages: list[ChatMessage]) -> list[ChatMessag
 def _preserve_tool_call_metadata(messages: list[ChatMessage]) -> list[ChatMessage]:
     """Ensure provider-specific tool call metadata survives message serialization.
 
-    llama-index reconstructs tool calls from ToolCallBlocks, dropping any extra fields
-    the provider included (e.g. Gemini thought_signature). When the original raw tool_calls
-    are available in additional_kwargs, remove the ToolCallBlocks so the serializer uses the
-    complete originals instead.
+    llama-index reconstructs tool calls from ToolCallBlocks, dropping extra fields the
+    provider included (e.g. Gemini thought_signature). When raw tool_calls are available
+    in additional_kwargs, remove ToolCallBlocks so the serializer uses the originals.
+    Additionally, sync additional_kwargs to match surviving ToolCallBlocks so that
+    force_single_tool_call pruning is not undone when blocks are removed.
     """
     patched: list[ChatMessage] = []
     for msg in messages:
         if msg.role == "assistant" and "tool_calls" in msg.additional_kwargs:
+            surviving_ids = {b.tool_call_id for b in msg.blocks if isinstance(b, ToolCallBlock)}
+            raw_tool_calls = msg.additional_kwargs["tool_calls"]
+            if surviving_ids and len(raw_tool_calls) != len(surviving_ids):
+                raw_tool_calls = [tc for tc in raw_tool_calls if tc.id in surviving_ids]
+            kwargs = {**msg.additional_kwargs, "tool_calls": raw_tool_calls}
             blocks = [b for b in msg.blocks if not isinstance(b, ToolCallBlock)]
-            msg = ChatMessage(role=msg.role, blocks=blocks, additional_kwargs=msg.additional_kwargs)
+            msg = ChatMessage(role=msg.role, blocks=blocks, additional_kwargs=kwargs)
         patched.append(msg)
     return patched
 
