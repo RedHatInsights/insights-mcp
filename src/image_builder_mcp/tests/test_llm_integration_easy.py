@@ -107,39 +107,34 @@ class TestLLMIntegrationEasy:
 
         response, _, tools_executed, _ = await test_agent.execute_with_reasoning(prompt, chat_history=[])
 
-        # first we check if there is a question in the response for the name or UUID of the compose
-        contains_question = GEval(
-            name="Contains Question",
-            criteria=("The response should contain a question for the name or UUID of the compose"),
+        response_quality = GEval(
+            name="Response Quality",
+            criteria=(
+                "The response should contain the status of the latest image build, "
+                "including details such as the compose ID, image type, or distribution."
+            ),
             evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT],
             model=guardian_agent,
         )
 
-        question_test_case = LLMTestCase(
+        quality_test_case = LLMTestCase(
             input=prompt,
             actual_output=response,
         )
 
-        answered_with_question = None
-        # if this fails that's ok, we can continue
-        try:
-            verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.name)
+        verbose_logger.info("🤔 Checking response quality with guardian agent %s…", guardian_agent.name)
 
-            # Measure once to get access to explanation and avoid double LLM call
-            contains_question.measure(question_test_case)
-            verbose_logger.info("📊 Contains Question Score: %.2f", contains_question.score)
-            verbose_logger.info("📝 Guardian Agent Explanation: %s", contains_question.reason)
+        response_quality.measure(quality_test_case)
+        verbose_logger.info(
+            "📊 Response Quality Score: %.2f (threshold: %.2f)", response_quality.score, response_quality.threshold
+        )
+        verbose_logger.info("📝 Guardian Agent Explanation: %s", response_quality.reason)
 
-            # Assert using success property (no additional LLM call)
-            assert contains_question.success, (
-                f"Contains question test failed. Score: {contains_question.score:.2f}, "
-                f"Threshold: {contains_question.threshold:.2f}. "
-                f"Reason: {contains_question.reason}"
-            )
-            verbose_logger.info("✓ LLM %s correctly answered with a question", llm_config["name"])
-        except AssertionError as e:
-            answered_with_question = e
-            verbose_logger.info("Question test case failed, continuing...")
+        assert response_quality.success, (
+            f"Response quality test failed. Score: {response_quality.score:.2f}, "
+            f"Threshold: {response_quality.threshold:.2f}. "
+            f"Reason: {response_quality.reason}"
+        )
 
         # Define expected tools for this query
         expected_tools = [
@@ -162,29 +157,20 @@ class TestLLMIntegrationEasy:
         else:
             verbose_logger.warning("LLM %s may not have selected optimal tools: %s", llm_config["name"], tool_names)
 
-        answered_with_tools = None
-        try:
-            verbose_logger.info("🤔 Checking tool correctness")
+        verbose_logger.info("🤔 Checking tool correctness")
 
-            # Measure once to get access to explanation and avoid double LLM call
-            tool_correctness.measure(test_case)
-            verbose_logger.info(
-                "📊 Tool Correctness Score: %.2f (threshold: %.2f)", tool_correctness.score, tool_correctness.threshold
-            )
-            verbose_logger.info("📝 Tool Correctness Explanation: %s", tool_correctness.reason)
+        tool_correctness.measure(test_case)
+        verbose_logger.info(
+            "📊 Tool Correctness Score: %.2f (threshold: %.2f)", tool_correctness.score, tool_correctness.threshold
+        )
+        verbose_logger.info("📝 Tool Correctness Explanation: %s", tool_correctness.reason)
 
-            # Assert using success property (no additional LLM call)
-            assert tool_correctness.success, (
-                f"Tool correctness test failed. Score: {tool_correctness.score:.2f}, "
-                f"Threshold: {tool_correctness.threshold:.2f}. "
-                f"Reason: {tool_correctness.reason}"
-            )
-            verbose_logger.info("✓ LLM %s correctly used the tools", llm_config["name"])
-        except AssertionError as e:
-            answered_with_tools = e
-            verbose_logger.info("Tool correctness test case failed, continuing...")
-
-        assert answered_with_question is None or answered_with_tools is None, "One of the tests have to succeed"
+        assert tool_correctness.success, (
+            f"Tool correctness test failed. Score: {tool_correctness.score:.2f}, "
+            f"Threshold: {tool_correctness.threshold:.2f}. "
+            f"Reason: {tool_correctness.reason}"
+        )
+        verbose_logger.info("✓ LLM %s correctly used the tools", llm_config["name"])
 
     @pytest.mark.parametrize("llm_config", llm_configurations, ids=[config["name"] for config in llm_configurations])
     @pytest.mark.parametrize(
