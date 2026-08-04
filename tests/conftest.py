@@ -5,6 +5,7 @@ import logging
 from contextlib import contextmanager
 from unittest.mock import Mock, patch
 
+import nest_asyncio
 import pytest
 import pytest_asyncio
 
@@ -26,6 +27,9 @@ from tests import oauth_utils as oauth_utils_module
 from tests.llama_index_support.agent_mcp import MCPAgentWrapper
 from tests.llm_tracing import enable_llm_test_tracing
 from tests.utils import load_llm_configurations
+
+# Prevent Python 3.14 event loop corruption caused by deepeval calling nest_asyncio.apply()
+nest_asyncio.apply = lambda: None
 
 
 def gpt_model_from_config(config: dict[str, str]) -> GPTModel:

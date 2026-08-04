@@ -71,7 +71,7 @@ class TestLLMIntegrationEasy:
         verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.name)
 
         # Measure once to get access to explanation and avoid double LLM call
-        behavioral_compliance.measure(test_case)
+        await behavioral_compliance.a_measure(test_case)
 
         # Log detailed evaluation results
         verbose_logger.info(
@@ -124,7 +124,7 @@ class TestLLMIntegrationEasy:
 
         verbose_logger.info("🤔 Checking response quality with guardian agent %s…", guardian_agent.name)
 
-        response_quality.measure(quality_test_case)
+        await response_quality.a_measure(quality_test_case)
         verbose_logger.info(
             "📊 Response Quality Score: %.2f (threshold: %.2f)", response_quality.score, response_quality.threshold
         )
@@ -159,7 +159,7 @@ class TestLLMIntegrationEasy:
 
         verbose_logger.info("🤔 Checking tool correctness")
 
-        tool_correctness.measure(test_case)
+        await tool_correctness.a_measure(test_case)
         verbose_logger.info(
             "📊 Tool Correctness Score: %.2f (threshold: %.2f)", tool_correctness.score, tool_correctness.threshold
         )
@@ -200,7 +200,7 @@ class TestLLMIntegrationEasy:
         verbose_logger.info("🤔 Checking tool correctness")
 
         # Measure once to get access to explanation and avoid double LLM call
-        tool_correctness.measure(test_case)
+        await tool_correctness.a_measure(test_case)
         verbose_logger.info(
             "📊 Tool Correctness Score: %.2f (threshold: %.2f)", tool_correctness.score, tool_correctness.threshold
         )
@@ -235,7 +235,7 @@ class TestLLMIntegrationEasy:
         tool_correctness = ToolCorrectnessMetric(threshold=0.6, model=guardian_agent)
 
         # Measure once to get access to explanation and avoid double LLM call
-        tool_correctness.measure(test_case_initial)
+        await tool_correctness.a_measure(test_case_initial)
         verbose_logger.info(
             "📊 Initial Tool Correctness Score: %.2f (threshold: %.2f)",
             tool_correctness.score,
@@ -273,7 +273,7 @@ class TestLLMIntegrationEasy:
         verbose_logger.info("🤔 Checking tool correctness")
 
         # Measure once to get access to explanation and avoid double LLM call
-        tool_correctness.measure(test_case_subsequent)
+        await tool_correctness.a_measure(test_case_subsequent)
         verbose_logger.info(
             "📊 Subsequent Tool Correctness Score: %.2f (threshold: %.2f)",
             tool_correctness.score,
@@ -338,7 +338,7 @@ class TestLLMIntegrationEasy:
         verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.name)
 
         # Measure once to get access to explanation and avoid double LLM call
-        behavioral_compliance.measure(test_case)
+        await behavioral_compliance.a_measure(test_case)
 
         # Log detailed evaluation results
         verbose_logger.info(

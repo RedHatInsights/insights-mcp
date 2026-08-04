@@ -65,6 +65,6 @@ class TestLLMIntegrationHard:
 
         verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.name)
         # Evaluate with deepeval metrics
-        assert_test(test_case, [conversation_quality, tool_correctness])
+        assert_test(test_case, [conversation_quality, tool_correctness], run_async=False)
 
         verbose_logger.info("✓ Complete conversation flow test passed for %s", llm_config["name"])
