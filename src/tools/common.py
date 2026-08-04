@@ -178,10 +178,13 @@ async def run_insights_tool_request(
     *,
     error_message: Callable[[Exception], str],
     logger: Logger | None = None,
+    response_transform: Callable[[dict[str, Any] | str | list[Any]], dict[str, Any] | str | list[Any]] | None = None,
 ) -> str:
     """Await an Insights client call, encode JSON, and map failures to InsightsApiError."""
     try:
         response = await request
+        if response_transform is not None:
+            response = response_transform(response)
         return encode_insights_json_response(response)
     except TOOL_REQUEST_ERRORS as exc:
         raise_insights_tool_error(exc, error_message(exc), logger)

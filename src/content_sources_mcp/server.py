@@ -85,6 +85,9 @@ class ContentSourcesMCP(InsightsMCP):
         origin: Annotated[str, Field(default="", description="Filter by origin (e.g., 'red_hat', 'external').")],
         arch: Annotated[str, Field(default="", description="Filter by architecture (e.g., 'x86_64', 'aarch64').")],
         version: Annotated[str, Field(default="", description="Filter by version (e.g., '8', '9').")],
+        include_gpg_key: Annotated[
+            bool, Field(default=False, description="Include GPG key content in the response (default: False).")
+        ],
     ) -> str:
         """List repositories with filtering and pagination options.
 
@@ -112,9 +115,16 @@ class ContentSourcesMCP(InsightsMCP):
         params["limit"] = limit
         params["offset"] = offset
 
+        def _strip_gpg_keys(response: dict[str, Any] | str | list[Any]) -> dict[str, Any] | str | list[Any]:
+            if isinstance(response, dict) and "data" in response:
+                for repo in response["data"]:
+                    repo.pop("gpg_key", None)
+            return response
+
         return await run_insights_tool_request(
             self.insights_client.get("repositories/", params=params),
             error_message=lambda exc: f"Error listing repositories: {exc}",
+            response_transform=None if include_gpg_key else _strip_gpg_keys,
         )
 
 

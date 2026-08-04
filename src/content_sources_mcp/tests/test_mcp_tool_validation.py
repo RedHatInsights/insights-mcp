@@ -77,6 +77,12 @@ from tests.test_patterns import (
                     "type": "string",
                     "anyOf": None,
                 },
+                "include_gpg_key": {
+                    "description": "Include GPG key content in the response (default: False).",
+                    "default": False,
+                    "type": "boolean",
+                    "anyOf": None,
+                },
             },
         ),
     ],
