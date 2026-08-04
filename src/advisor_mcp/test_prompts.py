@@ -24,7 +24,7 @@ PROMPTS = PromptRegistry(
     ),
     rule_affected_systems=(
         'List all the systems affected by the advisor recommendation "{rule_id}"',
-        ("advisor__get_hosts_hitting_a_rule", "advisor__get_rule_details"),
+        ("advisor__get_hosts_hitting_a_rule", "advisor__get_hosts_details_for_rule", "advisor__get_rule_details"),
     ),
     recommendations_by_tag=(
         "Show me Advisor recommendations for systems tagged 'insights-client/security=strict'.",
