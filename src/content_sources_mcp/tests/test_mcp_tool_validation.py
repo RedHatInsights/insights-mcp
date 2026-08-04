@@ -24,7 +24,12 @@ from tests.test_patterns import (
             "List repositories with filtering and pagination options.",
             {
                 "limit": {
-                    "description": "Maximum number of repositories to return (default: 10).",
+                    "description": (
+                        "Maximum number of repositories to return (default: 10, maximum: 100). "
+                        "**ALWAYS use the default value of 10 for the first call.** "
+                        "This default is carefully chosen for performance and context management. "
+                        "Only increase this value if the user explicitly asks to see more repositories at once."
+                    ),
                     "default": 10,
                     "type": "integer",
                     "anyOf": None,

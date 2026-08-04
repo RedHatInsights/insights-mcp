@@ -75,7 +75,18 @@ class ContentSourcesMCP(InsightsMCP):
     async def list_repositories(
         self,
         enabled: Annotated[Optional[bool], Field(default=None, description="Filter by enabled status (True/False).")],
-        limit: Annotated[int, Field(default=10, description="Maximum number of repositories to return (default: 10).")],
+        limit: Annotated[
+            int,
+            Field(
+                default=10,
+                description=(
+                    "Maximum number of repositories to return (default: 10, maximum: 100). "
+                    "**ALWAYS use the default value of 10 for the first call.** "
+                    "This default is carefully chosen for performance and context management. "
+                    "Only increase this value if the user explicitly asks to see more repositories at once."
+                ),
+            ),
+        ],
         offset: Annotated[
             int, Field(default=0, description="Number of repositories to skip for pagination (default: 0).")
         ],
@@ -112,7 +123,7 @@ class ContentSourcesMCP(InsightsMCP):
         if version:
             params["version"] = version
 
-        params["limit"] = limit
+        params["limit"] = min(limit, 100)
         params["offset"] = offset
 
         def _strip_gpg_keys(response: dict[str, Any] | str | list[Any]) -> dict[str, Any] | str | list[Any]:
