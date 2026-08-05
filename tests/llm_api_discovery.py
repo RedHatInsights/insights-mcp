@@ -165,9 +165,9 @@ async def discover_satellite_tag(client: InsightsClient, host_id: str) -> str | 
     if isinstance(response, str):
         return None
     results = response.get("results")
-    if not isinstance(results, list) or not results:
+    if not isinstance(results, dict) or not results.get(host_id):
         return None
-    tag = results[0]
+    tag = results[host_id][0]
     if not isinstance(tag, dict):
         return None
     namespace = tag.get("namespace")
