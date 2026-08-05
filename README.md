@@ -1,4 +1,6 @@
 # Red Hat Lightspeed MCP
+
+[![MCP Toplist](https://mcptoplist.com/badge/io.github.RedHatInsights%2Finsights-mcp.svg)](https://mcptoplist.com/server/io.github.RedHatInsights%2Finsights-mcp)
 _(formerly known as Insights MCP)_
 
 Red Hat Lightspeed Model Context Protocol ([MCP](https://modelcontextprotocol.io)) server is a lightweight, self-hosted solution that connects LLM-based agents - such as Claude Desktop and other MCP-compatible tools - to Red Hat Lightspeed services.
