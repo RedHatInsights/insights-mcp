@@ -15,7 +15,7 @@ PROMPTS = PromptRegistry(
     ),
     host_details_by_name=(
         "Get details for host named '{hostname}'",
-        ("inventory__list_hosts", "inventory__get_host_details"),
+        ("inventory__list_hosts", "inventory__find_host_by_name"),
     ),
     stale_host_count=(
         "How many hosts are currently stale?",
