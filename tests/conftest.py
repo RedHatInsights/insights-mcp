@@ -1,6 +1,7 @@
 """Pytest configuration and common fixtures."""
 
 import asyncio
+import functools
 import logging
 from contextlib import contextmanager
 from unittest.mock import Mock, patch
@@ -340,9 +341,14 @@ def multi_user_tokens():
     return oauth_utils_module.create_multi_user_tokens(num_users=3)
 
 
-@pytest.fixture(scope="session")
-def llm_api_context():
-    """Live API-derived placeholder values for LLM prompt tests (session scope)."""
+@functools.cache
+def _build_llm_api_context():
     from tests.llm_api_discovery import build_llm_api_context
 
     return asyncio.run(build_llm_api_context())
+
+
+@pytest.fixture(scope="session")
+def llm_api_context():
+    """Live API-derived placeholder values for LLM prompt tests (session scope)."""
+    return _build_llm_api_context()
