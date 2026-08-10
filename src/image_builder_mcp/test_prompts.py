@@ -7,7 +7,7 @@ TOOLSET_TITLE = "Image Builder MCP Test Prompts"
 PROMPTS = PromptRegistry(
     rhel_initial_question=(
         "Can you create a RHEL 9 image for me?",
-        ("image-builder__get_openapi", "image-builder__get_blueprints"),
+        ("image-builder__get_openapi", "image-builder__get_blueprints", "image-builder__get_distributions"),
     ),
     image_build_status=(
         "What is the status of my latest image build?",
