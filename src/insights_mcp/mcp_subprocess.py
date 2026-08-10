@@ -28,11 +28,16 @@ def _create_mcp_init_request() -> dict:
 
 def cleanup_server_process(server_process: multiprocessing.Process) -> None:
     """Terminate and join an MCP server subprocess."""
-    if server_process.is_alive():
-        server_process.terminate()
-        server_process.join(timeout=5)
-        if server_process.is_alive():
-            server_process.kill()
+    if not server_process.is_alive():
+        return
+
+    server_process.terminate()
+    server_process.join(timeout=5)
+    if not server_process.is_alive():
+        return
+
+    server_process.kill()
+    server_process.join(timeout=5)
 
 
 class ServerStartupError(Exception):
