@@ -3,8 +3,7 @@
 import asyncio
 import functools
 import logging
-from contextlib import contextmanager
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import nest_asyncio
 import pytest
@@ -228,56 +227,6 @@ def create_mock_client(client_id=TEST_CLIENT_ID, client_secret=TEST_CLIENT_SECRE
     if api_path:
         client.api_path = api_path
     return client
-
-
-# No server-specific fixtures needed!
-# Tests can import the server class directly and use create_mcp_server(ServerClass)
-
-
-@contextmanager
-# pylint: disable=too-many-arguments,too-many-positional-arguments
-def setup_mcp_mock(
-    server_module,
-    mcp_server,
-    mock_client,
-    mock_response=None,
-    side_effect=None,
-    client_id=TEST_CLIENT_ID,
-    brand="insights",
-):
-    """Generic context manager for setting up MCP server mock patterns.
-
-    Args:
-        server_module: The server module to patch get_http_headers on
-        mcp_server: The MCP server instance
-        mock_client: The mock client to use
-        mock_response: Optional response to return from client methods
-        side_effect: Optional side effect for client methods
-        client_id: Client ID to use (default: TEST_CLIENT_ID)
-        brand: Brand for header names (default: "insights"). Use "red-hat-lightspeed" for lightspeed.
-    """
-    # Derive headers from brand (same logic as config.py)
-    brand_prefix = brand.replace("red-hat-", "")
-    id_header = f"{brand_prefix.lower()}-client-id"
-    secret_header = f"{brand_prefix.lower()}-client-secret"
-
-    with patch.object(server_module, "get_http_headers") as mock_headers:
-        mock_headers.return_value = {
-            id_header: client_id,
-            secret_header: TEST_CLIENT_SECRET,
-        }
-
-        if side_effect:
-            mock_client.get.side_effect = side_effect
-            mock_client.post.side_effect = side_effect
-            mock_client.put.side_effect = side_effect
-        elif mock_response is not None:
-            mock_client.get.return_value = mock_response
-            mock_client.post.return_value = mock_response
-            mock_client.put.return_value = mock_response
-
-        mcp_server.clients[client_id] = mock_client
-        yield mock_headers
 
 
 def assert_api_error_message(exception: BaseException, error_message: str = "API Error") -> None:
