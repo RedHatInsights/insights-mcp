@@ -1,5 +1,6 @@
 """Test suite for authentication-related functionality."""
 
+import asyncio
 from unittest.mock import patch
 
 import pytest
@@ -52,7 +53,21 @@ class TestAuthentication:
         ("get_composes", {"limit": 7, "offset": 0, "search_string": ""}),
         ("get_compose_details", {"compose_identifier": "12345678-1234-1234-1234-123456789012"}),
         ("blueprint_compose", {"blueprint_uuid": "12345678-1234-1234-1234-123456789012"}),
+        ("update_blueprint", {"blueprint_uuid": "12345678-1234-1234-1234-123456789012", "data": {}}),
+        ("get_distributions", {}),
+        ("get_org_id", {}),
     ]
+
+    UNAUTHENTICATED_TOOLS = {"get_openapi"}
+
+    def test_auth_functions_cover_all_tools(self):
+        """Guard: fail when a new tool is added but not covered by AUTH_FUNCTIONS."""
+        server = ImageBuilderMCP()
+        server.register_tools()
+        all_tools = {t.name for t in asyncio.run(server.list_tools())}
+        tested = {name for name, _ in self.AUTH_FUNCTIONS}
+        untested = all_tools - tested - self.UNAUTHENTICATED_TOOLS
+        assert not untested, f"Tools missing from AUTH_FUNCTIONS: {untested}"
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("function_name,kwargs", AUTH_FUNCTIONS)
