@@ -12,7 +12,7 @@ from tests.conftest import (
     assert_instruction_in_result,
 )
 
-from .conftest import setup_imagebuilder_mock
+from .conftest import setup_toolset_mock
 
 
 class TestGetComposes:
@@ -53,7 +53,7 @@ class TestGetComposes:
     ):
         """Test basic functionality of get_composes method."""
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call the method
             result = await imagebuilder_mcp_server.get_composes(limit=7, offset=0, search_string="")
 
@@ -98,7 +98,7 @@ class TestGetComposes:
     ):
         """Test get_composes with search string filtering."""
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call with search string for "rhel"
             result = await imagebuilder_mcp_server.get_composes(limit=10, offset=0, search_string="rhel")
 
@@ -119,7 +119,7 @@ class TestGetComposes:
     ):
         """Test get_composes with limit and offset parameters."""
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call with limit=2, offset=1
             result = await imagebuilder_mcp_server.get_composes(limit=2, offset=1, search_string="")
 
@@ -143,7 +143,7 @@ class TestGetComposes:
     async def test_get_composes_empty_response(self, imagebuilder_mcp_server, imagebuilder_mock_client):
         """Test get_composes with empty API response."""
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, {"data": []}):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, {"data": []}):
             # Call the method
             result = await imagebuilder_mcp_server.get_composes(limit=7, offset=0, search_string="")
 
@@ -154,9 +154,7 @@ class TestGetComposes:
     async def test_get_composes_api_error(self, imagebuilder_mcp_server, imagebuilder_mock_client):
         """Test get_composes when API returns error."""
         # Setup mocks
-        with setup_imagebuilder_mock(
-            imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")
-        ):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")):
             # Call the method
             with pytest.raises(InsightsApiError) as exc_info:
                 await imagebuilder_mcp_server.get_composes(limit=7, offset=0, search_string="")
@@ -169,7 +167,7 @@ class TestGetComposes:
     ):
         """Test that zero limit uses default response size."""
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call with zero limit
             result = await imagebuilder_mcp_server.get_composes(limit=0, offset=0, search_string="")
 

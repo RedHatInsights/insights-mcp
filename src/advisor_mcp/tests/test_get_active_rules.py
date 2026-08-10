@@ -7,7 +7,7 @@ from tests.conftest import (  # pylint: disable=import-error
     assert_api_error_message,
 )
 
-from .conftest import get_default_active_rules_params, setup_advisor_mock
+from .conftest import get_default_active_rules_params, setup_toolset_mock
 
 
 class TestGetActiveRules:
@@ -135,7 +135,7 @@ class TestGetActiveRules:
         """Test get_active_rules with default parameters."""
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Get default parameters and call the method
             params = get_default_active_rules_params()
             result = await advisor_mcp_server.get_active_rules(**params)
@@ -171,7 +171,7 @@ class TestGetActiveRules:
         """Test get_active_rules with all available parameters."""
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method with comprehensive filters
             params = get_default_active_rules_params(
                 incident=False,
@@ -228,7 +228,7 @@ class TestGetActiveRules:
         """Test get_active_rules with pagination parameters."""
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, large_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, large_api_response):
             # Call the method with pagination
             params = get_default_active_rules_params(limit=20, offset=10)
             result = await advisor_mcp_server.get_active_rules(**params)
@@ -252,7 +252,7 @@ class TestGetActiveRules:
         """Test get_active_rules when API returns empty response."""
 
         # Setup mocks with empty response
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, empty_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, empty_api_response):
             # Call the method
             params = get_default_active_rules_params()
             result = await advisor_mcp_server.get_active_rules(**params)
@@ -266,7 +266,7 @@ class TestGetActiveRules:
         """Test get_active_rules when API returns None."""
 
         # Setup mocks with None response
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, None):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, None):
             # Call the method
             params = get_default_active_rules_params()
             result = await advisor_mcp_server.get_active_rules(**params)
@@ -290,7 +290,7 @@ class TestGetActiveRules:
         """Test get_active_rules error handling for various exception types."""
 
         # Setup mocks with exception
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, side_effect=exception):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, side_effect=exception):
             params = get_default_active_rules_params()
             with pytest.raises(InsightsApiError) as exc_info:
                 await advisor_mcp_server.get_active_rules(**params)
@@ -341,7 +341,7 @@ class TestGetActiveRules:
         """Test get_active_rules with specific filtering criteria."""
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method with filter parameters
             params = get_default_active_rules_params(**filter_params)
             result = await advisor_mcp_server.get_active_rules(**params)
@@ -394,7 +394,7 @@ class TestGetActiveRules:
         """Test get_active_rules with string boolean parameter parsing."""
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method with string boolean parameters
             full_params = get_default_active_rules_params(**params)
             result = await advisor_mcp_server.get_active_rules(**full_params)

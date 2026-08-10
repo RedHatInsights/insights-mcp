@@ -4,7 +4,7 @@ import pytest
 
 from insights_mcp.errors import InsightsApiError
 
-from .conftest import TEST_RULE_ID, setup_advisor_mock
+from .conftest import TEST_RULE_ID, setup_toolset_mock
 
 
 class TestGetRuleDetails:
@@ -55,7 +55,7 @@ class TestGetRuleDetails:
         rule_id = TEST_RULE_ID
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method
             result = await advisor_mcp_server.get_rule_details(rule_id=rule_id)
 
@@ -94,7 +94,7 @@ class TestGetRuleDetails:
         """Test get_rule_details when API returns error."""
         rule_id = TEST_RULE_ID
 
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
             with pytest.raises(InsightsApiError) as exc_info:
                 await advisor_mcp_server.get_rule_details(rule_id=rule_id)
 
@@ -108,7 +108,7 @@ class TestGetRuleDetails:
         rule_id = TEST_RULE_ID
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, None):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, None):
             # Call the method
             result = await advisor_mcp_server.get_rule_details(rule_id=rule_id)
 
@@ -123,7 +123,7 @@ class TestGetRuleDetails:
         rule_id = "special_rule|WITH_SPECIAL_CHARS_123"
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method
             result = await advisor_mcp_server.get_rule_details(rule_id=rule_id)
 

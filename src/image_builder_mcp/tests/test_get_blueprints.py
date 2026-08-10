@@ -6,7 +6,7 @@ import pytest
 
 from insights_mcp.errors import InsightsApiError
 
-from .conftest import setup_imagebuilder_mock
+from .conftest import setup_toolset_mock
 
 
 class TestGetBlueprints:
@@ -54,7 +54,7 @@ class TestGetBlueprints:
     ):  # pylint: disable=too-many-locals
         """Test basic functionality of get_blueprints method."""
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call the method with new interface
             result = await imagebuilder_mcp_server.get_blueprints(limit=7, offset=0, search_string="")
 
@@ -111,7 +111,7 @@ class TestGetBlueprints:
     ):
         """Test get_blueprints with limit and offset parameters."""
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call with limit=2, offset=1
             result = await imagebuilder_mcp_server.get_blueprints(limit=2, offset=1, search_string="")
 
@@ -139,7 +139,7 @@ class TestGetBlueprints:
         """Test get_blueprints with search string filtering."""
         # Setup mocks
 
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call with search string
             result = await imagebuilder_mcp_server.get_blueprints(limit=10, offset=0, search_string="rhel-10")
 
@@ -164,7 +164,7 @@ class TestGetBlueprints:
         """Test get_blueprints search is case insensitive."""
         # Setup mocks
 
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call with uppercase search string
             result = await imagebuilder_mcp_server.get_blueprints(limit=10, offset=0, search_string="TEST")
 
@@ -185,7 +185,7 @@ class TestGetBlueprints:
         """Test get_blueprints with empty API response."""
         # Setup mocks
 
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, {"data": []}):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, {"data": []}):
             # Call the method
             result = await imagebuilder_mcp_server.get_blueprints(limit=7, offset=0, search_string="")
 
@@ -197,9 +197,7 @@ class TestGetBlueprints:
         """Test get_blueprints when API returns error."""
         # Setup mocks
 
-        with setup_imagebuilder_mock(
-            imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")
-        ):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")):
             # Call the method
             with pytest.raises(InsightsApiError) as exc_info:
                 await imagebuilder_mcp_server.get_blueprints(limit=7, offset=0, search_string="")
@@ -211,7 +209,7 @@ class TestGetBlueprints:
         self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response
     ):
         """Test handling of 'null' string as search parameter."""
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call with "null" string (workaround for LLama 3.3 70B Instruct)
             result = await imagebuilder_mcp_server.get_blueprints(limit=10, offset=0, search_string="null")
 
@@ -230,7 +228,7 @@ class TestGetBlueprints:
         """Test that zero or negative limit uses default response size."""
         # Setup mocks
 
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call with zero limit
             result = await imagebuilder_mcp_server.get_blueprints(limit=0, offset=0, search_string="")
 

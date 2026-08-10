@@ -26,6 +26,7 @@ from tests.conftest import (
     llm_api_context,
     mcp_tools,
     mock_http_headers,
+    setup_toolset_mock,
     test_agent,
     test_client_credentials,
     verbose_logger,
@@ -60,27 +61,6 @@ def imagebuilder_mock_client():
 
 
 @contextmanager
-def setup_imagebuilder_mock(mcp_server, mock_client, mock_response=None, side_effect=None):
-    """Context manager for setting up ImageBuilder mock patterns.
-    Uses self.insights_client directly from InsightsMCP base class
-    """
-    # pylint: disable=duplicate-code  # Similar mock setup patterns across toolsets
-    # Set up mock responses
-    if side_effect:
-        mock_client.get.side_effect = side_effect
-        mock_client.post.side_effect = side_effect
-        mock_client.put.side_effect = side_effect
-    elif mock_response is not None:
-        mock_client.get.return_value = mock_response
-        mock_client.post.return_value = mock_response
-        mock_client.put.return_value = mock_response
-
-    # Mock the insights_client directly on the server instance
-    with patch.object(mcp_server, "insights_client", mock_client):
-        yield None  # No headers needed for image builder architecture
-
-
-@contextmanager
 def setup_imagebuilder_watermark_disabled(mcp_server, mock_client):
     """Context manager for disabling watermarks in ImageBuilder tests."""
     with (
@@ -106,7 +86,7 @@ __all__ = [
     "mcp_server_url",
     "mcp_tools",
     "mock_http_headers",
-    "setup_imagebuilder_mock",
+    "setup_toolset_mock",
     "setup_imagebuilder_watermark_disabled",
     "test_agent",
     "test_client_credentials",

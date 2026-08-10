@@ -3,7 +3,8 @@
 import asyncio
 import functools
 import logging
-from unittest.mock import Mock
+from contextlib import contextmanager
+from unittest.mock import Mock, patch
 
 import nest_asyncio
 import pytest
@@ -227,6 +228,26 @@ def create_mock_client(client_id=TEST_CLIENT_ID, client_secret=TEST_CLIENT_SECRE
     if api_path:
         client.api_path = api_path
     return client
+
+
+@contextmanager
+def setup_toolset_mock(mcp_server, mock_client, mock_response=None, side_effect=None):
+    """Context manager for setting up MCP server mock patterns.
+
+    Replaces the server's insights_client with a mock and configures
+    its HTTP methods to return mock_response or raise side_effect.
+    """
+    if side_effect:
+        mock_client.get.side_effect = side_effect
+        mock_client.post.side_effect = side_effect
+        mock_client.put.side_effect = side_effect
+    else:
+        mock_client.get.return_value = mock_response
+        mock_client.post.return_value = mock_response
+        mock_client.put.return_value = mock_response
+
+    with patch.object(mcp_server, "insights_client", mock_client):
+        yield
 
 
 def assert_api_error_message(exception: BaseException, error_message: str = "API Error") -> None:

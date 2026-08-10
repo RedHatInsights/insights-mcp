@@ -2,9 +2,6 @@
 Conftest for advisor_mcp tests - re-exports fixtures from top-level tests.
 """
 
-from contextlib import contextmanager
-from unittest.mock import patch
-
 import pytest
 
 from advisor_mcp import AdvisorMCP
@@ -24,6 +21,7 @@ from tests.conftest import (
     llm_api_context,
     mcp_tools,
     mock_http_headers,
+    setup_toolset_mock,
     test_agent,
     test_client_credentials,
     verbose_logger,
@@ -96,33 +94,6 @@ def advisor_mock_client():
     return create_mock_client(api_path="api/insights/v1")
 
 
-@contextmanager
-def setup_advisor_mock(mcp_server, mock_client, mock_response=None, side_effect=None):
-    """Context manager for setting up Advisor mock patterns.
-
-    Advisor MCP uses a different architecture than Image Builder MCP:
-    - No get_http_headers() function
-    - Uses self.insights_client directly from InsightsMCP base class
-    """
-    # pylint: disable=duplicate-code  # Similar mock setup patterns across toolsets
-    # Set up mock responses
-    if side_effect:
-        mock_client.get.side_effect = side_effect
-        mock_client.post.side_effect = side_effect
-        mock_client.put.side_effect = side_effect
-    else:
-        # Set return value for all cases, including when mock_response is None
-        mock_client.get.return_value = mock_response
-        mock_client.post.return_value = mock_response
-        mock_client.put.return_value = mock_response
-
-    # Mock the insights_client directly on the server instance
-    with patch.object(mcp_server, "insights_client", mock_client):
-        yield None  # No headers needed for advisor architecture
-
-
-# pylint: disable=duplicate-code  # Test fixture patterns are similar across toolsets
-# Make the fixtures available for import
 __all__ = [
     "assert_api_error_result",
     "assert_empty_response",
@@ -139,7 +110,7 @@ __all__ = [
     "mcp_server_url",
     "mcp_tools",
     "mock_http_headers",
-    "setup_advisor_mock",
+    "setup_toolset_mock",
     "test_agent",
     "test_client_credentials",
     "TEST_CLIENT_ID",
