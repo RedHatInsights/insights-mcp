@@ -30,6 +30,8 @@ class PromptWithTools:
     turns: tuple[str, ...]
     expected_tools: tuple[str, ...]
     description: str | None = None
+    guardian_criteria: str | None = None
+    forbidden_tools: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if len(self.turns) < 1:
@@ -49,6 +51,8 @@ class _PromptRecord:
     template_turns: tuple[str, ...]
     expected_tools: tuple[str, ...]
     description: str | None = None
+    guardian_criteria: str | None = None
+    forbidden_tools: tuple[str, ...] = ()
 
     @property
     def text(self) -> str:
@@ -99,6 +103,8 @@ class PromptRegistry:
                 template_turns=value.turns,
                 expected_tools=value.expected_tools,
                 description=value.description,
+                guardian_criteria=value.guardian_criteria,
+                forbidden_tools=value.forbidden_tools,
             )
         if (
             isinstance(value, tuple)
@@ -157,7 +163,7 @@ class PromptRegistry:
         """Return all turn templates for *prompt_id* (single- or multi-turn)."""
         return self._by_id[prompt_id].template_turns
 
-    def tool_usage_scenarios(self) -> list[dict[str, Any]]:
+    def tool_usage_scenarios(self, exclude: set[str] | None = None) -> list[dict[str, Any]]:
         """Entries formatted for legacy pytest parametrization (image-builder easy tests)."""
         return [
             {
@@ -166,6 +172,21 @@ class PromptRegistry:
                 "description": record.description or "",
             }
             for record in self._records
+            if exclude is None or record.prompt_id not in exclude
+        ]
+
+    def guardian_scenarios(self) -> list[dict[str, Any]]:
+        """Entries that require LLM-judged (guardian) evaluation."""
+        return [
+            {
+                "prompt_id": record.prompt_id,
+                "prompt": record.text,
+                "expected_tools": list(record.expected_tools),
+                "guardian_criteria": record.guardian_criteria,
+                "forbidden_tools": list(record.forbidden_tools),
+            }
+            for record in self._records
+            if record.guardian_criteria
         ]
 
     def iter_test_scenarios(self, toolset: str) -> list[PromptTestScenario]:

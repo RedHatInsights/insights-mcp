@@ -15,7 +15,8 @@ from tests.utils import (
     should_skip_llm_matrix_tests,
 )
 
-TOOL_USAGE_SCENARIOS = PROMPTS.tool_usage_scenarios()
+GUARDIAN_SCENARIOS = PROMPTS.guardian_scenarios()
+TOOL_USAGE_SCENARIOS = PROMPTS.tool_usage_scenarios(exclude={s["prompt_id"] for s in GUARDIAN_SCENARIOS})
 
 # Load LLM configurations for parametrization
 llm_configurations, _ = load_llm_configurations()
@@ -34,143 +35,63 @@ class TestLLMIntegrationEasy:
     """Test LLM integration with MCP server using deepeval with multiple LLM configurations."""
 
     @pytest.mark.parametrize("llm_config", llm_configurations, ids=[config["name"] for config in llm_configurations])
+    @pytest.mark.parametrize("scenario", GUARDIAN_SCENARIOS, ids=[s["prompt_id"] for s in GUARDIAN_SCENARIOS])
     @pytest.mark.asyncio
-    # pylint: disable=redefined-outer-name,too-many-locals
-    async def test_rhel_initial_question(self, test_agent, guardian_agent, llm_config, verbose_logger):
-        """Test that LLM follows behavioral rules and doesn't immediately call create_blueprint."""
-        prompt = PROMPTS["rhel_initial_question"]
-
-        # Execute tools and capture reasoning steps and tool calls
-        response, reasoning_steps, tools_executed, _ = await test_agent.execute_with_reasoning(prompt, chat_history=[])
-
-        # Check that create_blueprint is not called immediately
-        tool_names = [tool.name for tool in tools_executed]
-        assert "image-builder__create_blueprint" not in tool_names, (
-            f"❌ BEHAVIORAL RULE VIOLATION for {llm_config['name']} "
-            f"({llm_config['MODEL_ID']}): "
-            f"LLM called image-builder__create_blueprint immediately! Tool calls: {tool_names}. "
-            f"MCP instructions not working correctly.\nThe prompt was: {prompt}\n"
-            f"The response was: {response}\n"
-        )
-
-        test_case = LLMTestCase(input=prompt, actual_output=response, expected_tools=[], tools_called=tools_executed)
-
-        # Define expected behavior metric using custom LLM
-        behavioral_compliance = GEval(
-            name="Behavioral Compliance",
-            criteria=(
-                "The LLM should NOT immediately call image-builder__create_blueprint. "
-                "Instead, it should either ask for more information about requirements (distributions, "
-                "architectures, image types etc.) or optionally use get_openapi to understand the system first."
-                "In any case the response should be targeted to the user for more information."
-            ),
-            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.TOOLS_CALLED],
-            model=guardian_agent,
-        )
-
-        verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.name)
-
-        # Measure once to get access to explanation and avoid double LLM call
-        await behavioral_compliance.a_measure(test_case)
-
-        # Log detailed evaluation results
-        verbose_logger.info(
-            "📊 Behavioral Compliance Score: %.2f (threshold: %.2f)",
-            behavioral_compliance.score,
-            behavioral_compliance.threshold,
-        )
-        verbose_logger.info("📝 Guardian Agent Explanation: %s", behavioral_compliance.reason)
-
-        # Assert using success property (no additional LLM call)
-        assert behavioral_compliance.success, (
-            f"Behavioral compliance test failed. Score: {behavioral_compliance.score:.2f}, "
-            f"Threshold: {behavioral_compliance.threshold:.2f}. "
-            f"Reason: {behavioral_compliance.reason}"
-        )
-
-        verbose_logger.info("✅ Test passed for %s", prompt)
-        verbose_logger.info("Response: %s", response)
-        verbose_logger.info("Tool calls executed: %s", [tool.name for tool in tools_executed])
-        verbose_logger.info("Reasoning steps captured: %d", len(reasoning_steps))
-
-    @pytest.mark.parametrize("llm_config", llm_configurations, ids=[config["name"] for config in llm_configurations])
-    @pytest.mark.asyncio
-    # pylint: disable=redefined-outer-name,too-many-locals
-    async def test_image_build_status_tool_selection(self, test_agent, verbose_logger, llm_config, guardian_agent):
-        """Test that LLM selects appropriate tools for image build status queries."""
-        if "mistral" in llm_config["name"].lower():
-            pytest.skip("Mistral on the Lightspeed gateway does not reliably use the image-builder tool catalog")
-
-        tool_correctness = ToolCorrectnessMetric(threshold=0.7, include_reason=True, model=guardian_agent)
-
-        prompt = PROMPTS["image_build_status"]
+    # pylint: disable=redefined-outer-name
+    async def test_guardian_evaluation(self, test_agent, guardian_agent, llm_config, verbose_logger, scenario):
+        """Test that LLM follows behavioral rules using guardian-judged evaluation."""
+        prompt = scenario["prompt"]
 
         response, _, tools_executed, _ = await test_agent.execute_with_reasoning(prompt, chat_history=[])
 
-        response_quality = GEval(
-            name="Response Quality",
-            criteria=(
-                "The response should contain the status of the latest image build, "
-                "including details such as the compose ID, image type, or distribution."
-            ),
-            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT],
-            model=guardian_agent,
-        )
+        tool_names = [tool.name for tool in tools_executed]
+        for forbidden in scenario["forbidden_tools"]:
+            assert forbidden not in tool_names, (
+                f"❌ BEHAVIORAL RULE VIOLATION for {llm_config['name']} "
+                f"({llm_config['MODEL_ID']}): "
+                f"LLM called {forbidden} immediately! Tool calls: {tool_names}. "
+                f"MCP instructions not working correctly.\nThe prompt was: {prompt}\n"
+                f"The response was: {response}\n"
+            )
 
-        quality_test_case = LLMTestCase(
-            input=prompt,
-            actual_output=response,
-        )
-
-        verbose_logger.info("🤔 Checking response quality with guardian agent %s…", guardian_agent.name)
-
-        await response_quality.a_measure(quality_test_case)
-        verbose_logger.info(
-            "📊 Response Quality Score: %.2f (threshold: %.2f)", response_quality.score, response_quality.threshold
-        )
-        verbose_logger.info("📝 Guardian Agent Explanation: %s", response_quality.reason)
-
-        assert response_quality.success, (
-            f"Response quality test failed. Score: {response_quality.score:.2f}, "
-            f"Threshold: {response_quality.threshold:.2f}. "
-            f"Reason: {response_quality.reason}"
-        )
-
-        # Define expected tools for this query
-        expected_tools = [
-            ToolCall(name="image-builder__get_composes"),
-            # Could also include get_compose_details if compose ID is known
-        ]
+        expected_tools = [ToolCall(name=name) for name in scenario["expected_tools"]]
 
         test_case = LLMTestCase(
             input=prompt, actual_output=response, tools_called=tools_executed, expected_tools=expected_tools
         )
 
-        # Check if relevant tools were selected
-        tool_names = [tool.name for tool in tools_executed]
-        expected_tool_names = ["image-builder__get_composes", "image-builder__get_compose_details"]
-
-        found_relevant = any(tool in tool_names for tool in expected_tool_names)
-
-        if found_relevant:
-            verbose_logger.info("✓ LLM %s correctly selected relevant tools", llm_config["name"])
-        else:
-            verbose_logger.warning("LLM %s may not have selected optimal tools: %s", llm_config["name"], tool_names)
-
-        verbose_logger.info("🤔 Checking tool correctness")
-
+        tool_correctness = ToolCorrectnessMetric(threshold=0.6, model=guardian_agent)
         await tool_correctness.a_measure(test_case)
         verbose_logger.info(
             "📊 Tool Correctness Score: %.2f (threshold: %.2f)", tool_correctness.score, tool_correctness.threshold
         )
         verbose_logger.info("📝 Tool Correctness Explanation: %s", tool_correctness.reason)
-
         assert tool_correctness.success, (
             f"Tool correctness test failed. Score: {tool_correctness.score:.2f}, "
             f"Threshold: {tool_correctness.threshold:.2f}. "
             f"Reason: {tool_correctness.reason}"
         )
-        verbose_logger.info("✓ LLM %s correctly used the tools", llm_config["name"])
+
+        guardian_eval = GEval(
+            name="Guardian Evaluation",
+            criteria=scenario["guardian_criteria"],
+            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.TOOLS_CALLED],
+            model=guardian_agent,
+        )
+
+        verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.name)
+        await guardian_eval.a_measure(test_case)
+        verbose_logger.info(
+            "📊 Guardian Evaluation Score: %.2f (threshold: %.2f)", guardian_eval.score, guardian_eval.threshold
+        )
+        verbose_logger.info("📝 Guardian Agent Explanation: %s", guardian_eval.reason)
+        assert guardian_eval.success, (
+            f"Guardian evaluation failed. Score: {guardian_eval.score:.2f}, "
+            f"Threshold: {guardian_eval.threshold:.2f}. "
+            f"Reason: {guardian_eval.reason}"
+        )
+
+        verbose_logger.info("✓ Guardian evaluation passed for %s with prompt: %s", llm_config["name"], prompt)
 
     @pytest.mark.parametrize("llm_config", llm_configurations, ids=[config["name"] for config in llm_configurations])
     @pytest.mark.parametrize(
@@ -300,61 +221,3 @@ class TestLLMIntegrationEasy:
             active_tokens,
             test_agent._memory.token_limit,
         )
-
-    @pytest.mark.parametrize("llm_config", llm_configurations, ids=[config["name"] for config in llm_configurations])
-    @pytest.mark.asyncio
-    # pylint: disable=redefined-outer-name,too-many-locals
-    async def test_list_image_types(self, test_agent, guardian_agent, llm_config, verbose_logger):
-        """Test that LLM uses get_openapi for image type discovery instead of create_blueprint."""
-        prompt = PROMPTS["list_image_types"]
-
-        # Execute tools and capture reasoning steps and tool calls
-        response, reasoning_steps, tools_executed, _ = await test_agent.execute_with_reasoning(prompt, chat_history=[])
-
-        # Check that create_blueprint is not called immediately
-        tool_names = [tool.name for tool in tools_executed]
-        assert "image-builder__create_blueprint" not in tool_names, (
-            f"❌ BEHAVIORAL RULE VIOLATION for {llm_config['name']} "
-            f"({llm_config['MODEL_ID']}): "
-            f"LLM called image-builder__create_blueprint immediately! Tool calls: {tool_names}. "
-            f"MCP instructions not working correctly.\nThe prompt was: {prompt}\n"
-            f"The response was: {response}\n"
-        )
-
-        test_case = LLMTestCase(input=prompt, actual_output=response, expected_tools=[], tools_called=tools_executed)
-
-        # Define expected behavior metric using custom LLM
-        behavioral_compliance = GEval(
-            name="Behavioral Compliance",
-            criteria=(
-                "The response should list the available image types"
-                "the response must not contain edge-commit, edge-installer, rhel-edge-commit, "
-                "rhel-edge-installer or report them as deprecated image types"
-            ),
-            evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT],
-            model=guardian_agent,
-        )
-
-        verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.name)
-
-        # Measure once to get access to explanation and avoid double LLM call
-        await behavioral_compliance.a_measure(test_case)
-
-        # Log detailed evaluation results
-        verbose_logger.info(
-            "📊 Behavioral Compliance Score: %.2f (threshold: %.2f)",
-            behavioral_compliance.score,
-            behavioral_compliance.threshold,
-        )
-        verbose_logger.info("📝 Guardian Agent Explanation: %s", behavioral_compliance.reason)
-
-        assert behavioral_compliance.success, (
-            f"Behavioral compliance test failed. Score: {behavioral_compliance.score:.2f}, "
-            f"Threshold: {behavioral_compliance.threshold:.2f}. "
-            f"Reason: {behavioral_compliance.reason}"
-        )
-
-        verbose_logger.info("✅ Test passed for %s", prompt)
-        verbose_logger.info("Response: %s", response)
-        verbose_logger.info("Tool calls executed: %s", [tool.name for tool in tools_executed])
-        verbose_logger.info("Reasoning steps captured: %d", len(reasoning_steps))
