@@ -1,9 +1,9 @@
-"""Unit tests for tests.deepeval_support.tracing helpers."""
+"""Unit tests for mcp_llm_eval.tracing helpers."""
 
 import pytest
 from deepeval.test_case import ToolCall
 
-from tests.deepeval_support.tracing import (
+from mcp_llm_eval.tracing import (
     WorkflowToolCallCollector,
     tools_called_from_agent_output,
     tools_called_from_agent_run,

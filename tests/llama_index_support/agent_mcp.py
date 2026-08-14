@@ -23,7 +23,7 @@ from instrumentation_tests.mcp_jsonrpc import (
     fetch_mcp_instructions_http,
     fetch_mcp_instructions_stdio,
 )
-from tests.deepeval_support.tracing import WorkflowToolCallCollector, tools_called_from_agent_run
+from mcp_llm_eval.tracing import WorkflowToolCallCollector, tools_called_from_agent_run
 
 # Align with OpenAILike context_window in initialize(). Large enough for tool results + follow-up turns.
 _LLM_CONTEXT_TOKEN_LIMIT = 16384
@@ -125,7 +125,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
     """MCP agent harness for behavioral LLM tests.
 
     Multi-turn history uses LlamaIndex ``Memory`` (``agent.run(..., memory=...)``).
-    Tool calls are recorded from workflow stream events (``tests.deepeval_support.tracing``).
+    Tool calls are recorded from workflow stream events (``mcp_llm_eval.tracing``).
     """
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
