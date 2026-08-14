@@ -45,20 +45,20 @@ PROMPTS = PromptRegistry(
         ),
         forbidden_tools=("image-builder__create_blueprint",),
     ),
-    complete_conversation_flow=(
-        "Can you help me understand what blueprints are available?",
-        ("image-builder__get_blueprints",),
+    complete_conversation_flow=PromptWithTools(
+        turns=("Can you help me understand what blueprints are available?",),
+        expected_tools=("image-builder__get_blueprints",),
     ),
-    list_recent_builds=(
-        "List all my recent builds",
-        ("image-builder__get_composes",),
+    list_recent_builds=PromptWithTools(
+        turns=("List all my recent builds",),
+        expected_tools=("image-builder__get_composes",),
     ),
-    what_blueprints=(
-        "What blueprints do I have?",
-        ("image-builder__get_blueprints",),
+    what_blueprints=PromptWithTools(
+        turns=("What blueprints do I have?",),
+        expected_tools=("image-builder__get_blueprints",),
     ),
-    show_blueprints=(
-        "Please show my blueprints",
-        ("image-builder__get_blueprints",),
+    show_blueprints=PromptWithTools(
+        turns=("Please show my blueprints",),
+        expected_tools=("image-builder__get_blueprints",),
     ),
 )

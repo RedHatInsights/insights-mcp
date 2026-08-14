@@ -11,16 +11,19 @@ from insights_mcp.test_prompts_data import (
 from tests.llm_prompt_catalog import TOOLSET_PROMPT_MODULES, load_registry
 
 
-def test_shorthand_and_prompt_with_tools() -> None:
+def test_prompt_with_tools_and_templates() -> None:
     registry = PromptRegistry(
-        simple=("List hosts", ("inventory__list_hosts",)),
+        simple=PromptWithTools(
+            turns=("List hosts",),
+            expected_tools=("inventory__list_hosts",),
+        ),
         multi=PromptWithTools(
             turns=("First turn", "Second turn"),
             expected_tools=("image-builder__get_blueprints",),
         ),
-        templated=(
-            "CVE {cve_id} on {system_id}",
-            ("vulnerability__get_cve",),
+        templated=PromptWithTools(
+            turns=("CVE {cve_id} on {system_id}",),
+            expected_tools=("vulnerability__get_cve",),
         ),
     )
     scenarios = registry.iter_test_scenarios("vulnerability")
@@ -31,24 +34,45 @@ def test_shorthand_and_prompt_with_tools() -> None:
 
 
 def test_collect_markdown_uses_examples() -> None:
-    registry = PromptRegistry(cve_systems=("Affected by {cve_id}", ("vulnerability__get_cve",)))
+    registry = PromptRegistry(
+        cve_systems=PromptWithTools(
+            turns=("Affected by {cve_id}",),
+            expected_tools=("vulnerability__get_cve",),
+        ),
+    )
     prompts = collect_markdown_prompts(registry)
     assert prompts == [format_template_for_markdown("Affected by {cve_id}")]
 
 
 def test_collect_markdown_prompts_deduplicates() -> None:
     registry = PromptRegistry(
-        first=("Same text", ("svc__a",)),
-        second=("Same text", ("svc__b",), "tool test"),
-        third=("Other", ("svc__c",)),
+        first=PromptWithTools(
+            turns=("Same text",),
+            expected_tools=("svc__a",),
+        ),
+        second=PromptWithTools(
+            turns=("Same text",),
+            expected_tools=("svc__b",),
+        ),
+        third=PromptWithTools(
+            turns=("Other",),
+            expected_tools=("svc__c",),
+        ),
     )
     assert collect_markdown_prompts(registry) == ["Same text", "Other"]
 
 
 def test_tool_usage_scenarios() -> None:
     registry = PromptRegistry(
-        example=("Hello", ("svc__tool",)),
-        tool_case=("Run tool", ("svc__tool",), "uses tool"),
+        example=PromptWithTools(
+            turns=("Hello",),
+            expected_tools=("svc__tool",),
+        ),
+        tool_case=PromptWithTools(
+            turns=("Run tool",),
+            expected_tools=("svc__tool",),
+            description="uses tool",
+        ),
     )
     assert registry["example"] == "Hello"
     assert registry.example == "Hello"
@@ -77,13 +101,13 @@ def test_turns_for_multi_turn() -> None:
 
 
 def test_registry_rejects_entry_without_tools() -> None:
-    with pytest.raises(ValueError, match="expected_tools must be non-empty"):
-        PromptRegistry(empty_tools=("prompt", ()))
-
-
-def test_registry_rejects_invalid_entry() -> None:
-    with pytest.raises(ValueError, match="invalid prompt entry"):
-        PromptRegistry(bad=("only", "two"))  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="expected_tools must contain at least one"):
+        PromptRegistry(
+            empty_tools=PromptWithTools(
+                turns=("prompt",),
+                expected_tools=(),
+            ),
+        )
 
 
 def test_registry_requires_entries() -> None:
@@ -94,6 +118,5 @@ def test_registry_requires_entries() -> None:
 @pytest.mark.parametrize("toolset,module_name", TOOLSET_PROMPT_MODULES)
 def test_all_toolset_prompts_declare_expected_tools(toolset: str, module_name: str) -> None:
     registry = load_registry(module_name)
-    registry.validate_all_have_expected_tools()
     for scenario in registry.iter_test_scenarios(toolset):
         assert scenario.expected_tools
