@@ -9,6 +9,19 @@ import sys
 from pathlib import Path
 from typing import Any
 
+# Doc-only examples for generated test_prompts.md (never used at test runtime).
+MARKDOWN_PLACEHOLDER_EXAMPLES: dict[str, str] = {
+    "cve_id": "CVE-2024-1234",
+    "system_id": "12345678-1234-1234-1234-123456789abc",
+    "host_id": "12345678-1234-1234-1234-123456789abc",
+    "hostname": "web-server-prod-01",
+    "host_ids": "12345678-1234-1234-1234-123456789abc, 87654321-4321-4321-4321-ba9876543210",
+    "rule_id": "network_firewall_zone_drift_enabled|ENABLE_FIREWALL_ZONE_DRIFTING_WARN",
+    "workspace": "your_workspace",
+    "satellite_tag": "lifecycle_environment=Prod",
+    "rbac_username": "john.doe",
+}
+
 
 def _load_prompt_module(module_name: str) -> Any:
     from insights_mcp.test_prompts_data import PromptRegistry
@@ -44,7 +57,7 @@ def main() -> int:
     from insights_mcp.test_prompts_markdown import format_bullet_prompts
 
     module = _load_prompt_module(args.module)
-    prompt_texts = collect_markdown_prompts(module.PROMPTS)
+    prompt_texts = collect_markdown_prompts(module.PROMPTS, MARKDOWN_PLACEHOLDER_EXAMPLES)
     markdown = format_bullet_prompts(module.TOOLSET_TITLE, prompt_texts)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)

@@ -40,8 +40,9 @@ def test_collect_markdown_uses_examples() -> None:
             expected_tools=("vulnerability__get_cve",),
         ),
     )
-    prompts = collect_markdown_prompts(registry)
-    assert prompts == [format_template_for_markdown("Affected by {cve_id}")]
+    examples = {"cve_id": "CVE-1"}
+    prompts = collect_markdown_prompts(registry, examples)
+    assert prompts == [format_template_for_markdown("Affected by {cve_id}", examples)]
 
 
 def test_collect_markdown_prompts_deduplicates() -> None:
@@ -59,7 +60,7 @@ def test_collect_markdown_prompts_deduplicates() -> None:
             expected_tools=("svc__c",),
         ),
     )
-    assert collect_markdown_prompts(registry) == ["Same text", "Other"]
+    assert collect_markdown_prompts(registry, {}) == ["Same text", "Other"]
 
 
 def test_tool_usage_scenarios() -> None:

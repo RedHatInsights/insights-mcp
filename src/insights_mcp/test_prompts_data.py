@@ -9,19 +9,6 @@ from typing import Any
 
 _PLACEHOLDER_PATTERN = re.compile(r"\{(\w+)\}")
 
-# Doc-only examples for generated test_prompts.md (never used at test runtime).
-MARKDOWN_PLACEHOLDER_EXAMPLES: dict[str, str] = {
-    "cve_id": "CVE-2024-1234",
-    "system_id": "12345678-1234-1234-1234-123456789abc",
-    "host_id": "12345678-1234-1234-1234-123456789abc",
-    "hostname": "web-server-prod-01",
-    "host_ids": ("12345678-1234-1234-1234-123456789abc, 87654321-4321-4321-4321-ba9876543210"),
-    "rule_id": "network_firewall_zone_drift_enabled|ENABLE_FIREWALL_ZONE_DRIFTING_WARN",
-    "workspace": "your_workspace",
-    "satellite_tag": "lifecycle_environment=Prod",
-    "rbac_username": "john.doe",
-}
-
 
 @dataclass(frozen=True)
 class PromptWithTools:
@@ -153,31 +140,22 @@ class PromptRegistry:
         ]
 
 
-def format_template_for_markdown(template: str) -> str:
+def format_template_for_markdown(template: str, placeholder_examples: dict[str, str]) -> str:
     """Render *template* with doc-only placeholder examples for markdown output."""
     formatter = Formatter()
     try:
-        return formatter.vformat(template, (), _MarkdownExampleMapping())
+        return formatter.vformat(template, (), placeholder_examples)
     except KeyError:
         return template
 
 
-class _MarkdownExampleMapping(dict[str, str]):
-    """Mapping that supplies MARKDOWN_PLACEHOLDER_EXAMPLES for missing keys."""
-
-    def __missing__(self, key: str) -> str:
-        if key in MARKDOWN_PLACEHOLDER_EXAMPLES:
-            return MARKDOWN_PLACEHOLDER_EXAMPLES[key]
-        raise KeyError(key)
-
-
-def collect_markdown_prompts(registry: PromptRegistry) -> list[str]:
+def collect_markdown_prompts(registry: PromptRegistry, placeholder_examples: dict[str, str]) -> list[str]:
     """Return deduplicated prompt texts in registry order (doc examples for placeholders)."""
     texts: list[str] = []
     seen: set[str] = set()
     for record in registry._records:
         for turn in record.template_turns:
-            display = format_template_for_markdown(turn)
+            display = format_template_for_markdown(turn, placeholder_examples)
             if display not in seen:
                 texts.append(display)
                 seen.add(display)
