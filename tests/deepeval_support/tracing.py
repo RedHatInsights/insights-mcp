@@ -6,22 +6,13 @@ from deepeval.test_case import ToolCall
 from deepeval.tracing.tracing import trace_manager
 from deepeval.tracing.types import BaseSpan, ToolSpan
 from deepeval.tracing.utils import prepare_tool_call_input_parameters
-
-try:
-    from llama_index.core.agent.workflow.workflow_events import (
-        AgentOutput,
-    )
-    from llama_index.core.agent.workflow.workflow_events import (
-        ToolCall as WorkflowToolCallEvent,
-    )
-except ImportError:
-    AgentOutput = None  # type: ignore[misc, assignment]
-    WorkflowToolCallEvent = None  # type: ignore[misc, assignment]
+from llama_index.core.agent.workflow.workflow_events import AgentOutput
+from llama_index.core.agent.workflow.workflow_events import ToolCall as WorkflowToolCallEvent
 
 
 def tool_call_from_workflow_event(event: Any) -> ToolCall | None:
     """Build a DeepEval ``ToolCall`` from a LlamaIndex workflow ``ToolCall`` event."""
-    if WorkflowToolCallEvent is None or not isinstance(event, WorkflowToolCallEvent):
+    if not isinstance(event, WorkflowToolCallEvent):
         return None
     return ToolCall(
         name=event.tool_name,
@@ -56,7 +47,7 @@ class WorkflowToolCallCollector:
 
 def tools_called_from_agent_output(response: Any) -> list[ToolCall]:
     """Map ``AgentOutput.tool_calls`` to DeepEval ``ToolCall`` instances."""
-    if AgentOutput is None or not isinstance(response, AgentOutput):
+    if not isinstance(response, AgentOutput):
         return []
     tool_calls: list[ToolCall] = []
     for selection in response.tool_calls or []:
