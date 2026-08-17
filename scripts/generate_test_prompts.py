@@ -9,6 +9,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
+# The prompt registries use the test-only mcp_llm_eval package. Keep this script
+# runnable directly without requiring callers to configure PYTHONPATH.
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPOSITORY_ROOT / "tests"))
+
 # Doc-only examples for generated test_prompts.md (never used at test runtime).
 MARKDOWN_PLACEHOLDER_EXAMPLES: dict[str, str] = {
     "cve_id": "CVE-2024-1234",
@@ -24,7 +29,7 @@ MARKDOWN_PLACEHOLDER_EXAMPLES: dict[str, str] = {
 
 
 def _load_prompt_module(module_name: str) -> Any:
-    from insights_mcp.test_prompts_data import PromptRegistry
+    from mcp_llm_eval.data import PromptRegistry
 
     module = importlib.import_module(module_name)
     if not hasattr(module, "TOOLSET_TITLE"):
@@ -53,7 +58,8 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    from insights_mcp.test_prompts_data import collect_markdown_prompts
+    from mcp_llm_eval.data import collect_markdown_prompts
+
     from insights_mcp.test_prompts_markdown import format_bullet_prompts
 
     module = _load_prompt_module(args.module)

@@ -1,13 +1,13 @@
 """Unit tests for test prompt registry helpers."""
 
 import pytest
-
-from insights_mcp.test_prompts_data import (
+from mcp_llm_eval.data import (
     PromptRegistry,
     PromptWithTools,
     collect_markdown_prompts,
     format_template_for_markdown,
 )
+
 from tests.llm_prompt_catalog import TOOLSET_PROMPT_MODULES, load_registry
 
 

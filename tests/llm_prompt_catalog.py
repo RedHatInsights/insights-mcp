@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib
 
-from insights_mcp.test_prompts_data import PromptRegistry
+from mcp_llm_eval.data import PromptRegistry
 
 TOOLSET_PROMPT_MODULES: list[tuple[str, str]] = [
     ("image-builder", "image_builder_mcp.test_prompts"),

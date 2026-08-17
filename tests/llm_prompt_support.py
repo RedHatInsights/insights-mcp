@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from insights_mcp.test_prompts_data import PromptRegistry, PromptTestScenario
+from mcp_llm_eval.data import PromptRegistry, PromptTestScenario
 from tests.utils import load_llm_configurations, should_skip_insights_llm_tests, should_skip_llm_matrix_tests
 
 if TYPE_CHECKING:
