@@ -3,14 +3,14 @@ This includes more difficult questions to the LLM
 """
 
 import pytest
-from mcp_llm_eval.deepeval_support.judges import build_test_case, evaluate_tool_correctness, evaluate_behavioral
-
-from image_builder_mcp.test_prompts import PROMPTS
-from tests.utils import (
+from mcp_llm_eval.deepeval_support.judges import build_test_case, evaluate_behavioral, evaluate_tool_correctness
+from mcp_llm_eval.utils import (
     load_llm_configurations,
-    should_skip_insights_llm_tests,
     should_skip_llm_matrix_tests,
 )
+
+from image_builder_mcp.test_prompts import PROMPTS
+from tests.utils import should_skip_insights_llm_tests
 
 # Load LLM configurations for parametrization
 llm_configurations, _ = load_llm_configurations()

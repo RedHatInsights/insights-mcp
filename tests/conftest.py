@@ -11,8 +11,10 @@ import pytest
 import pytest_asyncio
 
 # pylint: disable=wrong-import-position
-from deepeval.models import GPTModel
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
+from mcp_llm_eval.llama_index_support.agent_mcp import MCPAgentWrapper
+from mcp_llm_eval.llm_tracing import enable_llm_test_tracing
+from mcp_llm_eval.utils import gpt_model_from_config, load_llm_configurations
 
 # Add imports for mock client creation
 from insights_mcp.client import InsightsClient, build_mounted_tool_names
@@ -25,22 +27,9 @@ from insights_mcp.config import (
 )
 from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 from tests import oauth_utils as oauth_utils_module
-from mcp_llm_eval.llama_index_support.agent_mcp import MCPAgentWrapper
-from mcp_llm_eval.llm_tracing import enable_llm_test_tracing
-from tests.utils import load_llm_configurations
 
 # Prevent Python 3.14 event loop corruption caused by deepeval calling nest_asyncio.apply()
 nest_asyncio.apply = lambda: None
-
-
-def gpt_model_from_config(config: dict[str, str]) -> GPTModel:
-    """Build deepeval GPTModel for OpenAI-compatible endpoints from test config."""
-    return GPTModel(
-        model=config["MODEL_ID"],
-        base_url=config["MODEL_API"],
-        api_key=config["USER_KEY"],
-        temperature=0,
-    )
 
 
 # Load LLM configurations for fixtures

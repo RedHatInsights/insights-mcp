@@ -3,9 +3,9 @@
 import os
 
 import pytest
+from mcp_llm_eval.utils import load_llm_configurations, should_skip_llm_matrix_tests
 
 from insights_mcp.tool_tokens import all_tools_mode, build_catalog_rows, resolve_encoding
-from tests.utils import load_llm_configurations, should_skip_llm_matrix_tests
 
 llm_configurations, _ = load_llm_configurations()
 

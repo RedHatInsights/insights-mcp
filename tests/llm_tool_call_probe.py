@@ -25,8 +25,7 @@ from typing import Any
 
 import pytest
 import requests
-
-from tests.utils import load_llm_configurations, should_skip_llm_matrix_tests
+from mcp_llm_eval.utils import load_llm_configurations, should_skip_llm_matrix_tests
 
 PROBE_TOOL_NAME = "image-builder__get_blueprints"
 PROBE_USER_MESSAGE = "List my latest 2 blueprints"

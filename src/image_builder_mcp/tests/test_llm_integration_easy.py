@@ -7,14 +7,14 @@ import pytest
 from deepeval.test_case import LLMTestCase, ToolCall
 from mcp_llm_eval.deepeval_support.judges import build_test_case, evaluate_compliance, evaluate_tool_correctness
 from mcp_llm_eval.llm_prompt_support import assert_no_forbidden_tool
-
-from image_builder_mcp.test_prompts import PROMPTS
-from tests.utils import (
+from mcp_llm_eval.utils import (
     load_llm_configurations,
     pretty_print_chat_history,
-    should_skip_insights_llm_tests,
     should_skip_llm_matrix_tests,
 )
+
+from image_builder_mcp.test_prompts import PROMPTS
+from tests.utils import should_skip_insights_llm_tests
 
 GUARDIAN_SCENARIOS = PROMPTS.guardian_scenarios()
 TOOL_USAGE_SCENARIOS = PROMPTS.tool_usage_scenarios(exclude={s["prompt_id"] for s in GUARDIAN_SCENARIOS})
