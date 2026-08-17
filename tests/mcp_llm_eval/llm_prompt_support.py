@@ -1,8 +1,11 @@
 """Shared helpers for per-toolset LLM prompt integration tests."""
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
+
 import pytest
+from deepeval.test_case import ToolCall
 from mcp_llm_eval.data import PromptTestScenario
 
 if TYPE_CHECKING:
@@ -33,9 +36,22 @@ async def run_scenario_turns(
     return response, all_tools
 
 
-def assert_at_least_one_expected_tool(tools_executed: list[Any], expected_tools: tuple[str, ...]) -> None:
+def _tool_names(tools: list[ToolCall]) -> set[str]:
+    """Convert a list of ToolCalls to a set of their names."""
+    return {tool.name for tool in tools}
+
+
+def assert_at_least_one_expected_tool(tools_executed: list[ToolCall], expected_tools: tuple[str, ...]) -> None:
     """Assert at least one *expected_tools* name appears in *tools_executed*."""
-    actual_names = {getattr(tool, "name", str(tool)) for tool in tools_executed}
-    if any(expected in actual_names for expected in expected_tools):
-        return
-    raise AssertionError(f"expected at least one of {list(expected_tools)!r}, got tool calls: {sorted(actual_names)!r}")
+    names = _tool_names(tools_executed)
+    assert any(expected in names for expected in expected_tools), (
+        f"expected at least one of {list(expected_tools)}, got tool calls: {sorted(names)}"
+    )
+
+
+def assert_no_forbidden_tool(tools_executed: list[ToolCall], forbidden_tools: tuple[str, ...]) -> None:
+    """Assert no *forbidden_tools* name appears in *tools_executed*."""
+    names = _tool_names(tools_executed)
+    assert not any(expected in names for expected in forbidden_tools), (
+        f"forbidden tools called: {sorted(names & set(forbidden_tools))}"
+    )

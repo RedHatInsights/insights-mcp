@@ -3,9 +3,7 @@ This includes more difficult questions to the LLM
 """
 
 import pytest
-from deepeval.evaluate import assert_test
-from deepeval.metrics import GEval, ToolCorrectnessMetric
-from deepeval.test_case import LLMTestCase, LLMTestCaseParams, ToolCall
+from mcp_llm_eval.deepeval_support.judges import build_test_case, evaluate_tool_correctness, evaluate_behavioral
 
 from image_builder_mcp.test_prompts import PROMPTS
 from tests.utils import (
@@ -36,35 +34,22 @@ class TestLLMIntegrationHard:
 
         response, _, tools_executed, _ = await test_agent.execute_with_reasoning(prompt, chat_history=[])
 
-        expected_tools = [ToolCall(name="image-builder__get_blueprints")]
+        test_case = build_test_case(prompt, response, tools_executed, ["image-builder__get_blueprints"])
 
-        test_case = LLMTestCase(
-            input=prompt, actual_output=response, tools_called=tools_executed, expected_tools=expected_tools
-        )
+        await evaluate_tool_correctness(test_case, guardian_agent, verbose_logger)
 
         # Define conversation flow metric using custom LLM
-        conversation_quality = GEval(
-            name="Conversation Flow Quality",
-            criteria=(
+        await evaluate_behavioral(
+            test_case,
+            (
                 "The conversation should demonstrate proper agent behavior:\n"
                 "1. Understanding user intent\n"
                 "2. Using appropriate tools to gather information or providing helpful and informative responses\n"
                 "3. The 'content' of the conversation contains only json then this is considered a failure\n"
                 "4. Take care that tool calls are properly part of a 'tool_call' object\n"
             ),
-            evaluation_params=[
-                LLMTestCaseParams.INPUT,
-                LLMTestCaseParams.ACTUAL_OUTPUT,
-                LLMTestCaseParams.TOOLS_CALLED,
-            ],
-            model=guardian_agent,
+            guardian_agent,
+            verbose_logger,
         )
-
-        # Add a strict tool correctness check to fail when expected tools are not called
-        tool_correctness = ToolCorrectnessMetric(threshold=0.6, model=guardian_agent)
-
-        verbose_logger.info("🤔 Checking response with guardian agent %s…", guardian_agent.name)
-        # Evaluate with deepeval metrics
-        assert_test(test_case, [conversation_quality, tool_correctness], run_async=False)
 
         verbose_logger.info("✓ Complete conversation flow test passed for %s", llm_config["name"])
