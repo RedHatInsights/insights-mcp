@@ -8,12 +8,8 @@ import requests
 # Used by MCP HTTP transport (JSON-RPC and SSE payloads).
 DEFAULT_JSON_HEADERS = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
 
-# Claude Code truncates MCP server instructions at 2 KiB; keep initialize payloads within this budget.
-MCP_INSTRUCTIONS_RECOMMENDED_MAX_LEN = 2048
-
 __all__ = [
     "DEFAULT_JSON_HEADERS",
-    "MCP_INSTRUCTIONS_RECOMMENDED_MAX_LEN",
     "create_mcp_init_request",
     "fetch_mcp_instructions_http",
     "fetch_mcp_instructions_stdio",

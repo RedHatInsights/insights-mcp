@@ -25,7 +25,7 @@ from insights_mcp.config import (
 )
 from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 from tests import oauth_utils as oauth_utils_module
-from tests.llama_index_support.agent_mcp import MCPAgentWrapper
+from mcp_llm_eval.llama_index_support.agent_mcp import MCPAgentWrapper
 from mcp_llm_eval.llm_tracing import enable_llm_test_tracing
 from tests.utils import load_llm_configurations
 
@@ -89,6 +89,8 @@ async def test_agent(mcp_server_url, verbose_logger, request):  # pylint: disabl
         api_key=llm_config["USER_KEY"],
         verbose_logger=verbose_logger,
         mcp_http_headers=_insights_mcp_http_headers(),
+        stdio_command="python",
+        stdio_args=["-m", "insights_mcp.server", "stdio"],
     )
     verbose_logger.info("🧪 Testing the model: %s", agent.model_id)
 

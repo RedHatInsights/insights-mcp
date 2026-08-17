@@ -10,7 +10,7 @@ from mcp_llm_eval.data import PromptRegistry, PromptTestScenario
 from tests.utils import load_llm_configurations, should_skip_insights_llm_tests, should_skip_llm_matrix_tests
 
 if TYPE_CHECKING:
-    from tests.llama_index_support.agent_mcp import MCPAgentWrapper
+    from mcp_llm_eval.llama_index_support.agent_mcp import MCPAgentWrapper
 
 _LLM_CONFIGURATIONS, _ = load_llm_configurations()
 

@@ -1,6 +1,6 @@
 """Unit tests for MCPAgentWrapper helpers."""
 
-from tests.llama_index_support.agent_mcp import format_user_message_with_mcp_instructions
+from mcp_llm_eval.llama_index_support.agent_mcp import format_user_message_with_mcp_instructions
 
 
 def test_format_user_message_with_mcp_instructions_empty_instructions():

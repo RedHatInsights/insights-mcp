@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 import requests
 
-# HTTP MCP init probe (same contract as instrumentation_tests.mcp_jsonrpc).
+# HTTP MCP init probe (same contract as mcp_llm_eval.mcp_jsonrpc).
 _MCP_JSON_HEADERS = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
 
 

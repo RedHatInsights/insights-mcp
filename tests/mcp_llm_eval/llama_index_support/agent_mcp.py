@@ -7,32 +7,25 @@ from typing import Any, Optional, Sequence, cast
 
 import httpx
 from llama_index.core.agent.workflow.function_agent import FunctionAgent
-from llama_index.core.agent.workflow.workflow_events import AgentOutput
+from llama_index.core.agent.workflow.workflow_events import AgentOutput, AgentWorkflowStartEvent
 from llama_index.core.base.llms.types import ChatResponse, ToolCallBlock
 from llama_index.core.llms import ChatMessage
 from llama_index.core.llms.function_calling import FunctionCallingLLM
 from llama_index.core.memory import Memory
 from llama_index.core.storage.chat_store.sql import MessageStatus
-from llama_index.core.tools import AsyncBaseTool, BaseTool
+from llama_index.core.tools import AsyncBaseTool, FunctionTool
 from llama_index.core.workflow import Context
 from llama_index.llms.openai_like import OpenAILike
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 from mcp.shared._httpx_utils import create_mcp_http_client
-
-from instrumentation_tests.mcp_jsonrpc import (
-    fetch_mcp_instructions_http,
-    fetch_mcp_instructions_stdio,
-)
-from mcp_llm_eval.tracing import WorkflowToolCallCollector, tools_called_from_agent_run
+from mcp_llm_eval.deepeval_support.tracing import WorkflowToolCallCollector, tools_called_from_agent_run
+from mcp_llm_eval.mcp_jsonrpc import fetch_mcp_instructions_http, fetch_mcp_instructions_stdio
 
 # Align with OpenAILike context_window in initialize(). Large enough for tool results + follow-up turns.
 _LLM_CONTEXT_TOKEN_LIMIT = 16384
 
 _MCP_INSTRUCTIONS_HEADER = "## MCP server instructions"
 _USER_REQUEST_HEADER = "## User request"
-
-_STDIO_MCP_COMMAND = "python"
-_STDIO_MCP_ARGS = ["-m", "insights_mcp.server", "stdio"]
 
 
 def format_user_message_with_mcp_instructions(user_msg: str, mcp_instructions: str) -> str:
@@ -124,8 +117,10 @@ class ToolRequiredFunctionAgent(FunctionAgent):
 class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
     """MCP agent harness for behavioral LLM tests.
 
-    Multi-turn history uses LlamaIndex ``Memory`` (``agent.run(..., memory=...)``).
-    Tool calls are recorded from workflow stream events (``mcp_llm_eval.tracing``).
+    Multi-turn history uses LlamaIndex ``Memory``. The wrapper creates an
+    ``AgentWorkflowStartEvent`` for each turn and passes it to
+    ``agent.run(ctx=..., start_event=...)``. Tool calls are recorded from
+    workflow stream events (``mcp_llm_eval.deepeval_support.tracing``).
     """
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -135,26 +130,30 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         api_url: str,
         model_id: str,
         api_key: str,
-        verbose_logger: Optional[logging.Logger] = None,
-        mcp_http_headers: Optional[dict[str, str]] = None,
+        verbose_logger: logging.Logger | None = None,
+        mcp_http_headers: dict[str, str] | None = None,
+        stdio_command: str | None = None,
+        stdio_args: list[str] | None = None,
     ):  # pylint: disable=too-many-instance-attributes
         self.server_url = server_url
         self.mcp_http_headers = mcp_http_headers
         self.api_url = api_url
         self.model_id = model_id
         self.api_key = api_key
-        self.tools: Optional[list[BaseTool]] = []
+        self.tools: list[FunctionTool] | None = []
         self.mcp_instructions = ""
-        self.agent: Optional[FunctionAgent] = None
-        self.context: Optional[Context] = None
+        self._stdio_command = stdio_command
+        self._stdio_args = stdio_args or []
+        self.agent: FunctionAgent | None = None
+        self.context: Context | None = None
 
         self._session_id = str(uuid.uuid4())
-        self._memory: Optional[Memory] = None
+        self._memory: Memory | None = None
         self._step_names: list[str] = []
-        self._mcp_client: Optional[BasicMCPClient] = None
-        self._llm_http_client: Optional[httpx.AsyncClient] = None
+        self._mcp_client: BasicMCPClient | None = None
+        self._llm_http_client: httpx.AsyncClient | None = None
         self._initialized = False
-        self.llama_llm: Optional[OpenAILike] = None
+        self.llama_llm: OpenAILike | None = None
 
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
@@ -196,7 +195,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             await aclient.close()
         elif self._llm_http_client is not None:
             await self._llm_http_client.aclose()
-        if self._mcp_client is not None:
+        if self._mcp_client is not None and self._mcp_client.http_client is not None:
             await self._mcp_client.http_client.aclose()
         self._llm_http_client = None
         self._mcp_client = None
@@ -219,7 +218,9 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         """Initialize MCP tools using LlamaIndex MCP support."""
         try:
             if self.server_url == "stdio":
-                mcp_client = BasicMCPClient(_STDIO_MCP_COMMAND, args=_STDIO_MCP_ARGS)
+                if not self._stdio_command:
+                    raise ValueError("stdio_command is required when server_url is 'stdio'")
+                mcp_client = BasicMCPClient(self._stdio_command, args=self._stdio_args)
             else:
                 mcp_http_client = create_mcp_http_client(headers=self.mcp_http_headers)
                 mcp_client = BasicMCPClient(self.server_url, http_client=mcp_http_client)
@@ -242,7 +243,8 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         """Load MCP ``initialize`` instructions for HTTP, SSE, or stdio transports."""
         try:
             if self.server_url == "stdio":
-                return await fetch_mcp_instructions_stdio(_STDIO_MCP_COMMAND, _STDIO_MCP_ARGS)
+                assert self._stdio_command is not None
+                return await fetch_mcp_instructions_stdio(self._stdio_command, self._stdio_args)
             if self.server_url.startswith("http"):
                 return fetch_mcp_instructions_http(self.server_url, headers=self.mcp_http_headers)
         except Exception as exc:  # pylint: disable=broad-exception-caught
@@ -293,11 +295,12 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             tool_collector.clear()
             self._step_names = []
 
-            handler = self.agent.run(
-                user_msg=agent_user_msg,
-                ctx=self.context,
-                memory=self._memory,
-                max_iterations=max_iterations,
+            start_event = AgentWorkflowStartEvent(
+                user_msg=agent_user_msg, memory=self._memory, max_iterations=max_iterations
+            )
+            # the deprecated function is a more generic overload, non-deprecated overload is used during runtime
+            handler = self.agent.run(  # type: ignore[deprecated]
+                ctx=self.context, start_event=start_event
             )
 
             async def _stream_events() -> None:
