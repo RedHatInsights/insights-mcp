@@ -1,0 +1,19 @@
+name: "Red Hat Lightspeed Marketplace"
+description: "Agent skills for Red Hat Lightspeed MCP — manage RHEL systems via AI assistants"
+version: "1.0.0"
+
+modules:
+  - name: "rh-lightspeed-mcp-skills"
+    description: "Agent skills for Red Hat Lightspeed MCP: setup, vulnerability management, inventory, advisor, image builder, and more"
+    version: "1.0.0"
+    repository: "https://github.com/RedHatInsights/insights-mcp.git"
+    path: ".agents"
+    tags:
+      - "red-hat"
+      - "lightspeed"
+      - "rhel"
+      - "mcp"
+      - "vulnerability"
+      - "inventory"
+      - "advisor"
+      - "image-builder"
