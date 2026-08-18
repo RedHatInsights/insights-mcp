@@ -22,6 +22,7 @@ metadata:
     jira/project-key: HMS
     feedback/host: https://redhat.atlassian.net
     feedback/email-to: rh-lightspeed-mcp@redhat.com
+    rhai/velocity-id: V1949
 
   links:
     - url: https://github.com/RedHatInsights/insights-mcp/blob/main/README.md
