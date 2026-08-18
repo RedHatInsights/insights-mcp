@@ -66,16 +66,3 @@ class TestLLMIntegrationEasy:
         )
 
         await evaluate_tool_correctness(test_case_subsequent, guardian_agent, verbose_logger)
-
-        # Paging stays under Memory token_limit; waterfall must not drop prior turns.
-        archived = await test_agent.get_archived_messages()
-        assert archived == [], (
-            f"Memory archived {len(archived)} message(s) for {llm_config['name']}; "
-            "paging test should stay under token_limit"
-        )
-        active_tokens = await test_agent.get_active_memory_token_estimate()
-        verbose_logger.info(
-            "Active memory estimate: %d tokens (limit %d)",
-            active_tokens,
-            test_agent._memory.token_limit,
-        )

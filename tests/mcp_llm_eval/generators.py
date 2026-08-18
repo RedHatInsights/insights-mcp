@@ -17,6 +17,7 @@ from mcp_llm_eval.llama_index_support.agent_mcp import MCPAgentWrapper
 from mcp_llm_eval.llm_prompt_support import (
     assert_at_least_one_expected_tool,
     assert_no_forbidden_tool,
+    assert_no_memory_overflow,
     resolve_scenario_turns,
     run_scenario_turns,
 )
@@ -66,6 +67,15 @@ def create_test_suite(toolset: str, prompts: PromptRegistry, class_name: str) ->
                 await evaluate_compliance(test_case, scenario.turn_criteria, guardian_agent, verbose_logger)
             if scenario.conversation_criteria:
                 await evaluate_behavioral(test_case, scenario.conversation_criteria, guardian_agent, verbose_logger)
+
+            if scenario.assert_no_memory_overflow:
+                await assert_no_memory_overflow(test_agent)
+                active_tokens = await test_agent.get_active_memory_token_estimate()
+                verbose_logger.info(
+                    "Active memory estimate: %d tokens (limit %d)",
+                    active_tokens,
+                    test_agent.token_limit,
+                )
 
             verbose_logger.info(
                 "✓ Guardian evaluation passed for %s/%s with prompt: %s",

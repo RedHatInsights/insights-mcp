@@ -34,6 +34,7 @@ PROMPTS = PromptRegistry(
             "Can you show me the next 3 blueprints?",
         ),
         expected_tools=("image-builder__get_blueprints",),
+        assert_no_memory_overflow=True,
     ),
     list_image_types=PromptWithTools(
         turns=("Which image types are available?",),

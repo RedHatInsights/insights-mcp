@@ -12,6 +12,15 @@ _, guardian_llm_config = load_llm_configurations()
 
 
 @pytest.fixture(scope="session")
+def mcp_memory_token_limit() -> int:
+    """Align with OpenAILike context_window in initialize(). Large enough for tool results + follow-up turns.
+
+    Override in conftest.
+    """
+    return 16384
+
+
+@pytest.fixture(scope="session")
 def mcp_http_headers() -> dict[str, str] | None:
     """HTTP headers for MCP server connections. Override in conftest."""
     return None
@@ -28,6 +37,7 @@ async def test_agent(
     mcp_server_url: str,
     mcp_http_headers: dict[str, str] | None,
     mcp_stdio_config: tuple[str, list[str]],
+    mcp_memory_token_limit: int,
     verbose_logger: logging.Logger,
     request: pytest.FixtureRequest,
 ):
@@ -44,6 +54,7 @@ async def test_agent(
         mcp_http_headers=mcp_http_headers,
         stdio_command=stdio_command,
         stdio_args=stdio_args,
+        token_limit=mcp_memory_token_limit,
     )
     verbose_logger.info("🧪 Testing the model: %s", agent.model_id)
 
@@ -76,11 +87,8 @@ def llm_test_tracing(request: pytest.FixtureRequest):
 @pytest.fixture
 def guardian_agent(verbose_logger: logging.Logger, request: pytest.FixtureRequest):  # pylint: disable=redefined-outer-name
     """Create and configure a guardian agent for evaluation."""
-    # Get llm_config from the test's parametrization
     llm_config = request.node.callspec.params["llm_config"]
 
-    # if there is a guardian LLM, use it for the guardian agent
-    # otherwise, use the test LLM for the guardian agent
     if guardian_llm_config:
         config = guardian_llm_config
     else:

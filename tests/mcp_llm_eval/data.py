@@ -18,6 +18,7 @@ class PromptWithTools:
     forbidden_tools: tuple[str, ...] = ()
     turn_criteria: str | None = None
     conversation_criteria: str | None = None
+    assert_no_memory_overflow: bool = False
 
     def __post_init__(self) -> None:
         if len(self.turns) < 1:
@@ -34,6 +35,7 @@ class _PromptRecord:
     forbidden_tools: tuple[str, ...] = ()
     turn_criteria: str | None = None
     conversation_criteria: str | None = None
+    assert_no_memory_overflow: bool = False
 
     @property
     def text(self) -> str:
@@ -58,6 +60,7 @@ class _PromptRecord:
             forbidden_tools=value.forbidden_tools,
             turn_criteria=value.turn_criteria,
             conversation_criteria=value.conversation_criteria,
+            assert_no_memory_overflow=value.assert_no_memory_overflow,
         )
 
 
@@ -73,6 +76,7 @@ class PromptTestScenario:
     forbidden_tools: tuple[str, ...] | None = None
     turn_criteria: str | None = None
     conversation_criteria: str | None = None
+    assert_no_memory_overflow: bool = False
 
     def format_turns(self, context: dict[str, str]) -> tuple[str, ...]:
         """Substitute placeholders in every turn using *context*."""
@@ -119,6 +123,7 @@ class PromptRegistry:
                 forbidden_tools=record.forbidden_tools,
                 turn_criteria=record.turn_criteria,
                 conversation_criteria=record.conversation_criteria,
+                assert_no_memory_overflow=record.assert_no_memory_overflow,
             )
             for record in self._records
         ]

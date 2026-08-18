@@ -22,9 +22,6 @@ from mcp.shared._httpx_utils import create_mcp_http_client
 from mcp_llm_eval.deepeval_support.tracing import WorkflowToolCallCollector, tools_called_from_agent_run
 from mcp_llm_eval.mcp_jsonrpc import fetch_mcp_instructions_http, fetch_mcp_instructions_stdio
 
-# Align with OpenAILike context_window in initialize(). Large enough for tool results + follow-up turns.
-_LLM_CONTEXT_TOKEN_LIMIT = 16384
-
 _MCP_INSTRUCTIONS_HEADER = "## MCP server instructions"
 _USER_REQUEST_HEADER = "## User request"
 
@@ -131,6 +128,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         api_url: str,
         model_id: str,
         api_key: str,
+        token_limit: int,
         verbose_logger: logging.Logger | None = None,
         mcp_http_headers: dict[str, str] | None = None,
         stdio_command: str | None = None,
@@ -141,6 +139,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         self.api_url = api_url
         self.model_id = model_id
         self.api_key = api_key
+        self.token_limit = token_limit
         self.tools: list[FunctionTool] | None = []
         self.mcp_instructions = ""
         self._stdio_command = stdio_command
@@ -173,7 +172,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             api_base=self.api_url,
             api_key=self.api_key,
             temperature=0.1,
-            context_window=_LLM_CONTEXT_TOKEN_LIMIT,
+            context_window=self.token_limit,
             max_tokens=1024,
             is_chat_model=True,
             is_function_calling_model=True,
@@ -183,7 +182,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         )
         self._memory = Memory.from_defaults(
             session_id=self._session_id,
-            token_limit=_LLM_CONTEXT_TOKEN_LIMIT,
+            token_limit=self.token_limit,
         )
         await self._init_mcp_tools()
         await self._setup_agent()

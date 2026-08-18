@@ -55,3 +55,9 @@ def assert_no_forbidden_tool(tools_executed: list[ToolCall], forbidden_tools: tu
     assert not any(expected in names for expected in forbidden_tools), (
         f"forbidden tools called: {sorted(names & set(forbidden_tools))}"
     )
+
+
+async def assert_no_memory_overflow(test_agent: MCPAgentWrapper) -> None:
+    """Assert the agent's memory did not archive any messages (mcp_memory_token_limit)"""
+    archived = await test_agent.get_archived_messages()
+    assert archived == [], f"memory overflow: {len(archived)} message(s) archived, conversation exceeded token limit"
