@@ -1,9 +1,10 @@
 """LLM integration tests for RBAC MCP prompts."""
 
-from rbac_mcp.test_prompts import PROMPTS
-from tests.llm_prompt_support import create_llm_prompt_test_class
+from mcp_llm_eval.generators import create_test_suite
 
-TestRbacLLMPrompts = create_llm_prompt_test_class(
+from rbac_mcp.test_prompts import PROMPTS
+
+TestRbacLLMPrompts = create_test_suite(
     "rbac",
     PROMPTS,
     "TestRbacLLMPrompts",

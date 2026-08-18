@@ -1,9 +1,10 @@
 """LLM integration tests for planning MCP prompts."""
 
-from planning_mcp.test_prompts import PROMPTS
-from tests.llm_prompt_support import create_llm_prompt_test_class
+from mcp_llm_eval.generators import create_test_suite
 
-TestPlanningLLMPrompts = create_llm_prompt_test_class(
+from planning_mcp.test_prompts import PROMPTS
+
+TestPlanningLLMPrompts = create_test_suite(
     "planning",
     PROMPTS,
     "TestPlanningLLMPrompts",

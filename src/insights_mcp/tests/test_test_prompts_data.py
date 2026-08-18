@@ -63,34 +63,6 @@ def test_collect_markdown_prompts_deduplicates() -> None:
     assert collect_markdown_prompts(registry, {}) == ["Same text", "Other"]
 
 
-def test_tool_usage_scenarios() -> None:
-    registry = PromptRegistry(
-        example=PromptWithTools(
-            turns=("Hello",),
-            expected_tools=("svc__tool",),
-        ),
-        tool_case=PromptWithTools(
-            turns=("Run tool",),
-            expected_tools=("svc__tool",),
-            description="uses tool",
-        ),
-    )
-    assert registry["example"] == "Hello"
-    assert registry.example == "Hello"
-    assert registry.tool_usage_scenarios() == [
-        {
-            "prompt": "Hello",
-            "expected_tools": ["svc__tool"],
-            "description": "",
-        },
-        {
-            "prompt": "Run tool",
-            "expected_tools": ["svc__tool"],
-            "description": "uses tool",
-        },
-    ]
-
-
 def test_turns_for_multi_turn() -> None:
     registry = PromptRegistry(
         paging=PromptWithTools(

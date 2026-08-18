@@ -6,6 +6,7 @@ import uuid
 from typing import Any, Optional, Sequence, cast
 
 import httpx
+from deepeval.test_case import ToolCall
 from llama_index.core.agent.workflow.function_agent import FunctionAgent
 from llama_index.core.agent.workflow.workflow_events import AgentOutput, AgentWorkflowStartEvent
 from llama_index.core.base.llms.types import ChatResponse, ToolCallBlock
@@ -273,7 +274,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         user_msg: str,
         chat_history: Optional[list[ChatMessage]] = None,
         max_iterations: int = 10,
-    ) -> tuple[str, list[dict[str, Any]], list[Any], list[ChatMessage]]:
+    ) -> tuple[str, list[dict[str, Any]], list[ToolCall], list[ChatMessage]]:
         """Execute agent, record tool calls and steps, return response and artifacts."""
         if not self.agent or self.llama_llm is None or self._memory is None:
             raise ValueError("Agent not initialized")

@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from string import Formatter
-from typing import Any
 
 _PLACEHOLDER_PATTERN = re.compile(r"\{(\w+)\}")
 
@@ -16,9 +15,9 @@ class PromptWithTools:
 
     turns: tuple[str, ...]
     expected_tools: tuple[str, ...]
-    description: str | None = None
-    guardian_criteria: str | None = None
     forbidden_tools: tuple[str, ...] = ()
+    turn_criteria: str | None = None
+    conversation_criteria: str | None = None
 
     def __post_init__(self) -> None:
         if len(self.turns) < 1:
@@ -32,9 +31,9 @@ class _PromptRecord:
     prompt_id: str
     template_turns: tuple[str, ...]
     expected_tools: tuple[str, ...]
-    description: str | None = None
-    guardian_criteria: str | None = None
     forbidden_tools: tuple[str, ...] = ()
+    turn_criteria: str | None = None
+    conversation_criteria: str | None = None
 
     @property
     def text(self) -> str:
@@ -56,9 +55,9 @@ class _PromptRecord:
             prompt_id=prompt_id,
             template_turns=value.turns,
             expected_tools=value.expected_tools,
-            description=value.description,
-            guardian_criteria=value.guardian_criteria,
             forbidden_tools=value.forbidden_tools,
+            turn_criteria=value.turn_criteria,
+            conversation_criteria=value.conversation_criteria,
         )
 
 
@@ -71,10 +70,18 @@ class PromptTestScenario:
     template_turns: tuple[str, ...]
     required_keys: frozenset[str]
     expected_tools: tuple[str, ...]
+    forbidden_tools: tuple[str, ...] | None = None
+    turn_criteria: str | None = None
+    conversation_criteria: str | None = None
 
     def format_turns(self, context: dict[str, str]) -> tuple[str, ...]:
         """Substitute placeholders in every turn using *context*."""
         return tuple(turn.format(**context) for turn in self.template_turns)
+
+    @property
+    def prompt(self) -> str:
+        """Return the first turn template as the primary prompt."""
+        return self.template_turns[0]
 
 
 class PromptRegistry:
@@ -100,32 +107,6 @@ class PromptRegistry:
         """Return all turn templates for *prompt_id* (single- or multi-turn)."""
         return self._by_id[prompt_id].template_turns
 
-    def tool_usage_scenarios(self, exclude: set[str] | None = None) -> list[dict[str, Any]]:
-        """Entries formatted for legacy pytest parametrization (image-builder easy tests)."""
-        return [
-            {
-                "prompt": record.text,
-                "expected_tools": list(record.expected_tools),
-                "description": record.description or "",
-            }
-            for record in self._records
-            if exclude is None or record.prompt_id not in exclude
-        ]
-
-    def guardian_scenarios(self) -> list[dict[str, Any]]:
-        """Entries that require LLM-judged (guardian) evaluation."""
-        return [
-            {
-                "prompt_id": record.prompt_id,
-                "prompt": record.text,
-                "expected_tools": list(record.expected_tools),
-                "guardian_criteria": record.guardian_criteria,
-                "forbidden_tools": list(record.forbidden_tools),
-            }
-            for record in self._records
-            if record.guardian_criteria
-        ]
-
     def iter_test_scenarios(self, toolset: str) -> list[PromptTestScenario]:
         """Return unresolved scenarios for per-toolset LLM tests."""
         return [
@@ -135,6 +116,9 @@ class PromptRegistry:
                 template_turns=record.template_turns,
                 required_keys=record.required_keys,
                 expected_tools=record.expected_tools,
+                forbidden_tools=record.forbidden_tools,
+                turn_criteria=record.turn_criteria,
+                conversation_criteria=record.conversation_criteria,
             )
             for record in self._records
         ]

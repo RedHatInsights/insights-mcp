@@ -1,9 +1,10 @@
 """LLM integration tests for content-sources MCP prompts."""
 
-from content_sources_mcp.test_prompts import PROMPTS
-from tests.llm_prompt_support import create_llm_prompt_test_class
+from mcp_llm_eval.generators import create_test_suite
 
-TestContentSourcesLLMPrompts = create_llm_prompt_test_class(
+from content_sources_mcp.test_prompts import PROMPTS
+
+TestContentSourcesLLMPrompts = create_test_suite(
     "content-sources",
     PROMPTS,
     "TestContentSourcesLLMPrompts",

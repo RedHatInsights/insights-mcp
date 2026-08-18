@@ -23,7 +23,7 @@ def resolve_scenario_turns(scenario: PromptTestScenario, context: dict[str, str]
 async def run_scenario_turns(
     agent: MCPAgentWrapper,
     turns: tuple[str, ...],
-) -> tuple[str, list[Any]]:
+) -> tuple[str, list[ToolCall]]:
     """Execute all turns and return the final response plus every tool call."""
     history: list[Any] = []
     response: str = ""

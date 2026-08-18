@@ -5,8 +5,7 @@ Updated to use the simplified agent approach with WorkflowCheckpointer.
 
 import pytest
 from deepeval.test_case import LLMTestCase, ToolCall
-from mcp_llm_eval.deepeval_support.judges import build_test_case, evaluate_compliance, evaluate_tool_correctness
-from mcp_llm_eval.llm_prompt_support import assert_no_forbidden_tool
+from mcp_llm_eval.deepeval_support.judges import build_test_case, evaluate_tool_correctness
 from mcp_llm_eval.utils import (
     load_llm_configurations,
     pretty_print_chat_history,
@@ -15,9 +14,6 @@ from mcp_llm_eval.utils import (
 
 from image_builder_mcp.test_prompts import PROMPTS
 from tests.utils import should_skip_insights_llm_tests
-
-GUARDIAN_SCENARIOS = PROMPTS.guardian_scenarios()
-TOOL_USAGE_SCENARIOS = PROMPTS.tool_usage_scenarios(exclude={s["prompt_id"] for s in GUARDIAN_SCENARIOS})
 
 # Load LLM configurations for parametrization
 llm_configurations, _ = load_llm_configurations()
@@ -34,49 +30,6 @@ llm_configurations, _ = load_llm_configurations()
 @pytest.mark.llm
 class TestLLMIntegrationEasy:
     """Test LLM integration with MCP server using deepeval with multiple LLM configurations."""
-
-    @pytest.mark.parametrize("llm_config", llm_configurations, ids=[config["name"] for config in llm_configurations])
-    @pytest.mark.parametrize("scenario", GUARDIAN_SCENARIOS, ids=[s["prompt_id"] for s in GUARDIAN_SCENARIOS])
-    @pytest.mark.asyncio
-    # pylint: disable=redefined-outer-name
-    async def test_guardian_evaluation(self, test_agent, guardian_agent, llm_config, verbose_logger, scenario):
-        """Test that LLM follows behavioral rules using guardian-judged evaluation."""
-        prompt = scenario["prompt"]
-
-        response, _, tools_executed, _ = await test_agent.execute_with_reasoning(prompt, chat_history=[])
-
-        assert_no_forbidden_tool(tools_executed, scenario["forbidden_tools"])
-
-        test_case = build_test_case(prompt, response, tools_executed, scenario["expected_tools"])
-
-        await evaluate_tool_correctness(test_case, guardian_agent, verbose_logger)
-        await evaluate_compliance(test_case, scenario["guardian_criteria"], guardian_agent, verbose_logger)
-
-        verbose_logger.info("✓ Guardian evaluation passed for %s with prompt: %s", llm_config["name"], prompt)
-
-    @pytest.mark.parametrize("llm_config", llm_configurations, ids=[config["name"] for config in llm_configurations])
-    @pytest.mark.parametrize(
-        "scenario", TOOL_USAGE_SCENARIOS, ids=[scenario["prompt"] for scenario in TOOL_USAGE_SCENARIOS]
-    )
-    @pytest.mark.asyncio
-    # pylint: disable=redefined-outer-name
-    async def test_tool_usage_patterns(self, test_agent, guardian_agent, verbose_logger, llm_config, scenario):
-        """Test various tool usage patterns and their appropriateness."""
-        response, _, tools_executed, _ = await test_agent.execute_with_reasoning(scenario["prompt"], chat_history=[])
-
-        tool_names = [tool.name for tool in tools_executed]
-        verbose_logger.info("  Model: %s", llm_config["name"])
-        verbose_logger.info("  Prompt: %s", scenario["prompt"])
-        verbose_logger.info("  Expected: %s", scenario["expected_tools"])
-        verbose_logger.info("  Tools called: %s", tool_names)
-        verbose_logger.info("  Response: %s", response)
-
-        test_case = build_test_case(scenario["prompt"], response, tools_executed, scenario["expected_tools"])
-        await evaluate_tool_correctness(test_case, guardian_agent, verbose_logger)
-
-        verbose_logger.info(
-            "✓ Tool usage pattern test passed for %s with prompt: %s", llm_config["name"], scenario["prompt"]
-        )
 
     @pytest.mark.parametrize("llm_config", llm_configurations, ids=[config["name"] for config in llm_configurations])
     @pytest.mark.asyncio

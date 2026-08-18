@@ -1,9 +1,10 @@
 """LLM integration tests for RHSM MCP prompts."""
 
-from rhsm_mcp.test_prompts import PROMPTS
-from tests.llm_prompt_support import create_llm_prompt_test_class
+from mcp_llm_eval.generators import create_test_suite
 
-TestRhsmLLMPrompts = create_llm_prompt_test_class(
+from rhsm_mcp.test_prompts import PROMPTS
+
+TestRhsmLLMPrompts = create_test_suite(
     "rhsm",
     PROMPTS,
     "TestRhsmLLMPrompts",
