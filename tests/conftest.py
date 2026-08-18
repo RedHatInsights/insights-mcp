@@ -2,19 +2,13 @@
 
 import asyncio
 import functools
-import logging
 from contextlib import contextmanager
 from unittest.mock import Mock, patch
 
-import nest_asyncio
 import pytest
 import pytest_asyncio
-
-# pylint: disable=wrong-import-position
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 from mcp_llm_eval.llama_index_support.agent_mcp import MCPAgentWrapper
-from mcp_llm_eval.llm_tracing import enable_llm_test_tracing
-from mcp_llm_eval.utils import gpt_model_from_config, load_llm_configurations
 
 # Add imports for mock client creation
 from insights_mcp.client import InsightsClient, build_mounted_tool_names
@@ -27,32 +21,6 @@ from insights_mcp.config import (
 )
 from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 from tests import oauth_utils as oauth_utils_module
-
-# Prevent Python 3.14 event loop corruption caused by deepeval calling nest_asyncio.apply()
-nest_asyncio.apply = lambda: None
-
-
-# Load LLM configurations for fixtures
-_, guardian_llm_config = load_llm_configurations()
-
-
-def _node_requests_llm_tracing(node: pytest.Item) -> bool:
-    """Return True when the test uses the LLM matrix (``llm_config`` parametrization)."""
-    callspec = getattr(node, "callspec", None)
-    return callspec is not None and "llm_config" in callspec.params
-
-
-@pytest.fixture(scope="session", autouse=True)
-def llm_test_tracing(request):
-    """Enable DeepEval and Phoenix LlamaIndex tracing for LLM integration tests only."""
-    if not request.session.items:
-        yield
-        return
-    if not any(_node_requests_llm_tracing(item) for item in request.session.items):
-        yield
-        return
-    enable_llm_test_tracing()
-    yield
 
 
 def _insights_mcp_http_headers() -> dict[str, str] | None:
@@ -88,26 +56,6 @@ async def test_agent(mcp_server_url, verbose_logger, request):  # pylint: disabl
         yield agent
     finally:
         await agent.aclose()
-
-
-@pytest.fixture
-def guardian_agent(verbose_logger, request):  # pylint: disable=redefined-outer-name
-    """Create and configure a guardian agent for evaluation."""
-    # Get llm_config from the test's parametrization
-    llm_config = request.node.callspec.params["llm_config"]
-
-    # if there is a guardian LLM, use it for the guardian agent
-    # otherwise, use the test LLM for the guardian agent
-    if guardian_llm_config:
-        config = guardian_llm_config
-    else:
-        config = llm_config
-
-    agent = gpt_model_from_config(config)
-
-    verbose_logger.info("🧪 Verifying with the model: %s", agent.get_model_name())
-
-    return agent
 
 
 @pytest.fixture
@@ -173,23 +121,6 @@ def mcp_tools(mcp_server_url):  # pylint: disable=redefined-outer-name
                 await client.http_client.aclose()
 
     return asyncio.run(_fetch())
-
-
-@pytest.fixture
-def verbose_logger(request):
-    """Get a logger that respects pytest verbosity."""
-    logger = logging.getLogger(__name__)
-
-    verbosity = request.config.getoption("verbose", default=0)
-
-    if verbosity >= 3:
-        logger.setLevel(logging.DEBUG)
-    elif verbosity == 2:
-        logger.setLevel(logging.INFO)
-    else:
-        logger.setLevel(logging.WARNING)
-
-    return logger
 
 
 TEST_CLIENT_ID = "test-client-id"

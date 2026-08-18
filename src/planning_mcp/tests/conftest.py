@@ -4,6 +4,7 @@ adds a PlanningMCP-specific fixture for unit tests.
 """
 
 import pytest
+from mcp_llm_eval.fixtures import verbose_logger
 
 from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 from planning_mcp.server import PlanningMCP
@@ -11,7 +12,6 @@ from tests.conftest import (
     llm_api_context,
     mcp_tools,
     test_agent,
-    verbose_logger,
 )
 
 
