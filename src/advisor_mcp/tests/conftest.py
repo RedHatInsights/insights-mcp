@@ -3,7 +3,7 @@ Conftest for advisor_mcp tests - re-exports fixtures from top-level tests.
 """
 
 import pytest
-from mcp_llm_eval.fixtures import guardian_agent, verbose_logger
+from mcp_llm_eval.fixtures import guardian_agent, test_agent, verbose_logger
 
 from advisor_mcp import AdvisorMCP
 from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
@@ -22,7 +22,6 @@ from tests.conftest import (
     mcp_tools,
     mock_http_headers,
     setup_toolset_mock,
-    test_agent,
     test_client_credentials,
 )
 

@@ -6,57 +6,13 @@ from contextlib import contextmanager
 from unittest.mock import Mock, patch
 
 import pytest
-import pytest_asyncio
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
-from mcp_llm_eval.llama_index_support.agent_mcp import MCPAgentWrapper
 
-# Add imports for mock client creation
 from insights_mcp.client import InsightsClient, build_mounted_tool_names
-from insights_mcp.config import (
-    BRAND_CLIENT_ID_HEADER,
-    BRAND_CLIENT_SECRET_HEADER,
-    INSIGHTS_BASE_URL,
-    INSIGHTS_CLIENT_ID,
-    INSIGHTS_CLIENT_SECRET,
-)
+from insights_mcp.config import INSIGHTS_BASE_URL
 from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 from tests import oauth_utils as oauth_utils_module
 from tests.llm_api_discovery import LlmApiContext
-
-
-def _insights_mcp_http_headers() -> dict[str, str] | None:
-    """HTTP headers for Insights MCP when service account credentials are in the environment."""
-    if INSIGHTS_CLIENT_ID and INSIGHTS_CLIENT_SECRET:
-        return {
-            BRAND_CLIENT_ID_HEADER: INSIGHTS_CLIENT_ID,
-            BRAND_CLIENT_SECRET_HEADER: INSIGHTS_CLIENT_SECRET,
-        }
-    return None
-
-
-@pytest_asyncio.fixture
-async def test_agent(mcp_server_url, verbose_logger, request):  # pylint: disable=redefined-outer-name
-    """Create and configure a simplified test agent for the current LLM configuration."""
-    # Get llm_config from the test's parametrization
-    llm_config = request.node.callspec.params["llm_config"]
-
-    agent = MCPAgentWrapper(
-        server_url=mcp_server_url,
-        api_url=llm_config["MODEL_API"],
-        model_id=llm_config["MODEL_ID"],
-        api_key=llm_config["USER_KEY"],
-        verbose_logger=verbose_logger,
-        mcp_http_headers=_insights_mcp_http_headers(),
-        stdio_command="python",
-        stdio_args=["-m", "insights_mcp.server", "stdio"],
-    )
-    verbose_logger.info("🧪 Testing the model: %s", agent.model_id)
-
-    await agent.initialize()
-    try:
-        yield agent
-    finally:
-        await agent.aclose()
 
 
 @pytest.fixture

@@ -7,12 +7,10 @@ from contextlib import contextmanager
 from unittest.mock import patch
 
 import pytest
-from mcp_llm_eval.fixtures import guardian_agent, verbose_logger
+from mcp_llm_eval.fixtures import guardian_agent, test_agent, verbose_logger
 
 from image_builder_mcp import ImageBuilderMCP
 from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
-
-# Import directly from tests since pytest now knows where to find packages
 from tests.conftest import (
     TEST_BLUEPRINT_UUID,
     TEST_CLIENT_ID,
@@ -27,7 +25,6 @@ from tests.conftest import (
     mcp_tools,
     mock_http_headers,
     setup_toolset_mock,
-    test_agent,
     test_client_credentials,
 )
 

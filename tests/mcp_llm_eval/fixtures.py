@@ -3,11 +3,55 @@
 import logging
 
 import pytest
+import pytest_asyncio
+from mcp_llm_eval.llama_index_support.agent_mcp import MCPAgentWrapper
 from mcp_llm_eval.llm_tracing import enable_llm_test_tracing
 from mcp_llm_eval.utils import gpt_model_from_config, load_llm_configurations
 
-# Load LLM configurations for fixtures
 _, guardian_llm_config = load_llm_configurations()
+
+
+@pytest.fixture(scope="session")
+def mcp_http_headers() -> dict[str, str] | None:
+    """HTTP headers for MCP server connections. Override in conftest."""
+    return None
+
+
+@pytest.fixture(scope="session")
+def mcp_stdio_config() -> tuple[str, list[str]]:
+    """Stdio command and args for MCP server. Override in conftest."""
+    return ("python", ["-m", "mcp_server", "stdio"])
+
+
+@pytest_asyncio.fixture
+async def test_agent(
+    mcp_server_url: str,
+    mcp_http_headers: dict[str, str] | None,
+    mcp_stdio_config: tuple[str, list[str]],
+    verbose_logger: logging.Logger,
+    request: pytest.FixtureRequest,
+):
+    """Create and configure a test agent for the current LLM configuration."""
+    llm_config = request.node.callspec.params["llm_config"]
+    stdio_command, stdio_args = mcp_stdio_config
+
+    agent = MCPAgentWrapper(
+        server_url=mcp_server_url,
+        api_url=llm_config["MODEL_API"],
+        model_id=llm_config["MODEL_ID"],
+        api_key=llm_config["USER_KEY"],
+        verbose_logger=verbose_logger,
+        mcp_http_headers=mcp_http_headers,
+        stdio_command=stdio_command,
+        stdio_args=stdio_args,
+    )
+    verbose_logger.info("🧪 Testing the model: %s", agent.model_id)
+
+    try:
+        await agent.initialize()
+        yield agent
+    finally:
+        await agent.aclose()
 
 
 def _node_requests_llm_tracing(node: pytest.Item) -> bool:
