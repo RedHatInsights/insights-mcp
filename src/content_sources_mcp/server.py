@@ -75,7 +75,18 @@ class ContentSourcesMCP(InsightsMCP):
     async def list_repositories(
         self,
         enabled: Annotated[Optional[bool], Field(default=None, description="Filter by enabled status (True/False).")],
-        limit: Annotated[int, Field(default=10, description="Maximum number of repositories to return (default: 10).")],
+        limit: Annotated[
+            int,
+            Field(
+                default=10,
+                description=(
+                    "Maximum number of repositories to return (default: 10, maximum: 100). "
+                    "**ALWAYS use the default value of 10 for the first call.** "
+                    "This default is carefully chosen for performance and context management. "
+                    "Only increase this value if the user explicitly asks to see more repositories at once."
+                ),
+            ),
+        ],
         offset: Annotated[
             int, Field(default=0, description="Number of repositories to skip for pagination (default: 0).")
         ],
@@ -85,6 +96,9 @@ class ContentSourcesMCP(InsightsMCP):
         origin: Annotated[str, Field(default="", description="Filter by origin (e.g., 'red_hat', 'external').")],
         arch: Annotated[str, Field(default="", description="Filter by architecture (e.g., 'x86_64', 'aarch64').")],
         version: Annotated[str, Field(default="", description="Filter by version (e.g., '8', '9').")],
+        include_gpg_key: Annotated[
+            bool, Field(default=False, description="Include GPG key content in the response (default: False).")
+        ],
     ) -> str:
         """List repositories with filtering and pagination options.
 
@@ -109,12 +123,19 @@ class ContentSourcesMCP(InsightsMCP):
         if version:
             params["version"] = version
 
-        params["limit"] = limit
+        params["limit"] = min(limit, 100)
         params["offset"] = offset
+
+        def _strip_gpg_keys(response: dict[str, Any] | str | list[Any]) -> dict[str, Any] | str | list[Any]:
+            if isinstance(response, dict) and "data" in response:
+                for repo in response["data"]:
+                    repo.pop("gpg_key", None)
+            return response
 
         return await run_insights_tool_request(
             self.insights_client.get("repositories/", params=params),
             error_message=lambda exc: f"Error listing repositories: {exc}",
+            response_transform=None if include_gpg_key else _strip_gpg_keys,
         )
 
 
