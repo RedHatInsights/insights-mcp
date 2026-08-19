@@ -34,6 +34,12 @@ PROMPTS = PromptRegistry(
             "Can you show me the next 3 blueprints?",
         ),
         expected_tools=("image-builder__get_blueprints",),
+        expected_args={
+            "image-builder__get_blueprints": [
+                {"limit": 2},  # No offset, because it's default and doesn't get caught without with kwargs
+                {"limit": 3, "offset": 2},
+            ]
+        },
         assert_no_memory_overflow=True,
     ),
     list_image_types=PromptWithTools(

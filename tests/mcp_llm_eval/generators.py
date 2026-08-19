@@ -16,12 +16,13 @@ from mcp_llm_eval.deepeval_support.judges import (
 from mcp_llm_eval.llama_index_support.agent_mcp import MCPAgentWrapper
 from mcp_llm_eval.llm_prompt_support import (
     assert_at_least_one_expected_tool,
+    assert_correct_tool_args,
     assert_no_forbidden_tool,
     assert_no_memory_overflow,
     resolve_scenario_turns,
     run_scenario_turns,
 )
-from mcp_llm_eval.utils import load_llm_configurations, should_skip_llm_matrix_tests
+from mcp_llm_eval.utils import load_llm_configurations, pretty_print_chat_history, should_skip_llm_matrix_tests
 
 _LLM_CONFIGURATIONS, _ = load_llm_configurations()
 
@@ -49,7 +50,7 @@ def create_test_suite(toolset: str, prompts: PromptRegistry, class_name: str) ->
         ):  # pylint: disable=redefined-outer-name,unused-argument,too-many-arguments,too-many-positional-arguments
             """Run an LLM eval scenario, assert tool correctness and criteria."""
             turns = resolve_scenario_turns(scenario, llm_api_context)
-            response, all_tools = await run_scenario_turns(test_agent, turns)
+            response, all_tools, chat_history = await run_scenario_turns(test_agent, turns)
 
             verbose_logger.info("Expected: %s", scenario.expected_tools)
             verbose_logger.info("Forbidden: %s", scenario.forbidden_tools)
@@ -67,6 +68,10 @@ def create_test_suite(toolset: str, prompts: PromptRegistry, class_name: str) ->
                 await evaluate_compliance(test_case, scenario.turn_criteria, guardian_agent, verbose_logger)
             if scenario.conversation_criteria:
                 await evaluate_behavioral(test_case, scenario.conversation_criteria, guardian_agent, verbose_logger)
+
+            if scenario.expected_args:
+                assert_correct_tool_args(all_tools, scenario.expected_args)
+                pretty_print_chat_history(chat_history, llm_config["name"], verbose_logger)
 
             if scenario.assert_no_memory_overflow:
                 await assert_no_memory_overflow(test_agent)
