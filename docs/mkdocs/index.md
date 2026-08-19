@@ -449,6 +449,29 @@ If you are using a non-standard RH Lightspeed URL, set the environment variables
 * `LIGHTSPEED_PROXY_URL`
 accordingly.
 
+## Agent Skills
+
+This project includes [Agent Skills](https://agentskills.io/specification) — portable instructions that teach AI assistants how to set up and use Red Hat Lightspeed MCP. Skills are loaded automatically when you open the project in a supported assistant (Cursor, Claude Code, etc.).
+
+### Install with Lola
+
+[Lola](https://docs.getlola.dev/) is a universal AI Context Package Manager. Use it to install Lightspeed MCP skills into any supported AI assistant without cloning the full repo:
+
+```bash
+# Install Lola (one-time)
+uv tool install lola-ai
+
+# Add the Lightspeed marketplace (one-time)
+lola market add rh-lightspeed https://raw.githubusercontent.com/RedHatInsights/insights-mcp/main/lola-marketplace.yml
+
+# Install skills to your AI assistant
+lola install rh-lightspeed-mcp-skills -a cursor
+lola install rh-lightspeed-mcp-skills -a claude-code
+lola install rh-lightspeed-mcp-skills -a gemini-cli
+```
+
+Available skills are in the [`.agents/skills/`](.agents/skills/) directory.
+
 ## Examples
 
 This [blog post](https://developers.redhat.com/articles/2026/01/07/manage-ai-powered-inventory-using-red-hat-lightspeed#) has a few examples on how to use the RH Lightspeed MCP server.
