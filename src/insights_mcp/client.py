@@ -227,8 +227,11 @@ class InsightsClientBase(httpx.AsyncClient):
             f"[{self.insights_base_url}/iam/service-accounts]({self.insights_base_url}/iam/service-accounts) "
             "Come up with a detailed description of this for the user. "
             "Only describe this, don't expose details about the tool function itself. "
-            f"Don't proceed with the request before this is fixed. {error_message}"
+            f"Don't proceed with the request before this is fixed. {error_message}\n"
         )
+
+        if isinstance(e, httpx.HTTPStatusError):
+            return_message += f"Response: {e.response.text}"
 
         return return_message
 
@@ -252,7 +255,8 @@ class InsightsClientBase(httpx.AsyncClient):
             "lacks the required permissions to access this resource.\n"
             "Come up with a detailed description of this for the user. "
             "Only describe this, don't expose details about the tool function itself. "
-            f"Don't proceed with the request before this is fixed. Error: {str(e)}."
+            f"Don't proceed with the request before this is fixed. Error: {str(e)}. "
+            f"Response: {e.response.text}"
         )
 
 
