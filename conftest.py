@@ -9,6 +9,22 @@ from insights_mcp.config import (
     INSIGHTS_CLIENT_ID,
     INSIGHTS_CLIENT_SECRET,
 )
+from tests.utils import should_skip_insights_llm_tests
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Skip project LLM tests when Insights credentials are unavailable."""
+    if not should_skip_insights_llm_tests():
+        return
+
+    skip = pytest.mark.skip(
+        reason="INSIGHTS_CLIENT_ID and INSIGHTS_CLIENT_SECRET (or LIGHTSPEED_* equivalents) required"
+    )
+    for item in items:
+        if item.get_closest_marker("llm") is not None:
+            item.add_marker(skip)
+
 
 # Prevent Python 3.14 event loop corruption caused by deepeval calling
 # nest_asyncio.apply().
