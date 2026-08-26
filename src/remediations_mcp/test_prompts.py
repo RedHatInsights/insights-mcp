@@ -1,10 +1,10 @@
 """Single source of truth for remediations LLM test prompts."""
 
-from mcp_llm_eval.data import PromptRegistry, PromptWithTools, TestScenario
+from mcp_llm_eval.data import PromptWithTools, TestScenario, TestScenarioRegistry
 
 TOOLSET_TITLE = "Remediations MCP Test Prompts"
 
-PROMPTS = PromptRegistry(
+PROMPTS = TestScenarioRegistry(
     create_playbook=TestScenario(
         turns=(
             PromptWithTools(

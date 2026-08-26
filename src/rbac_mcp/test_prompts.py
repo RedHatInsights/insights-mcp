@@ -1,10 +1,10 @@
 """Single source of truth for RBAC LLM test prompts."""
 
-from mcp_llm_eval.data import PromptRegistry, PromptWithTools, TestScenario
+from mcp_llm_eval.data import PromptWithTools, TestScenario, TestScenarioRegistry
 
 TOOLSET_TITLE = "RBAC MCP Test Prompts"
 
-PROMPTS = PromptRegistry(
+PROMPTS = TestScenarioRegistry(
     my_insights_permissions=TestScenario(
         turns=(
             PromptWithTools(

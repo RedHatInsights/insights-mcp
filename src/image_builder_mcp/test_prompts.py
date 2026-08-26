@@ -1,10 +1,10 @@
 """Single source of truth for image-builder LLM test prompts and example questions."""
 
-from mcp_llm_eval.data import PromptRegistry, PromptWithTools, TestScenario
+from mcp_llm_eval.data import PromptWithTools, TestScenario, TestScenarioRegistry
 
 TOOLSET_TITLE = "Image Builder MCP Test Prompts"
 
-PROMPTS = PromptRegistry(
+PROMPTS = TestScenarioRegistry(
     rhel_initial_question=TestScenario(
         turns=(
             PromptWithTools(

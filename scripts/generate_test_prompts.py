@@ -29,15 +29,15 @@ MARKDOWN_PLACEHOLDER_EXAMPLES: dict[str, str] = {
 
 
 def _load_prompt_module(module_name: str) -> Any:
-    from mcp_llm_eval.data import PromptRegistry
+    from mcp_llm_eval.data import TestScenarioRegistry
 
     module = importlib.import_module(module_name)
     if not hasattr(module, "TOOLSET_TITLE"):
         raise ValueError(f"{module_name} must define TOOLSET_TITLE")
     if not hasattr(module, "PROMPTS"):
         raise ValueError(f"{module_name} must define PROMPTS")
-    if not isinstance(module.PROMPTS, PromptRegistry):
-        raise ValueError(f"{module_name}.PROMPTS must be a PromptRegistry instance")
+    if not isinstance(module.PROMPTS, TestScenarioRegistry):
+        raise ValueError(f"{module_name}.PROMPTS must be a TestScenarioRegistry instance")
     return module
 
 

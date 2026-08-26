@@ -6,7 +6,7 @@ import logging
 
 import pytest
 from deepeval.models import GPTModel
-from mcp_llm_eval.data import PromptRegistry, PromptTestScenario
+from mcp_llm_eval.data import PromptTestScenario, TestScenarioRegistry
 from mcp_llm_eval.deepeval_support.judges import (
     build_conversational_test_case,
     build_turn_test_case,
@@ -28,7 +28,7 @@ from mcp_llm_eval.utils import load_llm_configurations, pretty_print_chat_histor
 _LLM_CONFIGURATIONS, _ = load_llm_configurations()
 
 
-def create_test_suite(toolset: str, prompts: PromptRegistry, class_name: str) -> type:
+def create_test_suite(toolset: str, prompts: TestScenarioRegistry, class_name: str) -> type:
     """Build a pytest class with one parametrized test per prompt in *prompts*."""
     scenarios = prompts.iter_test_scenarios(toolset)
 

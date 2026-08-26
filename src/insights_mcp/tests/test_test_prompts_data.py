@@ -2,9 +2,9 @@
 
 import pytest
 from mcp_llm_eval.data import (
-    PromptRegistry,
     PromptWithTools,
     TestScenario,
+    TestScenarioRegistry,
     collect_markdown_prompts,
     format_template_for_markdown,
 )
@@ -13,7 +13,7 @@ from tests.llm_prompt_catalog import TOOLSET_PROMPT_MODULES, load_registry
 
 
 def test_prompt_with_tools_and_templates() -> None:
-    registry = PromptRegistry(
+    registry = TestScenarioRegistry(
         simple=TestScenario(
             turns=(
                 PromptWithTools(
@@ -51,7 +51,7 @@ def test_prompt_with_tools_and_templates() -> None:
 
 
 def test_collect_markdown_uses_examples() -> None:
-    registry = PromptRegistry(
+    registry = TestScenarioRegistry(
         cve_systems=TestScenario(
             turns=(
                 PromptWithTools(
@@ -67,7 +67,7 @@ def test_collect_markdown_uses_examples() -> None:
 
 
 def test_collect_markdown_prompts_deduplicates() -> None:
-    registry = PromptRegistry(
+    registry = TestScenarioRegistry(
         first=TestScenario(
             turns=(
                 PromptWithTools(
@@ -97,7 +97,7 @@ def test_collect_markdown_prompts_deduplicates() -> None:
 
 
 def test_turns_for_multi_turn() -> None:
-    registry = PromptRegistry(
+    registry = TestScenarioRegistry(
         paging=TestScenario(
             turns=(
                 PromptWithTools(
@@ -116,7 +116,7 @@ def test_turns_for_multi_turn() -> None:
 
 def test_registry_rejects_entry_without_tools() -> None:
     with pytest.raises(ValueError, match="TestScenario must contain at least one expected tool"):
-        PromptRegistry(
+        TestScenarioRegistry(
             empty_tools=TestScenario(
                 turns=(
                     PromptWithTools(
@@ -130,7 +130,7 @@ def test_registry_rejects_entry_without_tools() -> None:
 
 def test_registry_requires_entries() -> None:
     with pytest.raises(ValueError, match="at least one"):
-        PromptRegistry()
+        TestScenarioRegistry()
 
 
 @pytest.mark.parametrize("toolset,module_name", TOOLSET_PROMPT_MODULES)

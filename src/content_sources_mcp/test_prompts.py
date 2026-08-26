@@ -1,10 +1,10 @@
 """Single source of truth for content-sources LLM test prompts."""
 
-from mcp_llm_eval.data import PromptRegistry, PromptWithTools, TestScenario
+from mcp_llm_eval.data import PromptWithTools, TestScenario, TestScenarioRegistry
 
 TOOLSET_TITLE = "Content Sources MCP Test Prompts"
 
-PROMPTS = PromptRegistry(
+PROMPTS = TestScenarioRegistry(
     list_all_repositories=TestScenario(
         turns=(
             PromptWithTools(

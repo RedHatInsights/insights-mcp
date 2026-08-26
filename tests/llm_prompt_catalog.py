@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib
 
-from mcp_llm_eval.data import PromptRegistry
+from mcp_llm_eval.data import TestScenarioRegistry
 
 TOOLSET_PROMPT_MODULES: list[tuple[str, str]] = [
     ("image-builder", "image_builder_mcp.test_prompts"),
@@ -19,10 +19,10 @@ TOOLSET_PROMPT_MODULES: list[tuple[str, str]] = [
 ]
 
 
-def load_registry(module_name: str) -> PromptRegistry:
+def load_registry(module_name: str) -> TestScenarioRegistry:
     """Import and return a toolset PROMPTS registry."""
     module = importlib.import_module(module_name)
     prompts = getattr(module, "PROMPTS", None)
-    if not isinstance(prompts, PromptRegistry):
-        raise TypeError(f"{module_name}.PROMPTS must be a PromptRegistry instance")
+    if not isinstance(prompts, TestScenarioRegistry):
+        raise TypeError(f"{module_name}.PROMPTS must be a TestScenarioRegistry instance")
     return prompts

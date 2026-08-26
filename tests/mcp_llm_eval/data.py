@@ -47,7 +47,7 @@ class TestScenario:
 
 
 @dataclass(frozen=True)
-class _PromptRecord:
+class _ScenarioRecord:
     prompt_id: str
     template_turns: tuple[PromptWithTools, ...]
     conversation_criteria: str | None
@@ -67,7 +67,7 @@ class _PromptRecord:
         return frozenset(keys)
 
     @classmethod
-    def from_scenario(cls, prompt_id: str, value: TestScenario) -> _PromptRecord:
+    def from_scenario(cls, prompt_id: str, value: TestScenario) -> _ScenarioRecord:
         """Create a record from a test scenario configuration entry."""
         return cls(
             prompt_id=prompt_id,
@@ -102,14 +102,14 @@ class PromptTestScenario:
         return {tool for turn in self.template_turns for tool in turn.expected_tools}
 
 
-class PromptRegistry:
-    """Registry of LLM test prompts; every entry must declare expected_tools."""
+class TestScenarioRegistry:
+    """Registry of LLM test scenarios."""
 
     def __init__(self, **entries: TestScenario) -> None:
         if not entries:
-            raise ValueError("PromptRegistry requires at least one prompt entry")
-        self._records: tuple[_PromptRecord, ...] = tuple(
-            _PromptRecord.from_scenario(prompt_id, value) for prompt_id, value in entries.items()
+            raise ValueError("TestScenarioRegistry requires at least one scenario entry")
+        self._records: tuple[_ScenarioRecord, ...] = tuple(
+            _ScenarioRecord.from_scenario(prompt_id, value) for prompt_id, value in entries.items()
         )
         self._by_id = {record.prompt_id: record for record in self._records}
 
@@ -149,7 +149,7 @@ def format_template_for_markdown(template: str, placeholder_examples: dict[str, 
         return template
 
 
-def collect_markdown_prompts(registry: PromptRegistry, placeholder_examples: dict[str, str]) -> list[str]:
+def collect_markdown_prompts(registry: TestScenarioRegistry, placeholder_examples: dict[str, str]) -> list[str]:
     """Return deduplicated prompt texts in registry order (doc examples for placeholders)."""
     texts: list[str] = []
     seen: set[str] = set()
