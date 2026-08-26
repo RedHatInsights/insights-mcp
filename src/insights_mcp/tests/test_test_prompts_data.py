@@ -3,7 +3,7 @@
 import pytest
 from mcp_llm_eval.data import (
     PromptRegistry,
-    PromptWithTools,
+    TestScenario,
     collect_markdown_prompts,
     format_template_for_markdown,
 )
@@ -13,15 +13,15 @@ from tests.llm_prompt_catalog import TOOLSET_PROMPT_MODULES, load_registry
 
 def test_prompt_with_tools_and_templates() -> None:
     registry = PromptRegistry(
-        simple=PromptWithTools(
+        simple=TestScenario(
             turns=("List hosts",),
             expected_tools=("inventory__list_hosts",),
         ),
-        multi=PromptWithTools(
+        multi=TestScenario(
             turns=("First turn", "Second turn"),
             expected_tools=("image-builder__get_blueprints",),
         ),
-        templated=PromptWithTools(
+        templated=TestScenario(
             turns=("CVE {cve_id} on {system_id}",),
             expected_tools=("vulnerability__get_cve",),
         ),
@@ -35,7 +35,7 @@ def test_prompt_with_tools_and_templates() -> None:
 
 def test_collect_markdown_uses_examples() -> None:
     registry = PromptRegistry(
-        cve_systems=PromptWithTools(
+        cve_systems=TestScenario(
             turns=("Affected by {cve_id}",),
             expected_tools=("vulnerability__get_cve",),
         ),
@@ -47,15 +47,15 @@ def test_collect_markdown_uses_examples() -> None:
 
 def test_collect_markdown_prompts_deduplicates() -> None:
     registry = PromptRegistry(
-        first=PromptWithTools(
+        first=TestScenario(
             turns=("Same text",),
             expected_tools=("svc__a",),
         ),
-        second=PromptWithTools(
+        second=TestScenario(
             turns=("Same text",),
             expected_tools=("svc__b",),
         ),
-        third=PromptWithTools(
+        third=TestScenario(
             turns=("Other",),
             expected_tools=("svc__c",),
         ),
@@ -65,7 +65,7 @@ def test_collect_markdown_prompts_deduplicates() -> None:
 
 def test_turns_for_multi_turn() -> None:
     registry = PromptRegistry(
-        paging=PromptWithTools(
+        paging=TestScenario(
             turns=("Page one", "Page two"),
             expected_tools=("image-builder__get_blueprints",),
         ),
@@ -76,7 +76,7 @@ def test_turns_for_multi_turn() -> None:
 def test_registry_rejects_entry_without_tools() -> None:
     with pytest.raises(ValueError, match="expected_tools must contain at least one"):
         PromptRegistry(
-            empty_tools=PromptWithTools(
+            empty_tools=TestScenario(
                 turns=("prompt",),
                 expected_tools=(),
             ),

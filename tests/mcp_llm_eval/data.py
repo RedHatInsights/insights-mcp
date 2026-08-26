@@ -11,7 +11,7 @@ _PLACEHOLDER_PATTERN = re.compile(r"\{(\w+)\}")
 
 
 @dataclass(frozen=True)
-class PromptWithTools:
+class TestScenario:
     """Multi-turn prompt with at least one expected MCP tool name."""
 
     turns: tuple[str, ...]
@@ -24,9 +24,9 @@ class PromptWithTools:
 
     def __post_init__(self) -> None:
         if len(self.turns) < 1:
-            raise ValueError("PromptWithTools.turns must contain at least one turn")
+            raise ValueError("TestScenario.turns must contain at least one turn")
         if not self.expected_tools:
-            raise ValueError("PromptWithTools.expected_tools must contain at least one tool name")
+            raise ValueError("TestScenario.expected_tools must contain at least one tool name")
 
 
 @dataclass(frozen=True)
@@ -54,8 +54,8 @@ class _PromptRecord:
         return frozenset(keys)
 
     @classmethod
-    def from_prompt(cls, prompt_id: str, value: PromptWithTools) -> _PromptRecord:
-        """Create a record from a prompt configuration entry."""
+    def from_scenario(cls, prompt_id: str, value: TestScenario) -> _PromptRecord:
+        """Create a record from a test scenario configuration entry."""
         return cls(
             prompt_id=prompt_id,
             template_turns=value.turns,
@@ -96,11 +96,11 @@ class PromptTestScenario:
 class PromptRegistry:
     """Registry of LLM test prompts; every entry must declare expected_tools."""
 
-    def __init__(self, **entries: PromptWithTools) -> None:
+    def __init__(self, **entries: TestScenario) -> None:
         if not entries:
             raise ValueError("PromptRegistry requires at least one prompt entry")
         self._records: tuple[_PromptRecord, ...] = tuple(
-            _PromptRecord.from_prompt(prompt_id, value) for prompt_id, value in entries.items()
+            _PromptRecord.from_scenario(prompt_id, value) for prompt_id, value in entries.items()
         )
         self._by_id = {record.prompt_id: record for record in self._records}
 

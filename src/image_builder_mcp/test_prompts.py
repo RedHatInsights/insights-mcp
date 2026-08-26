@@ -1,11 +1,11 @@
 """Single source of truth for image-builder LLM test prompts and example questions."""
 
-from mcp_llm_eval.data import PromptRegistry, PromptWithTools
+from mcp_llm_eval.data import PromptRegistry, TestScenario
 
 TOOLSET_TITLE = "Image Builder MCP Test Prompts"
 
 PROMPTS = PromptRegistry(
-    rhel_initial_question=PromptWithTools(
+    rhel_initial_question=TestScenario(
         turns=("Can you create a RHEL 9 image for me?",),
         expected_tools=(
             "image-builder__get_openapi",
@@ -20,7 +20,7 @@ PROMPTS = PromptRegistry(
         ),
         forbidden_tools=("image-builder__create_blueprint",),
     ),
-    image_build_status=PromptWithTools(
+    image_build_status=TestScenario(
         turns=("What is the status of my latest image build?",),
         expected_tools=("image-builder__get_composes", "image-builder__get_compose_details"),
         turn_criteria=(
@@ -28,7 +28,7 @@ PROMPTS = PromptRegistry(
             "including details such as the compose ID, image type, or distribution."
         ),
     ),
-    llm_paging=PromptWithTools(
+    llm_paging=TestScenario(
         turns=(
             "List my latest 2 blueprints",
             "Can you show me the next 3 blueprints?",
@@ -42,7 +42,7 @@ PROMPTS = PromptRegistry(
         },
         assert_no_memory_overflow=True,
     ),
-    list_image_types=PromptWithTools(
+    list_image_types=TestScenario(
         turns=("Which image types are available?",),
         expected_tools=("image-builder__get_openapi",),
         turn_criteria=(
@@ -52,7 +52,7 @@ PROMPTS = PromptRegistry(
         ),
         forbidden_tools=("image-builder__create_blueprint",),
     ),
-    complete_conversation_flow=PromptWithTools(
+    complete_conversation_flow=TestScenario(
         turns=("Can you help me understand what blueprints are available?",),
         expected_tools=("image-builder__get_blueprints",),
         conversation_criteria=(
@@ -63,15 +63,15 @@ PROMPTS = PromptRegistry(
             "4. Take care that tool calls are properly part of a 'tool_call' object\n"
         ),
     ),
-    list_recent_builds=PromptWithTools(
+    list_recent_builds=TestScenario(
         turns=("List all my recent builds",),
         expected_tools=("image-builder__get_composes",),
     ),
-    what_blueprints=PromptWithTools(
+    what_blueprints=TestScenario(
         turns=("What blueprints do I have?",),
         expected_tools=("image-builder__get_blueprints",),
     ),
-    show_blueprints=PromptWithTools(
+    show_blueprints=TestScenario(
         turns=("Please show my blueprints",),
         expected_tools=("image-builder__get_blueprints",),
     ),

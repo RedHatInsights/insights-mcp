@@ -1,15 +1,15 @@
 """Single source of truth for remediations LLM test prompts."""
 
-from mcp_llm_eval.data import PromptRegistry, PromptWithTools
+from mcp_llm_eval.data import PromptRegistry, TestScenario
 
 TOOLSET_TITLE = "Remediations MCP Test Prompts"
 
 PROMPTS = PromptRegistry(
-    create_playbook=PromptWithTools(
+    create_playbook=TestScenario(
         turns=("Create remediation playbook for `{cve_id}` on system `{system_id}`",),
         expected_tools=("remediations__create_vuln_playbook",),
     ),
-    create_playbook_yaml=PromptWithTools(
+    create_playbook_yaml=TestScenario(
         turns=(
             "Create remediation playbook for `{cve_id}` on system `{system_id}` "
             "and give me remediation playbook in `yaml` format",
