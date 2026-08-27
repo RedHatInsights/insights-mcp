@@ -330,13 +330,16 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
                     stream_task.cancel()
 
             attempt_text = _assistant_text_from_handler_response(response)
-            if attempt_text.strip() or tool_collector.as_list():
+            if attempt_text.strip():
                 break
             if attempt == 0:
                 self.logger.warning(
-                    "Empty agent response with no tool calls for model %s; retrying once",
+                    "Empty agent's final response for model %s; retrying once",
                     self.model_id,
                 )
+                # Wipe the potentially polluted memory so the retry runs cleanly from prior history.
+                await self._memory.aset(prior_history)
+                self.context = Context(self.agent)
 
         reasoning_steps: list[dict[str, Any]] = [
             {"step_number": idx + 1, "step_type": "event", "content": name} for idx, name in enumerate(self._step_names)
