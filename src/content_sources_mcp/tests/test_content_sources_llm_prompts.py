@@ -5,7 +5,6 @@ from mcp_llm_eval.generators import create_test_suite
 from content_sources_mcp.test_prompts import PROMPTS
 
 TestContentSourcesLLMPrompts = create_test_suite(
-    "content-sources",
     PROMPTS,
     "TestContentSourcesLLMPrompts",
 )

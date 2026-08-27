@@ -43,7 +43,7 @@ def test_prompt_with_tools_and_templates() -> None:
             ),
         ),
     )
-    scenarios = registry.iter_test_scenarios("vulnerability")
+    scenarios = registry.iter_test_scenarios()
     assert len(scenarios) == 3
     templated = next(s for s in scenarios if s.prompt_id == "templated")
     assert templated.required_keys == frozenset({"cve_id", "system_id"})
@@ -96,24 +96,6 @@ def test_collect_markdown_prompts_deduplicates() -> None:
     assert collect_markdown_prompts(registry, {}) == ["Same text", "Other"]
 
 
-def test_turns_for_multi_turn() -> None:
-    registry = TestScenarioRegistry(
-        paging=TestScenario(
-            turns=(
-                PromptWithTools(
-                    prompt="Page one",
-                    expected_tools=("image-builder__get_blueprints",),
-                ),
-                PromptWithTools(
-                    prompt="Page two",
-                    expected_tools=("image-builder__get_blueprints",),
-                ),
-            ),
-        ),
-    )
-    assert registry.turns_for("paging") == ("Page one", "Page two")
-
-
 def test_registry_rejects_entry_without_tools() -> None:
     with pytest.raises(ValueError, match="TestScenario must contain at least one expected tool"):
         TestScenarioRegistry(
@@ -133,8 +115,8 @@ def test_registry_requires_entries() -> None:
         TestScenarioRegistry()
 
 
-@pytest.mark.parametrize("toolset,module_name", TOOLSET_PROMPT_MODULES)
-def test_all_scenarios_declare_expected_tools(toolset: str, module_name: str) -> None:
+@pytest.mark.parametrize("module_name", [module_name for _, module_name in TOOLSET_PROMPT_MODULES])
+def test_all_scenarios_declare_expected_tools(module_name: str) -> None:
     registry = load_registry(module_name)
-    for scenario in registry.iter_test_scenarios(toolset):
+    for scenario in registry.iter_test_scenarios():
         assert any(turn.expected_tools for turn in scenario.turns)

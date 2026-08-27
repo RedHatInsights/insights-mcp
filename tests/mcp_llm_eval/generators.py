@@ -28,9 +28,9 @@ from mcp_llm_eval.utils import load_llm_configurations, pretty_print_chat_histor
 _LLM_CONFIGURATIONS, _ = load_llm_configurations()
 
 
-def create_test_suite(toolset: str, prompts: TestScenarioRegistry, class_name: str) -> type:
+def create_test_suite(prompts: TestScenarioRegistry, class_name: str) -> type:
     """Build a pytest class with one parametrized test per prompt in *prompts*."""
-    scenarios = prompts.iter_test_scenarios(toolset)
+    scenarios = prompts.iter_test_scenarios()
 
     @pytest.mark.llm
     @pytest.mark.skipif(should_skip_llm_matrix_tests(), reason="No valid LLM configurations found")

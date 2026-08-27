@@ -5,7 +5,6 @@ from mcp_llm_eval.generators import create_test_suite
 from rbac_mcp.test_prompts import PROMPTS
 
 TestRbacLLMPrompts = create_test_suite(
-    "rbac",
     PROMPTS,
     "TestRbacLLMPrompts",
 )

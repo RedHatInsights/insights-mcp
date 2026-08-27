@@ -54,11 +54,6 @@ class _ScenarioRecord:
     assert_no_memory_overflow: bool
 
     @property
-    def text(self) -> str:
-        """First turn text (backward compatible with single-turn access)."""
-        return self.turns[0].prompt
-
-    @property
     def required_keys(self) -> frozenset[str]:
         """Placeholder names required to format all prompts."""
         keys: set[str] = set()
@@ -81,7 +76,6 @@ class _ScenarioRecord:
 class PromptTestScenario:
     """One parametrized LLM test scenario (unresolved templates)."""
 
-    toolset: str
     prompt_id: str
     turns: tuple[PromptWithTools, ...]
     required_keys: frozenset[str]
@@ -97,10 +91,6 @@ class PromptTestScenario:
         """Return the first turn template as the primary prompt."""
         return self.turns[0].prompt
 
-    def get_expected_tools(self) -> set[str]:
-        """Collect all expected tools from all turns."""
-        return {tool for turn in self.turns for tool in turn.expected_tools}
-
 
 class TestScenarioRegistry:
     """Registry of LLM test scenarios."""
@@ -111,25 +101,11 @@ class TestScenarioRegistry:
         self._records: tuple[_ScenarioRecord, ...] = tuple(
             _ScenarioRecord.from_scenario(prompt_id, value) for prompt_id, value in entries.items()
         )
-        self._by_id = {record.prompt_id: record for record in self._records}
 
-    def __getitem__(self, prompt_id: str) -> str:
-        return self._by_id[prompt_id].text
-
-    def __getattr__(self, name: str) -> str:
-        if name.startswith("_") or name not in self._by_id:
-            raise AttributeError(name)
-        return self._by_id[name].text
-
-    def turns_for(self, prompt_id: str) -> tuple[str, ...]:
-        """Return all turn templates for *prompt_id* (single- or multi-turn)."""
-        return tuple(turn.prompt for turn in self._by_id[prompt_id].turns)
-
-    def iter_test_scenarios(self, toolset: str) -> list[PromptTestScenario]:
-        """Return unresolved scenarios for per-toolset LLM tests."""
+    def iter_test_scenarios(self) -> list[PromptTestScenario]:
+        """Return unresolved scenarios for LLM tests."""
         return [
             PromptTestScenario(
-                toolset=toolset,
                 prompt_id=record.prompt_id,
                 turns=record.turns,
                 required_keys=record.required_keys,
