@@ -80,8 +80,21 @@ async def evaluate_tool_correctness(
     threshold: float = 0.6,
 ) -> None:
     """Evaluate tool selection correctness using DeepEval ToolCorrectnessMetric."""
+    metric_test_case = test_case
+    if test_case.tools_called:  # Deduplicate to make the score calculation correct
+        metric_tools_by_name: dict[str, ToolCall] = {}
+        for tool_call in test_case.tools_called:
+            metric_tools_by_name.setdefault(tool_call.name, tool_call)
+
+        metric_test_case = LLMTestCase(
+            input=test_case.input,
+            actual_output=test_case.actual_output,
+            tools_called=list(metric_tools_by_name.values()),
+            expected_tools=test_case.expected_tools,
+        )
+
     metric = ToolCorrectnessMetric(threshold=threshold, model=guardian_agent)
-    await _evaluate_metric("Tool Correctness", metric, lambda: metric.a_measure(test_case), logger)
+    await _evaluate_metric("Tool Correctness", metric, lambda: metric.a_measure(metric_test_case), logger)
 
 
 async def evaluate_compliance(
