@@ -13,12 +13,12 @@ if TYPE_CHECKING:
     from mcp_llm_eval.llama_index_support.agent_mcp import MCPAgentWrapper
 
 
-def resolve_scenario_turns(scenario: PromptTestScenario, context: dict[str, str]) -> tuple[str, ...]:
-    """Format scenario templates; skip the test when required API data is missing."""
+def resolve_scenario_prompts(scenario: PromptTestScenario, context: dict[str, str]) -> tuple[str, ...]:
+    """Format scenario template prompts; skip the test when required API data is missing."""
     missing = scenario.required_keys - frozenset(context.keys())
     if missing:
         pytest.skip(f"no API data for {sorted(missing)!r} in this account")
-    return scenario.format_turns(context)
+    return scenario.format_prompts(context)
 
 
 async def run_scenario_turns(

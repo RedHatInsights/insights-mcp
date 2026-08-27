@@ -14,7 +14,7 @@ _PLACEHOLDER_PATTERN = re.compile(r"\{(\w+)\}")
 class PromptWithTools:
     """Single conversation turn with expected MCP tool calls."""
 
-    prompt: str
+    prompt: str  # Just a template with unresolved keys
     expected_tools: tuple[str, ...] = ()
     forbidden_tools: tuple[str, ...] = ()
     expected_args: dict[str, list[dict[str, Any]]] | None = None
@@ -49,20 +49,20 @@ class TestScenario:
 @dataclass(frozen=True)
 class _ScenarioRecord:
     prompt_id: str
-    template_turns: tuple[PromptWithTools, ...]
+    turns: tuple[PromptWithTools, ...]
     conversation_criteria: str | None
     assert_no_memory_overflow: bool
 
     @property
     def text(self) -> str:
         """First turn text (backward compatible with single-turn access)."""
-        return self.template_turns[0].prompt
+        return self.turns[0].prompt
 
     @property
     def required_keys(self) -> frozenset[str]:
-        """Placeholder names required to format all turns."""
+        """Placeholder names required to format all prompts."""
         keys: set[str] = set()
-        for turn in self.template_turns:
+        for turn in self.turns:
             keys.update(_PLACEHOLDER_PATTERN.findall(turn.prompt))
         return frozenset(keys)
 
@@ -71,7 +71,7 @@ class _ScenarioRecord:
         """Create a record from a test scenario configuration entry."""
         return cls(
             prompt_id=prompt_id,
-            template_turns=value.turns,
+            turns=value.turns,
             conversation_criteria=value.conversation_criteria,
             assert_no_memory_overflow=value.assert_no_memory_overflow,
         )
@@ -83,23 +83,23 @@ class PromptTestScenario:
 
     toolset: str
     prompt_id: str
-    template_turns: tuple[PromptWithTools, ...]
+    turns: tuple[PromptWithTools, ...]
     required_keys: frozenset[str]
     conversation_criteria: str | None
     assert_no_memory_overflow: bool
 
-    def format_turns(self, context: dict[str, str]) -> tuple[str, ...]:
-        """Substitute placeholders in every turn using *context*."""
-        return tuple(turn.prompt.format(**context) for turn in self.template_turns)
+    def format_prompts(self, context: dict[str, str]) -> tuple[str, ...]:
+        """Substitute placeholders in every turn's prompt using *context*."""
+        return tuple(turn.prompt.format(**context) for turn in self.turns)
 
     @property
     def prompt(self) -> str:
         """Return the first turn template as the primary prompt."""
-        return self.template_turns[0].prompt
+        return self.turns[0].prompt
 
     def get_expected_tools(self) -> set[str]:
         """Collect all expected tools from all turns."""
-        return {tool for turn in self.template_turns for tool in turn.expected_tools}
+        return {tool for turn in self.turns for tool in turn.expected_tools}
 
 
 class TestScenarioRegistry:
@@ -123,7 +123,7 @@ class TestScenarioRegistry:
 
     def turns_for(self, prompt_id: str) -> tuple[str, ...]:
         """Return all turn templates for *prompt_id* (single- or multi-turn)."""
-        return tuple(turn.prompt for turn in self._by_id[prompt_id].template_turns)
+        return tuple(turn.prompt for turn in self._by_id[prompt_id].turns)
 
     def iter_test_scenarios(self, toolset: str) -> list[PromptTestScenario]:
         """Return unresolved scenarios for per-toolset LLM tests."""
@@ -131,7 +131,7 @@ class TestScenarioRegistry:
             PromptTestScenario(
                 toolset=toolset,
                 prompt_id=record.prompt_id,
-                template_turns=record.template_turns,
+                turns=record.turns,
                 required_keys=record.required_keys,
                 conversation_criteria=record.conversation_criteria,
                 assert_no_memory_overflow=record.assert_no_memory_overflow,
@@ -154,7 +154,7 @@ def collect_markdown_prompts(registry: TestScenarioRegistry, placeholder_example
     texts: list[str] = []
     seen: set[str] = set()
     for record in registry._records:
-        for turn in record.template_turns:
+        for turn in record.turns:
             display = format_template_for_markdown(turn.prompt, placeholder_examples)
             if display not in seen:
                 texts.append(display)

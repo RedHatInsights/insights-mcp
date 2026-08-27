@@ -20,7 +20,7 @@ from mcp_llm_eval.llm_prompt_support import (
     assert_correct_tool_args,
     assert_no_forbidden_tool,
     assert_no_memory_overflow,
-    resolve_scenario_turns,
+    resolve_scenario_prompts,
     run_scenario_turns,
 )
 from mcp_llm_eval.utils import load_llm_configurations, pretty_print_chat_history, should_skip_llm_matrix_tests
@@ -50,38 +50,38 @@ def create_test_suite(toolset: str, prompts: TestScenarioRegistry, class_name: s
             verbose_logger: logging.Logger,
         ):  # pylint: disable=redefined-outer-name,unused-argument,too-many-arguments,too-many-positional-arguments
             """Run an LLM eval scenario, assert tool correctness and criteria."""
-            turns = resolve_scenario_turns(scenario, llm_api_context)
-            responses, tools_per_turn, chat_history = await run_scenario_turns(test_agent, turns)
+            prompts = resolve_scenario_prompts(scenario, llm_api_context)
+            responses, tools_per_turn, chat_history = await run_scenario_turns(test_agent, prompts)
 
-            for turn_idx, (request, executed_tools, turn_template, response) in enumerate(
-                zip(turns, tools_per_turn, scenario.template_turns, responses)
+            for turn_idx, (request, executed_tools, turn, response) in enumerate(
+                zip(prompts, tools_per_turn, scenario.turns, responses)
             ):
                 assert response.strip(), f"empty assistant response for {llm_config['name']} on {scenario.prompt_id}"
 
-                verbose_logger.info("Turn %d - Expected: %s", turn_idx + 1, turn_template.expected_tools)
-                verbose_logger.info("Turn %d - Forbidden: %s", turn_idx + 1, turn_template.forbidden_tools)
+                verbose_logger.info("Turn %d - Expected: %s", turn_idx + 1, turn.expected_tools)
+                verbose_logger.info("Turn %d - Forbidden: %s", turn_idx + 1, turn.forbidden_tools)
 
-                if turn_template.expected_tools:
-                    assert_at_least_one_expected_tool(executed_tools, turn_template.expected_tools)
-                if turn_template.forbidden_tools:
-                    assert_no_forbidden_tool(executed_tools, turn_template.forbidden_tools)
-                if turn_template.expected_args:
-                    assert_correct_tool_args(executed_tools, turn_template.expected_args)
+                if turn.expected_tools:
+                    assert_at_least_one_expected_tool(executed_tools, turn.expected_tools)
+                if turn.forbidden_tools:
+                    assert_no_forbidden_tool(executed_tools, turn.forbidden_tools)
+                if turn.expected_args:
+                    assert_correct_tool_args(executed_tools, turn.expected_args)
 
-                turn_test_case = build_turn_test_case(request, response, executed_tools, turn_template.expected_tools)
+                turn_test_case = build_turn_test_case(request, response, executed_tools, turn.expected_tools)
 
                 await evaluate_tool_correctness(turn_test_case, guardian_agent, verbose_logger)
 
-                if turn_template.turn_criteria:
-                    await evaluate_compliance(
-                        turn_test_case, turn_template.turn_criteria, guardian_agent, verbose_logger
-                    )
+                if turn.turn_criteria:
+                    await evaluate_compliance(turn_test_case, turn.turn_criteria, guardian_agent, verbose_logger)
 
             if scenario.conversation_criteria:
-                conv_test_case = build_conversational_test_case(turns, responses, tools_per_turn)
-                await evaluate_behavioral(conv_test_case, scenario.conversation_criteria, guardian_agent, verbose_logger)
+                conv_test_case = build_conversational_test_case(prompts, responses, tools_per_turn)
+                await evaluate_behavioral(
+                    conv_test_case, scenario.conversation_criteria, guardian_agent, verbose_logger
+                )
 
-            if any(turn.expected_args for turn in scenario.template_turns):
+            if any(turn.expected_args for turn in scenario.turns):
                 pretty_print_chat_history(chat_history, llm_config["name"], verbose_logger)
 
             if scenario.assert_no_memory_overflow:

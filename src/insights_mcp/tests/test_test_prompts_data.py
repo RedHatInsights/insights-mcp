@@ -47,7 +47,7 @@ def test_prompt_with_tools_and_templates() -> None:
     assert len(scenarios) == 3
     templated = next(s for s in scenarios if s.prompt_id == "templated")
     assert templated.required_keys == frozenset({"cve_id", "system_id"})
-    assert templated.format_turns({"cve_id": "CVE-1", "system_id": "uuid"}) == ("CVE CVE-1 on uuid",)
+    assert templated.format_prompts({"cve_id": "CVE-1", "system_id": "uuid"}) == ("CVE CVE-1 on uuid",)
 
 
 def test_collect_markdown_uses_examples() -> None:
@@ -137,4 +137,4 @@ def test_registry_requires_entries() -> None:
 def test_all_scenarios_declare_expected_tools(toolset: str, module_name: str) -> None:
     registry = load_registry(module_name)
     for scenario in registry.iter_test_scenarios(toolset):
-        assert any(turn.expected_tools for turn in scenario.template_turns)
+        assert any(turn.expected_tools for turn in scenario.turns)
