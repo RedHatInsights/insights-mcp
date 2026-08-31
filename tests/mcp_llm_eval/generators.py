@@ -70,7 +70,8 @@ def create_test_suite(prompts: TestScenarioRegistry, class_name: str) -> type:
 
                 turn_test_case = build_turn_test_case(request, response, executed_tools, turn.expected_tools)
 
-                await evaluate_tool_correctness(turn_test_case, guardian_agent, verbose_logger)
+                if scenario.threshold > 0:
+                    await evaluate_tool_correctness(turn_test_case, guardian_agent, verbose_logger, scenario.threshold)
 
                 if turn.turn_criteria:
                     await evaluate_compliance(turn_test_case, turn.turn_criteria, guardian_agent, verbose_logger)

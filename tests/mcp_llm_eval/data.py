@@ -36,6 +36,7 @@ class TestScenario:
     """Multi-turn test scenario with per-turn tool expectations."""
 
     turns: tuple[PromptWithTools, ...]
+    threshold: float = 0.6  # Set to 0 to skip tool correctness evaluation
     conversation_criteria: str | None = None
     assert_no_memory_overflow: bool = False
 
@@ -44,12 +45,15 @@ class TestScenario:
             raise ValueError("TestScenario.turns must contain at least one turn")
         if not any(turn.expected_tools for turn in self.turns):
             raise ValueError("TestScenario must contain at least one expected tool")
+        if not 0 <= self.threshold <= 1:
+            raise ValueError("TestScenario.threshold must be between 0 and 1")
 
 
 @dataclass(frozen=True)
 class _ScenarioRecord:
     prompt_id: str
     turns: tuple[PromptWithTools, ...]
+    threshold: float
     conversation_criteria: str | None
     assert_no_memory_overflow: bool
 
@@ -67,6 +71,7 @@ class _ScenarioRecord:
         return cls(
             prompt_id=prompt_id,
             turns=value.turns,
+            threshold=value.threshold,
             conversation_criteria=value.conversation_criteria,
             assert_no_memory_overflow=value.assert_no_memory_overflow,
         )
@@ -79,6 +84,7 @@ class PromptTestScenario:
     prompt_id: str
     turns: tuple[PromptWithTools, ...]
     required_keys: frozenset[str]
+    threshold: float
     conversation_criteria: str | None
     assert_no_memory_overflow: bool
 
@@ -109,6 +115,7 @@ class TestScenarioRegistry:
                 prompt_id=record.prompt_id,
                 turns=record.turns,
                 required_keys=record.required_keys,
+                threshold=record.threshold,
                 conversation_criteria=record.conversation_criteria,
                 assert_no_memory_overflow=record.assert_no_memory_overflow,
             )
