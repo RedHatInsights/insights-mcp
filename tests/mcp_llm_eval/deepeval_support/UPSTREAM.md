@@ -11,9 +11,10 @@ not fall back to an unconfigured default `GPTModel`.
 
 ## LlamaIndex tool-call tracing
 
-LLM tests call `instrument_llama_index(get_dispatcher())` from `tests/llm_tracing.py`.
-`tests/deepeval_support/tracing.py` maps workflow stream events and `AgentOutput` to
-`deepeval.test_case.ToolCall` for `ToolCorrectnessMetric` (see `tests/llama_index_support/UPSTREAM.md`).
+LLM tests call `instrument_llama_index(get_dispatcher())` from `tests/mcp_llm_eval/llm_tracing.py`.
+`tests/mcp_llm_eval/deepeval_support/tracing.py` maps workflow stream events and `AgentOutput` to
+`deepeval.test_case.ToolCall` for `ToolCorrectnessMetric` (see
+`tests/mcp_llm_eval/llama_index_support/UPSTREAM.md`).
 
 ## Workflow
 

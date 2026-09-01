@@ -1,26 +1,23 @@
 # Testing Documentation
 
-This directory contains test suites for the Image Builder MCP server.
-For now this is intended to be used with vLLM test agents.
+This directory contains shared tests and the reusable LLM evaluation harness for all MCP toolsets.
+LLM tests use OpenAI-compatible model endpoints, including vLLM and gateway-hosted models.
 
 ## Test Structure
 
 - `test_auth.py` - Authentication and OAuth tests
 - `utils.py` - Shared testing utilities and helper functions
-- `llama_index_support/` - LlamaIndex MCP agent (`MCPAgentWrapper`); see ``UPSTREAM.md`` there
-- `deepeval_support/` - DeepEval adapters (tool-call tracing, OpenAI-compat judge models)
-- `llm_tracing.py` - Session hook that enables DeepEval ``instrument_llama_index`` for ``@pytest.mark.llm`` tests
+- `mcp_llm_eval/` - Reusable LLM test harness:
+  - `llama_index_support/` - MCP agent wrapper; see `UPSTREAM.md`
+  - `deepeval_support/` - DeepEval adapters and tool-call tracing; see `UPSTREAM.md`
+  - `generators.py` - `create_test_suite()` for generated per-toolset tests
+  - `llm_prompt_support.py` - Scenario resolution, execution, and assertions
+  - `fixtures.py` - Shared agent, guardian, and logging fixtures
+- `conftest.py` - Project-specific fixtures, collection-time credential skips, and the Python/DeepEval compatibility patch
 - `../instrumentation_tests/` - Structural MCP checks (run ``make test-instrumentation``)
-- `conftest.py` - Pytest fixtures and configuration
 - `test_tokens.py` - MCP tool input token budget checks (see below)
-- `llm_prompt_support.py` - Shared helpers and `create_llm_prompt_test_class()` for per-toolset tests
 - `llm_api_discovery.py` - Resolves `{cve_id}`, `{host_id}`, etc. from live Insights APIs before each test
-- `src/<toolset>_mcp/tests/test_<toolset>_llm_prompts.py` - Per-toolset LLM tests (one case per prompt; asserts expected tool name)
-
-Image Builder specific tests are located in `src/image_builder_mcp/tests/`:
-- `test_get_blueprints.py` - Blueprint retrieval tests
-- `test_llm_integration_easy.py` - Basic LLM integration tests using deepeval
-- `test_llm_integration_hard.py` - Advanced LLM integration tests using deepeval
+- `src/<toolset>_mcp/tests/test_<toolset>_llm_prompts.py` - Generated per-toolset LLM tests
 
 ## LLM Integration Testing
 
@@ -53,6 +50,11 @@ The LLM integration tests support matrix testing across multiple LLM configurati
    }
    ```
 
+3. **Configure Insights credentials** for tests that start a real Insights MCP server. Set
+   `INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET`, or the equivalent `LIGHTSPEED_*` variables.
+   Without these credentials, project LLM tests are marked skipped during collection before server
+   fixtures are started.
+
 ### Running Tests
 
 ```bash
@@ -75,15 +77,20 @@ make test-llm
 uv run pytest src/vulnerability_mcp/tests/test_vulnerability_llm_prompts.py -m llm -v -rs
 ```
 
-Each prompt declares `expected_tools` in `src/<toolset>_mcp/test_prompts.py`; the test fails if none of those MCP tools appear in `tools_executed`. Placeholders (`{cve_id}`, …) are resolved from live APIs; scenarios skip when data is missing (`-rs`). Optional: `INSIGHTS_TEST_WORKSPACE` for advisor workspace prompts. Regenerate example markdown: `make test-prompts-md`.
+Each prompt registry in `src/<toolset>_mcp/test_prompts.py` declares `TestScenario` entries with
+per-turn `expected_tools`, optional forbidden tools, argument expectations, and guardian criteria.
+The generated suite fails if a turn calls none of its expected tools. Placeholders (`{cve_id}`, …)
+are resolved from live APIs; scenarios skip when data is missing (`-rs`). Optional:
+`INSIGHTS_TEST_WORKSPACE` for advisor workspace prompts. Regenerate example Markdown with
+`make test-prompts-md`.
 
 ### LLM test tracing
 
-When pytest collects any test parametrized with ``llm_config``, ``tests/conftest.py`` calls
-``tests/llm_tracing.enable_llm_test_tracing()`` once per session. That registers DeepEval
+When pytest collects any test parametrized with ``llm_config``, the shared fixture calls
+``mcp_llm_eval.llm_tracing.enable_llm_test_tracing()`` once per session. That registers DeepEval
 ``instrument_llama_index`` on LlamaIndex's dispatcher (span fallback for tool asserts).
 Actual ``tools_called`` for ``ToolCorrectnessMetric`` come from workflow stream events in
-``tests/deepeval_support/tracing.py``, not from Phoenix.
+``mcp_llm_eval.deepeval_support.tracing``, not from Phoenix.
 
 Environment:
 

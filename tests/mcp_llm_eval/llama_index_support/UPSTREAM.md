@@ -20,9 +20,11 @@ LlamaIndex used to recurse into boolean `additionalProperties` and call
 
 Uses [`llama_index.core.memory.Memory`](https://developers.llamaindex.ai/python/framework/module_guides/deploying/agents/memory/):
 
-- `Memory.from_defaults(session_id=..., token_limit=8192)` per wrapper instance
+- `Memory.from_defaults(session_id=..., token_limit=...)` per wrapper instance; the project supplies
+  the limit through the `mcp_memory_token_limit` fixture (default 16384).
 - `await memory.aset(prior_history)` before each turn
-- `agent.run(user_msg=..., memory=memory, ctx=ctx)` (no gateway-specific history rewriting)
+- `AgentWorkflowStartEvent(user_msg=..., memory=memory, max_iterations=...)` is passed
+  to `agent.run(ctx=ctx, start_event=start_event)` (no gateway-specific history rewriting)
 - `await memory.aget()` returned to tests for the next turn
 
 If a remote model fails multi-turn replay (e.g. tool messages in history), fix prompts,
@@ -31,13 +33,13 @@ tests, or `Memory` token settings—do not reintroduce per-model string hacks in
 ### Tool-call recording (native instrumentation)
 
 Tool calls for DeepEval `ToolCorrectnessMetric` are recorded from LlamaIndex workflow
-`ToolCall` stream events (`tests/deepeval_support/tracing.py`). DeepEval
-`instrument_llama_index` is enabled for LLM tests via `tests/llm_tracing.py`.
+`ToolCall` stream events (`tests/mcp_llm_eval/deepeval_support/tracing.py`). DeepEval
+`instrument_llama_index` is enabled for LLM tests via `tests/mcp_llm_eval/llm_tracing.py`.
 
 ### MCP initialize instructions (test harness)
 
 `McpToolSpec` does not attach MCP `initialize` `instructions` to tools. The harness loads
-them via `instrumentation_tests.mcp_jsonrpc` (HTTP/SSE POST or stdio `ClientSession`) and
+them via `mcp_llm_eval.mcp_jsonrpc` (HTTP/SSE POST or stdio `ClientSession`) and
 prepends them to the **first user turn** of each conversation
 (`format_user_message_with_mcp_instructions`). `FunctionAgent.system_prompt` stays `None`
 so Granite and similar models keep a clean tool-calling template.
