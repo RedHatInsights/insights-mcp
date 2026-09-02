@@ -194,6 +194,7 @@ The mounted URI follows the convention `ui://<toolset_name>_/<app-name>`, matchi
 ```python
 from fastmcp.apps import AppConfig, ResourceCSP
 
+
 @mcp.resource(
     MY_APP_RESOURCE_URI,
     app=AppConfig(csp=ResourceCSP(resource_domains=["https://unpkg.com"])),

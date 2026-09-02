@@ -1,75 +1,75 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
+#
+# Python hooks run via `uv run --frozen` so tool versions come from uv.lock
+# (the project extra/dev env), not a second pip-resolved hook venv.
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+  - repo: local
     hooks:
       - id: trailing-whitespace
+        name: trim trailing whitespace
+        entry: uv run --frozen trailing-whitespace-fixer
+        language: system
+        types: [text]
         args:
           - --markdown-linebreak-ext=md
       - id: end-of-file-fixer
+        name: fix end of files
+        entry: uv run --frozen end-of-file-fixer
+        language: system
+        types: [text]
       - id: check-added-large-files
-  - repo: https://github.com/adrienverge/yamllint
-    rev: v1.38.0
-    hooks:
+        name: check for added large files
+        entry: uv run --frozen check-added-large-files
+        language: system
       - id: yamllint
+        name: yamllint
+        entry: uv run --frozen yamllint
+        language: system
+        types: [file, yaml]
         args: [--strict]
-  - repo: https://github.com/schuellerf/pre-commit-pyspelling
-    rev: 0.1.0
-    hooks:
       - id: pyspelling
+        name: pyspelling
+        entry: uv run --frozen pyspelling
+        language: system
+        types: [text]
+        pass_filenames: false
         args: ["--config", ".spellcheck.yml"]
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: 'v2.3.1'
-    hooks:
       - id: mypy
-        additional_dependencies:
-          - PyYAML
-          - types-PyYAML
-          - types-requests
-          - fastmcp>=3.0
-          - requests
-          - PyJWT
-          - rh-fastmcp-server-commons>=0.3.1
-          - deepeval
-          - llama-index
-          - llama-index-core
-          - llama-index-tools-mcp
-          - llama-index-llms-openai
-  - repo: https://github.com/hhatto/autopep8
-    rev: v2.3.2
-    hooks:
+        name: mypy
+        entry: uv run --frozen mypy
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+        # same defaults as pre-commit/mirrors-mypy
+        args: [--ignore-missing-imports, --scripts-are-modules]
       - id: autopep8
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.4
-    hooks:
+        name: autopep8
+        entry: uv run --frozen autopep8
+        language: system
+        types: [python]
+        args: [-i]
       - id: ruff-check
+        name: ruff check
+        entry: uv run --frozen ruff check --force-exclude
+        language: system
+        types_or: [python, pyi, jupyter]
         args: [--fix]
+        require_serial: true
       - id: ruff-format
-  - repo: https://github.com/pycqa/pylint
-    rev: v4.0.7
-    hooks:
+        name: ruff format
+        entry: uv run --frozen ruff format --force-exclude
+        language: system
+        types_or: [python, pyi, jupyter, markdown]
+        require_serial: true
       - id: pylint
+        name: pylint
+        entry: uv run --frozen pylint
+        language: system
         # always pass all classes, otherwise e.g. tests fail
         stages: [manual]
         pass_filenames: false
         args: [--recursive=y, src, tests, scripts/mcp_registry]
-        additional_dependencies:
-          - PyYAML
-          - types-PyYAML
-          - types-requests
-          - pytest
-          - fastmcp>=3.0
-          - requests
-          - PyJWT
-          - rh-fastmcp-server-commons>=0.3.1
-          - deepeval
-          - llama-index
-          - llama-index-core
-          - llama-index-tools-mcp
-          - llama-index-llms-openai
-  - repo: local
-    hooks:
       - id: check-generated-docs
         name: Check generated docs (usage, toolsets, catalog-info)
         entry: bash -c 'make generate-docs && git diff --exit-code usage.md toolsets.md catalog-info.yaml docs/mkdocs/index.md docs/mkdocs/HACKING.md'

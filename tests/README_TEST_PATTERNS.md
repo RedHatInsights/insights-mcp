@@ -40,6 +40,7 @@ Import pattern functions and provide module-specific parameters:
 ```python
 from tests.test_patterns import assert_mcp_tool_descriptions_and_annotations
 
+
 @pytest.mark.parametrize(
     "tool_name, expected_desc, params",
     [
@@ -78,6 +79,7 @@ from tests.conftest import (
 2. Create `src/[new_module]/tests/test_mcp_tool_validation.py`:
    ```python
    from tests.test_patterns import assert_mcp_tool_descriptions_and_annotations
+
 
    @pytest.mark.parametrize(
        "tool_name, expected_desc, params",
