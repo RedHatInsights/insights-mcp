@@ -1,6 +1,7 @@
 """Tests for refresh-token authentication credential handling."""
 
 import importlib
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -73,6 +74,32 @@ class TestRefreshTokenAuth:
 
 class TestLightspeedRefreshTokenConfig:
     """Test LIGHTSPEED_REFRESH_TOKEN fallback in config."""
+
+    @pytest.fixture(autouse=True)
+    def _restore_config_module(self) -> Iterator[None]:
+        """Reload config after each test so env-driven reloads do not leak state.
+
+        monkeypatch restores os.environ first (same-scope fixtures tear down in
+        reverse setup order), then this reload reads the original environment.
+        """
+        yield
+        importlib.reload(config_module)
+
+    def test_empty_credential_env_vars_become_none(self, monkeypatch: pytest.MonkeyPatch):
+        """Unset or empty credential env vars are stored as None, not empty strings."""
+        reloaded = _reload_config(
+            monkeypatch,
+            INSIGHTS_CLIENT_ID="",
+            INSIGHTS_CLIENT_SECRET="",
+            INSIGHTS_REFRESH_TOKEN="",
+            LIGHTSPEED_CLIENT_ID=None,
+            LIGHTSPEED_CLIENT_SECRET=None,
+            LIGHTSPEED_REFRESH_TOKEN=None,
+        )
+
+        assert reloaded.INSIGHTS_CLIENT_ID is None
+        assert reloaded.INSIGHTS_CLIENT_SECRET is None
+        assert reloaded.INSIGHTS_REFRESH_TOKEN is None
 
     def test_lightspeed_refresh_token_used_when_insights_unset(self, monkeypatch: pytest.MonkeyPatch):
         """LIGHTSPEED_REFRESH_TOKEN is used when INSIGHTS_REFRESH_TOKEN is unset."""
