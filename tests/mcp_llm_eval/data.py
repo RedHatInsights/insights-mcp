@@ -11,46 +11,59 @@ _PLACEHOLDER_PATTERN = re.compile(r"\{(\w+)\}")
 
 
 @dataclass(frozen=True)
-class TestScenario:
-    """Multi-turn prompt with at least one expected MCP tool name."""
+class PromptWithTools:
+    """Single conversation turn with expected MCP tool calls."""
 
-    turns: tuple[str, ...]
-    expected_tools: tuple[str, ...]
+    prompt: str
+    expected_tools: tuple[str, ...] = ()
     forbidden_tools: tuple[str, ...] = ()
-    turn_criteria: str | None = None
-    conversation_criteria: str | None = None
     expected_args: dict[str, list[dict[str, Any]]] | None = None
+    turn_criteria: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate that argument expectations refer to expected tools."""
+        if self.expected_args:
+            unexpected_tools = set(self.expected_args) - set(self.expected_tools)
+            if unexpected_tools:
+                raise ValueError(
+                    "PromptWithTools.expected_args contains tools not listed in expected_tools: "
+                    f"{sorted(unexpected_tools)}"
+                )
+
+
+@dataclass(frozen=True)
+class TestScenario:
+    """Multi-turn test scenario with per-turn tool expectations."""
+
+    turns: tuple[PromptWithTools, ...]
+    conversation_criteria: str | None = None
     assert_no_memory_overflow: bool = False
 
     def __post_init__(self) -> None:
         if len(self.turns) < 1:
             raise ValueError("TestScenario.turns must contain at least one turn")
-        if not self.expected_tools:
-            raise ValueError("TestScenario.expected_tools must contain at least one tool name")
+        if not any(turn.expected_tools for turn in self.turns):
+            raise ValueError("TestScenario must contain at least one expected tool")
 
 
 @dataclass(frozen=True)
 class _PromptRecord:
     prompt_id: str
-    template_turns: tuple[str, ...]
-    expected_tools: tuple[str, ...]
-    forbidden_tools: tuple[str, ...] = ()
-    turn_criteria: str | None = None
-    conversation_criteria: str | None = None
-    expected_args: dict[str, list[dict[str, Any]]] | None = None
-    assert_no_memory_overflow: bool = False
+    template_turns: tuple[PromptWithTools, ...]
+    conversation_criteria: str | None
+    assert_no_memory_overflow: bool
 
     @property
     def text(self) -> str:
         """First turn text (backward compatible with single-turn access)."""
-        return self.template_turns[0]
+        return self.template_turns[0].prompt
 
     @property
     def required_keys(self) -> frozenset[str]:
         """Placeholder names required to format all turns."""
         keys: set[str] = set()
         for turn in self.template_turns:
-            keys.update(_PLACEHOLDER_PATTERN.findall(turn))
+            keys.update(_PLACEHOLDER_PATTERN.findall(turn.prompt))
         return frozenset(keys)
 
     @classmethod
@@ -59,11 +72,7 @@ class _PromptRecord:
         return cls(
             prompt_id=prompt_id,
             template_turns=value.turns,
-            expected_tools=value.expected_tools,
-            forbidden_tools=value.forbidden_tools,
-            turn_criteria=value.turn_criteria,
             conversation_criteria=value.conversation_criteria,
-            expected_args=value.expected_args,
             assert_no_memory_overflow=value.assert_no_memory_overflow,
         )
 
@@ -74,23 +83,23 @@ class PromptTestScenario:
 
     toolset: str
     prompt_id: str
-    template_turns: tuple[str, ...]
+    template_turns: tuple[PromptWithTools, ...]
     required_keys: frozenset[str]
-    expected_tools: tuple[str, ...]
-    forbidden_tools: tuple[str, ...] | None = None
-    turn_criteria: str | None = None
-    conversation_criteria: str | None = None
-    expected_args: dict[str, list[dict[str, Any]]] | None = None
-    assert_no_memory_overflow: bool = False
+    conversation_criteria: str | None
+    assert_no_memory_overflow: bool
 
     def format_turns(self, context: dict[str, str]) -> tuple[str, ...]:
         """Substitute placeholders in every turn using *context*."""
-        return tuple(turn.format(**context) for turn in self.template_turns)
+        return tuple(turn.prompt.format(**context) for turn in self.template_turns)
 
     @property
     def prompt(self) -> str:
         """Return the first turn template as the primary prompt."""
-        return self.template_turns[0]
+        return self.template_turns[0].prompt
+
+    def get_expected_tools(self) -> set[str]:
+        """Collect all expected tools from all turns."""
+        return {tool for turn in self.template_turns for tool in turn.expected_tools}
 
 
 class PromptRegistry:
@@ -114,7 +123,7 @@ class PromptRegistry:
 
     def turns_for(self, prompt_id: str) -> tuple[str, ...]:
         """Return all turn templates for *prompt_id* (single- or multi-turn)."""
-        return self._by_id[prompt_id].template_turns
+        return tuple(turn.prompt for turn in self._by_id[prompt_id].template_turns)
 
     def iter_test_scenarios(self, toolset: str) -> list[PromptTestScenario]:
         """Return unresolved scenarios for per-toolset LLM tests."""
@@ -124,11 +133,7 @@ class PromptRegistry:
                 prompt_id=record.prompt_id,
                 template_turns=record.template_turns,
                 required_keys=record.required_keys,
-                expected_tools=record.expected_tools,
-                forbidden_tools=record.forbidden_tools,
-                turn_criteria=record.turn_criteria,
                 conversation_criteria=record.conversation_criteria,
-                expected_args=record.expected_args,
                 assert_no_memory_overflow=record.assert_no_memory_overflow,
             )
             for record in self._records
@@ -150,7 +155,7 @@ def collect_markdown_prompts(registry: PromptRegistry, placeholder_examples: dic
     seen: set[str] = set()
     for record in registry._records:
         for turn in record.template_turns:
-            display = format_template_for_markdown(turn, placeholder_examples)
+            display = format_template_for_markdown(turn.prompt, placeholder_examples)
             if display not in seen:
                 texts.append(display)
                 seen.add(display)

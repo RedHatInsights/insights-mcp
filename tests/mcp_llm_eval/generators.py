@@ -50,27 +50,41 @@ def create_test_suite(toolset: str, prompts: PromptRegistry, class_name: str) ->
         ):  # pylint: disable=redefined-outer-name,unused-argument,too-many-arguments,too-many-positional-arguments
             """Run an LLM eval scenario, assert tool correctness and criteria."""
             turns = resolve_scenario_turns(scenario, llm_api_context)
-            response, all_tools, chat_history = await run_scenario_turns(test_agent, turns)
+            responses, tools_per_turn, chat_history = await run_scenario_turns(test_agent, turns)
 
-            verbose_logger.info("Expected: %s", scenario.expected_tools)
-            verbose_logger.info("Forbidden: %s", scenario.forbidden_tools)
+            for turn_idx, (request, executed_tools, turn_template, response) in enumerate(
+                zip(turns, tools_per_turn, scenario.template_turns, responses)
+            ):
+                assert response.strip(), f"empty assistant response for {llm_config['name']} on {scenario.prompt_id}"
 
-            assert response.strip(), f"empty assistant response for {llm_config['name']} on {scenario.prompt_id}"
-            assert_at_least_one_expected_tool(all_tools, scenario.expected_tools)
-            if scenario.forbidden_tools:
-                assert_no_forbidden_tool(all_tools, scenario.forbidden_tools)
+                verbose_logger.info("Turn %d - Expected: %s", turn_idx + 1, turn_template.expected_tools)
+                verbose_logger.info("Turn %d - Forbidden: %s", turn_idx + 1, turn_template.forbidden_tools)
 
-            test_case = build_test_case(scenario.prompt, response, all_tools, list(scenario.expected_tools))
+                if turn_template.expected_tools:
+                    assert_at_least_one_expected_tool(executed_tools, turn_template.expected_tools)
+                if turn_template.forbidden_tools:
+                    assert_no_forbidden_tool(executed_tools, turn_template.forbidden_tools)
+                if turn_template.expected_args:
+                    assert_correct_tool_args(executed_tools, turn_template.expected_args)
 
-            await evaluate_tool_correctness(test_case, guardian_agent, verbose_logger)
+                turn_test_case = build_test_case(request, response, executed_tools, list(turn_template.expected_tools))
 
-            if scenario.turn_criteria:
-                await evaluate_compliance(test_case, scenario.turn_criteria, guardian_agent, verbose_logger)
+                await evaluate_tool_correctness(turn_test_case, guardian_agent, verbose_logger)
+
+                if turn_template.turn_criteria:
+                    await evaluate_compliance(
+                        turn_test_case, turn_template.turn_criteria, guardian_agent, verbose_logger
+                    )
+
+            all_tools = [tool for turn_tools in tools_per_turn for tool in turn_tools]
+            conv_test_case = build_test_case(
+                scenario.prompt, responses[-1], all_tools, list(scenario.get_expected_tools())
+            )
+
             if scenario.conversation_criteria:
-                await evaluate_behavioral(test_case, scenario.conversation_criteria, guardian_agent, verbose_logger)
+                await evaluate_behavioral(conv_test_case, scenario.conversation_criteria, guardian_agent, verbose_logger)
 
-            if scenario.expected_args:
-                assert_correct_tool_args(all_tools, scenario.expected_args)
+            if any(turn.expected_args for turn in scenario.template_turns):
                 pretty_print_chat_history(chat_history, llm_config["name"], verbose_logger)
 
             if scenario.assert_no_memory_overflow:

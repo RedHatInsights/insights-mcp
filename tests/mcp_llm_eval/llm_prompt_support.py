@@ -24,17 +24,18 @@ def resolve_scenario_turns(scenario: PromptTestScenario, context: dict[str, str]
 async def run_scenario_turns(
     agent: MCPAgentWrapper,
     turns: tuple[str, ...],
-) -> tuple[str, list[ToolCall], list[ChatMessage]]:
-    """Execute all turns and return the final response plus every tool call."""
+) -> tuple[list[str], list[list[ToolCall]], list[ChatMessage]]:
+    """Execute all turns and return the final response plus tool calls per turn."""
     history: list[ChatMessage] = []
-    response: str = ""
-    all_tools: list[ToolCall] = []
+    responses: list[str] = []
+    tools_per_turn: list[list[ToolCall]] = []
 
     for turn in turns:
         response, _, tools_executed, history = await agent.execute_with_reasoning(turn, chat_history=history)
-        all_tools.extend(tools_executed)
+        responses.append(response)
+        tools_per_turn.append(tools_executed)
 
-    return response, all_tools, history
+    return responses, tools_per_turn, history
 
 
 def _tool_names(tools: list[ToolCall]) -> set[str]:
@@ -77,7 +78,11 @@ def assert_correct_tool_args(tools_executed: list[ToolCall], expected_args: dict
         executed_by_name[tool.name] = args
 
     for tool_name, args_ordered in expected_args.items():
-        executed_args = executed_by_name[tool_name]
+        executed_args = executed_by_name.get(tool_name)
+        assert executed_args is not None, (
+            f"expected tool {tool_name!r} was not called; expected argument calls: {args_ordered}, "
+            f"got tool calls: {sorted(executed_by_name)}"
+        )
         assert len(executed_args) == len(args_ordered), (
             f"different number of the tool {tool_name} called, expected {args_ordered}, got {executed_args}"
         )

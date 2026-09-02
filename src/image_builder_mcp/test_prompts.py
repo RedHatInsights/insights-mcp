@@ -1,60 +1,85 @@
 """Single source of truth for image-builder LLM test prompts and example questions."""
 
-from mcp_llm_eval.data import PromptRegistry, TestScenario
+from mcp_llm_eval.data import PromptRegistry, PromptWithTools, TestScenario
 
 TOOLSET_TITLE = "Image Builder MCP Test Prompts"
 
 PROMPTS = PromptRegistry(
     rhel_initial_question=TestScenario(
-        turns=("Can you create a RHEL 9 image for me?",),
-        expected_tools=(
-            "image-builder__get_openapi",
-            "image-builder__get_blueprints",
-            "image-builder__get_distributions",
+        turns=(
+            PromptWithTools(
+                prompt="Can you create a RHEL 9 image for me?",
+                expected_tools=(
+                    "image-builder__get_openapi",
+                    "image-builder__get_blueprints",
+                    "image-builder__get_distributions",
+                ),
+                forbidden_tools=("image-builder__create_blueprint",),
+                turn_criteria=(
+                    "The LLM should NOT immediately call image-builder__create_blueprint. "
+                    "Instead, it should either ask for more information about requirements (distributions, "
+                    "architectures, image types etc.) or optionally use get_openapi to understand the system first. "
+                    "In any case the response should be targeted to the user for more information."
+                ),
+            ),
         ),
-        turn_criteria=(
-            "The LLM should NOT immediately call image-builder__create_blueprint. "
-            "Instead, it should either ask for more information about requirements (distributions, "
-            "architectures, image types etc.) or optionally use get_openapi to understand the system first. "
-            "In any case the response should be targeted to the user for more information."
-        ),
-        forbidden_tools=("image-builder__create_blueprint",),
     ),
     image_build_status=TestScenario(
-        turns=("What is the status of my latest image build?",),
-        expected_tools=("image-builder__get_composes", "image-builder__get_compose_details"),
-        turn_criteria=(
-            "The response should contain the status of the latest image build, "
-            "including details such as the compose ID, image type, or distribution."
+        turns=(
+            PromptWithTools(
+                prompt="What is the status of my latest image build?",
+                expected_tools=("image-builder__get_composes", "image-builder__get_compose_details"),
+                turn_criteria=(
+                    "The response should contain the status of the latest image build, "
+                    "including details such as the compose ID, image type, or distribution."
+                ),
+            ),
         ),
     ),
     llm_paging=TestScenario(
         turns=(
-            "List my latest 2 blueprints",
-            "Can you show me the next 3 blueprints?",
+            PromptWithTools(
+                prompt="List my latest 2 blueprints",
+                expected_tools=("image-builder__get_blueprints",),
+                expected_args={
+                    "image-builder__get_blueprints": [
+                        {"limit": 2},  # No offset, because it's default and doesn't get caught without with kwargs
+                    ]
+                },
+            ),
+            PromptWithTools(
+                prompt="Can you show me the next 3 blueprints?",
+                expected_tools=("image-builder__get_blueprints",),
+                expected_args={
+                    "image-builder__get_blueprints": [
+                        {"limit": 3, "offset": 2},
+                    ]
+                },
+            ),
         ),
-        expected_tools=("image-builder__get_blueprints",),
-        expected_args={
-            "image-builder__get_blueprints": [
-                {"limit": 2},  # No offset, because it's default and doesn't get caught without with kwargs
-                {"limit": 3, "offset": 2},
-            ]
-        },
         assert_no_memory_overflow=True,
     ),
     list_image_types=TestScenario(
-        turns=("Which image types are available?",),
-        expected_tools=("image-builder__get_openapi",),
-        turn_criteria=(
-            "The response should list the available image types. "
-            "The response must not contain edge-commit, edge-installer, rhel-edge-commit, "
-            "rhel-edge-installer or report them as deprecated image types."
+        turns=(
+            PromptWithTools(
+                prompt="Which image types are available?",
+                expected_tools=("image-builder__get_openapi",),
+                forbidden_tools=("image-builder__create_blueprint",),
+                turn_criteria=(
+                    "The response should list the available image types. "
+                    "The response must not contain edge-commit, edge-installer, rhel-edge-commit, "
+                    "rhel-edge-installer or report them as deprecated image types."
+                ),
+            ),
         ),
-        forbidden_tools=("image-builder__create_blueprint",),
     ),
     complete_conversation_flow=TestScenario(
-        turns=("Can you help me understand what blueprints are available?",),
-        expected_tools=("image-builder__get_blueprints",),
+        turns=(
+            PromptWithTools(
+                prompt="Can you help me understand what blueprints are available?",
+                expected_tools=("image-builder__get_blueprints",),
+            ),
+        ),
         conversation_criteria=(
             "The conversation should demonstrate proper agent behavior:\n"
             "1. Understanding user intent\n"
@@ -64,15 +89,27 @@ PROMPTS = PromptRegistry(
         ),
     ),
     list_recent_builds=TestScenario(
-        turns=("List all my recent builds",),
-        expected_tools=("image-builder__get_composes",),
+        turns=(
+            PromptWithTools(
+                prompt="List all my recent builds",
+                expected_tools=("image-builder__get_composes",),
+            ),
+        ),
     ),
     what_blueprints=TestScenario(
-        turns=("What blueprints do I have?",),
-        expected_tools=("image-builder__get_blueprints",),
+        turns=(
+            PromptWithTools(
+                prompt="What blueprints do I have?",
+                expected_tools=("image-builder__get_blueprints",),
+            ),
+        ),
     ),
     show_blueprints=TestScenario(
-        turns=("Please show my blueprints",),
-        expected_tools=("image-builder__get_blueprints",),
+        turns=(
+            PromptWithTools(
+                prompt="Please show my blueprints",
+                expected_tools=("image-builder__get_blueprints",),
+            ),
+        ),
     ),
 )

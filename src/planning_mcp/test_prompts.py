@@ -1,106 +1,207 @@
 """Single source of truth for planning LLM test prompts."""
 
-from mcp_llm_eval.data import PromptRegistry, TestScenario
+from mcp_llm_eval.data import PromptRegistry, PromptWithTools, TestScenario
 
 TOOLSET_TITLE = "Planning MCP Test Prompts"
 
 PROMPTS = PromptRegistry(
     upcoming_changes_all=TestScenario(
-        turns=("Show me all upcoming package changes in the roadmap.",),
-        expected_tools=("planning__get_upcoming_changes",),
+        turns=(
+            PromptWithTools(
+                prompt="Show me all upcoming package changes in the roadmap.",
+                expected_tools=("planning__get_upcoming_changes",),
+            ),
+        ),
     ),
     upcoming_changes_rhel94=TestScenario(
-        turns=("What upcoming changes are planned for RHEL 9.4?",),
-        expected_tools=("planning__get_upcoming_changes",),
+        turns=(
+            PromptWithTools(
+                prompt="What upcoming changes are planned for RHEL 9.4?",
+                expected_tools=("planning__get_upcoming_changes",),
+            ),
+        ),
     ),
     upcoming_deprecations=TestScenario(
-        turns=("Which packages are going to be deprecated next year?",),
-        expected_tools=("planning__get_upcoming_changes",),
+        turns=(
+            PromptWithTools(
+                prompt="Which packages are going to be deprecated next year?",
+                expected_tools=("planning__get_upcoming_changes",),
+            ),
+        ),
     ),
     upcoming_roadmap_rhel89=TestScenario(
-        turns=("Help me understand the main roadmap changes that might affect our RHEL 8 and 9 systems.",),
-        expected_tools=("planning__get_upcoming_changes",),
+        turns=(
+            PromptWithTools(
+                prompt="Help me understand the main roadmap changes that might affect our RHEL 8 and 9 systems.",
+                expected_tools=("planning__get_upcoming_changes",),
+            ),
+        ),
     ),
     nodejs_streams=TestScenario(
-        turns=("What versions of Node.js are available across RHEL 8, 9, and 10?",),
-        expected_tools=("planning__get_appstreams_lifecycle",),
+        turns=(
+            PromptWithTools(
+                prompt="What versions of Node.js are available across RHEL 8, 9, and 10?",
+                expected_tools=("planning__get_appstreams_lifecycle",),
+            ),
+        ),
     ),
     rhel9_modules_lifecycle=TestScenario(
-        turns=("Show me the detailed lifecycle of all modules available on RHEL 9.",),
-        expected_tools=("planning__get_appstreams_lifecycle",),
+        turns=(
+            PromptWithTools(
+                prompt="Show me the detailed lifecycle of all modules available on RHEL 9.",
+                expected_tools=("planning__get_appstreams_lifecycle",),
+            ),
+        ),
     ),
     postgresql_rhel8_support=TestScenario(
-        turns=("Is the 'postgresql' package supported on RHEL 8, and when does it expire?",),
-        expected_tools=("planning__get_appstreams_lifecycle",),
+        turns=(
+            PromptWithTools(
+                prompt="Is the 'postgresql' package supported on RHEL 8, and when does it expire?",
+                expected_tools=("planning__get_appstreams_lifecycle",),
+            ),
+        ),
     ),
     rhel_lifecycle_all=TestScenario(
-        turns=("Give me complete list of the available RHEL versions and their support status.",),
-        expected_tools=("planning__get_rhel_lifecycle",),
+        turns=(
+            PromptWithTools(
+                prompt="Give me complete list of the available RHEL versions and their support status.",
+                expected_tools=("planning__get_rhel_lifecycle",),
+            ),
+        ),
     ),
     rhel101_support_status=TestScenario(
-        turns=("What is the support status of RHEL 10.1?",),
-        expected_tools=("planning__get_rhel_lifecycle",),
+        turns=(
+            PromptWithTools(
+                prompt="What is the support status of RHEL 10.1?",
+                expected_tools=("planning__get_rhel_lifecycle",),
+            ),
+        ),
     ),
     rhel_retirements_next_year=TestScenario(
-        turns=("Which RHEL version are going to be retired next year?",),
-        expected_tools=("planning__get_rhel_lifecycle",),
+        turns=(
+            PromptWithTools(
+                prompt="Which RHEL version are going to be retired next year?",
+                expected_tools=("planning__get_rhel_lifecycle",),
+            ),
+        ),
     ),
     rhel88_actions=TestScenario(
-        turns=("I'm using RHEL 8.8. Are there any actions regarding my RHEL version I should take?",),
-        expected_tools=("planning__get_rhel_lifecycle",),
+        turns=(
+            PromptWithTools(
+                prompt="I'm using RHEL 8.8. Are there any actions regarding my RHEL version I should take?",
+                expected_tools=("planning__get_rhel_lifecycle",),
+            ),
+        ),
     ),
     relevant_upcoming_all=TestScenario(
-        turns=("Show me all relevant upcoming changes for my systems.",),
-        expected_tools=("planning__get_relevant_upcoming",),
+        turns=(
+            PromptWithTools(
+                prompt="Show me all relevant upcoming changes for my systems.",
+                expected_tools=("planning__get_relevant_upcoming",),
+            ),
+        ),
     ),
     relevant_upcoming_rhel9=TestScenario(
-        turns=("What relevant upcoming changes affect my RHEL 9 systems?",),
-        expected_tools=("planning__get_relevant_upcoming",),
+        turns=(
+            PromptWithTools(
+                prompt="What relevant upcoming changes affect my RHEL 9 systems?",
+                expected_tools=("planning__get_relevant_upcoming",),
+            ),
+        ),
     ),
     relevant_upcoming_rhel92=TestScenario(
-        turns=("Show me relevant upcoming changes for my RHEL 9.2 systems",),
-        expected_tools=("planning__get_relevant_upcoming",),
+        turns=(
+            PromptWithTools(
+                prompt="Show me relevant upcoming changes for my RHEL 9.2 systems",
+                expected_tools=("planning__get_relevant_upcoming",),
+            ),
+        ),
     ),
     relevant_appstreams_all=TestScenario(
-        turns=("What application streams are relevant to my systems, including related successor streams?",),
-        expected_tools=("planning__get_relevant_appstreams",),
+        turns=(
+            PromptWithTools(
+                prompt="What application streams are relevant to my systems, including related successor streams?",
+                expected_tools=("planning__get_relevant_appstreams",),
+            ),
+        ),
     ),
     relevant_appstreams_installed_only=TestScenario(
         turns=(
-            "Show me only the application streams that are actually installed on my systems, without any suggestions.",
+            PromptWithTools(
+                prompt=(
+                    "Show me only the application streams that are actually installed on my systems, "
+                    "without any suggestions."
+                ),
+                expected_tools=("planning__get_relevant_appstreams",),
+            ),
         ),
-        expected_tools=("planning__get_relevant_appstreams",),
     ),
     relevant_appstreams_rhel9=TestScenario(
-        turns=("What application streams are relevant to my RHEL 9 systems and any related successor streams",),
-        expected_tools=("planning__get_relevant_appstreams",),
+        turns=(
+            PromptWithTools(
+                prompt="What application streams are relevant to my RHEL 9 systems and any related successor streams",
+                expected_tools=("planning__get_relevant_appstreams",),
+            ),
+        ),
     ),
     relevant_appstreams_rhel92=TestScenario(
-        turns=("Show me the appstreams relevant to my RHEL 9.2 systems and any related successor streams",),
-        expected_tools=("planning__get_relevant_appstreams",),
+        turns=(
+            PromptWithTools(
+                prompt="Show me the appstreams relevant to my RHEL 9.2 systems and any related successor streams",
+                expected_tools=("planning__get_relevant_appstreams",),
+            ),
+        ),
     ),
     appstream_upgrade_opportunities=TestScenario(
-        turns=("Are there newer versions of the application streams I'm using that I should consider upgrading to?",),
-        expected_tools=("planning__get_relevant_appstreams",),
+        turns=(
+            PromptWithTools(
+                prompt=(
+                    "Are there newer versions of the application streams I'm using that I should consider upgrading to?"
+                ),
+                expected_tools=("planning__get_relevant_appstreams",),
+            ),
+        ),
     ),
     nodejs_inventory_support=TestScenario(
-        turns=("Is the Node.js version in our inventory still supported, and are there newer options available?",),
-        expected_tools=("planning__get_relevant_appstreams",),
+        turns=(
+            PromptWithTools(
+                prompt=(
+                    "Is the Node.js version in our inventory still supported, and are there newer options available?"
+                ),
+                expected_tools=("planning__get_relevant_appstreams",),
+            ),
+        ),
     ),
     relevant_rhel_lifecycle_all=TestScenario(
-        turns=("What RHEL versions are currently running in my environment and when do they go out of support?",),
-        expected_tools=("planning__get_relevant_rhel_lifecycle",),
+        turns=(
+            PromptWithTools(
+                prompt="What RHEL versions are currently running in my environment and when do they go out of support?",
+                expected_tools=("planning__get_relevant_rhel_lifecycle",),
+            ),
+        ),
     ),
     relevant_rhel_lifecycle_rhel8=TestScenario(
-        turns=("Show me the lifecycle status of my RHEL 8 systems.",),
-        expected_tools=("planning__get_relevant_rhel_lifecycle",),
+        turns=(
+            PromptWithTools(
+                prompt="Show me the lifecycle status of my RHEL 8 systems.",
+                expected_tools=("planning__get_relevant_rhel_lifecycle",),
+            ),
+        ),
     ),
     relevant_rhel_lifecycle_rhel92=TestScenario(
-        turns=("Show me the lifecycle status of my RHEL 9.2 systems?",),
-        expected_tools=("planning__get_relevant_rhel_lifecycle",),
+        turns=(
+            PromptWithTools(
+                prompt="Show me the lifecycle status of my RHEL 9.2 systems?",
+                expected_tools=("planning__get_relevant_rhel_lifecycle",),
+            ),
+        ),
     ),
     rhel9_upgrade_targets=TestScenario(
-        turns=("What RHEL 9 minor versions could I upgrade my systems to that are still supported?",),
-        expected_tools=("planning__get_relevant_rhel_lifecycle",),
+        turns=(
+            PromptWithTools(
+                prompt="What RHEL 9 minor versions could I upgrade my systems to that are still supported?",
+                expected_tools=("planning__get_relevant_rhel_lifecycle",),
+            ),
+        ),
     ),
 )
