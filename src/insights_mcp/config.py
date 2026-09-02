@@ -39,14 +39,16 @@ AUTH_ISSUER = os.getenv("AUTH_ISSUER") or ""
 # AUTH_AUDIENCE:       Comma-separated accepted JWT audiences (optional)
 # AUTH_JWKS_URI:       Override JWKS endpoint (otherwise fetched from AUTH_SERVER discovery)
 
-# Traditional service account credentials (stdio transport)
-INSIGHTS_CLIENT_ID = os.getenv("INSIGHTS_CLIENT_ID") or ""
-INSIGHTS_CLIENT_SECRET = os.getenv("INSIGHTS_CLIENT_SECRET") or ""
+# Traditional service account credentials (stdio transport).
+# Unset or empty env vars become None so OAuth clients apply constructor defaults
+# (for example rhsm-api for refresh-token auth) instead of sending "".
+INSIGHTS_CLIENT_ID = os.getenv("INSIGHTS_CLIENT_ID") or None
+INSIGHTS_CLIENT_SECRET = os.getenv("INSIGHTS_CLIENT_SECRET") or None
 # if none is set, fallback to lightspeed credentials
 if not INSIGHTS_CLIENT_ID and not INSIGHTS_CLIENT_SECRET:
-    INSIGHTS_CLIENT_ID = os.getenv("LIGHTSPEED_CLIENT_ID") or ""
-    INSIGHTS_CLIENT_SECRET = os.getenv("LIGHTSPEED_CLIENT_SECRET") or ""
-INSIGHTS_REFRESH_TOKEN = os.getenv("INSIGHTS_REFRESH_TOKEN") or ""
+    INSIGHTS_CLIENT_ID = os.getenv("LIGHTSPEED_CLIENT_ID") or None
+    INSIGHTS_CLIENT_SECRET = os.getenv("LIGHTSPEED_CLIENT_SECRET") or None
+INSIGHTS_REFRESH_TOKEN = os.getenv("INSIGHTS_REFRESH_TOKEN") or os.getenv("LIGHTSPEED_REFRESH_TOKEN") or None
 
 # Argument toolset
 INSIGHTS_MCP_TOOLSET = os.getenv("INSIGHTS_TOOLSET") or os.getenv("LIGHTSPEED_TOOLSET") or "all"
