@@ -8,7 +8,8 @@ import pytest
 from deepeval.models import GPTModel
 from mcp_llm_eval.data import PromptRegistry, PromptTestScenario
 from mcp_llm_eval.deepeval_support.judges import (
-    build_test_case,
+    build_conversational_test_case,
+    build_turn_test_case,
     evaluate_behavioral,
     evaluate_compliance,
     evaluate_tool_correctness,
@@ -67,7 +68,7 @@ def create_test_suite(toolset: str, prompts: PromptRegistry, class_name: str) ->
                 if turn_template.expected_args:
                     assert_correct_tool_args(executed_tools, turn_template.expected_args)
 
-                turn_test_case = build_test_case(request, response, executed_tools, list(turn_template.expected_tools))
+                turn_test_case = build_turn_test_case(request, response, executed_tools, turn_template.expected_tools)
 
                 await evaluate_tool_correctness(turn_test_case, guardian_agent, verbose_logger)
 
@@ -76,12 +77,8 @@ def create_test_suite(toolset: str, prompts: PromptRegistry, class_name: str) ->
                         turn_test_case, turn_template.turn_criteria, guardian_agent, verbose_logger
                     )
 
-            all_tools = [tool for turn_tools in tools_per_turn for tool in turn_tools]
-            conv_test_case = build_test_case(
-                scenario.prompt, responses[-1], all_tools, list(scenario.get_expected_tools())
-            )
-
             if scenario.conversation_criteria:
+                conv_test_case = build_conversational_test_case(turns, responses, tools_per_turn)
                 await evaluate_behavioral(conv_test_case, scenario.conversation_criteria, guardian_agent, verbose_logger)
 
             if any(turn.expected_args for turn in scenario.template_turns):
