@@ -33,7 +33,7 @@ especially handing over environment variables and credentials
 ### Refresh-token authentication (exception / not recommended)
 
 Use this path only when [service account](index.md#service-account-setup) credentials,
-[JWT Bearer tokens](index.md#authentication) (HTTP/SSE), or [hosted OAuth DCR](#hosted-mcp-server-with-dcr-auth-beta)
+[JWT Bearer tokens](index.md#authentication) (HTTP/SSE), or [hosted OAuth DCR](#hosted-mcp-server-with-auth-provider-http-transport)
 are not viable—for example when you can access console.redhat.com with a personal account but
 cannot obtain a service account with the required roles.
 
