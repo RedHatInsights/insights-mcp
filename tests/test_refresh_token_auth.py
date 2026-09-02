@@ -23,14 +23,14 @@ def _reload_config(monkeypatch: pytest.MonkeyPatch, **env: str | None):
 class TestRefreshTokenAuth:
     """Test credential normalization and client defaults for refresh-token authentication."""
 
-    def test_setup_credentials_coerces_empty_client_id_when_refresh_token_set(self):
-        """Empty INSIGHTS_CLIENT_ID should become None so rhsm-api default applies."""
+    def test_setup_credentials_passes_through_none_client_id_when_refresh_token_set(self):
+        """Unset INSIGHTS_CLIENT_ID stays None so the rhsm-api default can apply."""
         mcp_server_config = {"oauth_enabled": False, "mcp_transport": "stdio"}
         logger = MagicMock()
 
         with patch("insights_mcp.server.config") as mock_config:
-            mock_config.INSIGHTS_CLIENT_ID = ""
-            mock_config.INSIGHTS_CLIENT_SECRET = ""
+            mock_config.INSIGHTS_CLIENT_ID = None
+            mock_config.INSIGHTS_CLIENT_SECRET = None
             mock_config.INSIGHTS_REFRESH_TOKEN = "test-refresh-token"
             mock_config.SSO_TOKEN_ENDPOINT = "https://test.example.com/token"
 
@@ -47,8 +47,8 @@ class TestRefreshTokenAuth:
         logger = MagicMock()
 
         with patch("insights_mcp.server.config") as mock_config:
-            mock_config.INSIGHTS_CLIENT_ID = ""
-            mock_config.INSIGHTS_CLIENT_SECRET = ""
+            mock_config.INSIGHTS_CLIENT_ID = None
+            mock_config.INSIGHTS_CLIENT_SECRET = None
             mock_config.INSIGHTS_REFRESH_TOKEN = "test-refresh-token"
             mock_config.SSO_TOKEN_ENDPOINT = "https://test.example.com/token"
 
