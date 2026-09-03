@@ -35,6 +35,8 @@ class PromptWithTools:
 class TestScenario:
     """Multi-turn test scenario with per-turn tool expectations."""
 
+    __test__ = False  # Prevent pytest from collecting this data model as a test class.
+
     turns: tuple[PromptWithTools, ...]
     threshold: float = 0.6  # Set to 0 to skip tool correctness evaluation
     conversation_criteria: str | None = None
@@ -100,6 +102,8 @@ class PromptTestScenario:
 
 class TestScenarioRegistry:
     """Registry of LLM test scenarios."""
+
+    __test__ = False  # Prevent pytest from collecting this data model as a test class.
 
     def __init__(self, **entries: TestScenario) -> None:
         if not entries:
