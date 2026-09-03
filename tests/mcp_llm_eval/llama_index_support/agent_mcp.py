@@ -212,7 +212,11 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         if self._memory is None:
             raise ValueError("Agent not initialized")
         active_messages = await self._memory.aget_all(status=MessageStatus.ACTIVE)
-        return sum(self._memory._estimate_token_count(message) for message in active_messages)
+        # Use LlamaIndex's estimator so this check matches its memory waterfall exactly.
+        return sum(
+            self._memory._estimate_token_count(message)  # pylint: disable=protected-access
+            for message in active_messages
+        )
 
     async def _init_mcp_tools(self):
         """Initialize MCP tools using LlamaIndex MCP support."""

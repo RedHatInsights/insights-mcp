@@ -140,8 +140,8 @@ def collect_markdown_prompts(registry: TestScenarioRegistry, placeholder_example
     """Return deduplicated prompt texts in registry order (doc examples for placeholders)."""
     texts: list[str] = []
     seen: set[str] = set()
-    for record in registry._records:
-        for turn in record.turns:
+    for scenario in registry.iter_test_scenarios():
+        for turn in scenario.turns:
             display = format_template_for_markdown(turn.prompt, placeholder_examples)
             if display not in seen:
                 texts.append(display)
