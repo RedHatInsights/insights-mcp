@@ -8,6 +8,7 @@ LLM tests use OpenAI-compatible model endpoints, including vLLM and gateway-host
 - `test_auth.py` - Authentication and OAuth tests
 - `utils.py` - Shared testing utilities and helper functions
 - `mcp_llm_eval/` - Reusable LLM test harness:
+  - `README.md` - Authoritative documentation for the harness API, execution, and consumer fixtures
   - `llama_index_support/` - MCP agent wrapper; see `UPSTREAM.md`
   - `deepeval_support/` - DeepEval adapters and tool-call tracing; see `UPSTREAM.md`
   - `generators.py` - `create_test_suite()` for generated per-toolset tests

@@ -82,16 +82,20 @@ make help  # Show all available make targets
 **General pattern for toolset testing:**
 - `tests/` - Main test directory with cross-toolset auth and utility tests
 - `src/<toolset_name>_mcp/tests/` - Toolset-specific tests (when present)
-- `src/<toolset_name>_mcp/test_prompts.py` - `PROMPTS = PromptRegistry(...)` (see `insights_mcp.test_prompts_data`)
+- `tests/mcp_llm_eval/` - Shared LLM evaluation module used by the toolset prompt tests; see [`tests/mcp_llm_eval/README.md`](tests/mcp_llm_eval/README.md) for its API, execution model, and fixtures
+- `src/<toolset_name>_mcp/test_prompts.py` - `PROMPTS = TestScenarioRegistry(...)` from `mcp_llm_eval.data`; see [`tests/mcp_llm_eval/README.md`](tests/mcp_llm_eval/README.md) for the scenario API
 - `src/<toolset_name>_mcp/test_prompts.md` - Generated bullet-list examples for users (`make test-prompts-md`)
 
-**`PromptRegistry` entries:** every entry must declare at least one expected tool name via `(text, (expected_tools,))`, `(text, (expected_tools,), description)` for single-turn prompts, or `PromptWithTools(turns=..., expected_tools=...)` for multi-turn. Templates may use `{cve_id}`, `{host_id}`, etc.; unified LLM tests resolve those via live APIs (`tests/llm_api_discovery.py`). Regenerate markdown with `make test-prompts-md`.
+The `mcp_llm_eval` README is the source of truth for scenario parameters,
+tool expectations, placeholder handling, and fixture behavior. Templates may
+use `{cve_id}`, `{host_id}`, etc.; the consumer resolves those through its
+live API context. Regenerate markdown with `make test-prompts-md`.
 
 **Example test implementations:**
 - `src/<toolset>_mcp/tests/test_<toolset>_llm_prompts.py` - One parametrized LLM test per `prompt_id`; direct assert that at least one `expected_tools` entry was called (`make test-llm`). Each file must have a unique module basename (pytest import safety).
-- `tests/llm_prompt_support.py` - Shared resolve/run/assert helpers; `tests/llm_api_discovery.py` for live placeholder values
+- `tests/mcp_llm_eval/llm_prompt_support.py` - Shared resolve/run/assert helpers; `tests/llm_api_discovery.py` for live placeholder values
 - `tests/` - Cross-toolset authentication, API, and pattern tests
-- `src/image_builder_mcp/test_prompts.py` - `PromptRegistry` shared by LLM tests and generated `test_prompts.md`
+- `src/image_builder_mcp/test_prompts.py` - `TestScenarioRegistry` shared by LLM tests and generated `test_prompts.md`
 - `src/image_builder_mcp/tests/` - Additional image-builder behavioral LLM tests (easy/hard)
 
 ### Running Tests
