@@ -41,11 +41,71 @@ mcp = InsightsMCP(
     You can get information about connected systems, their operating systems, installed packages, etc.
 
     $container_brand_long Host Inventory requires correct RBAC permissions to be able to use the tools. Ensure that your
-    Service Account has at least this role:
+    Service Account has at least these roles:
     - Inventory Hosts viewer
+    - Workspaces viewer (inventory:groups:read) to list workspaces and their membership
+
+    Workspaces in the console UI are Inventory groups. List them with list_workspaces; do not invent
+    workspace names such as Ungrouped Hosts without calling that tool. Prefer workspace IDs over names
+    because two workspaces can share the same name.
 
     """,
 )
+
+# Inventory UI "workspaces" are groups in the Host Inventory REST API:
+# https://github.com/RedHatInsights/insights-host-inventory/blob/master/swagger/api.spec.yaml
+_WORKSPACE_GROUP_TYPES = frozenset({"all", "standard", "ungrouped-hosts"})
+_MAX_PER_PAGE = 100
+
+
+def _host_list_params(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+    hostname_or_id: str,
+    display_name: str,
+    fqdn: str,
+    tags: str,
+    staleness: str,
+    registered_with: str,
+    per_page: int,
+    page: int,
+    order_by: str,
+    order_how: str,
+    *,
+    provider_type: str = "",
+    updated_start: str = "",
+    updated_end: str = "",
+    workspace_id: str = "",
+    workspace_name: str = "",
+) -> dict[str, Any]:
+    """Build query parameters shared by host-list Inventory endpoints."""
+    params: dict[str, Any] = {}
+    if hostname_or_id:
+        params["hostname_or_id"] = hostname_or_id
+    if display_name:
+        params["display_name"] = display_name
+    if fqdn:
+        params["fqdn"] = fqdn
+    if tags:
+        params["tags"] = tags
+    if staleness:
+        params["staleness"] = staleness
+    if registered_with:
+        params["registered_with"] = registered_with
+    if provider_type:
+        params["provider_type"] = provider_type
+    if updated_start:
+        params["updated_start"] = updated_start
+    if updated_end:
+        params["updated_end"] = updated_end
+    if workspace_id:
+        params["workspace_id"] = workspace_id
+    if workspace_name:
+        params["workspace_name"] = workspace_name
+    if order_by:
+        params["order_by"] = order_by
+        params["order_how"] = order_how
+    params["per_page"] = min(per_page, _MAX_PER_PAGE)
+    params["page"] = page
+    return params
 
 
 # --- MCP Apps resource registration ---
@@ -64,7 +124,7 @@ def inventory_dashboard_ui() -> str:
     annotations={"readOnlyHint": True},
     app=AppConfig(resource_uri=INVENTORY_DASHBOARD_MOUNTED_URI),
 )
-async def load_inventory_dashboard(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+async def load_inventory_dashboard(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     ctx: Context,
     hostname_or_id: Annotated[str, Field("", description="Filter by display_name, fqdn, or id.")],
     display_name: Annotated[str, Field("", description="Filter by display name.")],
@@ -73,6 +133,10 @@ async def load_inventory_dashboard(  # pylint: disable=too-many-arguments,too-ma
     staleness: Annotated[str, Field("", description="Filter by staleness status.")],
     registered_with: Annotated[str, Field("", description="Filter by reporter.")],
     provider_type: Annotated[str, Field("", description="Filter by provider type (aws, azure, gcp).")],
+    workspace_id: Annotated[
+        str, Field("", description="Filter by workspace ID (UUID). Prefer this over workspace_name.")
+    ],
+    workspace_name: Annotated[str, Field("", description="Filter by workspace name. Names can be duplicated.")],
     per_page: Annotated[int, Field(10, description="Number of hosts per page.")],
     page: Annotated[int, Field(1, description="Page number.")],
     order_by: Annotated[str, Field("", description="Sort field (display_name, updated, created).")],
@@ -92,6 +156,8 @@ async def load_inventory_dashboard(  # pylint: disable=too-many-arguments,too-ma
         "staleness": staleness,
         "registered_with": registered_with,
         "provider_type": provider_type,
+        "workspace_id": workspace_id,
+        "workspace_name": workspace_name,
         "per_page": per_page,
         "page": page,
         "order_by": order_by,
@@ -117,7 +183,7 @@ async def load_inventory_dashboard(  # pylint: disable=too-many-arguments,too-ma
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
-async def list_hosts(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+async def list_hosts(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     hostname_or_id: Annotated[str, Field("", description="Filter by display_name, fqdn, or id (case-insensitive).")],
     display_name: Annotated[str, Field("", description="Filter by display name (case-insensitive).")],
     fqdn: Annotated[str, Field("", description="Filter by FQDN (case-insensitive).")],
@@ -127,6 +193,14 @@ async def list_hosts(  # pylint: disable=too-many-arguments,too-many-positional-
     ],
     registered_with: Annotated[str, Field("", description="Filter by reporter that registered the host.")],
     provider_type: Annotated[str, Field("", description="Filter by provider type (e.g., 'aws', 'azure', 'gcp').")],
+    workspace_id: Annotated[
+        str,
+        Field(
+            "",
+            description="Filter by workspace ID (UUID). Prefer this over workspace_name; names can be duplicated.",
+        ),
+    ],
+    workspace_name: Annotated[str, Field("", description="Filter by workspace name. Names can be duplicated.")],
     updated_start: Annotated[str, Field("", description="Filter hosts updated after this timestamp (RFC3339).")],
     updated_end: Annotated[str, Field("", description="Filter hosts updated before this timestamp (RFC3339).")],
     per_page: Annotated[
@@ -150,32 +224,23 @@ async def list_hosts(  # pylint: disable=too-many-arguments,too-many-positional-
     degradation and context overflow.
     Only use a larger value if the user explicitly requests to see more systems at once.
     """
-    params: dict[str, Any] = {}
-
-    if hostname_or_id:
-        params["hostname_or_id"] = hostname_or_id
-    if display_name:
-        params["display_name"] = display_name
-    if fqdn:
-        params["fqdn"] = fqdn
-    if tags:
-        params["tags"] = tags
-    if staleness:
-        params["staleness"] = staleness
-    if registered_with:
-        params["registered_with"] = registered_with
-    if provider_type:
-        params["provider_type"] = provider_type
-    if updated_start:
-        params["updated_start"] = updated_start
-    if updated_end:
-        params["updated_end"] = updated_end
-    if order_by:
-        params["order_by"] = order_by
-        params["order_how"] = order_how
-
-    params["per_page"] = min(per_page, 100)
-    params["page"] = page
+    params = _host_list_params(
+        hostname_or_id,
+        display_name,
+        fqdn,
+        tags,
+        staleness,
+        registered_with,
+        per_page,
+        page,
+        order_by,
+        order_how,
+        provider_type=provider_type,
+        updated_start=updated_start,
+        updated_end=updated_end,
+        workspace_id=workspace_id,
+        workspace_name=workspace_name,
+    )
 
     response = await mcp.insights_client.get("hosts", params=params)
     if isinstance(response, str):
@@ -251,6 +316,145 @@ async def find_host_by_name(hostname: str) -> dict[str, Any] | str:
         hostname: The hostname or display name to search for.
     """
     response = await mcp.insights_client.get("hosts", params={"hostname_or_id": hostname, "per_page": 1})
+    if isinstance(response, str):
+        return response
+    return response
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+async def list_workspaces(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    name: Annotated[str, Field("", description="Filter workspaces by name (partial match).")] = "",
+    group_type: Annotated[
+        str,
+        Field(
+            "all",
+            description=(
+                "Workspace type to return: 'all' (default; includes Ungrouped Hosts and user workspaces), "
+                "'standard' (user-created only), or 'ungrouped-hosts'."
+            ),
+        ),
+    ] = "all",
+    per_page: Annotated[
+        int,
+        Field(
+            10,
+            description=(
+                "Number of workspaces to return per page. "
+                "**ALWAYS use the default value of 10 for the first call.** "
+                "Only increase this value if the user explicitly asks to see more workspaces at once."
+            ),
+        ),
+    ] = 10,
+    page: Annotated[int, Field(1, description="Page number to return.")] = 1,
+    order_by: Annotated[str, Field("", description="Field to sort by ('name', 'host_count', 'updated').")] = "",
+    order_how: Annotated[str, Field("ASC", description="Sort direction ('ASC' or 'DESC').")] = "ASC",
+) -> dict[str, Any] | str:
+    """List Inventory workspaces (console UI name for Inventory groups).
+
+    Call this tool whenever the user asks to list, show, or get workspaces. Do not invent
+    workspace names such as Ungrouped Hosts without calling this API. Each result includes
+    id, name, ungrouped, and host_count. Prefer workspace IDs in later calls; names can
+    be duplicated.
+
+    Required permission: inventory:groups:read (Workspaces viewer).
+    """
+    if group_type not in _WORKSPACE_GROUP_TYPES:
+        allowed = ", ".join(sorted(_WORKSPACE_GROUP_TYPES))
+        return {
+            "error": f"invalid group_type: got {group_type!r}, want one of {allowed}",
+        }
+
+    params: dict[str, Any] = {
+        "group_type": group_type,
+        "per_page": min(per_page, _MAX_PER_PAGE),
+        "page": page,
+    }
+    if name:
+        params["name"] = name
+    if order_by:
+        params["order_by"] = order_by
+        params["order_how"] = order_how
+
+    response = await mcp.insights_client.get("groups", params=params)
+    if isinstance(response, str):
+        return response
+    return response
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+async def get_workspace(
+    workspace_ids: Annotated[
+        str,
+        Field(description="Comma-separated workspace IDs (UUIDs). Prefer IDs over names; names can be duplicated."),
+    ],
+) -> dict[str, Any] | str:
+    """Get details for one or more workspaces by ID.
+
+    Returns id, name, ungrouped, host_count, and timestamps for each workspace.
+    Required permission: inventory:groups:read (Workspaces viewer).
+    """
+    if not workspace_ids or not workspace_ids.strip():
+        return {
+            "error": "workspace_ids must be a non-empty comma-separated list of UUIDs, got an empty value",
+        }
+
+    response = await mcp.insights_client.get(f"groups/{workspace_ids.strip()}")
+    if isinstance(response, str):
+        return response
+    return response
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+async def list_workspace_hosts(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    workspace_id: Annotated[str, Field(description="Workspace ID (UUID) whose hosts to list.")],
+    hostname_or_id: Annotated[
+        str, Field("", description="Filter by display_name, fqdn, or id (case-insensitive).")
+    ] = "",
+    display_name: Annotated[str, Field("", description="Filter by display name (case-insensitive).")] = "",
+    fqdn: Annotated[str, Field("", description="Filter by FQDN (case-insensitive).")] = "",
+    tags: Annotated[str, Field("", description="Filter by tags (e.g., 'ns1/key1=val1,ns2/key2=val2').")] = "",
+    staleness: Annotated[
+        str, Field("", description="Filter by staleness status (one of 'fresh', 'stale', 'stale_warning', 'unknown').")
+    ] = "",
+    registered_with: Annotated[str, Field("", description="Filter by reporter that registered the host.")] = "",
+    per_page: Annotated[
+        int,
+        Field(
+            10,
+            description=(
+                "Number of hosts to return per page "
+                "**ALWAYS use the default value of 10 for the first call.** "
+                "Only increase this value if the user explicitly asks to see more systems at once."
+            ),
+        ),
+    ] = 10,
+    page: Annotated[int, Field(1, description="Page number to return.")] = 1,
+    order_by: Annotated[str, Field("", description="Field to sort by ('display_name', 'updated', 'created').")] = "",
+    order_how: Annotated[str, Field("ASC", description="Sort direction ('ASC' or 'DESC').")] = "ASC",
+) -> dict[str, Any] | str:
+    """List hosts that belong to a workspace.
+
+    Use list_workspaces first to obtain the workspace ID. Required permission:
+    inventory:hosts:read (Inventory Hosts viewer).
+    """
+    if not workspace_id or not workspace_id.strip():
+        return {
+            "error": "workspace_id must be a non-empty UUID, got an empty value",
+        }
+
+    params = _host_list_params(
+        hostname_or_id,
+        display_name,
+        fqdn,
+        tags,
+        staleness,
+        registered_with,
+        per_page,
+        page,
+        order_by,
+        order_how,
+    )
+    response = await mcp.insights_client.get(f"groups/{workspace_id.strip()}/hosts", params=params)
     if isinstance(response, str):
         return response
     return response

@@ -86,6 +86,7 @@ class TestCliArguments:
             "inventory__get_host_details",
             "inventory__get_host_system_profile",
             "inventory__get_host_tags",
+            "inventory__list_workspaces",
         },
         "vulnerability": {
             "vulnerability__get_openapi",
@@ -172,7 +173,7 @@ class TestCliArguments:
         assert not non_inventory_tools, f"Expected only inventory tools, but found: {non_inventory_tools}"
 
         # Verify specific inventory tools are present
-        expected_tools = {"inventory__list_hosts", "inventory__get_host_details"}
+        expected_tools = set(self.EXPECTED_TOOLS["inventory"])
         # insights-mcp tools are always available
         expected_tools.update(self.EXPECTED_TOOLS["insights-mcp"])
         missing_tools = expected_tools - tool_names
