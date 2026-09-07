@@ -38,7 +38,7 @@ There are two ways to authenticate:
 Different toolsets require specific roles for your service account:
 
 - **Advisor tools**: `RHEL Advisor viewer`
-- **Inventory tools**: `Inventory Hosts viewer`
+- **Inventory tools**: `Inventory Hosts viewer`, `Workspaces viewer`
 - **Vulnerability tools**: `Vulnerability viewer`, `Inventory Hosts viewer`
 - **Remediation tools**: `Remediations user`
 

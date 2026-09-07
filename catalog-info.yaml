@@ -127,8 +127,17 @@ spec:
       name: inventory__get_host_tags
       description: "Get tags for specific hosts."
     - type: tool
+      name: inventory__get_workspace
+      description: "Get details for one or more workspaces by ID."
+    - type: tool
       name: inventory__list_hosts
       description: "List hosts with filtering and sorting options."
+    - type: tool
+      name: inventory__list_workspace_hosts
+      description: "List hosts that belong to a workspace."
+    - type: tool
+      name: inventory__list_workspaces
+      description: "List Inventory workspaces (console UI name for Inventory groups)."
     - type: tool
       name: inventory__load_inventory_dashboard
       description: "Show, list, or display fleet inventory in an interactive dashboard."

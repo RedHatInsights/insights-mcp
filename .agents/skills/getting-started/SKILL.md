@@ -75,7 +75,7 @@ needed based on the toolsets they plan to use:
 | Toolset | Required Roles |
 |---|---|
 | advisor | RHEL Advisor viewer |
-| inventory | Inventory Hosts viewer |
+| inventory | Inventory Hosts viewer, Workspaces viewer |
 | vulnerability | Vulnerability viewer, Inventory Hosts viewer |
 | remediations | Remediations user |
 
@@ -106,7 +106,7 @@ All toolsets load by default. To limit which ones are active, add
 |---|---|
 | **vulnerability** | CVE analysis, system-CVE mapping, explain why CVEs affect your systems |
 | **advisor** | Configuration issue recommendations (availability, stability, performance, security) |
-| **inventory** | Host discovery, system profiles, tags, fleet overview |
+| **inventory** | Host discovery, workspaces, system profiles, tags, fleet overview |
 | **image-builder** | Create and manage custom RHEL image blueprints and composes |
 | **remediations** | Generate Ansible playbooks to fix CVEs on specific systems |
 | **planning** | RHEL and AppStream lifecycle dates, upcoming deprecations and changes |
