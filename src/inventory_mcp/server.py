@@ -46,9 +46,7 @@ mcp = InsightsMCP(
     - Inventory Hosts viewer
     - Workspaces viewer (inventory:groups:read) to list workspaces and their membership
 
-    Workspaces in the console UI are Inventory groups. List them with list_workspaces; do not invent
-    workspace names such as Ungrouped Hosts without calling that tool. Prefer workspace IDs over names
-    because two workspaces can share the same name.
+    Workspaces in the console UI are Inventory groups.
 
     """,
 )
