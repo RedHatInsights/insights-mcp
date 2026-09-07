@@ -64,13 +64,14 @@ class TestListWorkspaces:
 
     @pytest.mark.asyncio
     async def test_list_workspaces_invalid_group_type(self, inventory_mock_client: AsyncMock) -> None:
-        """Invalid group_type returns expectation and actual value without calling the API."""
+        """Invalid group_type raises InsightsApiError with expectation and actual value."""
         with setup_inventory_mock(inventory_mock_client, {"results": []}):
-            result = await list_workspaces(group_type="root")
+            with pytest.raises(
+                InsightsApiError,
+                match="invalid group_type: got 'root', want one of all, standard, ungrouped-hosts",
+            ):
+                await list_workspaces(group_type="root")
 
-        assert result == {
-            "error": "invalid group_type: got 'root', want one of all, standard, ungrouped-hosts",
-        }
         inventory_mock_client.get.assert_not_called()
 
     @pytest.mark.asyncio
@@ -139,13 +140,14 @@ class TestGetWorkspace:
 
     @pytest.mark.asyncio
     async def test_get_workspace_empty_ids(self, inventory_mock_client: AsyncMock) -> None:
-        """Empty workspace_ids is rejected without calling the API."""
+        """Empty workspace_ids raises InsightsApiError without calling the API."""
         with setup_inventory_mock(inventory_mock_client, {"results": []}):
-            result = await get_workspace("   ")
+            with pytest.raises(
+                InsightsApiError,
+                match="workspace_ids must be a non-empty comma-separated list of UUIDs, got an empty value",
+            ):
+                await get_workspace("   ")
 
-        assert result == {
-            "error": "workspace_ids must be a non-empty comma-separated list of UUIDs, got an empty value",
-        }
         inventory_mock_client.get.assert_not_called()
 
 
@@ -198,11 +200,12 @@ class TestListWorkspaceHosts:
 
     @pytest.mark.asyncio
     async def test_list_workspace_hosts_empty_id(self, inventory_mock_client: AsyncMock) -> None:
-        """Empty workspace_id is rejected without calling the API."""
+        """Empty workspace_id raises InsightsApiError without calling the API."""
         with setup_inventory_mock(inventory_mock_client, {"results": []}):
-            result = await list_workspace_hosts("  ")
+            with pytest.raises(
+                InsightsApiError,
+                match="workspace_id must be a non-empty UUID, got an empty value",
+            ):
+                await list_workspace_hosts("  ")
 
-        assert result == {
-            "error": "workspace_id must be a non-empty UUID, got an empty value",
-        }
         inventory_mock_client.get.assert_not_called()

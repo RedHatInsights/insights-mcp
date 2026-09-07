@@ -14,6 +14,7 @@ from fastmcp.utilities.logging import get_logger
 from pydantic import Field
 
 from insights_mcp.dashboard_ui import load_dashboard_html
+from insights_mcp.errors import InsightsApiError
 from insights_mcp.mcp import InsightsMCP
 
 _to_client_logger = get_logger(name="fastmcp.server.context.to_client")
@@ -360,9 +361,9 @@ async def list_workspaces(  # pylint: disable=too-many-arguments,too-many-positi
     """
     if group_type not in _WORKSPACE_GROUP_TYPES:
         allowed = ", ".join(sorted(_WORKSPACE_GROUP_TYPES))
-        return {
-            "error": f"invalid group_type: got {group_type!r}, want one of {allowed}",
-        }
+        raise InsightsApiError(
+            f"invalid group_type: got {group_type!r}, want one of {allowed}",
+        )
 
     params: dict[str, Any] = {
         "group_type": group_type,
@@ -394,9 +395,9 @@ async def get_workspace(
     Required permission: inventory:groups:read (Workspaces viewer).
     """
     if not workspace_ids or not workspace_ids.strip():
-        return {
-            "error": "workspace_ids must be a non-empty comma-separated list of UUIDs, got an empty value",
-        }
+        raise InsightsApiError(
+            "workspace_ids must be a non-empty comma-separated list of UUIDs, got an empty value",
+        )
 
     response = await mcp.insights_client.get(f"groups/{workspace_ids.strip()}")
     if isinstance(response, str):
@@ -438,9 +439,9 @@ async def list_workspace_hosts(  # pylint: disable=too-many-arguments,too-many-p
     inventory:hosts:read (Inventory Hosts viewer).
     """
     if not workspace_id or not workspace_id.strip():
-        return {
-            "error": "workspace_id must be a non-empty UUID, got an empty value",
-        }
+        raise InsightsApiError(
+            "workspace_id must be a non-empty UUID, got an empty value",
+        )
 
     params = _host_list_params(
         hostname_or_id,
