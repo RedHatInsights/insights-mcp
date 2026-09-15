@@ -132,13 +132,6 @@ def load_manifest() -> dict[str, ToolRbacEntry]:
     return {name: ToolRbacEntry.from_dict(name, entry) for name, entry in tools.items()}
 
 
-def load_manifest_provenance() -> dict[str, Any]:
-    """Return provenance block from the bundled manifest, if present."""
-    data = load_manifest_raw()
-    provenance = data.get("provenance")
-    return provenance if isinstance(provenance, dict) else {}
-
-
 def get_tool_entry(tool_name: str) -> ToolRbacEntry | None:
     """Lookup by full MCP tool name (e.g. vulnerability__get_system_cves)."""
     return load_manifest().get(tool_name)

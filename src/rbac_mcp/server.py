@@ -16,7 +16,7 @@ from insights_mcp.config import (
 )
 from insights_mcp.mcp import InsightsMCP
 from insights_mcp.rbac.diagnose import AccessDeniedCall, AccessDeniedInput, build_access_denied_report
-from insights_mcp.rbac.manifest import get_tool_entry, load_manifest, load_manifest_provenance, resolve_tool_name
+from insights_mcp.rbac.manifest import get_tool_entry, load_manifest, resolve_tool_name
 from insights_mcp.rbac.principal import classify_principal_from_token
 from insights_mcp.rbac.resolver import resolve_tool_requirements
 from rbac_mcp.access import fetch_caller_access, get_access_token_from_client
@@ -57,9 +57,9 @@ async def explain_access_denied(
 ) -> dict[str, Any]:
     """Diagnose a 403 access denial for a specific MCP tool call.
 
-    Compares manifest-documented required permissions (from upstream services) with
-    the caller's live permissions from GET /api/rbac/v1/access/. Use this instead of
-    guessing permission names.
+    Compares the documented permissions required by the failed tool with the
+    authenticated caller's current permissions. Use this instead of guessing
+    permission names.
 
     The authenticated principal is usually the MCP service account when using
     client ID/secret in the environment—not the console user in chat.
@@ -100,10 +100,11 @@ async def lookup_tool_requirements(
         Field(description="MCP tool name, e.g. inventory__find_host_by_name."),
     ],
 ) -> dict[str, Any]:
-    """Return documented RBAC requirements for an MCP tool (no live access check).
+    """Return the documented authorization requirements for an MCP tool.
 
-    Data comes from the shipped tool_rbac_manifest.json (regenerated from upstream
-    sources via make generate-rbac-manifest). Does not call the RBAC API.
+    This reports required permissions and their confidence without checking the
+    authenticated caller's current access. Use ``explain_access_denied`` to
+    compare requirements with the caller's permissions after a 403 response.
     """
     key = resolve_tool_name(tool_name, "") or tool_name
     entry = get_tool_entry(key)
@@ -125,7 +126,6 @@ async def lookup_tool_requirements(
             "path_template": entry.rest.path_template,
         },
         "required_permissions": requirements,
-        "manifest_provenance": load_manifest_provenance(),
         "do_not_infer_other_permissions": True,
     }
 
