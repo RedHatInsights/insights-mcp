@@ -7,7 +7,6 @@ from insights_mcp.rbac.manifest import (
     find_tool_by_rest_url,
     get_tool_entry,
     load_manifest,
-    load_manifest_provenance,
 )
 from insights_mcp.rbac.resolver import ResolvedRequirements, resolve_tool_requirements
 
@@ -19,7 +18,6 @@ __all__ = [
     "find_tool_by_rest_url",
     "get_tool_entry",
     "load_manifest",
-    "load_manifest_provenance",
     "load_role_recommendations",
     "resolve_tool_requirements",
 ]
