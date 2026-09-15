@@ -1478,7 +1478,7 @@ requires-dist = [
     { name = "autopep8", marker = "extra == 'dev'" },
     { name = "certifi" },
     { name = "deepeval", marker = "extra == 'dev'" },
-    { name = "fastmcp", specifier = ">=3.0" },
+    { name = "fastmcp", specifier = ">=3.0,<4.0" },
     { name = "httpx" },
     { name = "llama-index", marker = "extra == 'dev'" },
     { name = "llama-index-core", marker = "extra == 'dev'" },
