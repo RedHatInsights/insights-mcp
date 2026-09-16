@@ -101,7 +101,7 @@ make check-rbac-manifest   # CI: fail if committed JSON is stale
 3. Vendored OpenAPI in `apis/` (`scripts/parse_openapi_permissions.py`)
 4. Tool REST mappings in `configs/tool_rest_map.json` (skeletons for all read-only tools)
 
-**Runtime:** `rbac__explain_access_denied` resolves requirements as bundled verified → upstream bundle → live `openapi.json` (TTL cache) → unknown. Platform roles for suggestions are refreshed from rbac-config on GitHub (`RBAC_CONFIG_REF`, `RBAC_CONFIG_CACHE_TTL_SECONDS`, default 24h) with bundled `role_recommendations.json` fallback.
+**Runtime:** `rbac__explain_access_denied` resolves requirements as bundled verified → upstream bundle → live `openapi.json` (TTL cache) → unknown. Platform role suggestions use the bundled `role_recommendations.json`; manifest regeneration refreshes that file from rbac-config on GitHub.
 
 On HTTP 403, call `rbac__explain_access_denied` before suggesting permissions or roles—never invent permission names.
 

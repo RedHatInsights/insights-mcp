@@ -41,12 +41,10 @@ class RequirementResolution:
 
     source: str
     requirements_unknown: bool
-    rbac_config_cache: str = ""
 
     def to_diagnostic_dict(self) -> dict[str, Any]:
         """Extra keys merged into PermissionRequirements.to_diagnostic_dict."""
         return {
             "requirements_unknown": self.requirements_unknown,
             "resolution_source": self.source,
-            "rbac_config_cache": self.rbac_config_cache or None,
         }

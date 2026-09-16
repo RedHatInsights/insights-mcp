@@ -5,14 +5,10 @@ from __future__ import annotations
 import json
 import os
 import re
-import time
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 from urllib.error import URLError
 from urllib.request import Request, urlopen
-
-from insights_mcp.rbac.data_files import load_role_recommendations
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_RBAC_CONFIG_REF_PATH = REPO_ROOT / "configs" / "rbac_config_ref.txt"
@@ -146,56 +142,3 @@ def import_role_recommendations(
     text = yaml_text if yaml_text is not None else fetch_rbac_config_yaml(ref)
     blobs = parse_role_json_blobs(text)
     return roles_from_blobs(blobs, application_prefixes=application_prefixes)
-
-
-_cache_state: dict[str, Any] = {"fetched_at": 0.0, "ref": "", "roles": {}}
-
-
-def get_cached_role_recommendations(
-    *,
-    force_refresh: bool = False,
-    ttl_seconds: int | None = None,
-) -> tuple[dict[str, list[str]], str]:
-    """Fetch rbac-config roles with in-memory TTL cache.
-
-    Returns:
-        (role_map, cache_status) where cache_status is fresh, stale, or unavailable.
-    """
-    ttl = ttl_seconds if ttl_seconds is not None else int(os.environ.get("RBAC_CONFIG_CACHE_TTL_SECONDS", "86400"))
-    ref = read_pinned_ref()
-    now = time.time()
-    if (
-        not force_refresh
-        and _cache_state.get("roles")
-        and _cache_state.get("ref") == ref
-        and now - float(_cache_state.get("fetched_at", 0)) < ttl
-    ):
-        return dict(_cache_state["roles"]), "fresh"
-
-    try:
-        roles = import_role_recommendations(ref=ref)
-        _cache_state["roles"] = roles
-        _cache_state["ref"] = ref
-        _cache_state["fetched_at"] = now
-        return roles, "fresh"
-    except RbacConfigFetchError:
-        if _cache_state.get("roles"):
-            return dict(_cache_state["roles"]), "stale"
-        return {}, "unavailable"
-
-
-@lru_cache(maxsize=1)
-def load_bundled_role_recommendations() -> dict[str, list[str]]:
-    """Load shipped role_recommendations.json."""
-    return load_role_recommendations()
-
-
-def get_role_recommendations_for_runtime() -> tuple[dict[str, list[str]], str]:
-    """Prefer live rbac-config cache; fall back to bundled JSON."""
-    live, status = get_cached_role_recommendations()
-    if live:
-        return live, status
-    bundled = load_bundled_role_recommendations()
-    if bundled:
-        return bundled, "bundled" if status == "unavailable" else status
-    return {}, status

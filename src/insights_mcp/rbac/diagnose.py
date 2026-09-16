@@ -7,7 +7,7 @@ from typing import Any
 
 from insights_mcp.rbac.manifest import ToolRbacEntry, resolve_tool_name
 from insights_mcp.rbac.principal import classify_principal_from_token, extract_permissions_from_access_response
-from insights_mcp.rbac.resolver import ResolvedRequirements, roles_covering_missing_runtime
+from insights_mcp.rbac.resolver import ResolvedRequirements, roles_covering_missing
 
 
 def permission_set_satisfied(required_set: tuple[str, ...], held: set[str]) -> bool:
@@ -89,7 +89,6 @@ class EntryDiagnosis:
     requirements: dict[str, Any] | None
     comparison: dict[str, Any]
     recommended_roles: list[str]
-    rbac_config_cache: str
     extra_guidance: list[str]
 
 
@@ -117,7 +116,6 @@ def _diagnose_entry(
             required_v1_permissions=resolved.permissions.required_v1_permissions,
         )
         recommended_roles = list(resolved.permissions.recommended_roles or entry.permissions.recommended_roles)
-        rbac_config_cache = resolved.resolution.rbac_config_cache
         extra_guidance: list[str] = []
         if resolved.permissions.kessel_note:
             extra_guidance.append(resolved.permissions.kessel_note)
@@ -125,12 +123,9 @@ def _diagnose_entry(
         requirements = entry.to_requirements_dict()
         comparison = compare_permissions(entry, held)
         recommended_roles = list(entry.permissions.recommended_roles)
-        rbac_config_cache = ""
         extra_guidance = []
 
-    extra_roles, cache_status = roles_covering_missing_runtime(comparison.get("missing_permissions", []), held)
-    if cache_status and not rbac_config_cache:
-        rbac_config_cache = cache_status
+    extra_roles = roles_covering_missing(comparison.get("missing_permissions", []), held)
     for role in extra_roles:
         if role not in recommended_roles:
             recommended_roles.append(role)
@@ -148,7 +143,6 @@ def _diagnose_entry(
         requirements=requirements,
         comparison=comparison,
         recommended_roles=recommended_roles,
-        rbac_config_cache=rbac_config_cache,
         extra_guidance=extra_guidance,
     )
 
@@ -177,14 +171,12 @@ def build_access_denied_report(inp: AccessDeniedInput) -> dict[str, Any]:
     comparison: dict[str, Any] = {}
     requirements: dict[str, Any] | None = None
     recommended_roles: list[str] = []
-    rbac_config_cache = ""
 
     if inp.entry:
         diagnosis = _diagnose_entry(inp.entry, held, inp.resolved)
         requirements = diagnosis.requirements
         comparison = diagnosis.comparison
         recommended_roles = diagnosis.recommended_roles
-        rbac_config_cache = diagnosis.rbac_config_cache
         user_guidance.extend(diagnosis.extra_guidance)
     else:
         user_guidance.append(
@@ -215,6 +207,5 @@ def build_access_denied_report(inp: AccessDeniedInput) -> dict[str, Any]:
         "missing_permissions": comparison.get("missing_permissions", []),
         "recommended_roles": recommended_roles,
         "user_guidance": user_guidance,
-        "rbac_config_cache": rbac_config_cache or None,
         "do_not_infer_other_permissions": True,
     }
