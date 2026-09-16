@@ -273,8 +273,6 @@ def get_instructions(allowed_mcps: list[str], readonly: bool = True) -> str:
     )
     if "rbac" in allowed_mcps:
         instructions_parts.append(rbac_note)
-    elif any(ts in allowed_mcps for ts in ("inventory", "vulnerability", "advisor")):
-        instructions_parts.append(rbac_note)
 
     return "\n\n".join(instructions_parts)
 
@@ -617,6 +615,8 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
         toolset_list = [mcp.toolset_name for mcp in MCPS]
     else:
         toolset_list = [t.strip() for t in toolset.split(",")]
+    if "rbac" not in toolset_list:  # 403 responses instruct the model to call the RBAC tool
+        toolset_list.append("rbac")
 
     logger.info(
         "Starting %s MCP %s (%s) with toolsets: %s",
