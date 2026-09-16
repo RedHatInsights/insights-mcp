@@ -17,8 +17,7 @@
       ],
       "kessel_permission": "vulnerability_vulnerability_results_view",
       "kessel_note": "Kessel: vulnerability_vulnerability_results_view requires inventory_host_view on the host workspace (see RedHatInsights/rbac-config vulnerability.ksl).",
-      "recommended_roles": ["Vulnerability viewer", "Inventory Hosts Viewer"],
-      "openapi_sources": ["apis/vulnerability-openapi.json"]
+      "recommended_roles": ["Vulnerability viewer", "Inventory Hosts Viewer"]
     }
   },
   "tools": {
@@ -83,8 +82,7 @@
         "path_template": "/openapi.json",
         "application": "vulnerability",
         "required_v1_permissions": [["vulnerability:vulnerability_results:read"]],
-        "recommended_roles": ["Vulnerability viewer"],
-        "openapi_sources": ["apis/vulnerability-openapi.json"]
+        "recommended_roles": ["Vulnerability viewer"]
       }
     ],
     "vulnerability__get_cves": [
@@ -468,8 +466,7 @@
         "path_template": "/access/",
         "application": "rbac",
         "required_v1_permissions": [["rbac:roles:read"]],
-        "recommended_roles": ["RBAC viewer"],
-        "openapi_sources": ["apis/rbac-openapi.json"]
+        "recommended_roles": ["RBAC viewer"]
       }
     ],
     "rbac__lookup_tool_requirements": [
@@ -490,8 +487,7 @@
         "path_template": "/access/",
         "application": "rbac",
         "required_v1_permissions": [["rbac:roles:read"]],
-        "recommended_roles": ["RBAC viewer"],
-        "openapi_sources": ["apis/rbac-openapi.json"]
+        "recommended_roles": ["RBAC viewer"]
       }
     ],
     "rbac__get_caller_access_all": [
@@ -501,8 +497,7 @@
         "path_template": "/access/",
         "application": "rbac",
         "required_v1_permissions": [["rbac:roles:read"]],
-        "recommended_roles": ["RBAC viewer"],
-        "openapi_sources": ["apis/rbac-openapi.json"]
+        "recommended_roles": ["RBAC viewer"]
       }
     ],
     "rbac__get_all_access": [
@@ -513,8 +508,7 @@
         "application": "rbac",
         "required_v1_permissions": [["rbac:roles:read"]],
         "kessel_note": "Deprecated alias; use rbac__get_caller_access_all.",
-        "recommended_roles": ["RBAC viewer"],
-        "openapi_sources": ["apis/rbac-openapi.json"]
+        "recommended_roles": ["RBAC viewer"]
       }
     ]
   }

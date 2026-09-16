@@ -32,4 +32,4 @@ Updates `src/insights_mcp/rbac/data/tool_rbac_manifest.json` and
 
 ## API
 
-Base path: `/api/rbac/v1` (see [apis/rbac-openapi.json](../../apis/rbac-openapi.json)).
+Base path: `/api/rbac/v1`.
