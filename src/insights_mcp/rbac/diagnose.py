@@ -40,7 +40,7 @@ def compare_permissions(
     """Compare manifest requirements against held permissions."""
     held_set = set(held_permissions)
     satisfied_any_set = False
-    missing_from_best: list[str] = []
+    missing_from_best: list[str] | None = None
     perm_sets = (
         required_v1_permissions if required_v1_permissions is not None else call.permissions.required_v1_permissions
     )
@@ -51,13 +51,13 @@ def compare_permissions(
             missing_from_best = []
             break
         missing = [p for p in perm_set if not permission_set_satisfied((p,), held_set)]
-        if len(missing) > len(missing_from_best):
+        if missing_from_best is None or len(missing) < len(missing_from_best):
             missing_from_best = missing
 
     return {
         "held_permissions": held_permissions,
         "satisfied": satisfied_any_set,
-        "missing_permissions": [] if satisfied_any_set else missing_from_best,
+        "missing_permissions": [] if satisfied_any_set else missing_from_best or [],
     }
 
 
