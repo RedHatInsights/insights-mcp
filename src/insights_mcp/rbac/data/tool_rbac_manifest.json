@@ -221,9 +221,7 @@
         ],
         "kessel_permission": "",
         "kessel_note": "",
-        "recommended_roles": [
-          "Image Builder viewer"
-        ],
+        "recommended_roles": [],
         "openapi_sources": [],
         "verified": false
       }
@@ -241,9 +239,7 @@
         ],
         "kessel_permission": "",
         "kessel_note": "",
-        "recommended_roles": [
-          "Image Builder viewer"
-        ],
+        "recommended_roles": [],
         "openapi_sources": [],
         "verified": false
       }
@@ -261,9 +257,7 @@
         ],
         "kessel_permission": "",
         "kessel_note": "",
-        "recommended_roles": [
-          "Image Builder viewer"
-        ],
+        "recommended_roles": [],
         "openapi_sources": [],
         "verified": false
       }
@@ -281,9 +275,7 @@
         ],
         "kessel_permission": "",
         "kessel_note": "",
-        "recommended_roles": [
-          "Image Builder viewer"
-        ],
+        "recommended_roles": [],
         "openapi_sources": [],
         "verified": false
       }
@@ -301,9 +293,7 @@
         ],
         "kessel_permission": "",
         "kessel_note": "",
-        "recommended_roles": [
-          "Image Builder viewer"
-        ],
+        "recommended_roles": [],
         "openapi_sources": [],
         "verified": false
       }
@@ -317,9 +307,7 @@
         "required_v1_permissions": [],
         "kessel_permission": "",
         "kessel_note": "OpenAPI may be fetched without auth in MCP; production may differ.",
-        "recommended_roles": [
-          "Image Builder viewer"
-        ],
+        "recommended_roles": [],
         "openapi_sources": [],
         "verified": false
       }
@@ -632,9 +620,7 @@
         ],
         "kessel_permission": "",
         "kessel_note": "",
-        "recommended_roles": [
-          "RBAC viewer"
-        ],
+        "recommended_roles": [],
         "openapi_sources": [],
         "verified": false
       }
@@ -652,9 +638,7 @@
         ],
         "kessel_permission": "",
         "kessel_note": "Deprecated alias; use rbac__get_caller_access_all.",
-        "recommended_roles": [
-          "RBAC viewer"
-        ],
+        "recommended_roles": [],
         "openapi_sources": [],
         "verified": false
       }
@@ -672,9 +656,7 @@
         ],
         "kessel_permission": "",
         "kessel_note": "",
-        "recommended_roles": [
-          "RBAC viewer"
-        ],
+        "recommended_roles": [],
         "openapi_sources": [],
         "verified": false
       }
@@ -692,9 +674,7 @@
         ],
         "kessel_permission": "",
         "kessel_note": "",
-        "recommended_roles": [
-          "RBAC viewer"
-        ],
+        "recommended_roles": [],
         "openapi_sources": [],
         "verified": false
       }
@@ -777,7 +757,7 @@
         "kessel_permission": "",
         "kessel_note": "",
         "recommended_roles": [
-          "RHC User"
+          "RHC Viewer"
         ],
         "openapi_sources": [],
         "verified": false
@@ -797,7 +777,7 @@
         "kessel_permission": "",
         "kessel_note": "",
         "recommended_roles": [
-          "RHC User"
+          "RHC Viewer"
         ],
         "openapi_sources": [],
         "verified": false

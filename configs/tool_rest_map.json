@@ -248,7 +248,7 @@
         "path_template": "/activation_keys",
         "application": "config-manager",
         "required_v1_permissions": [["config-manager:activation_keys:read"]],
-        "recommended_roles": ["RHC User"]
+        "recommended_roles": ["RHC Viewer"]
       }
     ],
     "rhsm__get_activation_key": [
@@ -258,7 +258,7 @@
         "path_template": "/activation_keys/{name}",
         "application": "config-manager",
         "required_v1_permissions": [["config-manager:activation_keys:read"]],
-        "recommended_roles": ["RHC User"]
+        "recommended_roles": ["RHC Viewer"]
       }
     ],
     "content-sources__list_repositories": [
@@ -339,7 +339,7 @@
         "application": "image-builder",
         "required_v1_permissions": [],
         "kessel_note": "OpenAPI may be fetched without auth in MCP; production may differ.",
-        "recommended_roles": ["Image Builder viewer"]
+        "recommended_roles": []
       }
     ],
     "image-builder__get_blueprints": [
@@ -349,7 +349,7 @@
         "path_template": "/blueprints",
         "application": "image-builder",
         "required_v1_permissions": [["image-builder:blueprint:read"]],
-        "recommended_roles": ["Image Builder viewer"]
+        "recommended_roles": []
       }
     ],
     "image-builder__get_blueprint_details": [
@@ -359,7 +359,7 @@
         "path_template": "/blueprints/{id}",
         "application": "image-builder",
         "required_v1_permissions": [["image-builder:blueprint:read"]],
-        "recommended_roles": ["Image Builder viewer"]
+        "recommended_roles": []
       }
     ],
     "image-builder__get_composes": [
@@ -369,7 +369,7 @@
         "path_template": "/composes",
         "application": "image-builder",
         "required_v1_permissions": [["image-builder:compose:read"]],
-        "recommended_roles": ["Image Builder viewer"]
+        "recommended_roles": []
       }
     ],
     "image-builder__get_compose_details": [
@@ -379,7 +379,7 @@
         "path_template": "/composes/{id}",
         "application": "image-builder",
         "required_v1_permissions": [["image-builder:compose:read"]],
-        "recommended_roles": ["Image Builder viewer"]
+        "recommended_roles": []
       }
     ],
     "image-builder__get_distributions": [
@@ -389,7 +389,7 @@
         "path_template": "/distributions",
         "application": "image-builder",
         "required_v1_permissions": [["image-builder:blueprint:read"]],
-        "recommended_roles": ["Image Builder viewer"]
+        "recommended_roles": []
       }
     ],
     "image-builder__get_org_id": [
@@ -466,7 +466,7 @@
         "path_template": "/access/",
         "application": "rbac",
         "required_v1_permissions": [["rbac:roles:read"]],
-        "recommended_roles": ["RBAC viewer"]
+        "recommended_roles": []
       }
     ],
     "rbac__lookup_tool_requirements": [
@@ -487,7 +487,7 @@
         "path_template": "/access/",
         "application": "rbac",
         "required_v1_permissions": [["rbac:roles:read"]],
-        "recommended_roles": ["RBAC viewer"]
+        "recommended_roles": []
       }
     ],
     "rbac__get_caller_access_all": [
@@ -497,7 +497,7 @@
         "path_template": "/access/",
         "application": "rbac",
         "required_v1_permissions": [["rbac:roles:read"]],
-        "recommended_roles": ["RBAC viewer"]
+        "recommended_roles": []
       }
     ],
     "rbac__get_all_access": [
@@ -508,7 +508,7 @@
         "application": "rbac",
         "required_v1_permissions": [["rbac:roles:read"]],
         "kessel_note": "Deprecated alias; use rbac__get_caller_access_all.",
-        "recommended_roles": ["RBAC viewer"]
+        "recommended_roles": []
       }
     ]
   }
