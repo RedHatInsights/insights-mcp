@@ -7,28 +7,7 @@ from typing import Any
 
 from insights_mcp.rbac.manifest import ToolRbacCall, ToolRbacEntry, find_rest_call, resolve_tool_name
 from insights_mcp.rbac.principal import classify_principal_from_token, extract_permissions_from_access_response
-from insights_mcp.rbac.resolver import ResolvedRequirements, roles_covering_missing
-
-
-def permission_set_satisfied(required_set: tuple[str, ...], held: set[str]) -> bool:
-    """True if caller holds every permission in the set (or a wildcard superset)."""
-    for req in required_set:
-        if req in held:
-            continue
-        app, resource, verb = _split_permission(req)
-        if f"{app}:*:{verb}" in held or f"{app}:{resource}:*" in held or f"{app}:*:*" in held:
-            continue
-        if f"{app}:*" in held:
-            continue
-        return False
-    return True
-
-
-def _split_permission(perm: str) -> tuple[str, str, str]:
-    parts = perm.split(":", 2)
-    if len(parts) == 3:
-        return parts[0], parts[1], parts[2]
-    return perm, "*", "*"
+from insights_mcp.rbac.resolver import ResolvedRequirements, permission_set_satisfied, roles_covering_missing
 
 
 def compare_permissions(
