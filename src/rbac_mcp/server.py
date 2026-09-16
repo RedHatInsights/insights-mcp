@@ -39,6 +39,10 @@ mcp = InsightsMCP(
 
 @mcp.tool(annotations={"readOnlyHint": True})
 async def explain_access_denied(
+    failed_method: Annotated[
+        str,
+        Field(description="HTTP method used by the failed REST request, e.g. GET, POST, or PUT."),
+    ],
     failed_tool: Annotated[
         str,
         Field(
@@ -64,7 +68,7 @@ async def explain_access_denied(
     The authenticated principal is usually the MCP service account when using
     client ID/secret in the environment—not the console user in chat.
     """
-    tool_key = resolve_tool_name(failed_tool, failed_url) or failed_tool
+    tool_key = resolve_tool_name(failed_tool, failed_url, method=failed_method) or failed_tool
     entry = get_tool_entry(tool_key) if tool_key else None
 
     access_payload = await fetch_caller_access(mcp.insights_client)
@@ -81,6 +85,7 @@ async def explain_access_denied(
             call=AccessDeniedCall(
                 failed_tool=failed_tool,
                 failed_url=failed_url,
+                failed_method=failed_method,
                 http_status=http_status,
                 tool_name_resolved=tool_key,
             ),

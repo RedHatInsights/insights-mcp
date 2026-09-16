@@ -25,6 +25,7 @@ async def test_explain_access_denied_returns_structured_report():
                     "https://console.redhat.com/api/vulnerability/v1/systems/00000000-0000-0000-0000-000000000001/cves"
                 ),
                 http_status=403,
+                failed_method="GET",
             )
 
     assert result["do_not_infer_other_permissions"] is True

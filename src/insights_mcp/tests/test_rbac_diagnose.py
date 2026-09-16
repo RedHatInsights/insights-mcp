@@ -76,6 +76,7 @@ def test_build_access_denied_report_structure():
                 failed_tool="inventory__find_host_by_name",
                 failed_url="https://console.redhat.com/api/inventory/v1/hosts?hostname_or_id=foo",
                 http_status=403,
+                failed_method="GET",
             ),
             entry=entry,
             access_payload={"data": [{"permission": "inventory:hosts:read", "resourceDefinitions": []}]},

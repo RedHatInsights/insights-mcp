@@ -216,11 +216,14 @@ def find_tool_by_rest_url(url: str, method: str = "GET") -> ToolRbacEntry | None
     return best[0] if best else None
 
 
-def find_rest_call(entry: ToolRbacEntry, url: str) -> ToolRbacCall | None:
+def find_rest_call(entry: ToolRbacEntry, url: str, method: str = "GET") -> ToolRbacCall | None:
     """Find the REST call in an entry matching a failed URL."""
     parsed = urlparse(url)
     path = parsed.path or url
-    scored = [(_score_rest_match(call, path), call) for call in entry.rest_calls]
+    method_upper = method.upper()
+    scored = [(_score_rest_match(call, path), call) for call in entry.rest_calls if call.rest.method == method_upper]
+    if not scored:
+        return None
     score, call = max(scored, key=lambda item: item[0])
     return call if score >= 0 else None
 
