@@ -40,7 +40,7 @@ def _skeleton_entry(toolset_name: str, tool_name: str, api_path: str) -> list[di
     ]
 
 
-def _collect_readonly_tool_names() -> list[str]:
+def _collect_tool_names() -> list[str]:
     from insights_mcp.server import MCPS
 
     names: list[str] = []
@@ -51,9 +51,6 @@ def _collect_readonly_tool_names() -> list[str]:
             pass
         tools = asyncio.run(mcp_instance.list_tools())
         for tool in tools:
-            read_only = getattr(getattr(tool, "annotations", None), "readOnlyHint", True)
-            if read_only is False:
-                continue
             names.append(f"{mcp_instance.toolset_name}__{tool.name}")
     return sorted(set(names))
 
@@ -161,7 +158,7 @@ def build_manifest() -> tuple[dict[str, Any], dict[str, list[str]]]:
             calls.append(call)
         tools[tool_name] = calls
 
-    for tool_name in _collect_readonly_tool_names():
+    for tool_name in _collect_tool_names():
         if tool_name in tools:
             continue
         toolset = tool_name.split("__", 1)[0]

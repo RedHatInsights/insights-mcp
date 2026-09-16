@@ -173,6 +173,41 @@
         "verified": false
       }
     ],
+    "image-builder__blueprint_compose": [
+      {
+        "method": "POST",
+        "api_path": "api/image-builder/v1",
+        "path_template": "/blueprints/{id}/compose",
+        "application": "image-builder",
+        "required_v1_permissions": [
+          [
+            "content-sources:repositories:read"
+          ]
+        ],
+        "kessel_permission": "",
+        "kessel_note": "",
+        "recommended_roles": [
+          "Repositories viewer",
+          "Content Template viewer"
+        ],
+        "openapi_sources": [],
+        "verified": false
+      }
+    ],
+    "image-builder__create_blueprint": [
+      {
+        "method": "POST",
+        "api_path": "api/image-builder/v1",
+        "path_template": "/blueprints",
+        "application": "image-builder",
+        "required_v1_permissions": [],
+        "kessel_permission": "",
+        "kessel_note": "",
+        "recommended_roles": [],
+        "openapi_sources": [],
+        "verified": false
+      }
+    ],
     "image-builder__get_blueprint_details": [
       {
         "method": "GET",
@@ -298,6 +333,20 @@
         "required_v1_permissions": [],
         "kessel_permission": "",
         "kessel_note": "Uses token claims only.",
+        "recommended_roles": [],
+        "openapi_sources": [],
+        "verified": false
+      }
+    ],
+    "image-builder__update_blueprint": [
+      {
+        "method": "PUT",
+        "api_path": "api/image-builder/v1",
+        "path_template": "/blueprints/{id}",
+        "application": "image-builder",
+        "required_v1_permissions": [],
+        "kessel_permission": "",
+        "kessel_note": "",
         "recommended_roles": [],
         "openapi_sources": [],
         "verified": false
@@ -668,6 +717,56 @@
         "kessel_permission": "",
         "kessel_note": "Local manifest only; no RBAC API call.",
         "recommended_roles": [],
+        "openapi_sources": [],
+        "verified": false
+      }
+    ],
+    "remediations__create_vuln_playbook": [
+      {
+        "method": "POST",
+        "api_path": "api/remediations/v1",
+        "path_template": "/resolutions",
+        "application": "remediations",
+        "required_v1_permissions": [],
+        "kessel_permission": "",
+        "kessel_note": "",
+        "recommended_roles": [],
+        "openapi_sources": [],
+        "verified": false
+      },
+      {
+        "method": "POST",
+        "api_path": "api/remediations/v1",
+        "path_template": "/remediations",
+        "application": "remediations",
+        "required_v1_permissions": [
+          [
+            "remediations:remediation:write"
+          ]
+        ],
+        "kessel_permission": "",
+        "kessel_note": "",
+        "recommended_roles": [
+          "Remediations user"
+        ],
+        "openapi_sources": [],
+        "verified": false
+      },
+      {
+        "method": "GET",
+        "api_path": "api/remediations/v1",
+        "path_template": "/remediations/{id}/playbook",
+        "application": "remediations",
+        "required_v1_permissions": [
+          [
+            "remediations:remediation:read"
+          ]
+        ],
+        "kessel_permission": "",
+        "kessel_note": "",
+        "recommended_roles": [
+          "Remediations user"
+        ],
         "openapi_sources": [],
         "verified": false
       }
