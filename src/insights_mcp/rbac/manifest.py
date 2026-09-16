@@ -154,15 +154,18 @@ def _path_matches(template: str, path: str, *, suffix: bool = False) -> bool:
     """Match each {parameter} to one non-empty path segment."""
     expected = template.strip("/").split("/")
     actual = path.strip("/").split("/")
-    offset = len(actual) - len(expected) if suffix else 0
-    return (
-        offset >= 0
-        and (suffix or offset == 0)
-        and all(
-            wanted == actual[index + offset]
-            or (wanted.startswith("{") and wanted.endswith("}") and bool(actual[index + offset]))
-            for index, wanted in enumerate(expected)
-        )
+    if suffix:
+        if len(actual) < len(expected):
+            return False
+        offset = len(actual) - len(expected)
+    else:
+        if len(actual) != len(expected):
+            return False
+        offset = 0
+    return all(
+        wanted == actual[index + offset]
+        or (wanted.startswith("{") and wanted.endswith("}") and bool(actual[index + offset]))
+        for index, wanted in enumerate(expected)
     )
 
 
