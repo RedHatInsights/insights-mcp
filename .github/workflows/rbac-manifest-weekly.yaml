@@ -13,9 +13,9 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
           python-version: "3.12"
 
@@ -23,7 +23,7 @@ jobs:
         run: uv run python scripts/generate_tool_rbac_manifest.py
 
       - name: Open PR if data changed
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676  # v7.0.11
         with:
           title: "chore: refresh RBAC manifest from upstream sources"
           body: |
