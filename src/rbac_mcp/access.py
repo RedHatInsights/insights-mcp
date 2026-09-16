@@ -41,6 +41,8 @@ async def fetch_caller_access(
         response = await insights_client.get("access/", params=params)
         if isinstance(response, str):
             return {"error": response, "data": all_data}
+        if "Unhandled error" in response:
+            return {"error": response["Unhandled error"], "data": all_data}
 
         page_data = response.get("data", [])
         if isinstance(page_data, list):

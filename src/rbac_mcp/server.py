@@ -69,9 +69,7 @@ async def explain_access_denied(
 
     access_payload = await fetch_caller_access(mcp.insights_client)
     if "error" in access_payload:
-        access_for_report = None
-    else:
-        access_for_report = access_payload
+        return access_payload
 
     token = get_access_token_from_client(mcp.insights_client)
     resolved = None
@@ -86,7 +84,7 @@ async def explain_access_denied(
                 tool_name_resolved=tool_key,
             ),
             entry=entry,
-            access_payload=access_for_report,
+            access_payload=access_payload,
             access_token=token,
             resolved=resolved,
         )
