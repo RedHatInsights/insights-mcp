@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
@@ -151,26 +150,29 @@ def get_tool_entry(tool_name: str) -> ToolRbacEntry | None:
     return load_manifest().get(tool_name)
 
 
-_UUID_RE = re.compile(
-    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
-    re.IGNORECASE,
-)
+def _path_matches(template: str, path: str, *, suffix: bool = False) -> bool:
+    """Match each {parameter} to one non-empty path segment."""
+    expected = template.strip("/").split("/")
+    actual = path.strip("/").split("/")
+    offset = len(actual) - len(expected) if suffix else 0
+    return (
+        offset >= 0
+        and (suffix or offset == 0)
+        and all(
+            wanted == actual[index + offset]
+            or (wanted.startswith("{") and wanted.endswith("}") and bool(actual[index + offset]))
+            for index, wanted in enumerate(expected)
+        )
+    )
 
 
-def _normalize_path_for_match(path: str) -> str:
-    """Replace UUIDs and path parameter names for template matching."""
-    normalized = _UUID_RE.sub("{id}", path)
-    return re.sub(r"\{[^}]+\}", "{id}", normalized)
-
-
-def _score_rest_match(call: ToolRbacCall, normalized: str) -> int:
+def _score_rest_match(call: ToolRbacCall, path: str) -> int:
     template_full = call.rest.full_path_template()
-    template_norm = _normalize_path_for_match(template_full)
-    path_suffix = _normalize_path_for_match(call.rest.path_template)
-    if normalized == template_norm:
-        return len(template_norm) + 1000
-    if normalized.endswith(path_suffix) and path_suffix != "/":
-        return len(path_suffix)
+    if _path_matches(template_full, path):
+        return len(template_full) + 1000
+    path_template = call.rest.path_template
+    if path_template != "/" and _path_matches(path_template, path, suffix=True):
+        return len(path_template)
     return -1
 
 
@@ -194,7 +196,6 @@ def find_tool_by_rest_url(url: str, method: str = "GET") -> ToolRbacEntry | None
     parsed = urlparse(url)
     path = parsed.path or url
     method_upper = method.upper()
-    normalized = _normalize_path_for_match(path)
 
     best: tuple[ToolRbacEntry, ToolRbacCall] | None = None
     best_score = -1
@@ -202,7 +203,7 @@ def find_tool_by_rest_url(url: str, method: str = "GET") -> ToolRbacEntry | None
         for call in entry.rest_calls:
             if call.rest.method != method_upper:
                 continue
-            score = _score_rest_match(call, normalized)
+            score = _score_rest_match(call, path)
             candidate = (entry, call)
             if score > best_score:
                 best = candidate
@@ -215,8 +216,8 @@ def find_tool_by_rest_url(url: str, method: str = "GET") -> ToolRbacEntry | None
 def find_rest_call(entry: ToolRbacEntry, url: str) -> ToolRbacCall | None:
     """Find the REST call in an entry matching a failed URL."""
     parsed = urlparse(url)
-    normalized = _normalize_path_for_match(parsed.path or url)
-    scored = [(_score_rest_match(call, normalized), call) for call in entry.rest_calls]
+    path = parsed.path or url
+    scored = [(_score_rest_match(call, path), call) for call in entry.rest_calls]
     score, call = max(scored, key=lambda item: item[0])
     return call if score >= 0 else None
 
