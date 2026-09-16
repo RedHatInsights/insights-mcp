@@ -22,6 +22,27 @@ _openapi_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 _OPENAPI_TTL_SECONDS = 3600
 
 
+def _split_permission(permission: str) -> tuple[str, str, str]:
+    parts = permission.split(":", 2)
+    if len(parts) == 3:
+        return parts[0], parts[1], parts[2]
+    return permission, "*", "*"
+
+
+def permission_set_satisfied(required_set: tuple[str, ...], held: set[str]) -> bool:
+    """True if every required permission is held directly or through a wildcard."""
+    for required in required_set:
+        if required in held:
+            continue
+        app, resource, verb = _split_permission(required)
+        if f"{app}:*:{verb}" in held or f"{app}:{resource}:*" in held or f"{app}:*:*" in held:
+            continue
+        if f"{app}:*" in held:
+            continue
+        return False
+    return True
+
+
 @dataclass(frozen=True)
 class ResolvedRequirements:
     """RBAC requirements resolved for one tool."""
@@ -222,8 +243,8 @@ def roles_covering_missing(
     held_set = set(held)
     suggestions: list[str] = []
     for role_name, role_perms in role_map.items():
-        role_perm_set = set(role_perms)
-        if all(p in role_perm_set or p in held_set for p in missing):
+        available = held_set | set(role_perms)
+        if permission_set_satisfied(tuple(missing), available):
             if role_name not in suggestions:
                 suggestions.append(role_name)
     return suggestions
