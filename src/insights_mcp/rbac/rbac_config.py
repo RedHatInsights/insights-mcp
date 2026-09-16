@@ -37,8 +37,8 @@ class RbacConfigFetchError(Exception):
     """Failed to fetch or parse rbac-config."""
 
 
-def read_pinned_ref(path: Path | None = None) -> str:
-    """Read pinned git ref from configs/rbac_config_ref.txt or RBAC_CONFIG_REF env."""
+def read_configured_ref(path: Path | None = None) -> str:
+    """Read the configured git ref from configs/rbac_config_ref.txt or RBAC_CONFIG_REF env."""
     env_ref = os.environ.get("RBAC_CONFIG_REF", "").strip()
     if env_ref:
         return env_ref
@@ -50,7 +50,7 @@ def read_pinned_ref(path: Path | None = None) -> str:
 
 def fetch_rbac_config_yaml(ref: str | None = None, timeout: float = 30.0) -> str:
     """Download prod rbac-config configmap YAML from GitHub."""
-    git_ref = ref or read_pinned_ref()
+    git_ref = ref or read_configured_ref()
     url = RBAC_CONFIG_RAW_URL.format(ref=git_ref)
     request = Request(url, headers={"User-Agent": "insights-mcp-rbac-config/1.0"})
     try:

@@ -198,7 +198,7 @@ ALL_PYTHON_FILES := $(shell find src -name "*.py")
 
 .PHONY: generate-docs
 .PHONY: generate-rbac-manifest
-generate-rbac-manifest: ## Regenerate RBAC manifest, roles, and upstream_permissions from pinned sources
+generate-rbac-manifest: ## Regenerate RBAC manifest, roles, and upstream_permissions from configured sources
 	uv run python scripts/generate_tool_rbac_manifest.py
 
 .PHONY: check-rbac-manifest

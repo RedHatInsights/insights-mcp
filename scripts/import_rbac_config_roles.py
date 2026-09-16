@@ -10,14 +10,14 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from insights_mcp.rbac.rbac_config import import_role_recommendations, read_pinned_ref  # noqa: E402
+from insights_mcp.rbac.rbac_config import import_role_recommendations, read_configured_ref  # noqa: E402
 
 DATA_DIR = REPO_ROOT / "src" / "insights_mcp" / "rbac" / "data"
 
 
 def main() -> None:
     """Write role_recommendations.json from rbac-config."""
-    ref = read_pinned_ref()
+    ref = read_configured_ref()
     roles = import_role_recommendations(ref=ref)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     out_path = DATA_DIR / "role_recommendations.json"

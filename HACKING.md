@@ -47,9 +47,12 @@ make check-rbac-manifest   # CI: fail if committed JSON is stale
 
 **Sources (merge priority):**
 
-1. Upstream service enforcement (`scripts/scrape_upstream_rbac.py` → `upstream_permissions.json`)
+1. Curated upstream service enforcement mappings (`scripts/upstream_rbac.py` → `upstream_permissions.json`)
 2. [RedHatInsights/rbac-config](https://github.com/RedHatInsights/rbac-config) prod roles (`configs/rbac_config_ref.txt`)
 3. Tool REST mappings in `configs/tool_rest_map.json` (skeletons for all read-only tools)
+
+The refs in `configs/rbac_config_ref.txt` and `configs/upstream_refs.json` intentionally use
+`master` so the weekly refresh follows the newest upstream data.
 
 **Runtime:** `rbac__explain_access_denied` resolves requirements as bundled verified → upstream bundle → live `openapi.json` (TTL cache) → unknown. Platform role suggestions use the bundled `role_recommendations.json`; manifest regeneration refreshes that file from rbac-config on GitHub.
 

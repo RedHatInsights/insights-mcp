@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Regenerate RBAC data from pinned sources
+      - name: Regenerate RBAC data from latest configured sources
         run: uv run python scripts/generate_tool_rbac_manifest.py
 
       - name: Open PR if data changed
