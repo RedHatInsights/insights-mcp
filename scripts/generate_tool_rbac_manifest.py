@@ -15,11 +15,11 @@ DATA_DIR = REPO_ROOT / "src" / "insights_mcp" / "rbac" / "data"
 TOOL_REST_MAP_PATH = REPO_ROOT / "configs" / "tool_rest_map.json"
 UPSTREAM_REFS_PATH = REPO_ROOT / "configs" / "upstream_refs.json"
 
-from insights_mcp.rbac.rbac_config import import_role_recommendations, read_pinned_ref  # noqa: E402
+from insights_mcp.rbac.rbac_config import import_role_recommendations, read_configured_ref  # noqa: E402
 
 # Import sibling scripts
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
-from scrape_upstream_rbac import build_upstream_permissions, lookup_upstream  # noqa: E402
+from upstream_rbac import build_upstream_permissions, lookup_upstream  # noqa: E402
 
 
 def _skeleton_entry(toolset_name: str, tool_name: str, api_path: str) -> list[dict[str, Any]]:
@@ -118,10 +118,10 @@ def _merge_upstream(call: dict[str, Any], upstream_doc: dict[str, Any]) -> None:
 
 def build_manifest() -> tuple[dict[str, Any], dict[str, list[str]]]:
     """Build manifest dict and role recommendations."""
-    rbac_ref = read_pinned_ref()
+    rbac_ref = read_configured_ref()
     roles = import_role_recommendations(ref=rbac_ref)
 
-    upstream_doc = build_upstream_permissions(try_git=False)
+    upstream_doc = build_upstream_permissions()
     upstream_path = DATA_DIR / "upstream_permissions.json"
     upstream_path.write_text(json.dumps(upstream_doc, indent=2) + "\n", encoding="utf-8")
 
