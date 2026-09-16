@@ -6,12 +6,11 @@ import os
 import re
 import time
 from contextlib import suppress
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import Any
 
-from insights_mcp.rbac.data_files import load_upstream_permissions_index
+from insights_mcp.rbac.data_files import load_role_recommendations, load_upstream_permissions_index
 from insights_mcp.rbac.manifest import ToolRbacEntry
-from insights_mcp.rbac.rbac_config import get_role_recommendations_for_runtime
 from insights_mcp.rbac.requirements_format import PermissionRequirements, RequirementResolution
 
 PERMISSION_RE = re.compile(
@@ -122,22 +121,13 @@ def _resolved(
     source: str,
     *,
     requirements_unknown: bool = False,
-    rbac_config_cache: str = "",
 ) -> ResolvedRequirements:
     return ResolvedRequirements(
         permissions=permissions,
         resolution=RequirementResolution(
             source=source,
             requirements_unknown=requirements_unknown,
-            rbac_config_cache=rbac_config_cache,
         ),
-    )
-
-
-def _with_rbac_cache(resolved: ResolvedRequirements, rbac_config_cache: str) -> ResolvedRequirements:
-    return replace(
-        resolved,
-        resolution=replace(resolved.resolution, rbac_config_cache=rbac_config_cache),
     )
 
 
@@ -192,31 +182,23 @@ async def resolve_tool_requirements(
     insights_client: Any | None = None,
 ) -> ResolvedRequirements:
     """Resolve requirements: bundled verified > upstream bundle > live OpenAPI > bundled partial > unknown."""
-    _, rbac_config_cache = get_role_recommendations_for_runtime()
-
     if entry.permissions.verified and entry.permissions.required_v1_permissions:
-        return _with_rbac_cache(
-            _resolved(_permissions_from_entry(entry), "bundled", requirements_unknown=False),
-            rbac_config_cache,
-        )
+        return _resolved(_permissions_from_entry(entry), "bundled", requirements_unknown=False)
 
     upstream_resolved = _resolve_from_upstream_bundle(entry)
     if upstream_resolved and upstream_resolved.permissions.required_v1_permissions:
-        return _with_rbac_cache(upstream_resolved, rbac_config_cache)
+        return upstream_resolved
 
     if insights_client is not None:
         spec = await _fetch_live_openapi(insights_client, entry.rest.api_path)
         if spec:
             live = _resolve_from_live_openapi(entry, spec)
             if live and live.permissions.required_v1_permissions:
-                return _with_rbac_cache(live, rbac_config_cache)
+                return live
 
     bundled = _permissions_from_entry(entry)
     if bundled.required_v1_permissions:
-        return _with_rbac_cache(
-            _resolved(bundled, "bundled", requirements_unknown=False),
-            rbac_config_cache,
-        )
+        return _resolved(bundled, "bundled", requirements_unknown=False)
 
     unknown_permissions = PermissionRequirements(
         required_v1_permissions=(),
@@ -226,20 +208,17 @@ async def resolve_tool_requirements(
         recommended_roles=entry.permissions.recommended_roles,
         verified=False,
     )
-    return _with_rbac_cache(
-        _resolved(unknown_permissions, "unknown", requirements_unknown=True),
-        rbac_config_cache,
-    )
+    return _resolved(unknown_permissions, "unknown", requirements_unknown=True)
 
 
-def roles_covering_missing_runtime(
+def roles_covering_missing(
     missing: list[str],
     held: list[str],
-) -> tuple[list[str], str]:
-    """Suggest roles using live rbac-config cache with bundled fallback."""
+) -> list[str]:
+    """Suggest roles using bundled rbac-config data."""
     if not missing:
-        return [], ""
-    role_map, cache_status = get_role_recommendations_for_runtime()
+        return []
+    role_map = load_role_recommendations()
     held_set = set(held)
     suggestions: list[str] = []
     for role_name, role_perms in role_map.items():
@@ -247,4 +226,4 @@ def roles_covering_missing_runtime(
         if all(p in role_perm_set or p in held_set for p in missing):
             if role_name not in suggestions:
                 suggestions.append(role_name)
-    return suggestions, cache_status
+    return suggestions
