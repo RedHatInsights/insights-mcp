@@ -39,10 +39,9 @@ class UpstreamSpec:
 
 
 @dataclass(frozen=True)
-class ToolRbacEntry:
-    """RBAC requirements for one MCP tool."""
+class ToolRbacCall:
+    """RBAC requirements for one REST call made by an MCP tool."""
 
-    tool_name: str
     rest: RestCallSpec
     application: str
     permissions: PermissionRequirements
@@ -51,9 +50,8 @@ class ToolRbacEntry:
     user_guidance_notes: tuple[str, ...] = ()
 
     @classmethod
-    def from_dict(cls, tool_name: str, data: dict[str, Any]) -> ToolRbacEntry:
-        """Build entry from manifest JSON object."""
-        rest_data = data["rest"]
+    def from_dict(cls, data: dict[str, Any]) -> ToolRbacCall:
+        """Build a REST call from the manifest."""
         upstream = None
         if "upstream" in data:
             up = data["upstream"]
@@ -74,11 +72,10 @@ class ToolRbacEntry:
             verified=bool(data.get("verified", False)),
         )
         return cls(
-            tool_name=tool_name,
             rest=RestCallSpec(
-                method=rest_data["method"].upper(),
-                api_path=rest_data["api_path"],
-                path_template=rest_data["path_template"],
+                method=data["method"].upper(),
+                api_path=data["api_path"],
+                path_template=data["path_template"],
             ),
             application=data.get("application", ""),
             permissions=permissions,
@@ -86,15 +83,6 @@ class ToolRbacEntry:
             openapi_sources=tuple(data.get("openapi_sources", [])),
             user_guidance_notes=tuple(data.get("user_guidance_notes", [])),
         )
-
-    def all_required_v1_flat(self) -> list[str]:
-        """Flatten permission sets: union of permissions from any satisfied set."""
-        seen: list[str] = []
-        for perm_set in self.permissions.required_v1_permissions:
-            for perm in perm_set:
-                if perm not in seen:
-                    seen.append(perm)
-        return seen
 
     def _diagnostic_sources(self) -> list[str]:
         sources: list[str] = list(self.openapi_sources)
@@ -124,6 +112,32 @@ class ToolRbacEntry:
         ).to_diagnostic_dict(extra={"upstream": upstream})
 
 
+@dataclass(frozen=True)
+class ToolRbacEntry:
+    """RBAC requirements for one MCP tool."""
+
+    tool_name: str
+    rest_calls: tuple[ToolRbacCall, ...]
+
+    @classmethod
+    def from_dict(cls, tool_name: str, data: list[dict[str, Any]]) -> ToolRbacEntry:
+        """Build an entry from its required REST-call list."""
+        return cls(
+            tool_name=tool_name,
+            rest_calls=tuple(ToolRbacCall.from_dict(call) for call in data),
+        )
+
+    def all_required_v1_flat(self) -> list[str]:
+        """Return the union of permissions required by all calls."""
+        seen: list[str] = []
+        for call in self.rest_calls:
+            for perm_set in call.permissions.required_v1_permissions:
+                for perm in perm_set:
+                    if perm not in seen:
+                        seen.append(perm)
+        return seen
+
+
 @lru_cache(maxsize=1)
 def load_manifest() -> dict[str, ToolRbacEntry]:
     """Load tool_rbac_manifest.json (cached)."""
@@ -149,10 +163,10 @@ def _normalize_path_for_match(path: str) -> str:
     return re.sub(r"\{[^}]+\}", "{id}", normalized)
 
 
-def _score_rest_match(entry: ToolRbacEntry, normalized: str) -> int:
-    template_full = entry.rest.full_path_template()
+def _score_rest_match(call: ToolRbacCall, normalized: str) -> int:
+    template_full = call.rest.full_path_template()
     template_norm = _normalize_path_for_match(template_full)
-    path_suffix = _normalize_path_for_match(entry.rest.path_template)
+    path_suffix = _normalize_path_for_match(call.rest.path_template)
     if normalized == template_norm:
         return len(template_norm) + 1000
     if normalized.endswith(path_suffix) and path_suffix != "/":
@@ -160,11 +174,17 @@ def _score_rest_match(entry: ToolRbacEntry, normalized: str) -> int:
     return -1
 
 
-def _prefer_entry_over_tie(current: ToolRbacEntry, candidate: ToolRbacEntry, method_upper: str) -> ToolRbacEntry:
-    if candidate.permissions.verified and not current.permissions.verified:
+def _prefer_entry_over_tie(
+    current: tuple[ToolRbacEntry, ToolRbacCall],
+    candidate: tuple[ToolRbacEntry, ToolRbacCall],
+    method_upper: str,
+) -> tuple[ToolRbacEntry, ToolRbacCall]:
+    current_entry, current_call = current
+    candidate_entry, candidate_call = candidate
+    if candidate_call.permissions.verified and not current_call.permissions.verified:
         return candidate
-    if candidate.permissions.verified == current.permissions.verified and method_upper == "GET":
-        if "__get_" in candidate.tool_name and "__get_" not in current.tool_name:
+    if candidate_call.permissions.verified == current_call.permissions.verified and method_upper == "GET":
+        if "__get_" in candidate_entry.tool_name and "__get_" not in current_entry.tool_name:
             return candidate
     return current
 
@@ -176,18 +196,29 @@ def find_tool_by_rest_url(url: str, method: str = "GET") -> ToolRbacEntry | None
     method_upper = method.upper()
     normalized = _normalize_path_for_match(path)
 
-    best: ToolRbacEntry | None = None
+    best: tuple[ToolRbacEntry, ToolRbacCall] | None = None
     best_score = -1
     for entry in load_manifest().values():
-        if entry.rest.method != method_upper:
-            continue
-        score = _score_rest_match(entry, normalized)
-        if score > best_score:
-            best = entry
-            best_score = score
-        elif score == best_score and score >= 0 and best is not None:
-            best = _prefer_entry_over_tie(best, entry, method_upper)
-    return best
+        for call in entry.rest_calls:
+            if call.rest.method != method_upper:
+                continue
+            score = _score_rest_match(call, normalized)
+            candidate = (entry, call)
+            if score > best_score:
+                best = candidate
+                best_score = score
+            elif score == best_score and score >= 0 and best is not None:
+                best = _prefer_entry_over_tie(best, candidate, method_upper)
+    return best[0] if best else None
+
+
+def find_rest_call(entry: ToolRbacEntry, url: str) -> ToolRbacCall | None:
+    """Find the REST call in an entry matching a failed URL."""
+    parsed = urlparse(url)
+    normalized = _normalize_path_for_match(parsed.path or url)
+    scored = [(_score_rest_match(call, normalized), call) for call in entry.rest_calls]
+    score, call = max(scored, key=lambda item: item[0])
+    return call if score >= 0 else None
 
 
 def resolve_tool_name(failed_tool: str, failed_url: str, method: str = "GET") -> str | None:

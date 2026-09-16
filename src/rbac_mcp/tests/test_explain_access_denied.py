@@ -29,5 +29,5 @@ async def test_explain_access_denied_returns_structured_report():
 
     assert result["do_not_infer_other_permissions"] is True
     assert result["failed"]["tool"] == "vulnerability__get_system_cves"
-    assert "vulnerability:vulnerability_results:read" in str(result["required_permissions"])
-    assert "inventory:hosts:read" in result["missing_permissions"]
+    assert "vulnerability:vulnerability_results:read" in str(result["rest_calls"][0]["required_permissions"])
+    assert "inventory:hosts:read" in result["rest_calls"][0]["missing_permissions"]

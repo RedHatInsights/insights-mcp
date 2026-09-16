@@ -23,21 +23,21 @@ from parse_openapi_permissions import build_openapi_permission_index, lookup_end
 from scrape_upstream_rbac import build_upstream_permissions, lookup_upstream  # noqa: E402
 
 
-def _skeleton_entry(toolset_name: str, tool_name: str, api_path: str) -> dict[str, Any]:
-    return {
-        "rest": {
+def _skeleton_entry(toolset_name: str, tool_name: str, api_path: str) -> list[dict[str, Any]]:
+    return [
+        {
             "method": "GET",
             "api_path": api_path,
             "path_template": "/",
-        },
-        "application": toolset_name,
-        "required_v1_permissions": [],
-        "kessel_permission": "",
-        "kessel_note": "",
-        "recommended_roles": [],
-        "openapi_sources": [],
-        "verified": False,
-    }
+            "application": toolset_name,
+            "required_v1_permissions": [],
+            "kessel_permission": "",
+            "kessel_note": "",
+            "recommended_roles": [],
+            "openapi_sources": [],
+            "verified": False,
+        }
+    ]
 
 
 def _collect_readonly_tool_names() -> list[str]:
@@ -76,13 +76,11 @@ def _apply_template(tool_def: dict[str, Any], templates: dict[str, Any]) -> dict
     return merged
 
 
-def _build_entry_from_tool_def(tool_def: dict[str, Any]) -> dict[str, Any]:
-    method = tool_def["method"]
-    api_path = tool_def["api_path"]
-    path_template = tool_def["path_template"]
-    rest = {"method": method, "api_path": api_path, "path_template": path_template}
-    entry: dict[str, Any] = {
-        "rest": rest,
+def _build_call(tool_def: dict[str, Any]) -> dict[str, Any]:
+    call: dict[str, Any] = {
+        "method": tool_def["method"],
+        "api_path": tool_def["api_path"],
+        "path_template": tool_def["path_template"],
         "application": tool_def.get("application", ""),
         "required_v1_permissions": tool_def.get("required_v1_permissions", []),
         "kessel_permission": tool_def.get("kessel_permission", ""),
@@ -92,19 +90,18 @@ def _build_entry_from_tool_def(tool_def: dict[str, Any]) -> dict[str, Any]:
         "verified": bool(tool_def.get("verified", False)),
     }
     if tool_def.get("upstream"):
-        entry["upstream"] = tool_def["upstream"]
+        call["upstream"] = tool_def["upstream"]
     if tool_def.get("user_guidance_notes"):
-        entry["user_guidance_notes"] = tool_def["user_guidance_notes"]
-    return entry
+        call["user_guidance_notes"] = tool_def["user_guidance_notes"]
+    return call
 
 
-def _merge_upstream(entry: dict[str, Any], upstream_doc: dict[str, Any]) -> None:
-    rest = entry["rest"]
+def _merge_upstream(call: dict[str, Any], upstream_doc: dict[str, Any]) -> None:
     upstream = lookup_upstream(
         upstream_doc,
-        rest["method"],
-        rest["api_path"],
-        rest["path_template"],
+        call["method"],
+        call["api_path"],
+        call["path_template"],
     )
     if not upstream:
         return
@@ -116,28 +113,27 @@ def _merge_upstream(entry: dict[str, Any], upstream_doc: dict[str, Any]) -> None
         "user_guidance_notes",
     ):
         if field in upstream and upstream[field]:
-            entry[field] = upstream[field]
+            call[field] = upstream[field]
     if upstream.get("upstream"):
-        entry["upstream"] = upstream["upstream"]
+        call["upstream"] = upstream["upstream"]
     if upstream.get("verified"):
-        entry["verified"] = True
+        call["verified"] = True
 
 
-def _merge_openapi(entry: dict[str, Any], openapi_index: dict[str, dict[str, Any]]) -> None:
-    if entry.get("verified") and entry.get("required_v1_permissions"):
+def _merge_openapi(call: dict[str, Any], openapi_index: dict[str, dict[str, Any]]) -> None:
+    if call.get("verified") and call.get("required_v1_permissions"):
         return
-    rest = entry["rest"]
-    hit = lookup_endpoint(openapi_index, rest["method"], rest["path_template"])
+    hit = lookup_endpoint(openapi_index, call["method"], call["path_template"])
     if not hit:
         return
-    if not entry.get("required_v1_permissions"):
-        entry["required_v1_permissions"] = hit.get("required_v1_permissions", [])
+    if not call.get("required_v1_permissions"):
+        call["required_v1_permissions"] = hit.get("required_v1_permissions", [])
     source = hit.get("openapi_source")
     if source:
-        sources = list(entry.get("openapi_sources", []))
+        sources = list(call.get("openapi_sources", []))
         if source not in sources:
             sources.append(source)
-        entry["openapi_sources"] = sources
+        call["openapi_sources"] = sources
 
 
 def build_manifest() -> tuple[dict[str, Any], dict[str, list[str]]]:
@@ -155,13 +151,15 @@ def build_manifest() -> tuple[dict[str, Any], dict[str, list[str]]]:
     templates = map_data.get("templates", {})
     tool_defs = map_data.get("tools", {})
 
-    tools: dict[str, dict[str, Any]] = {}
-    for tool_name, raw_def in tool_defs.items():
-        merged_def = _apply_template(raw_def, templates)
-        entry = _build_entry_from_tool_def(merged_def)
-        _merge_upstream(entry, upstream_doc)
-        _merge_openapi(entry, openapi_index)
-        tools[tool_name] = entry
+    tools: dict[str, list[dict[str, Any]]] = {}
+    for tool_name, raw_calls in tool_defs.items():
+        calls = []
+        for raw_call in raw_calls:
+            call = _build_call(_apply_template(raw_call, templates))
+            _merge_upstream(call, upstream_doc)
+            _merge_openapi(call, openapi_index)
+            calls.append(call)
+        tools[tool_name] = calls
 
     for tool_name in _collect_readonly_tool_names():
         if tool_name in tools:

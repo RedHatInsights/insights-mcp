@@ -14,7 +14,7 @@ def test_manifest_loads_vulnerability_get_system_cves():
     """Manifest entry for get_system_cves lists verified vulnerability and inventory perms."""
     entry = get_tool_entry("vulnerability__get_system_cves")
     assert entry is not None
-    assert entry.permissions.verified is True
+    assert entry.rest_calls[0].permissions.verified is True
     flat = entry.all_required_v1_flat()
     assert "vulnerability:vulnerability_results:read" in flat
     assert "inventory:hosts:read" in flat
@@ -26,7 +26,7 @@ def test_permission_set_satisfied_and_missing():
     entry = get_tool_entry("vulnerability__get_system_cves")
     assert entry is not None
     held = ["vulnerability:vulnerability_results:read"]
-    comparison = compare_permissions(entry, held)
+    comparison = compare_permissions(entry.rest_calls[0], held)
     assert comparison["satisfied"] is False
     assert "inventory:hosts:read" in comparison["missing_permissions"]
 
@@ -34,7 +34,7 @@ def test_permission_set_satisfied_and_missing():
         "vulnerability:vulnerability_results:read",
         "inventory:hosts:read",
     ]
-    comparison_ok = compare_permissions(entry, held_both)
+    comparison_ok = compare_permissions(entry.rest_calls[0], held_both)
     assert comparison_ok["satisfied"] is True
     assert comparison_ok["missing_permissions"] == []
 
@@ -83,7 +83,7 @@ def test_build_access_denied_report_structure():
         )
     )
     assert report["do_not_infer_other_permissions"] is True
-    assert report["comparison"]["satisfied"] is True
+    assert report["rest_calls"][0]["comparison"]["satisfied"] is True
     assert "inventory:hosts:read" in report["caller_permissions"]["permissions"]
 
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from insights_mcp.rbac.manifest import ToolRbacEntry, resolve_tool_name
+from insights_mcp.rbac.manifest import ToolRbacCall, ToolRbacEntry, find_rest_call, resolve_tool_name
 from insights_mcp.rbac.principal import classify_principal_from_token, extract_permissions_from_access_response
 from insights_mcp.rbac.resolver import ResolvedRequirements, roles_covering_missing
 
@@ -32,7 +32,7 @@ def _split_permission(perm: str) -> tuple[str, str, str]:
 
 
 def compare_permissions(
-    entry: ToolRbacEntry,
+    call: ToolRbacCall,
     held_permissions: list[str],
     *,
     required_v1_permissions: tuple[tuple[str, ...], ...] | None = None,
@@ -42,7 +42,7 @@ def compare_permissions(
     satisfied_any_set = False
     missing_from_best: list[str] = []
     perm_sets = (
-        required_v1_permissions if required_v1_permissions is not None else entry.permissions.required_v1_permissions
+        required_v1_permissions if required_v1_permissions is not None else call.permissions.required_v1_permissions
     )
 
     for perm_set in perm_sets:
@@ -79,7 +79,7 @@ class AccessDeniedInput:
     entry: ToolRbacEntry | None
     access_payload: dict[str, Any] | None
     access_token: str | None
-    resolved: ResolvedRequirements | None = None
+    resolved_calls: tuple[ResolvedRequirements, ...] = ()
 
 
 @dataclass
@@ -103,26 +103,26 @@ def _default_user_guidance() -> list[str]:
     ]
 
 
-def _diagnose_entry(
-    entry: ToolRbacEntry,
+def _diagnose_call(
+    call: ToolRbacCall,
     held: list[str],
     resolved: ResolvedRequirements | None,
 ) -> EntryDiagnosis:
     if resolved:
         requirements = resolved.to_requirements_dict()
         comparison = compare_permissions(
-            entry,
+            call,
             held,
             required_v1_permissions=resolved.permissions.required_v1_permissions,
         )
-        recommended_roles = list(resolved.permissions.recommended_roles or entry.permissions.recommended_roles)
+        recommended_roles = list(resolved.permissions.recommended_roles or call.permissions.recommended_roles)
         extra_guidance: list[str] = []
         if resolved.permissions.kessel_note:
             extra_guidance.append(resolved.permissions.kessel_note)
     else:
-        requirements = entry.to_requirements_dict()
-        comparison = compare_permissions(entry, held)
-        recommended_roles = list(entry.permissions.recommended_roles)
+        requirements = call.to_requirements_dict()
+        comparison = compare_permissions(call, held)
+        recommended_roles = list(call.permissions.recommended_roles)
         extra_guidance = []
 
     extra_roles = roles_covering_missing(comparison.get("missing_permissions", []), held)
@@ -130,9 +130,9 @@ def _diagnose_entry(
         if role not in recommended_roles:
             recommended_roles.append(role)
 
-    extra_guidance.extend(entry.user_guidance_notes)
-    if entry.permissions.kessel_note and not (resolved and resolved.permissions.kessel_note):
-        extra_guidance.append(entry.permissions.kessel_note)
+    extra_guidance.extend(call.user_guidance_notes)
+    if call.permissions.kessel_note and not (resolved and resolved.permissions.kessel_note):
+        extra_guidance.append(call.permissions.kessel_note)
     if resolved and resolved.resolution.requirements_unknown:
         extra_guidance.append(
             "Required permissions for this tool could not be resolved from bundled or live sources; "
@@ -147,13 +147,11 @@ def _diagnose_entry(
     )
 
 
-def _rest_call_dict(entry: ToolRbacEntry | None, failed_url: str) -> dict[str, Any]:
-    if entry is None:
-        return {"method": "GET", "url": failed_url or None}
+def _rest_call_dict(call: ToolRbacCall, failed_url: str = "") -> dict[str, Any]:
     return {
-        "method": entry.rest.method,
-        "api_path": entry.rest.api_path,
-        "path_template": entry.rest.path_template,
+        "method": call.rest.method,
+        "api_path": call.rest.api_path,
+        "path_template": call.rest.path_template,
         "url": failed_url or None,
     }
 
@@ -168,34 +166,39 @@ def build_access_denied_report(inp: AccessDeniedInput) -> dict[str, Any]:
         held = extract_permissions_from_access_response(inp.access_payload)
 
     user_guidance = _default_user_guidance()
-    comparison: dict[str, Any] = {}
-    requirements: dict[str, Any] | None = None
-    recommended_roles: list[str] = []
-
-    if inp.entry:
-        diagnosis = _diagnose_entry(inp.entry, held, inp.resolved)
-        requirements = diagnosis.requirements
-        comparison = diagnosis.comparison
-        recommended_roles = diagnosis.recommended_roles
-        user_guidance.extend(diagnosis.extra_guidance)
-    else:
+    diagnosed_calls = []
+    if inp.entry is None:
         user_guidance.append(
             "No manifest entry for this tool; call rbac__lookup_tool_requirements after updating insights-mcp."
         )
-
-    if comparison.get("satisfied") and call.http_status == 403:
-        user_guidance.append(
-            "Caller has required v1 permission strings but still received 403. "
-            "Likely workspace/group scoping (Kessel): ensure access to the host workspace."
-        )
+    else:
+        resolved_by_call = dict(zip(inp.entry.rest_calls, inp.resolved_calls))
+        matched_call = find_rest_call(inp.entry, call.failed_url) if call.failed_url else None
+        rest_calls = [matched_call] if matched_call else list(inp.entry.rest_calls)
+        for rest_call in rest_calls:
+            diagnosis = _diagnose_call(rest_call, held, resolved_by_call.get(rest_call))
+            user_guidance.extend(diagnosis.extra_guidance)
+            diagnosed_calls.append(
+                {
+                    "rest_call": _rest_call_dict(rest_call, call.failed_url if matched_call else ""),
+                    "required_permissions": diagnosis.requirements,
+                    "comparison": diagnosis.comparison,
+                    "missing_permissions": diagnosis.comparison.get("missing_permissions", []),
+                    "recommended_roles": diagnosis.recommended_roles,
+                }
+            )
+            if diagnosis.comparison.get("satisfied") and call.http_status == 403:
+                user_guidance.append(
+                    "Caller has required v1 permission strings but still received 403. "
+                    "Likely workspace/group scoping (Kessel): ensure access to the host workspace."
+                )
 
     return {
         "failed": {
             "tool": tool_resolved or call.failed_tool or None,
             "http_status": call.http_status,
         },
-        "rest_call": _rest_call_dict(inp.entry, call.failed_url),
-        "required_permissions": requirements,
+        "rest_calls": diagnosed_calls,
         "caller_permissions": {
             "principal": principal["principal_type"],
             "client_id": principal.get("client_id"),
@@ -203,9 +206,6 @@ def build_access_denied_report(inp: AccessDeniedInput) -> dict[str, Any]:
             "permissions": held,
             "principal_note": principal.get("note"),
         },
-        "comparison": comparison,
-        "missing_permissions": comparison.get("missing_permissions", []),
-        "recommended_roles": recommended_roles,
         "user_guidance": user_guidance,
         "do_not_infer_other_permissions": True,
     }
