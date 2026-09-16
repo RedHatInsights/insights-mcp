@@ -47,6 +47,7 @@ class AccessDeniedCall:
     failed_tool: str
     failed_url: str
     http_status: int
+    failed_method: str
     tool_name_resolved: str | None = None
 
 
@@ -138,7 +139,11 @@ def _rest_call_dict(call: ToolRbacCall, failed_url: str = "") -> dict[str, Any]:
 def build_access_denied_report(inp: AccessDeniedInput) -> dict[str, Any]:
     """Build structured diagnostic report for explain_access_denied."""
     call = inp.call
-    tool_resolved = call.tool_name_resolved or resolve_tool_name(call.failed_tool, call.failed_url)
+    tool_resolved = call.tool_name_resolved or resolve_tool_name(
+        call.failed_tool,
+        call.failed_url,
+        method=call.failed_method,
+    )
     principal = classify_principal_from_token(inp.access_token)
     held: list[str] = []
     if inp.access_payload and isinstance(inp.access_payload, dict):
@@ -152,7 +157,9 @@ def build_access_denied_report(inp: AccessDeniedInput) -> dict[str, Any]:
         )
     else:
         resolved_by_call = dict(zip(inp.entry.rest_calls, inp.resolved_calls))
-        matched_call = find_rest_call(inp.entry, call.failed_url) if call.failed_url else None
+        matched_call = (
+            find_rest_call(inp.entry, call.failed_url, method=call.failed_method) if call.failed_url else None
+        )
         rest_calls = [matched_call] if matched_call else list(inp.entry.rest_calls)
         for rest_call in rest_calls:
             diagnosis = _diagnose_call(rest_call, held, resolved_by_call.get(rest_call))
@@ -175,6 +182,7 @@ def build_access_denied_report(inp: AccessDeniedInput) -> dict[str, Any]:
     return {
         "failed": {
             "tool": tool_resolved or call.failed_tool or None,
+            "method": call.failed_method.upper(),
             "http_status": call.http_status,
         },
         "rest_calls": diagnosed_calls,

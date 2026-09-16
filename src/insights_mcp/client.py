@@ -246,8 +246,9 @@ class InsightsClientBase(httpx.AsyncClient):
         """
         return (
             "[INSTRUCTION] The user is authenticated but lacks permission for this resource (HTTP 403). "
-            "Call rbac__explain_access_denied with failed_tool=<the MCP tool that failed> "
-            "or failed_url=<URL from the error>. Do not invent permission names. "
+            f"Call rbac__explain_access_denied with failed_method={e.request.method} and either "
+            "failed_tool=<the MCP tool that failed> or failed_url=<URL from the error>. "
+            "Do not invent permission names. "
             "Use get_insights_mcp_version() to check MCP version if helpful. "
             f"User Access overview: {self.insights_base_url}/iam/user-access/overview\n"
             "Come up with a detailed description for the user. "
