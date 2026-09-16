@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from insights_mcp.rbac.data_files import load_role_recommendations, load_upstream_permissions_index
-from insights_mcp.rbac.manifest import ToolRbacEntry
+from insights_mcp.rbac.manifest import ToolRbacCall
 from insights_mcp.rbac.requirements_format import PermissionRequirements, RequirementResolution
 
 PERMISSION_RE = re.compile(
@@ -105,14 +105,14 @@ def _match_openapi_operation(
     return None
 
 
-def _permissions_from_entry(entry: ToolRbacEntry) -> PermissionRequirements:
+def _permissions_from_call(call: ToolRbacCall) -> PermissionRequirements:
     return PermissionRequirements(
-        required_v1_permissions=entry.permissions.required_v1_permissions,
-        kessel_permission=entry.permissions.kessel_permission,
-        kessel_note=entry.permissions.kessel_note,
-        sources=tuple(entry.openapi_sources),
-        recommended_roles=entry.permissions.recommended_roles,
-        verified=entry.permissions.verified,
+        required_v1_permissions=call.permissions.required_v1_permissions,
+        kessel_permission=call.permissions.kessel_permission,
+        kessel_note=call.permissions.kessel_note,
+        sources=tuple(call.openapi_sources),
+        recommended_roles=call.permissions.recommended_roles,
+        verified=call.permissions.verified,
     )
 
 
@@ -131,8 +131,8 @@ def _resolved(
     )
 
 
-def _resolve_from_live_openapi(entry: ToolRbacEntry, spec: dict[str, Any]) -> ResolvedRequirements | None:
-    operation = _match_openapi_operation(spec, entry.rest.method, entry.rest.path_template)
+def _resolve_from_live_openapi(call: ToolRbacCall, spec: dict[str, Any]) -> ResolvedRequirements | None:
+    operation = _match_openapi_operation(spec, call.rest.method, call.rest.path_template)
     if not operation:
         return None
     text = " ".join(
@@ -144,68 +144,68 @@ def _resolve_from_live_openapi(entry: ToolRbacEntry, spec: dict[str, Any]) -> Re
     perms = _extract_permissions_from_text(text)
     if not perms:
         return None
-    sources = tuple(entry.openapi_sources) + (f"live:{entry.rest.api_path}/openapi.json",)
+    sources = tuple(call.openapi_sources) + (f"live:{call.rest.api_path}/openapi.json",)
     permissions = PermissionRequirements(
         required_v1_permissions=(tuple(perms),),
-        kessel_permission=entry.permissions.kessel_permission,
-        kessel_note=entry.permissions.kessel_note,
+        kessel_permission=call.permissions.kessel_permission,
+        kessel_note=call.permissions.kessel_note,
         sources=sources,
-        recommended_roles=entry.permissions.recommended_roles,
+        recommended_roles=call.permissions.recommended_roles,
         verified=False,
     )
     return _resolved(permissions, "live_openapi")
 
 
-def _resolve_from_upstream_bundle(entry: ToolRbacEntry) -> ResolvedRequirements | None:
+def _resolve_from_upstream_bundle(call: ToolRbacCall) -> ResolvedRequirements | None:
     doc = load_upstream_permissions_index()
     endpoints = doc.get("endpoints", {})
-    base = entry.rest.api_path.rstrip("/")
-    path = entry.rest.path_template if entry.rest.path_template.startswith("/") else f"/{entry.rest.path_template}"
-    key = f"{entry.rest.method.upper()} {base}{path}"
+    base = call.rest.api_path.rstrip("/")
+    path = call.rest.path_template if call.rest.path_template.startswith("/") else f"/{call.rest.path_template}"
+    key = f"{call.rest.method.upper()} {base}{path}"
     upstream = endpoints.get(key)
     if not upstream or key.startswith("_"):
         return None
     perm_sets = upstream.get("required_v1_permissions", [])
     permissions = PermissionRequirements(
         required_v1_permissions=tuple(tuple(p) for p in perm_sets),
-        kessel_permission=upstream.get("kessel_permission", entry.permissions.kessel_permission),
-        kessel_note=upstream.get("kessel_note", entry.permissions.kessel_note),
-        sources=tuple(entry.openapi_sources) + ("bundled:upstream_permissions.json",),
-        recommended_roles=entry.permissions.recommended_roles,
+        kessel_permission=upstream.get("kessel_permission", call.permissions.kessel_permission),
+        kessel_note=upstream.get("kessel_note", call.permissions.kessel_note),
+        sources=tuple(call.openapi_sources) + ("bundled:upstream_permissions.json",),
+        recommended_roles=call.permissions.recommended_roles,
         verified=bool(upstream.get("verified", False)),
     )
     return _resolved(permissions, "upstream_bundle")
 
 
 async def resolve_tool_requirements(
-    entry: ToolRbacEntry,
+    call: ToolRbacCall,
     insights_client: Any | None = None,
 ) -> ResolvedRequirements:
     """Resolve requirements: bundled verified > upstream bundle > live OpenAPI > bundled partial > unknown."""
-    if entry.permissions.verified and entry.permissions.required_v1_permissions:
-        return _resolved(_permissions_from_entry(entry), "bundled", requirements_unknown=False)
+    if call.permissions.verified and call.permissions.required_v1_permissions:
+        return _resolved(_permissions_from_call(call), "bundled", requirements_unknown=False)
 
-    upstream_resolved = _resolve_from_upstream_bundle(entry)
+    upstream_resolved = _resolve_from_upstream_bundle(call)
     if upstream_resolved and upstream_resolved.permissions.required_v1_permissions:
         return upstream_resolved
 
     if insights_client is not None:
-        spec = await _fetch_live_openapi(insights_client, entry.rest.api_path)
+        spec = await _fetch_live_openapi(insights_client, call.rest.api_path)
         if spec:
-            live = _resolve_from_live_openapi(entry, spec)
+            live = _resolve_from_live_openapi(call, spec)
             if live and live.permissions.required_v1_permissions:
                 return live
 
-    bundled = _permissions_from_entry(entry)
+    bundled = _permissions_from_call(call)
     if bundled.required_v1_permissions:
         return _resolved(bundled, "bundled", requirements_unknown=False)
 
     unknown_permissions = PermissionRequirements(
         required_v1_permissions=(),
-        kessel_permission=entry.permissions.kessel_permission,
-        kessel_note=entry.permissions.kessel_note,
-        sources=tuple(entry.openapi_sources),
-        recommended_roles=entry.permissions.recommended_roles,
+        kessel_permission=call.permissions.kessel_permission,
+        kessel_note=call.permissions.kessel_note,
+        sources=tuple(call.openapi_sources),
+        recommended_roles=call.permissions.recommended_roles,
         verified=False,
     )
     return _resolved(unknown_permissions, "unknown", requirements_unknown=True)

@@ -18,7 +18,7 @@ from insights_mcp.mcp import InsightsMCP
 from insights_mcp.rbac.diagnose import AccessDeniedCall, AccessDeniedInput, build_access_denied_report
 from insights_mcp.rbac.manifest import get_tool_entry, load_manifest, resolve_tool_name
 from insights_mcp.rbac.principal import classify_principal_from_token
-from insights_mcp.rbac.resolver import resolve_tool_requirements
+from insights_mcp.rbac.resolver import ResolvedRequirements, resolve_tool_requirements
 from rbac_mcp.access import fetch_caller_access, get_access_token_from_client
 
 mcp = InsightsMCP(
@@ -72,9 +72,10 @@ async def explain_access_denied(
         return access_payload
 
     token = get_access_token_from_client(mcp.insights_client)
-    resolved = None
+    resolved_calls: list[ResolvedRequirements] = []
     if entry is not None:
-        resolved = await resolve_tool_requirements(entry, mcp.insights_client)
+        for call in entry.rest_calls:
+            resolved_calls.append(await resolve_tool_requirements(call, mcp.insights_client))
     return build_access_denied_report(
         AccessDeniedInput(
             call=AccessDeniedCall(
@@ -86,7 +87,7 @@ async def explain_access_denied(
             entry=entry,
             access_payload=access_payload,
             access_token=token,
-            resolved=resolved,
+            resolved_calls=tuple(resolved_calls),
         )
     )
 
@@ -114,16 +115,20 @@ async def lookup_tool_requirements(
             "known_tools_count": len(known),
             "do_not_infer_other_permissions": True,
         }
-    resolved = await resolve_tool_requirements(entry, mcp.insights_client)
-    requirements = resolved.to_requirements_dict()
+    rest_calls = []
+    for call in entry.rest_calls:
+        resolved = await resolve_tool_requirements(call, mcp.insights_client)
+        rest_calls.append(
+            {
+                "method": call.rest.method,
+                "api_path": call.rest.api_path,
+                "path_template": call.rest.path_template,
+                "required_permissions": resolved.to_requirements_dict(),
+            }
+        )
     return {
         "tool": entry.tool_name,
-        "rest_call": {
-            "method": entry.rest.method,
-            "api_path": entry.rest.api_path,
-            "path_template": entry.rest.path_template,
-        },
-        "required_permissions": requirements,
+        "rest_calls": rest_calls,
         "do_not_infer_other_permissions": True,
     }
 

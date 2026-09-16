@@ -33,5 +33,5 @@ def test_all_readonly_tools_have_manifest_entry():
 def test_verified_entries_include_core_inventory_vulnerability():
     """Core inventory and vulnerability tools must be marked verified in the manifest."""
     manifest = load_manifest()
-    assert manifest["inventory__find_host_by_name"].permissions.verified is True
-    assert manifest["vulnerability__get_system_cves"].permissions.verified is True
+    assert manifest["inventory__find_host_by_name"].rest_calls[0].permissions.verified is True
+    assert manifest["vulnerability__get_system_cves"].rest_calls[0].permissions.verified is True
