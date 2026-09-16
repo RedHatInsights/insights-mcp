@@ -635,9 +635,7 @@
         "recommended_roles": [
           "RBAC viewer"
         ],
-        "openapi_sources": [
-          "apis/rbac-openapi.json"
-        ],
+        "openapi_sources": [],
         "verified": false
       }
     ],
@@ -657,9 +655,7 @@
         "recommended_roles": [
           "RBAC viewer"
         ],
-        "openapi_sources": [
-          "apis/rbac-openapi.json"
-        ],
+        "openapi_sources": [],
         "verified": false
       }
     ],
@@ -679,9 +675,7 @@
         "recommended_roles": [
           "RBAC viewer"
         ],
-        "openapi_sources": [
-          "apis/rbac-openapi.json"
-        ],
+        "openapi_sources": [],
         "verified": false
       }
     ],
@@ -701,9 +695,7 @@
         "recommended_roles": [
           "RBAC viewer"
         ],
-        "openapi_sources": [
-          "apis/rbac-openapi.json"
-        ],
+        "openapi_sources": [],
         "verified": false
       }
     ],
@@ -885,9 +877,7 @@
           "Vulnerability viewer",
           "Inventory Hosts Viewer"
         ],
-        "openapi_sources": [
-          "apis/vulnerability-openapi.json"
-        ],
+        "openapi_sources": [],
         "verified": true,
         "upstream": {
           "repo": "RedHatInsights/vulnerability-engine",
@@ -915,9 +905,7 @@
           "Vulnerability viewer",
           "Inventory Hosts Viewer"
         ],
-        "openapi_sources": [
-          "apis/vulnerability-openapi.json"
-        ],
+        "openapi_sources": [],
         "verified": true,
         "upstream": {
           "repo": "RedHatInsights/vulnerability-engine",
@@ -959,9 +947,7 @@
           "Vulnerability viewer",
           "Inventory Hosts Viewer"
         ],
-        "openapi_sources": [
-          "apis/vulnerability-openapi.json"
-        ],
+        "openapi_sources": [],
         "verified": true,
         "upstream": {
           "repo": "RedHatInsights/vulnerability-engine",
@@ -991,9 +977,7 @@
           "Vulnerability viewer",
           "Inventory Hosts Viewer"
         ],
-        "openapi_sources": [
-          "apis/vulnerability-openapi.json"
-        ],
+        "openapi_sources": [],
         "verified": true,
         "upstream": {
           "repo": "RedHatInsights/vulnerability-engine",
@@ -1023,9 +1007,7 @@
           "Vulnerability viewer",
           "Inventory Hosts Viewer"
         ],
-        "openapi_sources": [
-          "apis/vulnerability-openapi.json"
-        ],
+        "openapi_sources": [],
         "verified": true,
         "upstream": {
           "repo": "RedHatInsights/vulnerability-engine",
@@ -1053,9 +1035,7 @@
         "recommended_roles": [
           "Vulnerability viewer"
         ],
-        "openapi_sources": [
-          "apis/vulnerability-openapi.json"
-        ],
+        "openapi_sources": [],
         "verified": false
       }
     ],
@@ -1077,9 +1057,7 @@
           "Vulnerability viewer",
           "Inventory Hosts Viewer"
         ],
-        "openapi_sources": [
-          "apis/vulnerability-openapi.json"
-        ],
+        "openapi_sources": [],
         "verified": true,
         "upstream": {
           "repo": "RedHatInsights/vulnerability-engine",
@@ -1112,9 +1090,7 @@
           "Vulnerability viewer",
           "Inventory Hosts Viewer"
         ],
-        "openapi_sources": [
-          "apis/vulnerability-openapi.json"
-        ],
+        "openapi_sources": [],
         "verified": true,
         "upstream": {
           "repo": "RedHatInsights/vulnerability-engine",

@@ -19,7 +19,6 @@ from insights_mcp.rbac.rbac_config import import_role_recommendations, read_pinn
 
 # Import sibling scripts
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
-from parse_openapi_permissions import build_openapi_permission_index, lookup_endpoint  # noqa: E402
 from scrape_upstream_rbac import build_upstream_permissions, lookup_upstream  # noqa: E402
 
 
@@ -117,22 +116,6 @@ def _merge_upstream(call: dict[str, Any], upstream_doc: dict[str, Any]) -> None:
         call["verified"] = True
 
 
-def _merge_openapi(call: dict[str, Any], openapi_index: dict[str, dict[str, Any]]) -> None:
-    if call.get("verified") and call.get("required_v1_permissions"):
-        return
-    hit = lookup_endpoint(openapi_index, call["method"], call["path_template"])
-    if not hit:
-        return
-    if not call.get("required_v1_permissions"):
-        call["required_v1_permissions"] = hit.get("required_v1_permissions", [])
-    source = hit.get("openapi_source")
-    if source:
-        sources = list(call.get("openapi_sources", []))
-        if source not in sources:
-            sources.append(source)
-        call["openapi_sources"] = sources
-
-
 def build_manifest() -> tuple[dict[str, Any], dict[str, list[str]]]:
     """Build manifest dict and role recommendations."""
     rbac_ref = read_pinned_ref()
@@ -141,8 +124,6 @@ def build_manifest() -> tuple[dict[str, Any], dict[str, list[str]]]:
     upstream_doc = build_upstream_permissions(try_git=False)
     upstream_path = DATA_DIR / "upstream_permissions.json"
     upstream_path.write_text(json.dumps(upstream_doc, indent=2) + "\n", encoding="utf-8")
-
-    openapi_index = build_openapi_permission_index()
 
     map_data = json.loads(TOOL_REST_MAP_PATH.read_text(encoding="utf-8"))
     templates = map_data.get("templates", {})
@@ -154,7 +135,6 @@ def build_manifest() -> tuple[dict[str, Any], dict[str, list[str]]]:
         for raw_call in raw_calls:
             call = _build_call(_apply_template(raw_call, templates))
             _merge_upstream(call, upstream_doc)
-            _merge_openapi(call, openapi_index)
             calls.append(call)
         tools[tool_name] = calls
 
