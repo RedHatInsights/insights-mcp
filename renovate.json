@@ -15,5 +15,21 @@
         "automergeType": "pr",
         "enabled": true,
         "platformAutomerge": true
-    }
+    },
+    "customManagers": [
+        {
+            "customType": "regex",
+            "description": "Pin mcp-publisher release + linux/amd64 asset digest",
+            "managerFilePatterns": [
+                "/^\\.github/workflows/publish-mcp\\.yaml$/"
+            ],
+            "matchStrings": [
+                "MCP_PUBLISHER_VERSION:\\s*v(?<currentValue>\\d+\\.\\d+\\.\\d+)\\s+MCP_PUBLISHER_SHA256:\\s*(?<currentDigest>[a-f0-9]{64})"
+            ],
+            "depNameTemplate": "modelcontextprotocol/registry",
+            "datasourceTemplate": "github-release-attachments",
+            "extractVersionTemplate": "^v(?<version>.*)$",
+            "packageNameTemplate": "modelcontextprotocol/registry"
+        }
+    ]
 }

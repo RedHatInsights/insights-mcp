@@ -4,6 +4,8 @@ import json
 
 import pytest
 
+from insights_mcp.errors import InsightsApiError
+
 from .conftest import setup_imagebuilder_mock
 
 
@@ -73,20 +75,21 @@ class TestGetDistributions:
             imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")
         ):
             # Call the method
-            result = await imagebuilder_mcp_server.get_distributions()
+            with pytest.raises(InsightsApiError) as exc_info:
+                await imagebuilder_mcp_server.get_distributions()
 
-            # Should return error message
-            assert result.startswith("Error getting distributions: API Error")
+            assert str(exc_info.value).startswith("Error getting distributions: API Error")
 
     @pytest.mark.asyncio
     async def test_get_distributions_auth_error(self, imagebuilder_mcp_server):
         """Test get_distributions when authentication fails."""
         # Call the method
-        result = await imagebuilder_mcp_server.get_distributions()
+        with pytest.raises(InsightsApiError) as exc_info:
+            await imagebuilder_mcp_server.get_distributions()
 
-        # Should return authentication error
-        assert "[INSTRUCTION] There seems to be a problem with the request." in result
-        assert "authentication problem" in result
+        error_message = str(exc_info.value)
+        assert "[INSTRUCTION] There seems to be a problem with the request." in error_message
+        assert "authentication problem" in error_message
 
     @pytest.mark.asyncio
     async def test_get_distributions_no_parameters(

@@ -2,8 +2,9 @@
 
 import pytest
 
+from insights_mcp.errors import InsightsApiError
 from tests.conftest import (  # pylint: disable=import-error
-    assert_api_error_result,
+    assert_api_error_message,
 )
 
 from .conftest import get_default_active_rules_params, setup_advisor_mock
@@ -213,11 +214,12 @@ class TestGetActiveRules:
 
         # Call the method with invalid tags (missing namespace/key=value format)
         params = get_default_active_rules_params(tags=["invalid-tag", "insights-client/group=valid-tag"])
-        result = await advisor_mcp_server.get_active_rules(**params)
+        with pytest.raises(InsightsApiError) as exc_info:
+            await advisor_mcp_server.get_active_rules(**params)
 
-        # Should return error message for invalid tag format
-        assert "Error: Invalid tag format 'invalid-tag'" in result
-        assert "Required format: namespace/key=value" in result
+        error_message = str(exc_info.value)
+        assert "Error: Invalid tag format 'invalid-tag'" in error_message
+        assert "Required format: namespace/key=value" in error_message
 
     # Pagination tests
 
@@ -289,13 +291,12 @@ class TestGetActiveRules:
 
         # Setup mocks with exception
         with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, side_effect=exception):
-            # Call the method
             params = get_default_active_rules_params()
-            result = await advisor_mcp_server.get_active_rules(**params)
+            with pytest.raises(InsightsApiError) as exc_info:
+                await advisor_mcp_server.get_active_rules(**params)
 
-            # Should return error message
-            assert_api_error_result(result, error_message)
-            assert f"Failed to retrieve recommendations: {error_message}" in result
+            assert_api_error_message(exc_info.value, error_message)
+            assert f"Failed to retrieve recommendations: {error_message}" in str(exc_info.value)
 
     # Parameter combination tests
     @pytest.mark.parametrize(

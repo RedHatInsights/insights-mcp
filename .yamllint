@@ -4,6 +4,12 @@ extends: default
 rules:
   document-start: disable
   line-length: disable
+  # Pinact/Renovate use one space before "# vX.Y.Z" on action pins; yamllint's
+  # default wants two (PEP 8–style). Exempt .github only — keep the default
+  # elsewhere. Yamllint has no per-path min-spaces override, only rule ignore.
+  comments:
+    ignore: |
+      .github/
 
 ignore: |
   .tekton/

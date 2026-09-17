@@ -7,7 +7,7 @@ See README Known Issues section for user-facing documentation.
 
 import asyncio
 
-from insights_mcp.server import MCPS
+from insights_mcp.toolsets import MCPS
 from tests.conftest import TEST_CLIENT_ID, TEST_CLIENT_SECRET
 
 # Cursor uses the mcp.json server name as prefix; one-click install uses this.

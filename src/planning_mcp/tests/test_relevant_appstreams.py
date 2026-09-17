@@ -6,8 +6,9 @@ from unittest.mock import patch
 
 import pytest
 
+from insights_mcp.errors import InsightsApiError
 from tests.conftest import (
-    assert_api_error_result,
+    assert_api_error_message,
 )
 
 
@@ -237,19 +238,20 @@ class TestPlanningGetRelevantAppstreams:
         planning_mcp_server,
     ):
         """Test that providing minor without major returns an error."""
-        result = await planning_mcp_server.get_relevant_appstreams(minor="2")
+        with pytest.raises(InsightsApiError) as exc_info:
+            await planning_mcp_server.get_relevant_appstreams(minor="2")
 
-        # The error should be returned as a string, not raised
-        assert "Error: API Error" in result
-        assert "The 'minor' parameter requires 'major' to be specified" in result
+        error_message = str(exc_info.value)
+        assert "Error: API Error" in error_message
+        assert "The 'minor' parameter requires 'major' to be specified" in error_message
 
     @pytest.mark.asyncio
     async def test_get_relevant_appstreams_api_error(self, planning_mcp_server):
         """Test get_relevant_appstreams when backend raises an API error."""
         with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.side_effect = Exception("Backend unavailable")
+            mock_get.side_effect = RuntimeError("Backend unavailable")
 
-            result = await planning_mcp_server.get_relevant_appstreams()
+            with pytest.raises(InsightsApiError) as exc_info:
+                await planning_mcp_server.get_relevant_appstreams()
 
-            # Reuse common helper to validate error formatting
-            assert_api_error_result(result)
+            assert_api_error_message(exc_info.value)

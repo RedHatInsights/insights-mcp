@@ -4,6 +4,8 @@ import json
 
 import pytest
 
+from insights_mcp.errors import InsightsApiError
+
 from .conftest import setup_imagebuilder_mock
 
 
@@ -198,10 +200,10 @@ class TestGetBlueprints:
             imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")
         ):
             # Call the method
-            result = await imagebuilder_mcp_server.get_blueprints(limit=7, offset=0, search_string="")
+            with pytest.raises(InsightsApiError) as exc_info:
+                await imagebuilder_mcp_server.get_blueprints(limit=7, offset=0, search_string="")
 
-            # Should return error message
-            assert result.startswith("Error: API Error")
+            assert str(exc_info.value).startswith("Error: API Error") or "API Error" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_blueprints_null_search_string_handling(

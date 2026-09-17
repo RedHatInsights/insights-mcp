@@ -1,0 +1,57 @@
+apiVersion: mcp/v1beta1
+kind: MCPServer
+metadata:
+  name: red-hat-lightspeed-mcp-server
+  description: An MCP server to enable AI agents to query platform data, analyze systems, identify critical vulnerabilities, and perform proactive planning and lifecycle management.
+  namespace: redhat
+  title: Red Hat Lightspeed MCP Server
+  tags:
+    - mcp
+    - lightspeed
+    - administration
+
+  annotations:
+    github.com/project-slug: RedHatInsights/insights-mcp
+    backstage.io/source-location: url:https://github.com/RedHatInsights/insights-mcp/tree/main/
+    backstage.io/managed-by-location: url:https://github.com/RedHatInsights/insights-mcp/blob/main/catalog-info.yaml
+    backstage.io/managed-by-origin-location: url:https://github.com/RedHatInsights/insights-mcp/blob/main/catalog-info.yaml
+    backstage.io/view-url: https://github.com/RedHatInsights/insights-mcp/blob/main/catalog-info.yaml
+    backstage.io/edit-url: https://github.com/RedHatInsights/insights-mcp/edit/main/catalog-info.yaml
+    backstage.io/techdocs-ref: dir:.
+    feedback/type: JIRA
+    jira/project-key: HMS
+    feedback/host: https://redhat.atlassian.net
+    feedback/email-to: rh-lightspeed-mcp@redhat.com
+    rhai/velocity-id: V1949
+
+  links:
+    - url: https://github.com/RedHatInsights/insights-mcp/blob/main/README.md
+      title: README
+      type: documentation
+    - url: https://github.com/RedHatInsights/insights-mcp/issues
+      title: Report an issue
+      type: issue-tracker
+    - url: https://catalog.redhat.com/en/software/container-stacks/detail/69441d9d0df8059c340fa3f1
+      title: View on Red Hat Catalog
+      type: documentation
+    - url: https://github.com/RedHatInsights/insights-mcp/blob/main/docs/mkdocs/lean-business-case.md
+      title: Lean Business Case
+      type: documentation
+
+spec:
+  type: local
+  lifecycle: beta
+  owner: group:redhat/rh-lightspeed-mcp
+  system: system:uxe/hybrid-cloud-console
+  auth:
+    type: bearer
+
+  packages:
+    - type: docker
+      registry: "quay.io"
+      name: "redhat-services-prod/insights-management-tenant/insights-mcp/red-hat-lightspeed-mcp"
+      version: latest
+    - type: docker
+      registry: "ghcr.io"
+      name: "redhatinsights/red-hat-lightspeed-mcp"
+      version: latest

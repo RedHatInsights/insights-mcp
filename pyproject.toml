@@ -16,19 +16,24 @@ classifiers = [
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.14",
 ]
-requires-python = ">=3.10"
+# rh-fastmcp-server-commons requires Python >=3.12,<4.0
+requires-python = ">=3.12"
 dependencies = [
-    "fastmcp>=3.0",
+    "fastmcp>=3.0,<4.0",
     "requests",
     "PyJWT",
+    "httpx",
+    "certifi",
+    "rh-fastmcp-server-commons>=0.3.1",
 ]
 
 [project.optional-dependencies]
 dev = [
+    "packaging",
+    "pre-commit",
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
@@ -37,11 +42,16 @@ dev = [
     "types-requests",
     "pylint",
     "autopep8",
+    "ruff",
+    "yamllint",
+    "pyspelling",
+    "pre-commit-hooks",
     "deepeval",
     "llama-index",
     "llama-index-core",
     "llama-index-tools-mcp",
     "llama-index-llms-openai",
+    "mkdocs-techdocs-core",
 ]
 
 [project.scripts]
@@ -54,13 +64,15 @@ Repository = "https://github.com/RedHatInsights/insights-mcp"
 Issues = "https://github.com/RedHatInsights/insights-mcp/issues"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["src", "scripts"]
 
 [tool.setuptools.package-dir]
 "" = "src"
 
 [tool.setuptools.package-data]
-insights_mcp = ["assets/*.png", "rbac/data/*.json"]
+insights_mcp = ["assets/*", "rbac/data/*.json"]
+inventory_mcp = ["*.html", "*.css"]
+vulnerability_mcp = ["*.html", "*.css"]
 
 [tool.pylint.format]
 max-line-length = 120
@@ -94,7 +106,7 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.pytest.ini_options]
-pythonpath = ["src", "."]
+pythonpath = ["src", "scripts", "."]
 testpaths = ["tests", "src"]
 markers = [
     "integration: tests that call external APIs (e.g. GitHub API)",

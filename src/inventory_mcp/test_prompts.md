@@ -1,4 +1,6 @@
 # Inventory MCP Test Prompts
+- List all workspaces, including Ungrouped Hosts
+- Show hosts in the workspace named mcp_test
 - List all hosts running RHEL 9 that were last seen in the past day
 - Show me the top 5 most recently active hosts
 - Get details for host named 'web-server-prod-01'
@@ -9,3 +11,5 @@
 - Find all hosts with `FQDN` ending in `.example.com`
 - Show me all enabled repositories on host `XXX`
 - Find hosts with more than 16GB of memory running on AWS
+- Open the inventory dashboard
+- Show my fleet in the inventory dashboard

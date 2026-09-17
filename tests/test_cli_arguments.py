@@ -13,18 +13,29 @@ from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 from tests.utils import cleanup_server_process, start_insights_mcp_server
 
 
-def get_mcp_tools_with_toolset(transport: str, toolset: str | None = None, readonly: bool = False) -> List[Any]:
+def get_mcp_tools_with_toolset(
+    transport: str,
+    toolset: str | None = None,
+    readonly: bool = False,
+    container_brand: str | None = None,
+) -> List[Any]:
     """Get MCP tools for a specific transport and toolset configuration.
 
     Args:
         transport: Transport type ('http', 'sse', or 'stdio')
         toolset: Toolset to use (e.g., 'all', 'image-builder', 'inventory')
         readonly: If True, only register read-only tools
+        container_brand: Container brand for the server subprocess (see ``start_insights_mcp_server``)
 
     Returns:
         List of MCP tools
     """
-    server_url, server_process = start_insights_mcp_server(transport, toolset=toolset, readonly=readonly)
+    server_url, server_process = start_insights_mcp_server(
+        transport,
+        toolset=toolset,
+        readonly=readonly,
+        container_brand=container_brand,
+    )
 
     try:
         if server_url == "stdio":
@@ -82,6 +93,7 @@ class TestCliArguments:
             "inventory__get_host_details",
             "inventory__get_host_system_profile",
             "inventory__get_host_tags",
+            "inventory__list_workspaces",
         },
         "vulnerability": {
             "vulnerability__get_openapi",
@@ -171,7 +183,7 @@ class TestCliArguments:
         assert not non_inventory_tools, f"Expected only inventory tools, but found: {non_inventory_tools}"
 
         # Verify specific inventory tools are present
-        expected_tools = {"inventory__list_hosts", "inventory__get_host_details"}
+        expected_tools = set(self.EXPECTED_TOOLS["inventory"])
         # insights-mcp and RBAC tools are always available.
         expected_tools.update(self.EXPECTED_TOOLS["insights-mcp"] | self.EXPECTED_TOOLS["rbac"])
         missing_tools = expected_tools - tool_names

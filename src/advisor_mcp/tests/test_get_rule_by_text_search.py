@@ -2,6 +2,8 @@
 
 import pytest
 
+from insights_mcp.errors import InsightsApiError
+
 from .conftest import setup_advisor_mock
 
 
@@ -130,22 +132,22 @@ class TestGetRuleByTextSearch:
     @pytest.mark.asyncio
     async def test_get_rule_by_text_search_invalid_text(self, advisor_mcp_server, text, expected_error):
         """Test get_rule_by_text_search with various invalid text inputs."""
-        result = await advisor_mcp_server.get_rule_by_text_search(text=text)
-        assert result == expected_error
+        with pytest.raises(InsightsApiError) as exc_info:
+            await advisor_mcp_server.get_rule_by_text_search(text=text)
+        assert str(exc_info.value) == expected_error
 
     @pytest.mark.asyncio
     async def test_get_rule_by_text_search_api_error(self, advisor_mcp_server, advisor_mock_client):
         """Test get_rule_by_text_search when API returns error."""
         search_text = "test"
 
-        # Setup mocks
         with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
-            # Call the method
-            result = await advisor_mcp_server.get_rule_by_text_search(text=search_text)
+            with pytest.raises(InsightsApiError) as exc_info:
+                await advisor_mcp_server.get_rule_by_text_search(text=search_text)
 
-            # Should return error message
-            assert f"Failed to retrieve recommendations for text search {search_text}:" in result
-            assert "API Error" in result
+            error_message = str(exc_info.value)
+            assert f"Failed to retrieve recommendations for text search {search_text}:" in error_message
+            assert "API Error" in error_message
 
     @pytest.mark.asyncio
     async def test_get_rule_by_text_search_empty_response(self, advisor_mcp_server, advisor_mock_client):

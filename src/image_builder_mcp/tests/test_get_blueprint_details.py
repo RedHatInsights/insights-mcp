@@ -4,9 +4,10 @@ import json
 
 import pytest
 
+from insights_mcp.errors import InsightsApiError
 from tests.conftest import (
     TEST_BLUEPRINT_UUID,
-    assert_api_error_result,
+    assert_api_error_message,
 )
 
 from .conftest import setup_imagebuilder_mock
@@ -57,21 +58,22 @@ class TestGetBlueprintDetails:
         # Setup mocks
         with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, [{"id": "test-id"}]):
             # Call the method
-            result = await imagebuilder_mcp_server.get_blueprint_details(blueprint_identifier=invalid_uuid)
+            with pytest.raises(InsightsApiError) as exc_info:
+                await imagebuilder_mcp_server.get_blueprint_details(blueprint_identifier=invalid_uuid)
 
-            # Should return error message about invalid identifier
-            assert "[INSTRUCTION] Error:" in result
-            assert "is not a valid blueprint identifier" in result
-            assert "please use the UUID from get_blueprints" in result
+            error_message = str(exc_info.value)
+            assert "[INSTRUCTION] Error:" in error_message
+            assert "is not a valid blueprint identifier" in error_message
+            assert "please use the UUID from get_blueprints" in error_message
 
     @pytest.mark.asyncio
     async def test_get_blueprint_details_empty_identifier(self, imagebuilder_mcp_server):
         """Test get_blueprint_details with empty identifier."""
         # Call the method with empty identifier
-        result = await imagebuilder_mcp_server.get_blueprint_details(blueprint_identifier="")
+        with pytest.raises(InsightsApiError) as exc_info:
+            await imagebuilder_mcp_server.get_blueprint_details(blueprint_identifier="")
 
-        # Should return error message
-        assert result == "Error: a blueprint identifier is required"
+        assert str(exc_info.value) == "Error: a blueprint identifier is required"
 
     @pytest.mark.asyncio
     async def test_get_blueprint_details_api_error(self, imagebuilder_mcp_server, imagebuilder_mock_client):
@@ -83,10 +85,10 @@ class TestGetBlueprintDetails:
             imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")
         ):
             # Call the method
-            result = await imagebuilder_mcp_server.get_blueprint_details(blueprint_identifier=blueprint_uuid)
+            with pytest.raises(InsightsApiError) as exc_info:
+                await imagebuilder_mcp_server.get_blueprint_details(blueprint_identifier=blueprint_uuid)
 
-            # Should return error message
-            assert_api_error_result(result)
+            assert_api_error_message(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_blueprint_details_unexpected_list_response(

@@ -4,9 +4,10 @@ import json
 
 import pytest
 
+from insights_mcp.errors import InsightsApiError
 from tests.conftest import (
     TEST_BLUEPRINT_UUID,
-    assert_api_error_result,
+    assert_api_error_message,
 )
 
 from .conftest import setup_imagebuilder_mock
@@ -107,21 +108,22 @@ class TestGetComposeDetails:
         # Setup mocks
         with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, [{"id": "test-id"}]):
             # Call the method
-            result = await imagebuilder_mcp_server.get_compose_details(compose_identifier=invalid_uuid)
+            with pytest.raises(InsightsApiError) as exc_info:
+                await imagebuilder_mcp_server.get_compose_details(compose_identifier=invalid_uuid)
 
-            # Should return error message about invalid identifier
-            assert "[INSTRUCTION] Error:" in result
-            assert "is not a valid compose identifier" in result
-            assert "please use the UUID from get_composes" in result
+            error_message = str(exc_info.value)
+            assert "[INSTRUCTION] Error:" in error_message
+            assert "is not a valid compose identifier" in error_message
+            assert "please use the UUID from get_composes" in error_message
 
     @pytest.mark.asyncio
     async def test_get_compose_details_empty_identifier(self, imagebuilder_mcp_server):
         """Test get_compose_details with empty identifier."""
         # Call the method with empty identifier
-        result = await imagebuilder_mcp_server.get_compose_details(compose_identifier="")
+        with pytest.raises(InsightsApiError) as exc_info:
+            await imagebuilder_mcp_server.get_compose_details(compose_identifier="")
 
-        # Should return error message
-        assert result == "Error: Compose UUID is required"
+        assert str(exc_info.value) == "Error: Compose UUID is required"
 
     @pytest.mark.asyncio
     async def test_get_compose_details_api_error(self, imagebuilder_mcp_server, imagebuilder_mock_client):
@@ -133,10 +135,10 @@ class TestGetComposeDetails:
             imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")
         ):
             # Call the method
-            result = await imagebuilder_mcp_server.get_compose_details(compose_identifier=compose_uuid)
+            with pytest.raises(InsightsApiError) as exc_info:
+                await imagebuilder_mcp_server.get_compose_details(compose_identifier=compose_uuid)
 
-            # Should return error message
-            assert_api_error_result(result)
+            assert_api_error_message(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_compose_details_unexpected_list_response(
@@ -148,7 +150,7 @@ class TestGetComposeDetails:
         # Setup mocks
         with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, [{"id": "test-id"}]):
             # Call the method
-            result = await imagebuilder_mcp_server.get_compose_details(compose_identifier=compose_uuid)
+            with pytest.raises(InsightsApiError) as exc_info:
+                await imagebuilder_mcp_server.get_compose_details(compose_identifier=compose_uuid)
 
-            # Should handle unexpected list response gracefully
-            assert f"Error: Unexpected list response for {compose_uuid}" in result
+            assert f"Error: Unexpected list response for {compose_uuid}" in str(exc_info.value)

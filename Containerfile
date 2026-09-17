@@ -47,6 +47,9 @@ ENV INSIGHTS_MCP_VERSION=${INSIGHTS_MCP_VERSION}
 ARG CONTAINER_BRAND=insights
 ENV CONTAINER_BRAND=${CONTAINER_BRAND}
 
+# Disable FastMCP version check
+ENV FASTMCP_CHECK_FOR_UPDATES=off
+
 # MCP Registry ownership verification label
 LABEL io.modelcontextprotocol.server.name="io.github.RedHatInsights/insights-mcp"
 

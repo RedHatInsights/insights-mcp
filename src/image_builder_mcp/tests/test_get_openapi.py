@@ -5,7 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
-from tests.conftest import assert_api_error_result
+from insights_mcp.errors import InsightsApiError
+from tests.conftest import assert_api_error_message
 
 
 class TestGetOpenAPI:
@@ -69,10 +70,10 @@ class TestGetOpenAPI:
             mock_get.side_effect = Exception("API Error")
 
             # Call the method
-            result = await imagebuilder_mcp_server.get_openapi(endpoints="GET:/blueprints")
+            with pytest.raises(InsightsApiError) as exc_info:
+                await imagebuilder_mcp_server.get_openapi(endpoints="GET:/blueprints")
 
-            # Should return error message
-            assert_api_error_result(result)
+            assert_api_error_message(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_openapi_reduces_by_endpoints(self, imagebuilder_mcp_server, mock_openapi_response):

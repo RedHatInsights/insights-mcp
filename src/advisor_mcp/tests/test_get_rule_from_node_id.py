@@ -2,6 +2,8 @@
 
 import pytest
 
+from insights_mcp.errors import InsightsApiError
+
 from .conftest import TEST_NODE_ID, setup_advisor_mock
 
 
@@ -46,12 +48,12 @@ class TestGetRuleFromNodeId:
 
         # Setup mocks
         with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("Invalid node ID")):
-            # Call the method
-            result = await advisor_mcp_server.get_rule_from_node_id(node_id=node_id)
+            with pytest.raises(InsightsApiError) as exc_info:
+                await advisor_mcp_server.get_rule_from_node_id(node_id=node_id)
 
-            # Should return error message
-            assert f"Failed to retrieve recommendation for node ID {node_id}:" in result
-            assert "Invalid node ID" in result
+            error_message = str(exc_info.value)
+            assert f"Failed to retrieve recommendation for node ID {node_id}:" in error_message
+            assert "Invalid node ID" in error_message
 
     @pytest.mark.asyncio
     async def test_get_rule_from_node_id_large_integer(
@@ -78,12 +80,12 @@ class TestGetRuleFromNodeId:
 
         # Setup mocks
         with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
-            # Call the method
-            result = await advisor_mcp_server.get_rule_from_node_id(node_id=node_id)
+            with pytest.raises(InsightsApiError) as exc_info:
+                await advisor_mcp_server.get_rule_from_node_id(node_id=node_id)
 
-            # Should return error message
-            assert f"Failed to retrieve recommendation for node ID {node_id}:" in result
-            assert "API Error" in result
+            error_message = str(exc_info.value)
+            assert f"Failed to retrieve recommendation for node ID {node_id}:" in error_message
+            assert "API Error" in error_message
 
     @pytest.mark.asyncio
     async def test_get_rule_from_node_id_empty_response(self, advisor_mcp_server, advisor_mock_client):

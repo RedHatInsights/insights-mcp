@@ -26,13 +26,62 @@ especially handing over environment variables and credentials
 - Default configuration with JWT Bearer token in `Authorization: Bearer <token>` header
 - Custom environment: `INSIGHTS_BASE_URL`, `INSIGHTS_PROXY_URL`, and `INSIGHTS_SSO_BASE_URL` set with credentials in header
 
-### OAuth Mode (see `make run-oauth`)
-- `OAUTH_ENABLED=True`, `SSO_CLIENT_ID` and `SSO_CLIENT_SECRET` set, credentials via OAuth client
-- `OAUTH_ENABLED=True`, `SSO_CLIENT_ID` and `SSO_CLIENT_SECRET` set, with custom environment (`INSIGHTS_BASE_URL`, `INSIGHTS_PROXY_URL`, `INSIGHTS_SSO_BASE_URL`) and credentials via OAuth client
-
 ### SSE HTTP Mode (deprecated but some MCP clients still need this, see `make run-sse`)
 - Default configuration with service account credentials in header or JWT Bearer token
 - Custom environment: `INSIGHTS_BASE_URL` and `INSIGHTS_SSO_BASE_URL` set with credentials in header
+
+### Refresh-token authentication (exception / not recommended)
+
+Use this path only when [service account](README.md#service-account-setup) credentials,
+[JWT Bearer tokens](README.md#authentication) (HTTP/SSE), or [hosted OAuth DCR](#hosted-mcp-server-with-auth-provider-http-transport)
+are not viable—for example when you can access console.redhat.com with a personal account but
+cannot obtain a service account with the required roles.
+
+**Requirements:**
+
+- Prefer STDIO with credentials via environment variables (same pattern as
+  service-account STDIO setups)
+- HTTP/SSE can also use the same environment variables at server start; clients then need no
+  auth headers, but all connecting clients share that one Insights identity —
+  strongly discouraged for any multi-user or hosted setup (prefer per-client
+  headers, JWT Bearer, or OAuth DCR instead)
+- `INSIGHTS_REFRESH_TOKEN` or `LIGHTSPEED_REFRESH_TOKEN` set to a valid Red Hat SSO refresh token
+  (`INSIGHTS_REFRESH_TOKEN` takes precedence when both are set)
+- `INSIGHTS_CLIENT_ID` defaults to `rhsm-api` when unset (optional; separate from the refresh-token
+  environment variable — do not set it to your service-account client ID; it must match the client that
+  originally issued the refresh token)
+
+#### How to obtain a refresh token
+
+Red Hat issues this token from the Customer Portal as an **offline token**.
+For Insights MCP, set it as `INSIGHTS_REFRESH_TOKEN` or `LIGHTSPEED_REFRESH_TOKEN`.
+The server exchanges it automatically for short-lived access tokens; you do not
+need to run curl during normal MCP use.
+
+**Steps:**
+
+1. Sign in at [Red Hat API Tokens](https://access.redhat.com/management/api)
+   (Customer Portal — not console.redhat.com → Service Accounts).
+2. Click **Generate Token**.
+3. Copy the token immediately — it is shown **once** and not stored by Red Hat.
+
+**Why `rhsm-api`?** `INSIGHTS_CLIENT_ID` is not a label for the MCP server. It is the OAuth/OIDC
+client identifier in Red Hat SSO (`redhat-external` realm) that must match the client that
+originally issued the refresh token. Personal console.redhat.com sessions typically use the
+registered `rhsm-api` client (Red Hat console / Insights APIs). Service accounts use
+a different client ID (from Settings → Service Accounts) with the `client_credentials` grant,
+not this refresh-token flow.
+
+**Risks (why this is discouraged):**
+
+- Authenticates as your personal Red Hat account, typically with broader privileges than a
+  dedicated service account
+- Long-lived secret in environment or static client configuration (leakage, rotation burden)
+- Actions are attributed to your user, not a named automation principal (audit / impersonation)
+- Harder emergency revocation than deleting or resetting a service account
+- Not suitable for shared or hosted MCP deployments
+- Not listed among the supported authentication methods in [README.md](README.md); may be removed
+  in future
 
 ## RBAC manifest pipeline
 
@@ -79,19 +128,16 @@ graph TB
         OAuth2Client[InsightsOAuth2Client<br/>direct OAuth]
         HeadersClient[InsightsHeadersBasedClient<br/>multiuser auth]
         BearerClient[InsightsBearerTokenClient<br/>JWT bearer token]
-        OAuthProxyClient[InsightsOAuthProxyClient<br/>DCR proxy]
         SessionCache[SessionCache<br/>token caching]
         InsightsClientBase[InsightsClientBase<br/>HTTP operations]
 
         InsightsClient -->|creates| OAuth2Client
         InsightsClient -->|creates| HeadersClient
-        InsightsClient -->|creates| OAuthProxyClient
         HeadersClient -->|uses| SessionCache
         HeadersClient -->|creates| BearerClient
         OAuth2Client -->|extends| InsightsClientBase
         BearerClient -->|extends| InsightsClientBase
         HeadersClient -->|uses| OAuth2Client
-        OAuthProxyClient -->|extends| InsightsClientBase
     end
     API[Red Hat Insights<br/>REST API]
 
@@ -109,7 +155,6 @@ graph TB
     style OAuth2Client fill:#f3e5f5
     style HeadersClient fill:#f3e5f5
     style BearerClient fill:#f3e5f5
-    style OAuthProxyClient fill:#f3e5f5
     style SessionCache fill:#ffe5f5
     style InsightsClientBase fill:#f3e5f5
     style MCP fill:#e8f5e9
@@ -157,6 +202,173 @@ For multiuser scenarios (SSE/HTTP transports with header-based authentication), 
 **Implementation:** See [`src/insights_mcp/session_cache.py`](src/insights_mcp/session_cache.py)
 
 **Used by:** `InsightsHeadersBasedClient` for SSE/HTTP transports when service account credentials are provided via request headers. JWT Bearer token authentication bypasses the cache since no token exchange is needed.
+
+## MCP Apps
+
+[MCP Apps](https://modelcontextprotocol.io/extensions/apps/overview) is an MCP extension (`io.modelcontextprotocol/ui`) that lets MCP servers return interactive HTML interfaces (data visualizations, forms, dashboards) that render directly in the chat. Clients with MCP Apps support include Cursor, VS Code Copilot, Claude Desktop, and [others](https://modelcontextprotocol.io/extensions/client-matrix). CLI and TUI clients (e.g. Claude Code, Copilot CLI, OpenCode) do not support UI rendering.
+
+### How It Works
+
+1. The server registers an HTML page as a **UI resource** (`@mcp.resource`).
+2. The server registers a **tool that references it** (`@mcp.tool` with `AppConfig`).
+3. When a client calls the tool, the server returns a `ToolResult` with `content` and `structured_content`. To handle clients that don't support UI rendering, the server can use `ctx.client_supports_extension(UI_EXTENSION_ID)` to detect support and adapt the response accordingly.
+4. The app HTML connects to the MCP Apps SDK and can interact with the server in two ways:
+   - Via `ontoolresult` — receives the tool call result.
+   - Via `callServerTool` — invokes MCP tools directly from the HTML (e.g. to fetch additional data or drill into details).
+
+### Adding a New MCP App
+
+#### 1. Create the HTML template and dashboard-specific CSS
+
+Create `src/<toolset_mcp>/<app_name>.html` and `src/<toolset_mcp>/<app_name>.css`.
+
+The HTML template uses placeholders that get replaced at load time with shared assets:
+
+- `/* __DASHBOARD_BASE_CSS__ */` — shared base CSS (themes, layout, buttons, severity badges, pagination)
+- `/* __DASHBOARD_EXTRA_CSS__ */` — dashboard-specific CSS from the `.css` file
+- `/* __DASHBOARD_COMMON_JS__ */` — shared JS utilities (`callTool`, `showError`, `severityLabel`, `connectMcpApp`, etc.)
+- `<!-- __DASHBOARD_ICON__ -->` — Red Hat icon `<img>` tag
+
+Shared assets live in `src/insights_mcp/assets/` (`dashboard_base.css`, `dashboard_common.js`). Dashboard-specific styles go in the `.css` file alongside the template. Use CSS variables from the base CSS (e.g., `var(--text-primary)`, `var(--border-light)`) — never hardcode theme-dependent colors in templates or inline styles.
+
+Use `connectMcpApp()` from the common JS instead of manually loading the MCP Apps SDK:
+
+```javascript
+connectMcpApp("My App", "1.0.0", (query) => fetchMyData(query));
+```
+
+#### 2. Load the HTML at module level
+
+In `src/<toolset_mcp>/server.py`:
+
+```python
+from insights_mcp.dashboard_ui import load_dashboard_html
+
+EMBEDDED_MY_APP_HTML = load_dashboard_html(
+    "my_toolset_mcp",
+    "my_app.html",
+    "my_app.css",
+)
+```
+
+Update `pyproject.toml` to include the new file types in `[tool.setuptools.package-data]`:
+
+```toml
+my_toolset_mcp = ["*.html", "*.css"]
+```
+
+#### 3. Define resource and mounted URIs
+
+```python
+MY_APP_RESOURCE_URI = "ui://my-app"
+MY_APP_MOUNTED_URI = "ui://my_toolset_/my-app"
+```
+
+The mounted URI follows the convention `ui://<toolset_name>_/<app-name>`, matching how FastMCP mounts toolset tools.
+
+#### 4. Register the resource
+
+```python
+from fastmcp.apps import AppConfig, ResourceCSP
+
+
+@mcp.resource(
+    MY_APP_RESOURCE_URI,
+    app=AppConfig(csp=ResourceCSP(resource_domains=["https://unpkg.com"])),
+)
+def my_app_ui() -> str:
+    """My App UI description."""
+    return EMBEDDED_MY_APP_HTML
+```
+
+Since the HTML is embedded in the Python package, external dependencies like PatternFly CSS should be loaded from a CDN rather than bundled inline. The `ResourceCSP` whitelist must include any CDN domains used.
+
+#### 5. Register the tool with a UI resource
+
+```python
+from fastmcp import Context
+from fastmcp.apps import UI_EXTENSION_ID, AppConfig
+from fastmcp.tools import ToolResult
+
+@mcp.tool(
+    annotations={"readOnlyHint": True},
+    app=AppConfig(resource_uri=MY_APP_MOUNTED_URI),
+)
+async def load_my_app(ctx: Context, ...) -> ToolResult:
+    """Render data in the interactive app."""
+    ui_supported = ctx.client_supports_extension(UI_EXTENSION_ID)
+    if not ui_supported:
+        return ToolResult(
+            content="Client does not support MCP Apps.",  # fallback instructions for non-UI clients
+        )
+    return ToolResult(
+        content="...",  # optional message for the model (also available for the HTML via result.content)
+        structured_content={...},  # data for the HTML via result.structuredContent
+    )
+```
+
+
+#### 6. Connect the HTML to MCP Apps SDK
+
+> **Dark mode:** The shared base CSS defines CSS variables on `:root` (light) and `[data-theme="dark"]` (dark). The `connectMcpApp()` utility from `dashboard_common.js` handles theme switching automatically. Use `background: transparent` on body to inherit the host app's background. Use CSS variables (e.g., `var(--text-secondary)`) — never hardcode theme-dependent colors.
+
+The shared `dashboard_common.js` (injected via the `/* __DASHBOARD_COMMON_JS__ */` placeholder) provides:
+
+- `connectMcpApp(appName, version, onToolResult)` — loads the MCP Apps SDK, handles theme, wires `ontoolresult`
+- `callTool(name, args)` — wraps `callServerTool` with error handling and JSON parsing
+- `showError(msg)` / `hideError()` — alert banner management
+- `severityLabel(impact)` / `severityClass(impact)` — severity badge mapping
+- `renderPageButtons(current, total, containerEl)` — pagination with ellipsis
+- `escapeHtml(str)` — HTML escaping
+
+```html
+<script type="module">
+/* __DASHBOARD_COMMON_JS__ */
+
+    connectMcpApp("My App", "1.0.0", (query) => fetchMyData(query));
+
+    async function fetchMyData(query) {
+        const result = await callTool("my_toolset__my_tool", { param: query.param });
+        // render result
+    }
+</script>
+```
+
+#### 7. Calling tools from the app
+
+Apps can invoke MCP tools directly for drill-downs or fetching additional data. Only tools on the same MCP server as the resource can be called — cross-server tool calls are not supported.
+
+```javascript
+const result = await window.mcpApp.callServerTool({
+    name: "toolset__tool_name",
+    arguments: { param: "value" }
+});
+const text = result.content?.find(c => c.type === "text")?.text;
+```
+
+#### 8. Add test prompts
+
+Add 1-2 example prompts to `src/<toolset_mcp>/test_prompts.md` that exercise the app.
+
+### Design Resources
+
+- [PatternFly](https://www.patternfly.org/) — CSS framework used for styling MCP Apps in this project
+
+### Shared Dashboard Assets
+
+Shared CSS and JS live in [`src/insights_mcp/assets/`](src/insights_mcp/assets/):
+
+- [`dashboard_base.css`](src/insights_mcp/assets/dashboard_base.css) — theme variables, layout, buttons, severity badges, pagination, filters
+- [`dashboard_common.js`](src/insights_mcp/assets/dashboard_common.js) — `callTool`, `showError`, `severityLabel`, `connectMcpApp`, etc.
+
+The composition helper [`src/insights_mcp/dashboard_ui.py`](src/insights_mcp/dashboard_ui.py) replaces placeholders in HTML templates with these shared assets, producing self-contained HTML for MCP Apps.
+
+### Existing Apps
+
+Use these as reference implementations:
+
+- **CVE Dashboard**: [`cve_dashboard.html`](src/vulnerability_mcp/cve_dashboard.html) + [`cve_dashboard.css`](src/vulnerability_mcp/cve_dashboard.css) + [`server.py`](src/vulnerability_mcp/server.py)
+- **Inventory Dashboard**: [`inventory_dashboard.html`](src/inventory_mcp/inventory_dashboard.html) + [`inventory_dashboard.css`](src/inventory_mcp/inventory_dashboard.css) + [`server.py`](src/inventory_mcp/server.py)
 
 ## Important notes
 * When changing some code you might want to use `make build-prod` so the container is built with
@@ -247,133 +459,49 @@ make run-stdio
 You can set the environment variable `IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK` to `True` to avoid adding a hint to newly created image builder blueprints.
 
 
-## Hosted MCP Server with DCR Auth (Beta)
+## Hosted MCP Server with Auth Provider (HTTP transport)
 
-The Insights MCP server can be deployed as a hosted service with OAuth authentication, enabling secure multi-user access without requiring users to manage their own service account credentials. This approach uses Dynamic Client Registration (DCR) to allow MCP clients to authenticate through Red Hat Single Sign-On (SSO) with their Red Hat accounts.
+When deploying the MCP server as a hosted service over HTTP/SSE, token validation is handled by
+[`rh-fastmcp-server-commons`](https://pypi.org/project/rh-fastmcp-server-commons/) via
+`build_auth_provider()`. `insights_mcp.server.configure_auth_env_defaults()` bridges
+`MCP_BASE_URL` to `AUTH_RESOURCE` and sets the Insights MCP default scopes/audience before that
+package is imported (it reads its environment variables once, at import time).
+When `AUTH_SERVER` is unset, no auth provider is configured and the server falls back to raw
+Bearer token pass-through (backward-compatible with self-hosted and stdio deployments).
 
-DCR support is built on FastMCP's `OIDCProxy`, which acts as a transparent proxy between MCP clients and Red Hat SSO. It presents a DCR-compliant OAuth interface to clients while translating requests to the upstream Red Hat SSO OAuth provider, which doesn't natively support DCR.
+### Environment Variables
 
-### Setup and Run
+| Variable | Required | Description |
+|---|---|---|
+| `AUTH_SERVER` | Yes | OAuth authorization server base URL (e.g. `https://sso.redhat.com/auth/realms/redhat-external`) |
+| `AUTH_ISSUER` | Yes | JWT `iss` claim — must match the SSO realm issuer |
+| `MCP_BASE_URL` | Yes (hosted) | Public base URL of this MCP server (used in `/.well-known/oauth-protected-resource`); no default — must be set for hosted deployments |
+| `AUTH_RESOURCE` | No | MCP server resource URL; defaults to `{MCP_BASE_URL}/mcp` if unset |
+| `AUTH_REQUIRED_SCOPES` | No | Comma-separated required scopes (default: `openid,api.console,api.ocm`) |
+| `AUTH_AUDIENCE` | No | Comma-separated accepted JWT audiences (default: `insights-mcp,api.console`) |
+| `AUTH_JWKS_URI` | No | Override JWKS endpoint (otherwise fetched from `AUTH_SERVER` discovery document) |
 
-#### Required SSO Authentication
+### How it works
 
-Before running the server with OAuth enabled, you need to register an OAuth application with Red Hat SSO:
+1. `build_auth_provider()` fetches the OIDC discovery document from `AUTH_SERVER` to resolve the JWKS URI and issuer.
+2. FastMCP validates the `Authorization: Bearer <token>` header on every HTTP request against the JWKS.
+3. The validated token is retrieved via `get_access_token()` and forwarded to the Insights API.
+4. If `AUTH_SERVER` is unset, the token is extracted directly from the `Authorization` header without server-side validation (existing behavior).
+5. `build_scope_enforcement_middleware()` is wired into the HTTP/SSE app so the `WWW-Authenticate`
+   header on 401/403 responses includes the required `scope=` (RFC 6750); `rh-fastmcp-server-commons`
+   raises at startup if `AUTH_REQUIRED_SCOPES` is set without this middleware installed.
 
-1. **Register OAuth Client Application**:
-   - Access Red Hat SSO at `https://sso.redhat.com`
-   - Create a new OAuth2/OIDC client application
-   - Configure the authorized redirect URI: `http://localhost:8000/oauth/callback` (or your custom host/port)
-   - Request the following scopes for your client:
-     - `openid` - Standard OIDC identity scope
-     - `api.console` - Access to Red Hat Console APIs
-     - `api.ocm` - Access to OpenShift Cluster Manager APIs
-   - Save the generated `client_id` and `client_secret`
-
-2. **Important Notes**:
-   - The server validates that tokens contain ALL required scopes
-   - By default, only `localhost:8000` and `127.0.0.1:8000` are authorized host/port combinations
-   - To use a different host/port, update `SSO_AUTHORIZED_MCP_SERVER_HOST_PORTS` in `src/insights_mcp/config.py`
-
-#### Required Environment Configuration
-
-Set the following environment variables before starting the server:
-
-```bash
-# Enable OAuth authentication mode
-export OAUTH_ENABLED=True
-
-# SSO Client credentials (from Red Hat SSO registration)
-export SSO_CLIENT_ID="your-sso-client-id"
-export SSO_CLIENT_SECRET="your-sso-client-secret"
-
-# Optional: Custom SSO base URL (defaults to https://sso.redhat.com)
-export SSO_BASE_URL="https://sso.redhat.com"
-
-# Optional: OAuth timeout in seconds (defaults to 30)
-export SSO_OAUTH_TIMEOUT_SECONDS=30
-```
-
-**Important**: When `OAUTH_ENABLED=True`, the server uses SSO credentials for the OAuth proxy. The traditional service account credentials (`INSIGHTS_CLIENT_ID`, `INSIGHTS_CLIENT_SECRET`, `INSIGHTS_REFRESH_TOKEN`) are not used in this mode.
-
-#### Commands to Run the Server
-
-**Using Python directly**:
+### Example configuration
 
 ```bash
-# HTTP streaming transport
-uv run insights-mcp http --host localhost --port 8000
+export AUTH_SERVER="https://sso.redhat.com/auth/realms/redhat-external"
+export AUTH_ISSUER="https://sso.redhat.com/auth/realms/redhat-external"
+export AUTH_REQUIRED_SCOPES="openid,api.console,api.ocm"
+# For production: set MCP_BASE_URL to the public URL of this server
+# export MCP_BASE_URL="https://your-mcp-server.example.com"
+
+uv run insights-mcp http --host 0.0.0.0 --port 8000
 ```
-
-**Note**: The server will log a warning if you specify a host/port combination that isn't in the authorized list, and will fall back to `localhost:8000`.
-
-### The Working Logic
-
-#### OAuth Proxy Architecture
-
-The hosted MCP server implements a sophisticated OAuth proxy pattern that bridges the gap between MCP clients (which expect DCR support) and Red Hat SSO (which doesn't support DCR). Here's how it works:
-
-**1. Client Registration (DCR)**:
-- MCP clients discover OAuth endpoints via `.well-known/oauth-authorization-server`
-- Clients attempt to dynamically register using the DCR endpoint
-- The proxy accepts registration requests and returns the shared SSO client credentials
-- Client redirect URIs (e.g., `http://localhost:55454/callback`) are validated against configured patterns
-
-**2. Authorization Flow**:
-- Client initiates OAuth flow by redirecting user to authorization endpoint
-- Proxy creates a transaction mapping client details (PKCE challenge, redirect URI) to the flow
-- Proxy redirects to Red Hat SSO using its fixed callback URL
-- User authenticates with Red Hat SSO using their Red Hat account
-- Red Hat SSO redirects back to proxy's callback with authorization code
-
-**3. Token Exchange**:
-- Proxy exchanges upstream authorization code for access/refresh tokens (server-side)
-- Proxy generates a new authorization code bound to client's PKCE challenge
-- Proxy redirects to client's original dynamic redirect URI with new code
-- Client exchanges code with proxy using PKCE verifier
-- Proxy returns upstream tokens to client
-
-**4. API Authentication**:
-- Client includes access token in requests to MCP server
-- FastMCP's OAuth middleware validates token using Red Hat SSO's JWKS
-- Proxy forwards validated requests to Insights toolsets
-- Toolsets use token to authenticate with Red Hat Insights APIs
-
-**5. Token Refresh**:
-- When access tokens expire, clients send refresh requests to proxy
-- Proxy forwards refresh requests to Red Hat SSO
-- Updated tokens are returned to client
-
-**Performance Optimization:**
-- `SessionCache` reduces OAuth roundtrips by caching tokens per connection
-- Cached tokens reused across concurrent requests from same client/credentials
-- See [Session Cache documentation](#session-cache-and-token-management) for details
-
-#### OIDCProxy Implementation
-
-The `create_oauth_provider()` function in `src/insights_mcp/oauth.py` creates an `OIDCProxy` instance configured for Red Hat SSO:
-
-```python
-auth_provider = OIDCProxy(
-    config_url="https://sso.redhat.com/auth/realms/redhat-external/.well-known/openid-configuration",
-    client_id=SSO_CLIENT_ID,
-    client_secret=SSO_CLIENT_SECRET,
-    base_url="http://localhost:8000",
-    required_scopes=["openid", "api.console", "api.ocm"],
-    timeout_seconds=30
-)
-```
-
-The proxy maintains minimal state for active OAuth transactions, PKCE challenges, and token mappings using FastMCP's pluggable storage backend. This enables horizontal scaling across multiple server instances.
-
-#### Security Features
-
-- **PKCE enforced end-to-end**: From client to proxy and proxy to upstream
-- **Scope validation**: Tokens without required scopes are rejected
-- **Redirect URI validation**: Only authorized patterns accepted (prevents open redirects)
-- **Token security**: Refresh tokens stored by hash only
-- **Single-use codes**: Authorization codes expire after one use
-- **Cryptographic randomness**: Transaction IDs use secure random generation
-
 
 ## Logging and Compliance
 

@@ -8,12 +8,10 @@ This module provides reusable utilities for testing OAuth functionality:
 """
 
 import time
-from contextlib import contextmanager
 from typing import Any
-from unittest.mock import Mock, patch
 
 import jwt
-from fastmcp.server.auth import AccessToken, AuthProvider
+from fastmcp.server.auth import AccessToken
 
 
 def create_test_jwt(
@@ -144,44 +142,6 @@ def create_test_token(  # pylint: disable=too-many-arguments,too-many-positional
     )
 
 
-def create_mock_oauth_provider(
-    base_url: str = "http://localhost:8000",
-    client_id: str = "test-sso-client",
-    client_secret: str = "test-sso-secret",
-) -> AuthProvider:
-    """Create a mock OAuth provider for testing.
-
-    Creates a mock AuthProvider that mimics FastMCP's OIDCProxy
-    without requiring real SSO infrastructure.
-
-    Args:
-        base_url: Base URL for OAuth callbacks
-        client_id: SSO client ID
-        client_secret: SSO client secret
-
-    Returns:
-        Mock AuthProvider instance
-
-    Example:
-        >>> provider = create_mock_oauth_provider()
-        >>> assert provider.client_id == "test-sso-client"
-    """
-    provider = Mock(spec=AuthProvider)
-    provider.base_url = base_url
-    provider.client_id = client_id
-    provider.client_secret = client_secret
-    provider.required_scopes = ["openid", "api.console", "api.ocm"]
-
-    # Mock common methods
-    provider.authorize = Mock(return_value="/oauth/authorize")
-    provider.validate_token = Mock(return_value=True)
-
-    return provider
-
-
-# OAuth Testing Helpers
-
-
 def decode_test_token(token: str) -> dict[str, Any]:
     """Decode a test JWT token without signature verification.
 
@@ -263,66 +223,6 @@ def extract_org_id_from_token(token: str) -> str | None:
     return claims.get("organization", {}).get("id")
 
 
-def create_oauth_test_environment(
-    oauth_enabled: bool = True,
-    sso_client_id: str = "test-sso-client",
-    sso_client_secret: str = "test-sso-secret",
-    sso_base_url: str = "http://localhost:9999",
-) -> dict[str, Any]:
-    """Create environment variables dictionary for OAuth testing.
-
-    Args:
-        oauth_enabled: Whether OAuth is enabled
-        sso_client_id: SSO client ID
-        sso_client_secret: SSO client secret
-        sso_base_url: Mock SSO base URL
-
-    Returns:
-        Dictionary of environment variables
-
-    Example:
-        >>> env = create_oauth_test_environment()
-        >>> with patch.dict(os.environ, env):
-        ...     # Test OAuth-enabled code
-    """
-    return {
-        "OAUTH_ENABLED": oauth_enabled,
-        "SSO_CLIENT_ID": sso_client_id,
-        "SSO_CLIENT_SECRET": sso_client_secret,
-        "SSO_BASE_URL": sso_base_url,
-    }
-
-
-@contextmanager
-def mock_fastmcp_oauth_context(access_token: AccessToken):
-    """Mock FastMCP OAuth request context for testing.
-
-    This context manager mocks FastMCP's dependency injection
-    to provide an OAuth token in the request context.
-
-    Args:
-        access_token: AccessToken to inject into context
-
-    Yields:
-        None
-
-    Example:
-        >>> token = create_test_token(org_id="org-123")
-        >>> with mock_fastmcp_oauth_context(token):
-        ...     # Code using get_access_token() will get our token
-        ...     from fastmcp.server.dependencies import get_access_token
-        ...     retrieved = get_access_token()
-        ...     assert retrieved == token
-    """
-    # Patch both where it's imported and where it's defined
-    with patch("insights_mcp.client.get_access_token", return_value=access_token):
-        with patch("fastmcp.server.dependencies.get_access_token", return_value=access_token):
-            # Also mock headers if needed
-            with patch("insights_mcp.client.get_http_headers", return_value={}):
-                with patch("fastmcp.server.dependencies.get_http_headers", return_value={}):
-                    yield
-
-
 def create_multi_user_tokens(
     num_users: int = 3,
     base_org_id: str = "org",
@@ -383,13 +283,10 @@ def assert_token_has_required_scopes(token: AccessToken, required_scopes: list[s
 __all__ = [
     "create_test_jwt",
     "create_test_token",
-    "create_mock_oauth_provider",
     "decode_test_token",
     "assert_valid_test_token",
     "assert_token_has_claims",
     "extract_org_id_from_token",
-    "create_oauth_test_environment",
-    "mock_fastmcp_oauth_context",
     "create_multi_user_tokens",
     "assert_token_has_required_scopes",
 ]

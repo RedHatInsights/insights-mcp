@@ -13,32 +13,53 @@ from typing import Any
 
 import requests
 from fastmcp import FastMCP
+from fastmcp.server.providers.fastmcp_provider import FastMCPProvider
+from fastmcp.server.transforms.namespace import Namespace
 from mcp.types import Icon, ToolAnnotations
 
-from advisor_mcp.server import mcp_server as AdvisorMCP
-from content_sources_mcp.server import mcp as ContentSourcesMCP
-from image_builder_mcp.server import mcp_server as ImageBuilderMCP
 from insights_mcp import __version__, config
+from insights_mcp.catalog_tools import catalog_tool_description
 from insights_mcp.mcp import InsightsMCP
-from insights_mcp.oauth import create_oauth_provider
-from inventory_mcp.server import mcp as InventoryMCP
-from planning_mcp.server import mcp as PlanningMCP
-from rbac_mcp.server import mcp as RbacMCP
-from remediations_mcp.server import mcp as RemediationsMCP
-from rhsm_mcp.server import mcp as RhsmMCP
-from vulnerability_mcp.server import mcp as VulnerabilityMCP
+from insights_mcp.toolsets import MCPS
 
-MCPS: list[InsightsMCP] = [
-    ImageBuilderMCP,
-    RhsmMCP,
-    VulnerabilityMCP,
-    RemediationsMCP,
-    AdvisorMCP,
-    InventoryMCP,
-    ContentSourcesMCP,
-    RbacMCP,
-    PlanningMCP,
-]
+# Insights MCP token claims (see tests/oauth_utils.py).
+_INSIGHTS_MCP_AUTH_SCOPES = "openid,api.console,api.ocm"
+_INSIGHTS_MCP_AUTH_AUDIENCE = "insights-mcp,api.console"
+
+
+def configure_auth_env_defaults() -> None:
+    """Bridge/default env vars read by ``rh_fastmcp_server_commons.env`` at import time.
+
+    ``rh_fastmcp_server_commons`` reads ``AUTH_RESOURCE``/``AUTH_REQUIRED_SCOPES``/
+    ``AUTH_AUDIENCE`` from ``os.environ`` once, when its ``env`` module is first
+    imported — so this must run before importing ``rh_fastmcp_server_commons``
+    anywhere in the process.
+
+    - Bridges ``MCP_BASE_URL`` -> ``AUTH_RESOURCE`` (the library only understands
+      ``AUTH_RESOURCE`` / ``LIGHTRAIL_ROUTE_*``, not ``MCP_BASE_URL``); ``MCP_BASE_URL``
+      always wins when set, matching the previous vendored ``mcp_rh_auth`` behavior.
+    - Sets ``AUTH_REQUIRED_SCOPES``/``AUTH_AUDIENCE`` to the Insights MCP token claims,
+      matching the previous vendored behavior of always using these fixed values.
+    """
+    mcp_base_url = os.getenv("MCP_BASE_URL", "").rstrip("/")
+    if mcp_base_url:
+        os.environ["AUTH_RESOURCE"] = f"{mcp_base_url}/mcp"
+
+    os.environ["AUTH_REQUIRED_SCOPES"] = _INSIGHTS_MCP_AUTH_SCOPES
+    os.environ["AUTH_AUDIENCE"] = _INSIGHTS_MCP_AUTH_AUDIENCE
+
+    # rh_fastmcp_server_commons.env logs ERROR at import time when GRAPHQL_ENDPOINT or
+    # AUTH_SERVER are unset. Insights MCP never uses GRAPHQL_ENDPOINT, and AUTH_SERVER is
+    # normally unset for stdio/self-hosted deployments — neither is an actual error here.
+    logging.getLogger("rh_fastmcp_server_commons.env").setLevel(logging.CRITICAL + 1)
+
+
+configure_auth_env_defaults()
+
+from rh_fastmcp_server_commons.auth import (  # noqa: E402  pylint: disable=wrong-import-position,wrong-import-order
+    build_auth_provider,
+    build_scope_enforcement_middleware,
+)
 
 
 def _format_server_tools(
@@ -101,10 +122,7 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
         client_secret: OAuth client secret for authentication
         refresh_token: OAuth refresh token for authentication
         proxy_url: Optional proxy URL for requests
-        oauth_enabled: Whether OAuth authentication is enabled
         mcp_transport: MCP transport type for error handling
-        mcp_host: MCP server host for authentication
-        mcp_port: MCP server port for authentication
         token_endpoint: Token endpoint for authentication
     """
 
@@ -118,43 +136,43 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
         client_secret: str | None = None,
         refresh_token: str | None = None,
         proxy_url: str | None = None,
-        oauth_enabled: bool = False,
         mcp_transport: str | None = None,
-        mcp_host: str | None = None,
-        mcp_port: int | None = None,
         token_endpoint: str = config.SSO_TOKEN_ENDPOINT,
     ):
         name = name or "Red Hat Insights"
         server_version = __version__ if __version__ else "0.0.0-dev"
 
-        # Create the OAuth provider
-        oauth_provider = (
-            create_oauth_provider(
-                client_id=client_id,
-                client_secret=client_secret,
-                mcp_host=mcp_host,
-                mcp_port=mcp_port,
-            )
-            if oauth_enabled
-            else None
-        )
+        # rh_fastmcp_server_commons.auth.build_auth_provider() raises ValueError when
+        # AUTH_SERVER is unset; only call it when hosted auth is actually configured so
+        # stdio / self-hosted deployments keep the raw Bearer token pass-through.
+        auth_provider = build_auth_provider() if config.AUTH_SERVER else None
 
         super().__init__(
             name=name,
             instructions=instructions,
             version=server_version,
-            auth=oauth_provider,
             icons=[Icon(src=get_icon_data_uri())],
             website_url="https://console.redhat.com",
+            auth=auth_provider,
         )
         self.base_url = base_url
         self.client_id = client_id
         self.client_secret = client_secret
         self.refresh_token = refresh_token
         self.proxy_url = proxy_url
-        self.oauth_enabled = oauth_enabled
         self.mcp_transport = mcp_transport
         self.token_endpoint = token_endpoint
+
+    def add_provider(self, provider: Any, *, namespace: str = "") -> None:
+        """Mount providers and align MCP App resource URIs with namespaced resources."""
+        if isinstance(provider, FastMCP):
+            provider = FastMCPProvider(provider)
+
+        if namespace:
+            provider = provider.wrap_transform(Namespace(namespace))
+            namespace = ""
+
+        super().add_provider(provider, namespace=namespace)
 
     def register_mcps(self, allowed_mcps: list[str], readonly: bool = True):
         """Register and mount allowed MCP servers.
@@ -174,8 +192,6 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
                 refresh_token=self.refresh_token,
                 proxy_url=self.proxy_url,
                 headers=mcp.headers,
-                oauth_enabled=self.oauth_enabled,
-                oauth_provider=self.auth,
                 mcp_transport=self.mcp_transport,
                 token_endpoint=self.token_endpoint,
             )
@@ -186,22 +202,8 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
 
             mcp.remove_non_readonly_tools(readonly=readonly)
 
-            self.mount(mcp, prefix=f"{mcp.toolset_name}_")
-
-
-def _get_tool_description(tool: Any) -> str:
-    """Extract first line of description or title for a tool."""
-    desc = getattr(tool, "description", None) or ""
-    title = getattr(tool, "title", None) or ""
-    text = (desc or title).strip()
-    if not text:
-        return ""
-    first_line = text.split("\n", 1)[0].strip()
-    # Truncate very long lines
-    if len(first_line) > 100:
-        last_space = first_line.rfind(" ", 80, 99)
-        first_line = first_line[: last_space + 1 if last_space != -1 else 99] + "…"
-    return first_line
+            self.add_provider(mcp, namespace=f"{mcp.toolset_name}_")
+            # self.mount(mcp, prefix=f"{mcp.toolset_name}_")
 
 
 def _collect_readwrite_tools_from_temp_root(allowed_mcps: list[str]) -> dict[str, list[tuple[str, str]]]:
@@ -230,7 +232,7 @@ def _collect_readwrite_tools_from_temp_root(allowed_mcps: list[str]) -> dict[str
                 toolset_name = name.split("_", 1)[0]
                 if toolset_name not in rw_by_toolset:
                     rw_by_toolset[toolset_name] = []
-                desc = _get_tool_description(tool)
+                desc = catalog_tool_description(tool)
                 rw_by_toolset[toolset_name].append((name, desc))
     for toolset_name in rw_by_toolset:
         rw_by_toolset[toolset_name] = sorted(rw_by_toolset[toolset_name], key=lambda x: x[0])
@@ -386,64 +388,54 @@ def get_latest_release_tag() -> str:
     return response.json()["tag_name"]
 
 
+def validate_oauth_config(logger: logging.Logger) -> None:
+    """Fail fast with a clear message when AUTH_SERVER is set but AUTH_ISSUER is missing."""
+    if config.AUTH_SERVER and not config.AUTH_ISSUER:
+        logger.error(
+            "AUTH_SERVER is set but AUTH_ISSUER is missing. "
+            "Set AUTH_ISSUER to the JWT issuer claim of your SSO realm "
+            "(e.g. https://sso.redhat.com/auth/realms/redhat-external)."
+        )
+        sys.exit(1)
+
+
 def setup_credentials(mcp_server_config: dict, logger: logging.Logger) -> None:
-    """Set up client credentials based on OAuth mode.
+    """Set up client credentials from environment.
 
     Args:
         mcp_server_config: Server configuration dictionary to update
         logger: Logger instance for logging messages
-
-    Raises:
-        SystemExit: If required credentials are missing
     """
-    if mcp_server_config.get("oauth_enabled"):
-        # OAuth mode - credentials managed by FastMCP OAuth proxy
-        mcp_server_config.update(
-            {
-                "client_id": getattr(config, "SSO_CLIENT_ID", None),
-                "client_secret": getattr(config, "SSO_CLIENT_SECRET", None),
-            }
+    mcp_server_config.update(
+        {
+            "client_id": getattr(config, "INSIGHTS_CLIENT_ID", None),
+            "client_secret": getattr(config, "INSIGHTS_CLIENT_SECRET", None),
+            "refresh_token": getattr(config, "INSIGHTS_REFRESH_TOKEN", None),
+            "token_endpoint": config.SSO_TOKEN_ENDPOINT,
+        }
+    )
+
+    transport = mcp_server_config.get("mcp_transport", "stdio")
+
+    if transport == "stdio" and (
+        not any(mcp_server_config.get(k) for k in ("client_id", "client_secret", "refresh_token"))
+    ):
+        logger.error("Service account credentials are required for Insights authentication")
+        # Don't exit the program to allow the user to continue using the server without credentials
+        # sys.exit(1)
+
+    if mcp_server_config.get("client_id"):
+        logger.info("Using Insights Client ID: %s", mcp_server_config["client_id"])
+
+    # Warn about production usage with environment credentials for HTTP/SSE transports
+    if transport in ["http", "sse"] and (mcp_server_config.get("client_id") or mcp_server_config.get("client_secret")):
+        logger.warning(
+            "WARNING: Using environment credentials with %s transport. "
+            "THIS SHOULD NOT BE USED IN PRODUCTION! "
+            "All requests will share the same credentials. "
+            "For production deployments, use per-request header-based authentication.",
+            transport.upper(),
         )
-        if not all(mcp_server_config.get(k) for k in ("client_id", "client_secret")):
-            logger.error("SSO Client ID and secret are required for SSO OAuth authentication")
-            # Don't exit the program to allow the user to continue using the server without credentials
-            # sys.exit(1)
-        logger.info("Using SSO Client ID: %s", mcp_server_config["client_id"])
-    else:
-        # Traditional mode - use service account credentials
-        mcp_server_config.update(
-            {
-                "client_id": getattr(config, "INSIGHTS_CLIENT_ID", None),
-                "client_secret": getattr(config, "INSIGHTS_CLIENT_SECRET", None),
-                "refresh_token": getattr(config, "INSIGHTS_REFRESH_TOKEN", None),
-                "token_endpoint": config.SSO_TOKEN_ENDPOINT,
-            }
-        )
-
-        transport = mcp_server_config.get("mcp_transport", "stdio")
-
-        if transport == "stdio" and (
-            not any(mcp_server_config.get(k) for k in ("client_id", "client_secret", "refresh_token"))
-        ):
-            logger.error("Service account credentials are required for Insights authentication")
-            # Don't exit the program to allow the user to continue using the server without credentials
-            # sys.exit(1)
-
-        if mcp_server_config.get("client_id"):
-            logger.info("Using Insights Client ID: %s", mcp_server_config["client_id"])
-
-        # Warn about production usage with environment credentials for HTTP/SSE transports
-        if transport in ["http", "sse"] and (
-            mcp_server_config.get("client_id") or mcp_server_config.get("client_secret")
-        ):
-            logger.warning(
-                "WARNING: Using environment credentials with %s transport. "
-                "THIS SHOULD NOT BE USED IN PRODUCTION! "
-                "All requests will share the same credentials. "
-                "For production deployments with %s transport, use OAuth proxy mode instead.",
-                transport.upper(),
-                transport.upper(),
-            )
 
 
 def get_mcp_version() -> str:
@@ -493,6 +485,21 @@ def get_mcp_version() -> str:
         f"Latest release tag: {latest_release_tag}, Current version: {__version__}, "
         f"Compare: {compare_link}, Changes: {commits}"
     )
+
+
+def _http_scope_middleware(mcp_server: "InsightsMCPServer") -> list[Any] | None:
+    """Build the scope-enforcement middleware required for HTTP/SSE transports.
+
+    ``rh_fastmcp_server_commons.auth`` installs a guard on ``FastMCP.http_app()``
+    that raises ``RuntimeError`` when ``mcp.auth.required_scopes`` is set (or a
+    tool uses ``@require_tool_scopes``) without ``ScopeEnforcementMiddleware``
+    wired in. Returns None when no auth provider is configured (``mcp.auth`` is
+    None), in which case the middleware would be a no-op anyway.
+    """
+    if mcp_server.auth is None:
+        return None
+    scope_middleware = build_scope_enforcement_middleware(mcp=mcp_server)
+    return [scope_middleware] if scope_middleware else None
 
 
 def get_container_brand() -> tuple[str, str]:
@@ -582,7 +589,6 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
         logging.getLogger("ImageBuilderMCP").setLevel(logging.DEBUG)
         logging.getLogger("InsightsClientBase").setLevel(logging.DEBUG)
         logging.getLogger("InsightsClient").setLevel(logging.DEBUG)
-        logging.getLogger("ImageBuilderOAuthMiddleware").setLevel(logging.DEBUG)
         # Suppress noisy third-party loggers - even for debug mode that's too much
         logging.getLogger("docket.worker").setLevel(logging.INFO)
         logging.getLogger("fakeredis").setLevel(logging.INFO)
@@ -602,13 +608,12 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
         "base_url": config.INSIGHTS_BASE_URL,
         "name": f"{container_brand_long} MCP",
         "proxy_url": config.INSIGHTS_PROXY_URL,
-        "oauth_enabled": config.OAUTH_ENABLED,
         "mcp_transport": args.transport,
     }
-    logger.info("Using config: oauth_enabled: %s", mcp_server_config["oauth_enabled"])
 
     # Set client credentials based on OAuth mode
     setup_credentials(mcp_server_config, logger)
+    validate_oauth_config(logger)
 
     toolset = args.toolset or config.INSIGHTS_MCP_TOOLSET
     if toolset == "all":
@@ -636,25 +641,13 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     instructions = instructions_template.safe_substitute(container_brand_long=container_brand_long)
     mcp_server_config["instructions"] = instructions
 
-    # Note: Force overrided the host:port to a SSO registered host:port if not authorized
+    mcp_host = None
+    mcp_port = None
+    log_level = "WARNING"
     if args.transport in ["sse", "http"]:
-        mcp_server_config["mcp_host"] = args.host
-        mcp_server_config["mcp_port"] = args.port
+        mcp_host = args.host
+        mcp_port = args.port
         log_level = "DEBUG" if args.debug else "WARNING"
-        if (
-            mcp_server_config["oauth_enabled"]
-            and (args.host, args.port) not in config.SSO_AUTHORIZED_MCP_SERVER_HOST_PORTS
-        ):
-            mcp_server_config["mcp_host"] = "localhost"
-            mcp_server_config["mcp_port"] = 8000
-            logger.info(
-                "Force using SSO registered mcp server host:port: %s:%s",
-                mcp_server_config["mcp_host"],
-                mcp_server_config["mcp_port"],
-            )
-            logger.info(">>> The origin passed in host:port: %s:%s", args.host, args.port)
-            logger.info(">>> Note: For SSO authentication, you need to register the mcp server host:port with SSO")
-            logger.info(">>> Allowed host:port combinations are: %s", config.SSO_AUTHORIZED_MCP_SERVER_HOST_PORTS)
 
     # Create and run the MCP server
     mcp_server = InsightsMCPServer(**mcp_server_config)
@@ -673,20 +666,15 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     _format_all_tool_descriptions(mcp_server, container_brand_long=container_brand_long)
 
     if args.transport == "sse":
-        mcp_server.run(
-            transport="sse",
-            host=mcp_server_config["mcp_host"],
-            port=mcp_server_config["mcp_port"],
-        )
+        mcp_server.run(transport="sse", host=mcp_host, port=mcp_port, middleware=_http_scope_middleware(mcp_server))
     elif args.transport == "http":
-        logger.info(
-            "Running HTTP transport on host: %s, port: %s", mcp_server_config["mcp_host"], mcp_server_config["mcp_port"]
-        )
+        logger.info("Running HTTP transport on host: %s, port: %s", mcp_host, mcp_port)
         mcp_server.run(
             transport="http",
-            host=mcp_server_config["mcp_host"],
-            port=mcp_server_config["mcp_port"],
+            host=mcp_host,
+            port=mcp_port,
             log_level=log_level,
+            middleware=_http_scope_middleware(mcp_server),
         )
     else:
         mcp_server.run()

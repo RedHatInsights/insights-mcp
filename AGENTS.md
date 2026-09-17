@@ -35,13 +35,13 @@ The project uses a **toolset-based architecture** where each service is implemen
 - Most toolsets: `src/<toolset_name>_mcp/server.py` (e.g., `src/vulnerability_mcp/server.py`)
 - Legacy pattern: `src/insights_mcp/servers/<name>.py` (e.g., example toolset)
 
-**Example toolsets (see `src/insights_mcp/server.py` MCPS list for complete current list):**
+**Example toolsets (see `src/insights_mcp/toolsets.py` MCPS list for complete current list):**
 - **image-builder** (`src/image_builder_mcp/server.py`): Linux image building tools
 - **vulnerability** (`src/vulnerability_mcp/server.py`): Security vulnerability management
 - **inventory** (`src/inventory_mcp/server.py`): System inventory management
 
 **Toolset Registration:**
-- Toolsets are registered in `MCPS` list in `src/insights_mcp/server.py`
+- Toolsets are registered in `MCPS` list in `src/insights_mcp/toolsets.py`
 - Each toolset has a unique `toolset_name` for identification
 - Tools are mounted with toolset prefix (e.g., `image-builder_get_blueprints`)
 - Users can select specific toolsets: `insights-mcp --toolset=image-builder`
@@ -56,7 +56,7 @@ The project uses a **toolset-based architecture** where each service is implemen
 
 ### Quick Setup
 ```bash
-# Prerequisites: Python 3.10+, uv package manager
+# Prerequisites: Python 3.12+, uv package manager
 uv venv && source .venv/bin/activate
 make install-test-deps  # Installs all dev dependencies
 ```
@@ -145,13 +145,10 @@ see also [usage.md](usage.md) for more details on the CLI.
 
 ### Pre-commit Hooks
 ```bash
-make lint    # Run all linting with pre-commit (requires pre-commit installation)
+make lint    # CI-parity lint (uv sync dev deps + pre-commit, includes pylint on src and tests)
 ```
 
-**Note:** The `make lint` command requires pre-commit to be installed. If you encounter "pre-commit: No such file or directory", install it first:
-```bash
-uv pip install pre-commit
-```
+**Note:** `make lint` runs `install-test-deps` first (includes `pre-commit` via optional development dependencies). For spell checking locally, install the aspell package (CI installs it with apt).
 
 ### Manual Tools
 ```bash
@@ -229,7 +226,7 @@ insights-mcp --toolset=image-builder,vulnerability # Multiple specific toolsets
 1. Create new class inheriting from `InsightsMCP` in `src/insights_mcp/servers/`
 2. Set unique `toolset_name` and appropriate `api_path`
 3. Implement tools using `@mcp.tool()` decorator
-4. Add toolset to `MCPS` list in `src/insights_mcp/server.py`
+4. Add toolset to `MCPS` list in `src/insights_mcp/toolsets.py`
 5. Write unit and integration tests
 
 ### Adding New Tools to Existing Toolsets
@@ -238,6 +235,7 @@ insights-mcp --toolset=image-builder,vulnerability # Multiple specific toolsets
 3. Add type annotations and parameter validation
 4. Add behavioral color coding (🟢/🔴) in descriptions
 5. Write unit and integration tests
+6. If the tool includes an interactive UI, follow the [MCP Apps guide in HACKING.md](HACKING.md#mcp-apps)
 
 ### Debugging Authentication
 - Check service account credentials in Red Hat console
@@ -300,5 +298,6 @@ podman run -it --rm insights-mcp /bin/bash
 4. **Code Style**: stick to the settings in `pyproject.toml` and `.editorconfig`
 5. **Dependencies**: Check `pyproject.toml` for current dependencies
 6. **Compliance**: For logging, debug mode, and ISO alignment (27001, 27017, 27018, 42001), see [HACKING.md - Logging and Compliance](HACKING.md#logging-and-compliance)
+7. **MCP Apps**: For adding or maintaining interactive UI apps, see [HACKING.md - MCP Apps](HACKING.md#mcp-apps)
 
 This guide supplements the README with development-specific information for AI coding assistants working on the Insights MCP project. The architecture supports multiple Red Hat Insights service toolsets through a unified server interface.

@@ -2,6 +2,8 @@
 
 import pytest
 
+from insights_mcp.errors import InsightsApiError
+
 from .conftest import setup_advisor_mock
 
 
@@ -97,11 +99,12 @@ class TestGetRecommendationsStats:
         """Test get_recommendations_stats with invalid tag format (should return error)."""
 
         # Call the method with invalid tags (missing namespace/key=value format)
-        result = await advisor_mcp_server.get_recommendations_stats(groups=None, tags=["invalid-tag-format"])
+        with pytest.raises(InsightsApiError) as exc_info:
+            await advisor_mcp_server.get_recommendations_stats(groups=None, tags=["invalid-tag-format"])
 
-        # Should return error message for invalid tag format
-        assert "Error: Invalid tag format 'invalid-tag-format'" in result
-        assert "expected namespace/key=value" in result
+        error_message = str(exc_info.value)
+        assert "Error: Invalid tag format 'invalid-tag-format'" in error_message
+        assert "expected namespace/key=value" in error_message
 
         # API should not be called when validation fails
         advisor_mock_client.get.assert_not_called()
@@ -112,12 +115,12 @@ class TestGetRecommendationsStats:
 
         # Setup mocks
         with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
-            # Call the method
-            result = await advisor_mcp_server.get_recommendations_stats(groups=None, tags=None)
+            with pytest.raises(InsightsApiError) as exc_info:
+                await advisor_mcp_server.get_recommendations_stats(groups=None, tags=None)
 
-            # Should return error message
-            assert "Failed to retrieve recommendations statistics:" in result
-            assert "API Error" in result
+            error_message = str(exc_info.value)
+            assert "Failed to retrieve recommendations statistics:" in error_message
+            assert "API Error" in error_message
 
     @pytest.mark.asyncio
     async def test_get_recommendations_stats_empty_response(self, advisor_mcp_server, advisor_mock_client):

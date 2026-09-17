@@ -232,8 +232,17 @@ def setup_mcp_mock(
         yield mock_headers
 
 
+def assert_api_error_message(exception: BaseException, error_message: str = "API Error") -> None:
+    """Assert that an InsightsApiError message matches expected API error text."""
+    error_text = str(exception)
+    assert error_text.startswith(f"Error: {error_message}") or error_message.lower() in error_text.lower()
+
+
 def assert_api_error_result(result, error_message="API Error"):
-    """Helper to assert API error results."""
+    """Helper to assert API error results returned as strings (legacy).
+
+    Prefer ``pytest.raises(InsightsApiError)`` with ``assert_api_error_message``.
+    """
     assert result.startswith(f"Error: {error_message}") or error_message.lower() in result.lower()
 
 
@@ -266,20 +275,6 @@ def mock_oauth_token():
     return oauth_utils_module.create_test_token(
         org_id="test-org-123", user_id="test-user-123", username="testuser", account_id="test-account-456"
     )
-
-
-@pytest.fixture
-def mock_oauth_provider():
-    """Create a mock OAuth AuthProvider for testing.
-
-    Returns:
-        Mock AuthProvider instance
-
-    Example:
-        >>> def test_with_provider(mock_oauth_provider):
-        ...     assert mock_oauth_provider.client_id == "test-sso-client"
-    """
-    return oauth_utils_module.create_mock_oauth_provider()
 
 
 @pytest.fixture
