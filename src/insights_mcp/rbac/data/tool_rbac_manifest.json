@@ -460,6 +460,20 @@
         }
       }
     ],
+    "inventory__get_workspace": [
+      {
+        "method": "GET",
+        "api_path": "api/inventory/v1",
+        "path_template": "/",
+        "application": "inventory",
+        "required_v1_permissions": [],
+        "kessel_permission": "",
+        "kessel_note": "",
+        "recommended_roles": [],
+        "openapi_sources": [],
+        "verified": false
+      }
+    ],
     "inventory__list_hosts": [
       {
         "method": "GET",
@@ -488,6 +502,48 @@
             "KesselResourceTypes.HOST.view"
           ]
         }
+      }
+    ],
+    "inventory__list_workspace_hosts": [
+      {
+        "method": "GET",
+        "api_path": "api/inventory/v1",
+        "path_template": "/",
+        "application": "inventory",
+        "required_v1_permissions": [],
+        "kessel_permission": "",
+        "kessel_note": "",
+        "recommended_roles": [],
+        "openapi_sources": [],
+        "verified": false
+      }
+    ],
+    "inventory__list_workspaces": [
+      {
+        "method": "GET",
+        "api_path": "api/inventory/v1",
+        "path_template": "/",
+        "application": "inventory",
+        "required_v1_permissions": [],
+        "kessel_permission": "",
+        "kessel_note": "",
+        "recommended_roles": [],
+        "openapi_sources": [],
+        "verified": false
+      }
+    ],
+    "inventory__load_inventory_dashboard": [
+      {
+        "method": "GET",
+        "api_path": "api/inventory/v1",
+        "path_template": "/",
+        "application": "inventory",
+        "required_v1_permissions": [],
+        "kessel_permission": "",
+        "kessel_note": "",
+        "recommended_roles": [],
+        "openapi_sources": [],
+        "verified": false
       }
     ],
     "planning__get_appstreams_lifecycle": [
@@ -620,24 +676,6 @@
         ],
         "kessel_permission": "",
         "kessel_note": "",
-        "recommended_roles": [],
-        "openapi_sources": [],
-        "verified": false
-      }
-    ],
-    "rbac__get_all_access": [
-      {
-        "method": "GET",
-        "api_path": "api/rbac/v1",
-        "path_template": "/access/",
-        "application": "rbac",
-        "required_v1_permissions": [
-          [
-            "rbac:roles:read"
-          ]
-        ],
-        "kessel_permission": "",
-        "kessel_note": "Deprecated alias; use rbac__get_caller_access_all.",
         "recommended_roles": [],
         "openapi_sources": [],
         "verified": false
@@ -1080,6 +1118,20 @@
             "RbacRoutePermissions.VULNERABILITY_RESULTS"
           ]
         }
+      }
+    ],
+    "vulnerability__load_cve_dashboard": [
+      {
+        "method": "GET",
+        "api_path": "api/vulnerability/v1",
+        "path_template": "/",
+        "application": "vulnerability",
+        "required_v1_permissions": [],
+        "kessel_permission": "",
+        "kessel_note": "",
+        "recommended_roles": [],
+        "openapi_sources": [],
+        "verified": false
       }
     ]
   }

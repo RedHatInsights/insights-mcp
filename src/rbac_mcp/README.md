@@ -10,7 +10,6 @@ Diagnostics for Role-Based Access Control when using other Insights MCP toolsets
 | `lookup_tool_requirements` | Requirements only for one MCP tool (no API call) |
 | `get_caller_access` | Caller permissions for one application |
 | `get_caller_access_all` | All caller permissions (paginated) |
-| `get_all_access` | **Deprecated** — use `get_caller_access_all` |
 
 ## Principal semantics
 

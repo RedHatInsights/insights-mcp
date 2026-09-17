@@ -56,7 +56,6 @@ Tools marked as read-write **`(rw)`** are excluded by default. Use the `--all-to
 
 ## rbac
 - `explain_access_denied`: Diagnose a 403 access denial for a specific MCP tool call.
-- `get_all_access`: Deprecated: use rbac__get_caller_access_all instead.
 - `get_caller_access`: Get RBAC access for the authenticated caller for one application.
 - `get_caller_access_all`: List all RBAC permissions for the authenticated MCP caller (paginated fetch).
 - `lookup_tool_requirements`: Return the documented authorization requirements for an MCP tool.

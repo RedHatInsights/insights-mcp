@@ -499,17 +499,6 @@
         "required_v1_permissions": [["rbac:roles:read"]],
         "recommended_roles": []
       }
-    ],
-    "rbac__get_all_access": [
-      {
-        "method": "GET",
-        "api_path": "api/rbac/v1",
-        "path_template": "/access/",
-        "application": "rbac",
-        "required_v1_permissions": [["rbac:roles:read"]],
-        "kessel_note": "Deprecated alias; use rbac__get_caller_access_all.",
-        "recommended_roles": []
-      }
     ]
   }
 }
