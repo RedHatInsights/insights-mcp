@@ -72,7 +72,6 @@ class TestCliArguments:
         },
         "rbac": {
             "rbac__explain_access_denied",
-            "rbac__get_all_access",
             "rbac__get_caller_access",
             "rbac__get_caller_access_all",
             "rbac__lookup_tool_requirements",

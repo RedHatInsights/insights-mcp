@@ -165,9 +165,6 @@ spec:
       name: rbac__explain_access_denied
       description: "Diagnose a 403 access denial for a specific MCP tool call."
     - type: tool
-      name: rbac__get_all_access
-      description: "Deprecated: use rbac__get_caller_access_all instead."
-    - type: tool
       name: rbac__get_caller_access
       description: "Get RBAC access for the authenticated caller for one application."
     - type: tool

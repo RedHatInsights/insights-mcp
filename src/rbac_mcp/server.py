@@ -194,9 +194,8 @@ async def get_caller_access_all(
 ) -> dict[str, Any]:
     """List all RBAC permissions for the authenticated MCP caller (paginated fetch).
 
-    Unlike the deprecated get_all_access, returns structured JSON only. Permissions
-    apply to the service account or Bearer identity used by MCP—not your console user
-    unless that identity is what MCP uses.
+    Permissions apply to the service account or Bearer identity used by MCP—not
+    your console user unless that identity is what MCP uses.
     """
     payload = await fetch_caller_access(
         mcp.insights_client,
@@ -226,33 +225,3 @@ async def get_caller_access_all(
         ],
         "do_not_infer_other_permissions": True,
     }
-
-
-@mcp.tool(annotations={"readOnlyHint": True})
-async def get_all_access(
-    username: Annotated[str, Field(default="", description="Deprecated. Use get_caller_access_all.")],
-    limit: Annotated[int, Field(default=20, description="Deprecated.")],
-    offset: Annotated[int, Field(default=0, description="Deprecated.")],
-) -> dict[str, Any]:
-    """Deprecated: use rbac__get_caller_access_all instead."""
-    _ = limit
-    _ = offset
-    result = await get_caller_access_all(username=username)
-    result["deprecated"] = "Use rbac__get_caller_access_all instead of rbac__get_all_access."
-    return result
-
-
-# Legacy helpers kept for internal reference; not exposed as MCP tools.
-async def get_access(
-    application: str,
-    username: str = "",
-    limit: int = 20,
-    offset: int = 0,
-) -> dict[str, Any] | str:
-    """Get access for one application (not registered as MCP tool)."""
-    return await get_caller_access(
-        application=application,
-        username=username,
-        limit=limit,
-        offset=offset,
-    )
