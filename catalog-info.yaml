@@ -162,8 +162,20 @@ spec:
       description: "List upcoming package changes, deprecations, additions and enhancements."
     # rbac
     - type: tool
+      name: rbac__explain_access_denied
+      description: "Diagnose a 403 access denial for a specific MCP tool call."
+    - type: tool
       name: rbac__get_all_access
-      description: "Get access information for all Red Hat insights applications."
+      description: "Deprecated: use rbac__get_caller_access_all instead."
+    - type: tool
+      name: rbac__get_caller_access
+      description: "Get RBAC access for the authenticated caller for one application."
+    - type: tool
+      name: rbac__get_caller_access_all
+      description: "List all RBAC permissions for the authenticated MCP caller (paginated fetch)."
+    - type: tool
+      name: rbac__lookup_tool_requirements
+      description: "Return the documented authorization requirements for an MCP tool."
     # remediations
     - type: tool
       name: remediations__create_vuln_playbook

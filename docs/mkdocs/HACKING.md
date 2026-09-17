@@ -83,6 +83,30 @@ not this refresh-token flow.
 - Not listed among the supported authentication methods in [README.md](index.md); may be removed
   in future
 
+## RBAC manifest pipeline
+
+MCP tools map to REST endpoints and documented upstream RBAC requirements in
+`src/insights_mcp/rbac/data/tool_rbac_manifest.json`. Regenerate after changing tools
+or when refreshing permissions from upstream:
+
+```bash
+make generate-rbac-manifest
+make check-rbac-manifest   # CI: fail if committed JSON is stale
+```
+
+**Sources (merge priority):**
+
+1. Curated upstream service enforcement mappings (`scripts/upstream_rbac.py` → `upstream_permissions.json`)
+2. [RedHatInsights/rbac-config](https://github.com/RedHatInsights/rbac-config) prod roles (`configs/rbac_config_ref.txt`)
+3. Tool REST mappings in `configs/tool_rest_map.json` (skeletons for all read-only tools)
+
+The refs in `configs/rbac_config_ref.txt` and `configs/upstream_refs.json` intentionally use
+`master` so the weekly refresh follows the newest upstream data.
+
+**Runtime:** `rbac__explain_access_denied` resolves requirements as bundled verified → upstream bundle → live `openapi.json` (TTL cache) → unknown. Platform role suggestions use the bundled `role_recommendations.json`; manifest regeneration refreshes that file from rbac-config on GitHub.
+
+On HTTP 403, call `rbac__explain_access_denied` before suggesting permissions or roles—never invent permission names.
+
 ## Architecture
 
 ### Application Structure
