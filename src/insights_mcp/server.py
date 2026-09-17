@@ -352,14 +352,38 @@ def print_toolset_help_and_exit(args: argparse.Namespace):
 def _github_api_headers() -> dict[str, str]:
     """Build headers for GitHub REST API requests.
 
-    Uses GITHUB_TOKEN or GH_TOKEN from the environment when available to avoid
-    unauthenticated rate limits (especially in CI).
+    A token is optional. Public repo endpoints work without one. When
+    GITHUB_TOKEN or GH_TOKEN is set, it is sent so CI can avoid the
+    unauthenticated rate limit (about 60 requests/hour).
     """
     headers = {"Accept": "application/vnd.github+json"}
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
     if token:
         headers["Authorization"] = f"Bearer {token}"
     return headers
+
+
+def _github_api_get(url: str) -> requests.Response:
+    """GET a GitHub REST URL, retrying unauthenticated after HTTP 401.
+
+    A stale or Copilot/GH_TOKEN that GitHub rejects as bad credentials would
+    otherwise fail public endpoints that succeed with no Authorization header.
+    """
+    headers = _github_api_headers()
+    response = requests.get(url, headers=headers, timeout=30)
+    if response.status_code == 401 and "Authorization" in headers:
+        token_env = "GITHUB_TOKEN" if os.environ.get("GITHUB_TOKEN") else "GH_TOKEN"
+        logging.getLogger("InsightsMCPServer").warning(
+            "%s appears outdated or invalid; GitHub returned 401. Retrying without credentials.",
+            token_env,
+        )
+        response = requests.get(
+            url,
+            headers={"Accept": "application/vnd.github+json"},
+            timeout=30,
+        )
+    response.raise_for_status()
+    return response
 
 
 def extract_version_sha(version: str) -> str:
@@ -379,12 +403,9 @@ def get_latest_release_tag() -> str:
     """Get the latest release tag from github."""
     # https://github.com/RedHatInsights/insights-mcp/releases
     # rather use the api to get the latest release tag
-    response = requests.get(
+    response = _github_api_get(
         "https://api.github.com/repos/RedHatInsights/insights-mcp/releases/latest",
-        headers=_github_api_headers(),
-        timeout=30,
     )
-    response.raise_for_status()
     return response.json()["tag_name"]
 
 
@@ -456,12 +477,9 @@ def get_mcp_version() -> str:
     commits = ""
     try:
         # Use GitHub Compare API which is designed for comparing between tags/commits
-        response = requests.get(
+        response = _github_api_get(
             f"https://api.github.com/repos/RedHatInsights/insights-mcp/compare/{__version__}...{latest_release_tag}",
-            headers=_github_api_headers(),
-            timeout=30,
         )
-        response.raise_for_status()
         compare_data = response.json()
 
         # Extract useful information from the comparison
