@@ -7,6 +7,7 @@ from tests.mock_insights_api.registry import (
     MockInsightsAPIError,
     UnknownRouteError,
 )
+from tests.mock_insights_api.server import MockInsightsHTTPServer
 from tests.mock_insights_api.types import (
     BodyMatcher,
     MockRequest,
@@ -20,6 +21,7 @@ __all__ = [
     "HTTPMethod",
     "MockInsightsAPI",
     "MockInsightsAPIError",
+    "MockInsightsHTTPServer",
     "MockRequest",
     "MockResponse",
     "MockRoute",
