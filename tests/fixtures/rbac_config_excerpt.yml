@@ -3,13 +3,34 @@ apiVersion: v1
 objects:
   - apiVersion: v1
     data:
+      insights.json: |
+        {
+          "roles": [
+            {
+              "name": "Advisor Viewer",
+              "display_name": "RHEL Advisor viewer",
+              "access": [
+                {"permission": "advisor:*:read"}
+              ]
+            }
+          ]
+        }
       inventory.json: |
         {
           "roles": [
             {
               "name": "Inventory Hosts Viewer",
+              "display_name": "Inventory Hosts viewer",
               "access": [
                 {"permission": "inventory:hosts:read"}
+              ]
+            },
+            {
+              "name": "Inventory Groups Viewer",
+              "display_name": "Workspace viewer",
+              "access": [
+                {"permission": "inventory:groups:read"},
+                {"permission": "rbac:role_binding:view"}
               ]
             }
           ]
@@ -21,7 +42,37 @@ objects:
               "name": "Vulnerability viewer",
               "access": [
                 {"permission": "vulnerability:vulnerability_results:read"},
-                {"permission": "vulnerability:system.opt_out:read"}
+                {"permission": "vulnerability:system.opt_out:read"},
+                {"permission": "vulnerability:report_and_export:read"},
+                {"permission": "vulnerability:advanced_report:read"}
+              ]
+            }
+          ]
+        }
+      remediations.json: |
+        {
+          "roles": [
+            {
+              "name": "Remediations user",
+              "access": [
+                {"permission": "remediations:remediation:read"},
+                {"permission": "remediations:remediation:write"},
+                {"permission": "playbook-dispatcher:remediations_run:read"}
+              ]
+            }
+          ]
+        }
+      rhel.json: |
+        {
+          "roles": [
+            {
+              "name": "RHEL viewer",
+              "access": [
+                {"permission": "advisor:*:read"},
+                {"permission": "inventory:hosts:read"},
+                {"permission": "inventory:groups:read"},
+                {"permission": "vulnerability:*:read"},
+                {"permission": "remediations:remediation:read"}
               ]
             }
           ]

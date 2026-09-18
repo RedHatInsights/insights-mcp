@@ -1,6 +1,5 @@
-"""RBAC diagnostics: tool requirements manifest and runtime access comparison."""
+"""RBAC diagnostics: tool requirements from the rest map and runtime access comparison."""
 
-from insights_mcp.rbac.data_files import load_role_recommendations
 from insights_mcp.rbac.diagnose import build_access_denied_report, compare_permissions
 from insights_mcp.rbac.manifest import (
     ToolRbacEntry,
@@ -18,6 +17,5 @@ __all__ = [
     "find_tool_by_rest_url",
     "get_tool_entry",
     "load_manifest",
-    "load_role_recommendations",
     "resolve_tool_requirements",
 ]

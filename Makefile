@@ -199,18 +199,14 @@ run-oauth: build ## Run the MCP server with OAuth transport
 
 ALL_PYTHON_FILES := $(shell find src -name "*.py")
 
-.PHONY: generate-rbac-manifest
-generate-rbac-manifest: ## Regenerate RBAC manifest, roles, and upstream_permissions from configured sources
-	uv run python scripts/generate_tool_rbac_manifest.py
-
-.PHONY: check-rbac-manifest
-check-rbac-manifest: generate-rbac-manifest ## Fail if RBAC data files differ from generator output
-	git diff --exit-code -- src/insights_mcp/rbac/data/
+.PHONY: generate-rbac-docs
+generate-rbac-docs: ## Refresh generated RBAC role names in README and getting-started skills
+	uv run python scripts/generate_rbac_docs.py
 
 .PHONY: generate-docs prepare-mkdocs build-mkdocs serve-mkdocs
-generate-docs: usage.md toolsets.md catalog-info.yaml docs/architecture-structure.svg docs/architecture-deployment.svg prepare-mkdocs .agents/skills/README.md ## Generate documentation from the MCP server
+generate-docs: generate-rbac-docs usage.md toolsets.md catalog-info.yaml docs/architecture-structure.svg docs/architecture-deployment.svg prepare-mkdocs .agents/skills/README.md .claude/skills/README.md ## Generate documentation from the MCP server
 
-prepare-mkdocs: usage.md toolsets.md docs/architecture-structure.svg docs/architecture-deployment.svg README.md HACKING.md ## Prepare MkDocs staging files under docs/mkdocs/
+prepare-mkdocs: generate-rbac-docs usage.md toolsets.md docs/architecture-structure.svg docs/architecture-deployment.svg README.md HACKING.md ## Prepare MkDocs staging files under docs/mkdocs/
 	uv run python scripts/prepare_mkdocs.py
 
 build-mkdocs: install-test-deps prepare-mkdocs ## Build mkdocs documentation (--strict)
@@ -237,5 +233,8 @@ toolsets.md: $(ALL_PYTHON_FILES) Makefile
 docs/architecture-structure.svg docs/architecture-deployment.svg docs/architecture-structure.png docs/architecture-deployment.png: HACKING.md scripts/generate_diagrams.py
 	uv run python scripts/generate_diagrams.py --format svg,png
 
-.agents/skills/README.md: README.md
+.agents/skills/README.md: README.md generate-rbac-docs
 	cp README.md .agents/skills/README.md
+
+.claude/skills/README.md: README.md generate-rbac-docs
+	cp README.md .claude/skills/README.md

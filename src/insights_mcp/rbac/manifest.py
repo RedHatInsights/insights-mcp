@@ -1,4 +1,4 @@
-"""Load and query the tool RBAC manifest."""
+"""Load and query the curated tool REST map."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from functools import lru_cache
 from typing import Any
 from urllib.parse import urlparse
 
-from insights_mcp.rbac.data_files import load_manifest_raw
+from insights_mcp.rbac.data_files import load_tool_rest_map
 from insights_mcp.rbac.requirements_format import PermissionRequirements
 
 
@@ -50,7 +50,7 @@ class ToolRbacCall:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ToolRbacCall:
-        """Build a REST call from the manifest."""
+        """Build a REST call from the rest map."""
         upstream = None
         if "upstream" in data:
             up = data["upstream"]
@@ -67,7 +67,6 @@ class ToolRbacCall:
             kessel_permission=data.get("kessel_permission", ""),
             kessel_note=data.get("kessel_note", ""),
             sources=tuple(data.get("openapi_sources", [])),
-            recommended_roles=tuple(data.get("recommended_roles", [])),
             verified=bool(data.get("verified", False)),
         )
         return cls(
@@ -82,33 +81,6 @@ class ToolRbacCall:
             openapi_sources=tuple(data.get("openapi_sources", [])),
             user_guidance_notes=tuple(data.get("user_guidance_notes", [])),
         )
-
-    def _diagnostic_sources(self) -> list[str]:
-        sources: list[str] = list(self.openapi_sources)
-        if self.upstream:
-            sources.append(f"https://github.com/{self.upstream.repo}/blob/master/{self.upstream.file}")
-        return sources
-
-    def to_requirements_dict(self) -> dict[str, Any]:
-        """Serialize requirements for diagnostic output."""
-        upstream = (
-            {
-                "repo": self.upstream.repo,
-                "file": self.upstream.file,
-                "handler": self.upstream.handler,
-                "rbac_decorators": list(self.upstream.rbac_decorators),
-            }
-            if self.upstream
-            else None
-        )
-        return PermissionRequirements(
-            required_v1_permissions=self.permissions.required_v1_permissions,
-            kessel_permission=self.permissions.kessel_permission,
-            kessel_note=self.permissions.kessel_note,
-            sources=tuple(self._diagnostic_sources()),
-            recommended_roles=self.permissions.recommended_roles,
-            verified=self.permissions.verified,
-        ).to_diagnostic_dict(extra={"upstream": upstream})
 
 
 @dataclass(frozen=True)
@@ -137,12 +109,27 @@ class ToolRbacEntry:
         return seen
 
 
+def apply_rest_map_template(tool_def: dict[str, Any], templates: dict[str, Any]) -> dict[str, Any]:
+    """Merge a rest-map template into a tool call definition."""
+    template_name = tool_def.get("template")
+    if not template_name:
+        return dict(tool_def)
+    merged = dict(templates.get(template_name, {}))
+    merged.update({key: value for key, value in tool_def.items() if key != "template"})
+    return merged
+
+
 @lru_cache(maxsize=1)
 def load_manifest() -> dict[str, ToolRbacEntry]:
-    """Load tool_rbac_manifest.json (cached)."""
-    data = load_manifest_raw()
-    tools = data.get("tools", data)
-    return {name: ToolRbacEntry.from_dict(name, entry) for name, entry in tools.items()}
+    """Load curated tool REST mappings (cached)."""
+    data = load_tool_rest_map()
+    templates = data.get("templates", {})
+    tools_raw = data.get("tools", {})
+    tools: dict[str, ToolRbacEntry] = {}
+    for name, raw_calls in tools_raw.items():
+        calls = [apply_rest_map_template(raw_call, templates) for raw_call in raw_calls]
+        tools[name] = ToolRbacEntry.from_dict(name, calls)
+    return tools
 
 
 def get_tool_entry(tool_name: str) -> ToolRbacEntry | None:
@@ -195,7 +182,7 @@ def _prefer_entry_over_tie(
 
 
 def find_tool_by_rest_url(url: str, method: str = "GET") -> ToolRbacEntry | None:
-    """Find manifest entry matching a failed request URL."""
+    """Find rest-map entry matching a failed request URL."""
     parsed = urlparse(url)
     path = parsed.path or url
     method_upper = method.upper()

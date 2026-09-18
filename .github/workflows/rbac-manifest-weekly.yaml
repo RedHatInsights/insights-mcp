@@ -1,4 +1,4 @@
-name: RBAC manifest weekly refresh
+name: RBAC docs weekly refresh
 
 on:  # yamllint disable-line rule:truthy
   schedule:
@@ -19,15 +19,16 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Regenerate RBAC data from latest configured sources
-        run: uv run python scripts/generate_tool_rbac_manifest.py
+      - name: Refresh generated RBAC role names from rbac-config
+        run: make generate-docs
 
       - name: Open PR if data changed
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676  # v7.0.11
         with:
-          title: "chore: refresh RBAC manifest from upstream sources"
+          title: "chore: refresh RBAC role names from rbac-config"
           body: |
-            Automated weekly refresh of `tool_rbac_manifest.json`, `role_recommendations.json`,
-            and `upstream_permissions.json` via `make generate-rbac-manifest`.
+            Automated weekly refresh of generated RBAC role display names in
+            README and docs from RedHatInsights/rbac-config plus
+            `configs/tool_rest_map.json` (`make generate-docs`).
           branch: chore/rbac-manifest-weekly
-          commit-message: "chore: refresh RBAC manifest from upstream sources"
+          commit-message: "chore: refresh RBAC role names from rbac-config"
