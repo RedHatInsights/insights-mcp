@@ -2,7 +2,8 @@
 
 Test prompts for the Red Hat Insights RBAC (Role-Based Access Control) MCP server.
 
-Currently, only the `get_all_access` function is implemented.
+Tools: `explain_access_denied`, `lookup_tool_requirements`, `get_caller_access`,
+`get_caller_access_all`.
 
 ## Access Queries
 
@@ -16,9 +17,9 @@ please check my insights permissions are there any missing for insights-mcp?
 Show me access permissions for user "john.doe" across all applications
 ```
 
-### Get Access with Pagination
+### Get Access for One Application
 ```
-Get the first 50 access records across all applications
+Show my RBAC permissions for the vulnerability application
 ```
 
 ### Get Access for Service Account
@@ -31,6 +32,11 @@ What access permissions does service account "automation-bot" have across all Re
 ### Permission Debugging
 ```
 I can't access certain features in Red Hat services. Show me all my access permissions across all applications to help debug the issue.
+```
+
+### Diagnose a 403
+```
+vulnerability__get_system_cves returned 403. Explain why I don't have access.
 ```
 
 ### User Access Review

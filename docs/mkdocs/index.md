@@ -35,12 +35,24 @@ There are two ways to authenticate:
 
 #### Required Permissions by Toolset
 
+<!-- BEGIN GENERATED RBAC ROLES -->
+
 Different toolsets require specific roles for your service account:
 
-- **Advisor tools**: `RHEL Advisor viewer`
-- **Inventory tools**: `Inventory Hosts viewer`, `Workspaces viewer`
+- **Advisor tools**: `RHEL Advisor viewer`, `Inventory Hosts viewer`
+- **Inventory tools**: `Inventory Hosts viewer`, `Workspace viewer`
 - **Vulnerability tools**: `Vulnerability viewer`, `Inventory Hosts viewer`
 - **Remediation tools**: `Remediations user`
+- **Image Builder tools**: `Repositories viewer`
+- **RHSM tools**: `RHC user`
+- **Content Sources tools**: `Repositories viewer`
+- **Planning tools**: `Inventory Hosts viewer`
+
+<!-- END GENERATED RBAC ROLES -->
+
+These names are Hybrid Cloud Console User Access display names. Do not copy role detail
+URLs between accounts; they contain tenant-specific identifiers. The consolidated
+RHEL viewer role can substitute for several of the viewer roles above.
 
 #### Granting Permissions to Service Accounts
 
