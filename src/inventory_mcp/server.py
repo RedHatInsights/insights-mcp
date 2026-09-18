@@ -44,7 +44,7 @@ mcp = InsightsMCP(
     $container_brand_long Host Inventory requires correct RBAC permissions to be able to use the tools. Ensure that your
     Service Account has at least these roles:
     - Inventory Hosts viewer
-    - Workspaces viewer (inventory:groups:read) to list workspaces and their membership
+    - Workspace viewer (inventory:groups:read) to list workspaces and their membership
 
     Workspaces in the console UI are Inventory groups.
 
@@ -356,7 +356,7 @@ async def list_workspaces(  # pylint: disable=too-many-arguments,too-many-positi
     id, name, ungrouped, and host_count. Prefer workspace IDs in later calls; names can
     be duplicated.
 
-    Required permission: inventory:groups:read (Workspaces viewer).
+    Required permission: inventory:groups:read (Workspace viewer).
     """
     if group_type not in _WORKSPACE_GROUP_TYPES:
         allowed = ", ".join(sorted(_WORKSPACE_GROUP_TYPES))
@@ -391,7 +391,7 @@ async def get_workspace(
     """Get details for one or more workspaces by ID.
 
     Returns id, name, ungrouped, host_count, and timestamps for each workspace.
-    Required permission: inventory:groups:read (Workspaces viewer).
+    Required permission: inventory:groups:read (Workspace viewer).
     """
     if not workspace_ids or not workspace_ids.strip():
         raise InsightsApiError(

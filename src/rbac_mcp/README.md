@@ -6,8 +6,8 @@ Diagnostics for Role-Based Access Control when using other Insights MCP toolsets
 
 | Tool | Purpose |
 |------|---------|
-| `explain_access_denied` | Primary 403 diagnostic: required permissions (manifest) vs caller (live RBAC API) |
-| `lookup_tool_requirements` | Requirements only for one MCP tool (no API call) |
+| `explain_access_denied` | Primary 403 diagnostic: missing console **role display names** |
+| `lookup_tool_requirements` | Required role display names for one MCP tool (no access check) |
 | `get_caller_access` | Caller permissions for one application |
 | `get_caller_access_all` | All caller permissions (paginated) |
 
@@ -20,14 +20,14 @@ service account**, not the human using the chat UI.
 To inspect another user’s permissions, pass `username=` only if your caller has RBAC
 admin rights to query principals.
 
-## Manifest regeneration
+## Docs regeneration
 
 ```bash
-make generate-rbac-manifest
+make generate-docs
 ```
 
-Updates `src/insights_mcp/rbac/data/tool_rbac_manifest.json` and
-`role_recommendations.json`.
+Rewrites generated RBAC role names in README and getting-started skills from
+rbac-config plus `configs/tool_rest_map.json`.
 
 ## API
 

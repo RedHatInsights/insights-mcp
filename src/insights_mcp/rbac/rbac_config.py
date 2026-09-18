@@ -10,6 +10,8 @@ from typing import Any
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
+from insights_mcp.rbac.roles import PlatformRole
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_RBAC_CONFIG_REF_PATH = REPO_ROOT / "configs" / "rbac_config_ref.txt"
 RBAC_CONFIG_RAW_URL = (
@@ -93,14 +95,48 @@ def parse_role_json_blobs(yaml_text: str) -> dict[str, Any]:
     return blobs
 
 
+def _permissions_match_prefixes(perms: list[str], prefixes: tuple[str, ...], app_hint: str) -> bool:
+    if not prefixes:
+        return True
+    if any(perm.startswith(f"{prefix}:") or perm.startswith(f"{prefix}:*:*") for perm in perms for prefix in prefixes):
+        return True
+    if app_hint in prefixes:
+        return True
+    return any(perm.split(":", 1)[0] in prefixes for perm in perms if ":" in perm)
+
+
+def _permissions_from_role_dict(role: dict[str, Any]) -> list[str]:
+    perms: list[str] = []
+    for access in role.get("access", []):
+        if not isinstance(access, dict):
+            continue
+        perm = access.get("permission")
+        if perm and isinstance(perm, str):
+            perms.append(perm)
+    return perms
+
+
+def _platform_role_from_dict(role: dict[str, Any]) -> PlatformRole | None:
+    name = role.get("name")
+    if not name or not isinstance(name, str):
+        return None
+    perms = _permissions_from_role_dict(role)
+    if not perms:
+        return None
+    display_name = role.get("display_name")
+    display = display_name if isinstance(display_name, str) and display_name else name
+    return PlatformRole(name=name, display_name=display, permissions=frozenset(perms))
+
+
 def roles_from_blobs(
     blobs: dict[str, Any],
     *,
     application_prefixes: tuple[str, ...] | None = None,
-) -> dict[str, list[str]]:
-    """Build role name -> flat permission list from parsed JSON blobs."""
-    prefixes = application_prefixes or MCP_APPLICATION_PREFIXES
-    role_map: dict[str, list[str]] = {}
+) -> list[PlatformRole]:
+    """Build platform roles from parsed JSON blobs."""
+    prefixes = application_prefixes if application_prefixes is not None else MCP_APPLICATION_PREFIXES
+    roles: list[PlatformRole] = []
+    seen_labels: set[str] = set()
     for blob_name, data in blobs.items():
         if not isinstance(data, dict):
             continue
@@ -108,37 +144,26 @@ def roles_from_blobs(
         for role in data.get("roles", []):
             if not isinstance(role, dict):
                 continue
-            name = role.get("name")
-            if not name:
+            platform_role = _platform_role_from_dict(role)
+            if platform_role is None:
                 continue
-            perms: list[str] = []
-            for access in role.get("access", []):
-                if not isinstance(access, dict):
-                    continue
-                perm = access.get("permission")
-                if perm and isinstance(perm, str):
-                    perms.append(perm)
-            if not perms:
+            if not _permissions_match_prefixes(list(platform_role.permissions), prefixes, app_hint):
                 continue
-            if prefixes:
-                if not any(
-                    perm.startswith(f"{prefix}:") or perm.startswith(f"{prefix}:*:*")
-                    for perm in perms
-                    for prefix in prefixes
-                ):
-                    if app_hint not in prefixes and not any(p.split(":", 1)[0] in prefixes for p in perms if ":" in p):
-                        continue
-            role_map[name] = sorted(set(perms))
-    return role_map
+            label = platform_role.label()
+            if label in seen_labels:
+                continue
+            seen_labels.add(label)
+            roles.append(platform_role)
+    return roles
 
 
-def import_role_recommendations(
+def import_platform_roles(
     ref: str | None = None,
     yaml_text: str | None = None,
     *,
     application_prefixes: tuple[str, ...] | None = None,
-) -> dict[str, list[str]]:
-    """Return role -> permissions map from rbac-config (fetch or parse provided YAML)."""
+) -> list[PlatformRole]:
+    """Return platform roles from rbac-config (fetch or parse provided YAML)."""
     text = yaml_text if yaml_text is not None else fetch_rbac_config_yaml(ref)
     blobs = parse_role_json_blobs(text)
     return roles_from_blobs(blobs, application_prefixes=application_prefixes)

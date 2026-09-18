@@ -1,4 +1,4 @@
-"""Ensure every read-only MCP tool has a manifest entry."""
+"""Ensure every read-only MCP tool has a rest-map entry."""
 
 import asyncio
 
@@ -23,15 +23,15 @@ def _collect_readonly_tool_names() -> list[str]:
     return sorted(set(names))
 
 
-def test_all_readonly_tools_have_manifest_entry():
-    """Every read-only MCP tool must have a row in tool_rbac_manifest.json."""
+def test_all_readonly_tools_have_rest_map_entry():
+    """Every read-only MCP tool must have a row in configs/tool_rest_map.json."""
     manifest = load_manifest()
     missing = [name for name in _collect_readonly_tool_names() if name not in manifest]
-    assert missing == [], f"Add manifest entries for: {missing}"
+    assert missing == [], f"Add rest-map entries for: {missing}"
 
 
 def test_verified_entries_include_core_inventory_vulnerability():
-    """Core inventory and vulnerability tools must be marked verified in the manifest."""
+    """Core inventory and vulnerability tools must be marked verified in the rest map."""
     manifest = load_manifest()
     assert manifest["inventory__find_host_by_name"].rest_calls[0].permissions.verified is True
     assert manifest["vulnerability__get_system_cves"].rest_calls[0].permissions.verified is True

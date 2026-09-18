@@ -72,12 +72,20 @@ Service accounts have **no permissions by default**. An org admin must grant
 roles via Settings → User Access → Groups. Tell the user which roles are
 needed based on the toolsets they plan to use:
 
+<!-- BEGIN GENERATED RBAC ROLE TABLE -->
+
 | Toolset | Required Roles |
 |---|---|
-| advisor | RHEL Advisor viewer |
-| inventory | Inventory Hosts viewer, Workspaces viewer |
+| advisor | RHEL Advisor viewer, Inventory Hosts viewer |
+| inventory | Inventory Hosts viewer, Workspace viewer |
 | vulnerability | Vulnerability viewer, Inventory Hosts viewer |
 | remediations | Remediations user |
+| image-builder | Repositories viewer |
+| rhsm | RHC user |
+| content-sources | Repositories viewer |
+| planning | Inventory Hosts viewer |
+
+<!-- END GENERATED RBAC ROLE TABLE -->
 
 If API calls return **403**, this is almost always a missing role — tell the
 user to check their service account permissions.

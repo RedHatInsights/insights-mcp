@@ -70,7 +70,7 @@ where = ["src", "scripts"]
 "" = "src"
 
 [tool.setuptools.package-data]
-insights_mcp = ["assets/*", "rbac/data/*.json"]
+insights_mcp = ["assets/*"]
 inventory_mcp = ["*.html", "*.css"]
 vulnerability_mcp = ["*.html", "*.css"]
 

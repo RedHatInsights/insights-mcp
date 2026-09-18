@@ -1,4 +1,4 @@
-"""Resolve tool RBAC requirements at runtime from bundled manifest and live sources."""
+"""Resolve tool RBAC requirements at runtime from the rest map and live OpenAPI."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any
 
-from insights_mcp.rbac.data_files import load_role_recommendations, load_upstream_permissions_index
 from insights_mcp.rbac.manifest import ToolRbacCall
+from insights_mcp.rbac.permissions import permission_set_satisfied
 from insights_mcp.rbac.requirements_format import PermissionRequirements, RequirementResolution
 
 PERMISSION_RE = re.compile(
@@ -22,37 +22,12 @@ _openapi_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 _OPENAPI_TTL_SECONDS = 3600
 
 
-def _split_permission(permission: str) -> tuple[str, str, str]:
-    parts = permission.split(":", 2)
-    if len(parts) == 3:
-        return parts[0], parts[1], parts[2]
-    return permission, "*", "*"
-
-
-def permission_set_satisfied(required_set: tuple[str, ...], held: set[str]) -> bool:
-    """True if every required permission is held directly or through a wildcard."""
-    for required in required_set:
-        if required in held:
-            continue
-        app, resource, verb = _split_permission(required)
-        if f"{app}:*:{verb}" in held or f"{app}:{resource}:*" in held or f"{app}:*:*" in held:
-            continue
-        if f"{app}:*" in held:
-            continue
-        return False
-    return True
-
-
 @dataclass(frozen=True)
 class ResolvedRequirements:
     """RBAC requirements resolved for one tool."""
 
     permissions: PermissionRequirements
     resolution: RequirementResolution
-
-    def to_requirements_dict(self) -> dict[str, Any]:
-        """Serialize for diagnostic output."""
-        return self.permissions.to_diagnostic_dict(extra=self.resolution.to_diagnostic_dict())
 
 
 def _extract_permissions_from_text(text: str) -> list[str]:
@@ -132,7 +107,6 @@ def _permissions_from_call(call: ToolRbacCall) -> PermissionRequirements:
         kessel_permission=call.permissions.kessel_permission,
         kessel_note=call.permissions.kessel_note,
         sources=tuple(call.openapi_sources),
-        recommended_roles=call.permissions.recommended_roles,
         verified=call.permissions.verified,
     )
 
@@ -171,46 +145,20 @@ def _resolve_from_live_openapi(call: ToolRbacCall, spec: dict[str, Any]) -> Reso
         kessel_permission=call.permissions.kessel_permission,
         kessel_note=call.permissions.kessel_note,
         sources=sources,
-        recommended_roles=call.permissions.recommended_roles,
         verified=False,
     )
     return _resolved(permissions, "live_openapi")
-
-
-def _resolve_from_upstream_bundle(call: ToolRbacCall) -> ResolvedRequirements | None:
-    doc = load_upstream_permissions_index()
-    endpoints = doc.get("endpoints", {})
-    base = call.rest.api_path.rstrip("/")
-    path = call.rest.path_template if call.rest.path_template.startswith("/") else f"/{call.rest.path_template}"
-    key = f"{call.rest.method.upper()} {base}{path}"
-    upstream = endpoints.get(key)
-    if not upstream or key.startswith("_"):
-        return None
-    perm_sets = upstream.get("required_v1_permissions", [])
-    permissions = PermissionRequirements(
-        required_v1_permissions=tuple(tuple(p) for p in perm_sets),
-        kessel_permission=upstream.get("kessel_permission", call.permissions.kessel_permission),
-        kessel_note=upstream.get("kessel_note", call.permissions.kessel_note),
-        sources=tuple(call.openapi_sources) + ("bundled:upstream_permissions.json",),
-        recommended_roles=call.permissions.recommended_roles,
-        verified=bool(upstream.get("verified", False)),
-    )
-    return _resolved(permissions, "upstream_bundle")
 
 
 async def resolve_tool_requirements(
     call: ToolRbacCall,
     insights_client: Any | None = None,
 ) -> ResolvedRequirements:
-    """Resolve requirements: bundled verified > upstream bundle > live OpenAPI > bundled partial > unknown."""
+    """Resolve requirements: rest-map verified > live OpenAPI > rest-map partial > unknown."""
     if call.permissions.verified and call.permissions.required_v1_permissions:
         return _resolved(_permissions_from_call(call), "bundled", requirements_unknown=False)
 
-    upstream_resolved = _resolve_from_upstream_bundle(call)
-    if upstream_resolved and upstream_resolved.permissions.required_v1_permissions:
-        return upstream_resolved
-
-    if insights_client is not None:
+    if insights_client is not None and not call.permissions.required_v1_permissions:
         spec = await _fetch_live_openapi(insights_client, call.rest.api_path)
         if spec:
             live = _resolve_from_live_openapi(call, spec)
@@ -226,25 +174,13 @@ async def resolve_tool_requirements(
         kessel_permission=call.permissions.kessel_permission,
         kessel_note=call.permissions.kessel_note,
         sources=tuple(call.openapi_sources),
-        recommended_roles=call.permissions.recommended_roles,
         verified=False,
     )
     return _resolved(unknown_permissions, "unknown", requirements_unknown=True)
 
 
-def roles_covering_missing(
-    missing: list[str],
-    held: list[str],
-) -> list[str]:
-    """Suggest roles using bundled rbac-config data."""
-    if not missing:
-        return []
-    role_map = load_role_recommendations()
-    held_set = set(held)
-    suggestions: list[str] = []
-    for role_name, role_perms in role_map.items():
-        available = held_set | set(role_perms)
-        if permission_set_satisfied(tuple(missing), available):
-            if role_name not in suggestions:
-                suggestions.append(role_name)
-    return suggestions
+__all__ = [
+    "ResolvedRequirements",
+    "permission_set_satisfied",
+    "resolve_tool_requirements",
+]
