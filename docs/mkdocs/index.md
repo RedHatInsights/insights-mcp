@@ -482,7 +482,7 @@ lola install rh-lightspeed-mcp-skills -a claude-code
 lola install rh-lightspeed-mcp-skills -a gemini-cli
 ```
 
-Available skills are in the [`.agents/skills/`](.agents/skills/) directory.
+Available skills are in the [`.agents/skills/`](https://github.com/RedHatInsights/insights-mcp/blob/main/.agents/skills/) directory.
 
 ## Examples
 

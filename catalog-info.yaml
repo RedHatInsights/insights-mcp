@@ -172,7 +172,7 @@ spec:
       description: "List all RBAC permissions for the authenticated MCP caller (paginated fetch)."
     - type: tool
       name: rbac__lookup_tool_requirements
-      description: "Return the documented authorization requirements for an MCP tool."
+      description: "Return the console role names required for an MCP tool."
     # remediations
     - type: tool
       name: remediations__create_vuln_playbook
