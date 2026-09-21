@@ -86,7 +86,8 @@ not this refresh-token flow.
 ## RBAC roles and rest map
 
 MCP tools map to REST endpoints and required v1 permission strings in
-[`configs/tool_rest_map.json`](https://github.com/RedHatInsights/insights-mcp/blob/main/configs/tool_rest_map.json). At runtime,
+[`configs/tool_rest_map.json`](https://github.com/RedHatInsights/insights-mcp/blob/main/configs/tool_rest_map.json) (symlink to the
+packaged file `src/insights_mcp/rbac/data/tool_rest_map.json`). At runtime,
 `rbac__lookup_tool_requirements` and `rbac__explain_access_denied` map those
 permissions to Hybrid Cloud Console **role display names** (least-privilege
 set cover). The live catalog is `GET /api/rbac/v1/roles/`; if that fails, the
