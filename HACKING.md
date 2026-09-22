@@ -433,6 +433,7 @@ make run-stdio
 ### Additional info
 
 You can set the environment variable `IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK` to `True` to avoid adding a hint to newly created image builder blueprints.
+You can set the environment variable `INSIGHTS_MCP_DISABLE_VERSION_CHECK` or `LIGHTSPEED_MCP_DISABLE_VERSION_CHECK` to `True` to make `get_mcp_version` return only the locally installed version without making GitHub requests.
 
 
 ## Hosted MCP Server with Auth Provider (HTTP transport)
