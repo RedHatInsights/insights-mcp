@@ -403,7 +403,18 @@
       {
         "method": "GET",
         "api_path": "api/roadmap/v1",
-        "path_template": "/lifecycle/appstreams",
+        "path_template": "/lifecycle/app-streams/{major}",
+        "application": "roadmap",
+        "required_v1_permissions": [
+          [
+            "roadmap:lifecycle:read"
+          ]
+        ]
+      },
+      {
+        "method": "GET",
+        "api_path": "api/roadmap/v1",
+        "path_template": "/lifecycle/app-streams/streams",
         "application": "roadmap",
         "required_v1_permissions": [
           [
@@ -443,7 +454,7 @@
       {
         "method": "GET",
         "api_path": "api/roadmap/v1",
-        "path_template": "/relevant/appstreams",
+        "path_template": "/relevant/lifecycle/app-streams",
         "application": "roadmap",
         "required_v1_permissions": [
           [
