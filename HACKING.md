@@ -508,7 +508,7 @@ To start the PipelineRun, add a new comment in a pull-request with content `/ok-
 
 If a test fails, add a new comment in a pull-request with content `/retest` to re-run the test.
 
-For more detailed information about running a PipelineRun, please refer to Pipelines as Code documentation [Running the PipelineRun](https://pipelinesascode.com/docs/guide/running/)
+For more detailed information about running a PipelineRun, please refer to Pipelines as Code documentation [Running the PipelineRun](https://pipelinesascode.com/docs/guides/running-pipelines/)
 
 To customize the proposed PipelineRuns after merge, please refer to [Build Pipeline customization](https://konflux-ci.dev/docs/building/customizing-the-build/)
 
