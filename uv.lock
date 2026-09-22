@@ -1463,6 +1463,7 @@ dev = [
     { name = "llama-index-llms-openai" },
     { name = "llama-index-llms-openai-like" },
     { name = "llama-index-tools-mcp" },
+    { name = "llama-index-workflows" },
     { name = "mkdocs-techdocs-core" },
     { name = "mypy" },
     { name = "packaging" },
@@ -1496,6 +1497,7 @@ requires-dist = [
     { name = "llama-index-llms-openai", marker = "extra == 'dev'" },
     { name = "llama-index-llms-openai-like", marker = "extra == 'dev'" },
     { name = "llama-index-tools-mcp", marker = "extra == 'dev'" },
+    { name = "llama-index-workflows", marker = "extra == 'dev'", specifier = ">=2.24.1" },
     { name = "mkdocs-techdocs-core", marker = "extra == 'dev'" },
     { name = "mypy", marker = "extra == 'dev'" },
     { name = "packaging", marker = "extra == 'dev'" },
@@ -2022,16 +2024,16 @@ wheels = [
 
 [[package]]
 name = "llama-index-workflows"
-version = "2.24.0"
+version = "2.24.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "llama-index-instrumentation" },
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/15/0a/0519ddd431154d586fb457cfebe6995e59b3a25cc6e56de457ec44b1a225/llama_index_workflows-2.24.0.tar.gz", hash = "sha256:1fa744e342ad6b8134e371a9ce01be2af18f6229dcfb5d28ff942097699e6690", size = 140674, upload-time = "2026-09-16T20:25:37.772Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/af/45/6568b521b4f677dde84d4b1f754b5a4c5d18f2a34e59577b1b840a2288cd/llama_index_workflows-2.24.1.tar.gz", hash = "sha256:e154a501211885fb8df429f2fee466c4fb03771f9244263b8e35713997a879cd", size = 140896, upload-time = "2026-09-20T22:40:24.629Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f7/33/3005ad4414c5731b050cba9d08a4963c8f559f51d1aba7925135f7713c8e/llama_index_workflows-2.24.0-py3-none-any.whl", hash = "sha256:93cef332822f7c00d85e1bcd7de5321c824e52871e3ae41dacc934a2e15c35ad", size = 168709, upload-time = "2026-09-16T20:25:36.583Z" },
+    { url = "https://files.pythonhosted.org/packages/24/51/3fc96a2b299f53f663e0fb5cf780583e9d026e3c4b14bfbf16c153f05f1a/llama_index_workflows-2.24.1-py3-none-any.whl", hash = "sha256:e525bbc9b3b5e4dbeaba7809303c1034521a8a3a98d13cc6f972e96438155e43", size = 168943, upload-time = "2026-09-20T22:40:23.195Z" },
 ]
 
 [[package]]
@@ -4030,8 +4032,8 @@ name = "secretstorage"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cryptography" },
-    { name = "jeepney" },
+    { name = "cryptography", marker = "python_full_version >= '3.15' or sys_platform != 'win32'" },
+    { name = "jeepney", marker = "python_full_version >= '3.15' or sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/1c/03/e834bcd866f2f8a49a85eaff47340affa3bfa391ee9912a952a1faa68c7b/secretstorage-3.5.0.tar.gz", hash = "sha256:f04b8e4689cbce351744d5537bf6b1329c6fc68f91fa666f60a380edddcd11be", size = 19884, upload-time = "2025-11-23T19:02:53.191Z" }
 wheels = [

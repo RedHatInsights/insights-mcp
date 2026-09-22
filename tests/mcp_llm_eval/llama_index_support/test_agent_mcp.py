@@ -1,6 +1,11 @@
 """Unit tests for MCPAgentWrapper helpers."""
 
-from mcp_llm_eval.llama_index_support.agent_mcp import format_user_message_with_mcp_instructions
+from llama_index.core.llms.mock import MockLLM
+from llama_index.core.workflow import Context
+from mcp_llm_eval.llama_index_support.agent_mcp import (
+    ToolRequiredFunctionAgent,
+    format_user_message_with_mcp_instructions,
+)
 
 
 def test_format_user_message_with_mcp_instructions_empty_instructions():
@@ -18,3 +23,18 @@ def test_format_user_message_with_mcp_instructions_prepends_sections():
     assert formatted.startswith("## MCP server instructions\n")
     assert "Always call get_blueprints first." in formatted
     assert formatted.endswith("## User request\nList blueprints")
+
+
+def test_tool_required_function_agent_context_does_not_raise():
+    """Workflow Context must accept FunctionAgent subclasses (unhashable Pydantic models)."""
+    agent = ToolRequiredFunctionAgent(
+        name="MCP Agent",
+        description="Agent with MCP tools",
+        system_prompt=None,
+        llm=MockLLM(),
+        tools=[],
+        streaming=False,
+        allow_parallel_tool_calls=False,
+    )
+    context = Context(agent)
+    assert context is not None
