@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -27,6 +28,19 @@ def test_node_display_id_without_py_marker():
     """Node ids without a .py:: marker keep the last path component."""
     assert atif_export.node_display_id("tests/foo.py") == "foo.py"
     assert atif_export.node_display_id("TestClass::test_one") == "TestClass::test_one"
+
+
+def test_node_test_id_strips_pytest_param_block() -> None:
+    """Unparametrized test id is Class::test without the trailing param brackets."""
+    display_id = "TestAdvisorLLMPrompts::test_llm_eval[kb_article_impact-Granite 4h tiny]"
+    assert atif_export.node_test_id(display_id) == "TestAdvisorLLMPrompts::test_llm_eval"
+    assert atif_export.node_test_id("TestAdvisorLLMPrompts::test_llm_eval") == ("TestAdvisorLLMPrompts::test_llm_eval")
+
+
+def test_utc_timestamp_has_millisecond_precision() -> None:
+    """ATIF timestamps are ISO-8601 UTC with milliseconds so Phoenix can order steps."""
+    timestamp = atif_export.utc_timestamp()
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z", timestamp)
 
 
 def test_trace_export_disabled_reads_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -127,8 +141,30 @@ class ToolCallResult:  # pylint: disable=too-few-public-methods
 class AgentOutput:  # pylint: disable=too-few-public-methods
     """Test double whose class name matches LlamaIndex workflow AgentOutput."""
 
-    def __init__(self, content: str) -> None:
-        self.response = SimpleNamespace(content=content, blocks=[])
+    def __init__(
+        self,
+        content: str,
+        tool_calls: list[Any] | None = None,
+        raw: Any = None,
+    ) -> None:
+        self.response = SimpleNamespace(content=content, blocks=[], additional_kwargs={})
+        self.tool_calls = tool_calls or []
+        self.raw = raw
+
+
+class AgentStream:  # pylint: disable=too-few-public-methods
+    """Test double whose class name matches LlamaIndex workflow AgentStream."""
+
+    def __init__(self, thinking_delta: str | None = None, delta: str = "") -> None:
+        self.thinking_delta = thinking_delta
+        self.delta = delta
+
+
+class AgentInput:  # pylint: disable=too-few-public-methods
+    """Test double whose class name matches LlamaIndex workflow AgentInput."""
+
+    def __init__(self, messages: list[Any]) -> None:
+        self.input = messages
 
 
 def _builder() -> atif_export.AtifTrajectoryBuilder:
@@ -258,6 +294,125 @@ def test_tool_definitions_from_tools_uses_metadata() -> None:
             },
         }
     ]
+
+
+def test_atif_session_id_shared_across_params_of_same_test() -> None:
+    """Parametrized nodes of one test function share a Phoenix session/trace id."""
+    run_id = "20260923150944"
+    first = atif_export.atif_session_id(
+        run_id, "TestAdvisorLLMPrompts::test_llm_eval[kb_article_impact-Granite 4h tiny]"
+    )
+    second = atif_export.atif_session_id(
+        run_id, "TestAdvisorLLMPrompts::test_llm_eval[top_critical_issues-Granite 4h tiny]"
+    )
+    other_test = atif_export.atif_session_id(
+        run_id, "TestInventoryLLMPrompts::test_llm_eval[open_inventory_dashboard-Granite 4h tiny]"
+    )
+    assert first == second
+    assert first == f"{run_id}::TestAdvisorLLMPrompts::test_llm_eval"
+    assert other_test != first
+
+
+def test_atif_builder_session_id_per_test_keeps_testrun_folder_id() -> None:
+    """ATIF session_id is per test function; extra.testrun stays the fourteen-digit run folder."""
+    run_id = "20260923150944"
+    first = _builder()
+    first.session_id = atif_export.atif_session_id(run_id, "TestA::test[one]")
+    first.trajectory_id = "TestA::test[one]"
+    first.testrun = run_id
+    first.begin_turn("prompt-a")
+    first.consume_event(AgentOutput("ok-a"))
+    second = _builder()
+    second.session_id = atif_export.atif_session_id(run_id, "TestA::test[two]")
+    second.trajectory_id = "TestA::test[two]"
+    second.testrun = run_id
+    second.begin_turn("prompt-b")
+    second.consume_event(AgentOutput("ok-b"))
+    first_trajectory = first.finish(pytest_outcome="passed")
+    second_trajectory = second.finish(pytest_outcome="passed")
+    assert first_trajectory["session_id"] == second_trajectory["session_id"]
+    assert first_trajectory["trajectory_id"] != second_trajectory["trajectory_id"]
+    assert first_trajectory["extra"]["testrun"] == run_id
+    assert second_trajectory["extra"]["testrun"] == run_id
+
+
+def test_atif_builder_thinking_delta_becomes_reasoning_content() -> None:
+    """AgentStream thinking_delta chunks concatenate onto the next agent step."""
+    builder = _builder()
+    builder.begin_turn("why is this flagged")
+    builder.consume_event(AgentStream(thinking_delta="Check the "))
+    builder.consume_event(AgentStream(thinking_delta="KB article."))
+    builder.consume_event(AgentOutput("Here is the recommendation."))
+    trajectory = builder.finish(pytest_outcome="passed")
+    agent_step = trajectory["steps"][1]
+    assert agent_step["reasoning_content"] == "Check the KB article."
+    assert agent_step["message"] == "Here is the recommendation."
+
+
+def test_atif_builder_agent_input_recorded_as_llm_input() -> None:
+    """AgentInput messages are stored on the agent step extra.llm_input."""
+    builder = _builder()
+    builder.begin_turn("## MCP server instructions\nBe careful.\n\n## User request\nlist rules")
+    builder.consume_event(
+        AgentInput(
+            [
+                SimpleNamespace(role="system", content="You are a helper", blocks=[]),
+                SimpleNamespace(
+                    role="user",
+                    content="## MCP server instructions\nBe careful.\n\n## User request\nlist rules",
+                    blocks=[],
+                ),
+            ]
+        )
+    )
+    builder.consume_event(AgentOutput("calling tools next"))
+    trajectory = builder.finish(pytest_outcome="passed")
+    llm_input = trajectory["steps"][1]["extra"]["llm_input"]
+    assert llm_input == [
+        {"role": "system", "content": "You are a helper"},
+        {
+            "role": "user",
+            "content": "## MCP server instructions\nBe careful.\n\n## User request\nlist rules",
+        },
+    ]
+
+
+def test_atif_builder_usage_tokens_become_step_metrics() -> None:
+    """OpenAI-like usage on AgentOutput.raw maps to ATIF metrics token fields."""
+    builder = _builder()
+    builder.begin_turn("prompt")
+    builder.consume_event(
+        AgentOutput(
+            "done",
+            raw={"usage": {"prompt_tokens": 128, "completion_tokens": 17}},
+        )
+    )
+    trajectory = builder.finish(pytest_outcome="passed")
+    assert trajectory["steps"][1]["metrics"] == {"prompt_tokens": 128, "completion_tokens": 17}
+
+
+def test_atif_builder_empty_output_with_tools_still_flushes() -> None:
+    """A tool round is recorded even when AgentOutput has no assistant prose."""
+    builder = _builder()
+    builder.begin_turn("kb article")
+    builder.consume_event(
+        AgentOutput(
+            "",
+            tool_calls=[
+                SimpleNamespace(
+                    tool_id="c1",
+                    tool_name="advisor__get_rule_from_node_id",
+                    tool_kwargs={"node_id": 1},
+                )
+            ],
+        )
+    )
+    trajectory = builder.finish(pytest_outcome="passed")
+    agent_steps = [step for step in trajectory["steps"] if step["source"] == "agent"]
+    assert len(agent_steps) == 1
+    assert agent_steps[0]["message"] == ""
+    assert agent_steps[0]["tool_calls"][0]["function_name"] == "advisor__get_rule_from_node_id"
+    assert agent_steps[0]["tool_calls"][0]["arguments"] == {"node_id": 1}
 
 
 def test_write_atif_json_round_trip(tmp_path: Path) -> None:

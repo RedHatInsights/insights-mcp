@@ -12,6 +12,7 @@ import pytest_asyncio
 
 from .atif_export import (
     AtifTrajectoryBuilder,
+    atif_session_id,
     default_logs_dir,
     ensure_phoenix_ready,
     node_display_id,
@@ -115,13 +116,14 @@ def _attach_atif_recorder(item: pytest.Item, agent: MCPAgentWrapper) -> None:
     display_id = node_display_id(item.nodeid)
     test_file, test_line = _item_test_location(item)
     agent.atif_recorder = AtifTrajectoryBuilder(
-        session_id=run_id,
+        session_id=atif_session_id(run_id, display_id),
         trajectory_id=display_id,
         pytest_node_id=item.nodeid,
         model_name=agent.model_id,
         tool_definitions=tool_definitions_from_tools(agent.tools),
         test_file=test_file,
         test_line=test_line,
+        testrun=run_id,
     )
     item.stash[_ATIF_AGENT] = agent
 

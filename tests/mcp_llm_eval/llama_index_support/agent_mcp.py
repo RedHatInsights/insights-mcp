@@ -344,10 +344,10 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         tool_collector = WorkflowToolCallCollector()
         self.context = Context(self.agent)
         if self.atif_recorder is not None:
-            self.atif_recorder.begin_turn(user_msg)
+            self.atif_recorder.begin_turn(agent_user_msg)
         for attempt in range(2):
             if attempt > 0 and self.atif_recorder is not None:
-                self.atif_recorder.reset_turn(user_msg)
+                self.atif_recorder.reset_turn(agent_user_msg)
             tool_collector.clear()
             self._step_names = []
             response = await self._run_workflow_attempt(agent_user_msg, max_iterations, tool_collector)

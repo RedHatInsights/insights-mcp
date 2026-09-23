@@ -19,7 +19,7 @@ except ImportError:  # pragma: no cover - optional runtime dependency
 
 DISABLE_TRACE_EXPORT_ENV = "INSIGHTS_MCP_DISABLE_TRACE_EXPORT"
 PHOENIX_COLLECTOR_ENDPOINT_ENV = "PHOENIX_COLLECTOR_ENDPOINT"
-PHOENIX_PROJECT_PREFIX = "insights-mcp-"
+PHOENIX_PROJECT_PREFIX = "insights-mcp-test-"
 ATIF_SCHEMA_VERSION = "ATIF-v1.7"
 FAILED_PYTEST_OUTCOMES = frozenset({"failed", "error"})
 _TRUTHY_ENV_VALUES = frozenset({"1", "true", "yes", "on"})
@@ -114,13 +114,31 @@ def node_display_id(node_id: str) -> str:
     return node_id.rsplit("/", 1)[-1]
 
 
+def node_test_id(display_id: str) -> str:
+    """Return ``Class::test`` without a trailing pytest param block.
+
+    Args:
+        display_id: ``Class::test[params]`` from ``node_display_id``.
+
+    Returns:
+        Unparametrized test id. Unchanged when there is no ``[...]`` suffix.
+    """
+    if display_id.endswith("]"):
+        bracket = display_id.rfind("[")
+        if bracket > 0:
+            return display_id[:bracket]
+    return display_id
+
+
 def utc_timestamp() -> str:
     """Return the current UTC time as an ATIF timestamp.
 
     Returns:
-        ISO-8601 UTC timestamp with a ``Z`` suffix.
+        ISO-8601 UTC timestamp with millisecond precision and a ``Z`` suffix.
     """
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    now = datetime.now(timezone.utc)
+    millisecond = now.microsecond // 1000
+    return now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{millisecond:03d}Z"
 
 
 def session_run_id() -> str:
@@ -130,6 +148,22 @@ def session_run_id() -> str:
         ``YYYYMMDDhhmmss`` in UTC.
     """
     return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+
+
+def atif_session_id(run_id: str, display_id: str) -> str:
+    """Return an ATIF session id shared by all params of one pytest test function.
+
+    Phoenix derives trace_id from session_id. Parametrized nodes of the same
+    ``Class::test`` share a trace; AGENT roots stay distinct via trajectory_id.
+
+    Args:
+        run_id: Fourteen-digit testrun id (YYYYMMDDhhmmss).
+        display_id: ``Class::test[params]`` from ``node_display_id``.
+
+    Returns:
+        ``{run_id}::{Class::test}``.
+    """
+    return f"{run_id}::{node_test_id(display_id)}"
 
 
 def _trajectory_extra(trajectory: dict[str, Any]) -> dict[str, Any]:
@@ -295,20 +329,127 @@ def _tool_output_content(tool_output: Any) -> str:
     return dumped
 
 
-def _response_message_text(event: Any) -> str:
-    """Extract assistant text from an ``AgentOutput``-like event."""
-    response = getattr(event, "response", None)
-    if response is None:
+def _message_text(message: Any) -> str:
+    """Extract display text from a chat message or similar object."""
+    if message is None:
         return ""
-    content = getattr(response, "content", None)
+    content = getattr(message, "content", None)
     if isinstance(content, str) and content:
         return content
     texts: list[str] = []
-    for block in getattr(response, "blocks", None) or []:
+    for block in getattr(message, "blocks", None) or []:
         text = getattr(block, "text", None)
         if text:
             texts.append(str(text))
-    return "\n".join(texts)
+    if texts:
+        return "\n".join(texts)
+    if isinstance(message, str):
+        return message
+    return ""
+
+
+def _response_message_text(event: Any) -> str:
+    """Extract assistant text from an ``AgentOutput``-like event."""
+    return _message_text(getattr(event, "response", None))
+
+
+def _role_name(role: Any) -> str:
+    """Return a chat role string from an enum or plain value."""
+    if role is None:
+        return ""
+    value = getattr(role, "value", role)
+    return str(value)
+
+
+def _serialize_llm_input(messages: Any) -> list[dict[str, str]]:
+    """Serialize ``AgentInput.input`` chat messages to role/content dicts."""
+    serialized: list[dict[str, str]] = []
+    for message in messages or []:
+        serialized.append(
+            {
+                "role": _role_name(getattr(message, "role", "")),
+                "content": _message_text(message),
+            }
+        )
+    return serialized
+
+
+def _int_token_count(value: Any) -> int | None:
+    """Return a non-boolean int token count, or None if missing/invalid."""
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return None
+
+
+def _token_count(container: Any, *names: str) -> int | None:
+    """Read the first present token-count field from a dict or object."""
+    for name in names:
+        if isinstance(container, dict):
+            value = container.get(name)
+        else:
+            value = getattr(container, name, None)
+        parsed = _int_token_count(value)
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _usage_container(obj: Any) -> Any:
+    """Return a usage mapping/object nested under ``usage``, or ``obj`` itself."""
+    if obj is None:
+        return None
+    nested = obj.get("usage") if isinstance(obj, dict) else getattr(obj, "usage", None)
+    if nested is not None:
+        return nested
+    prompt_tokens = _token_count(obj, "prompt_tokens")
+    completion_tokens = _token_count(obj, "completion_tokens")
+    if prompt_tokens is not None or completion_tokens is not None:
+        return obj
+    return None
+
+
+def _usage_from_event(event: Any) -> dict[str, int] | None:
+    """Extract OpenAI-like prompt/completion tokens from an agent event.
+
+    Args:
+        event: ``AgentOutput`` (or stream event) with optional ``raw`` usage.
+
+    Returns:
+        Metrics dict with only fields the provider supplied, or None.
+    """
+    candidates = (
+        getattr(event, "raw", None),
+        getattr(getattr(event, "response", None), "raw", None),
+        getattr(getattr(event, "response", None), "additional_kwargs", None),
+        getattr(event, "additional_kwargs", None),
+    )
+    for candidate in candidates:
+        usage = _usage_container(candidate)
+        if usage is None:
+            continue
+        metrics: dict[str, int] = {}
+        prompt_tokens = _token_count(usage, "prompt_tokens")
+        completion_tokens = _token_count(usage, "completion_tokens")
+        if prompt_tokens is not None:
+            metrics["prompt_tokens"] = prompt_tokens
+        if completion_tokens is not None:
+            metrics["completion_tokens"] = completion_tokens
+        if metrics:
+            return metrics
+    return None
+
+
+def _tool_call_dict(event: Any) -> dict[str, Any]:
+    """Map a ToolCall event or ToolSelection to an ATIF tool_call object."""
+    return {
+        "tool_call_id": str(getattr(event, "tool_id", "")),
+        "function_name": str(getattr(event, "tool_name", "")),
+        "arguments": dict(getattr(event, "tool_kwargs", None) or {}),
+    }
 
 
 class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
@@ -324,8 +465,10 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         tool_definitions: list[dict[str, Any]],
         test_file: str,
         test_line: int,
+        testrun: str | None = None,
     ) -> None:
         self.session_id = session_id
+        self.testrun = testrun if testrun is not None else session_id
         self.trajectory_id = trajectory_id
         self.pytest_node_id = pytest_node_id
         self.model_name = model_name
@@ -336,18 +479,21 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         self._turn_start_index = 0
         self._pending_tool_calls: list[dict[str, Any]] = []
         self._pending_observations: list[dict[str, Any]] = []
+        self._pending_thinking = ""
+        self._pending_llm_input: list[dict[str, str]] = []
+        self._pending_metrics: dict[str, int] = {}
         self._outcome = "passed"
         self._status_message = ""
 
     def has_steps(self) -> bool:
         """Return True when at least one ATIF step has been recorded."""
-        return bool(self._steps) or bool(self._pending_tool_calls)
+        return bool(self._steps) or bool(self._pending_tool_calls) or bool(self._pending_thinking.strip())
 
     def begin_turn(self, user_msg: str) -> None:
         """Start a user turn, flushing any pending agent step first.
 
         Args:
-            user_msg: Prompt sent to the agent (without MCP instruction prefix).
+            user_msg: Prompt actually sent to the agent, including MCP instructions when injected.
         """
         self._flush_pending_agent_step("")
         self._turn_start_index = len(self._steps)
@@ -359,8 +505,7 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         Args:
             user_msg: Prompt sent to the agent.
         """
-        self._pending_tool_calls = []
-        self._pending_observations = []
+        self._clear_pending_agent_state()
         self._steps = self._steps[: self._turn_start_index]
         self.begin_turn(user_msg)
 
@@ -371,19 +516,16 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
             event: LlamaIndex workflow event or a test double with the same class name.
         """
         event_name = type(event).__name__
+        if event_name == "AgentInput":
+            self._consume_agent_input(event)
+            return
+        if event_name == "AgentStream":
+            thinking_delta = getattr(event, "thinking_delta", None)
+            if isinstance(thinking_delta, str) and thinking_delta:
+                self._pending_thinking += thinking_delta
+            return
         if event_name == "ToolCall":
-            previous_round_complete = self._pending_tool_calls and (
-                len(self._pending_observations) >= len(self._pending_tool_calls)
-            )
-            if previous_round_complete:
-                self._flush_pending_agent_step("")
-            self._pending_tool_calls.append(
-                {
-                    "tool_call_id": str(getattr(event, "tool_id", "")),
-                    "function_name": str(getattr(event, "tool_name", "")),
-                    "arguments": dict(getattr(event, "tool_kwargs", None) or {}),
-                }
-            )
+            self._consume_tool_call(event)
             return
         if event_name == "ToolCallResult":
             call_id = str(getattr(event, "tool_id", ""))
@@ -395,9 +537,7 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
             )
             return
         if event_name == "AgentOutput":
-            message = _response_message_text(event)
-            if message.strip():
-                self._flush_pending_agent_step(message)
+            self._consume_agent_output(event)
 
     def finish(
         self,
@@ -418,7 +558,7 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         self._outcome = pytest_outcome
         self._status_message = pytest_status_message
         extra = self._common_extra()
-        extra["testrun"] = self.session_id
+        extra["testrun"] = self.testrun
         if pytest_status_message:
             extra["pytest_status_message"] = pytest_status_message
         for step in self._steps:
@@ -455,31 +595,84 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         extra["pytest_outcome"] = self._outcome
         return extra
 
-    def _make_step(
+    def _make_step(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         *,
         source: str,
         message: str,
         tool_calls: list[dict[str, Any]] | None = None,
         observation_results: list[dict[str, Any]] | None = None,
+        reasoning_content: str = "",
+        metrics: dict[str, int] | None = None,
+        llm_input: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
+        extra = self._location_extra()
+        if llm_input:
+            extra["llm_input"] = llm_input
         step: dict[str, Any] = {
             "step_id": len(self._steps) + 1,
             "timestamp": utc_timestamp(),
             "source": source,
             "message": message,
-            "extra": self._location_extra(),
+            "extra": extra,
         }
         if source == "agent":
             step["model_name"] = self.model_name
+        if reasoning_content:
+            step["reasoning_content"] = reasoning_content
+        if metrics:
+            step["metrics"] = metrics
         if tool_calls:
             step["tool_calls"] = tool_calls
         if observation_results:
             step["observation"] = {"results": observation_results}
         return step
 
+    def _pending_round_complete(self) -> bool:
+        return bool(self._pending_tool_calls) and (len(self._pending_observations) >= len(self._pending_tool_calls))
+
+    def _clear_pending_agent_state(self) -> None:
+        self._pending_tool_calls = []
+        self._pending_observations = []
+        self._pending_thinking = ""
+        self._pending_llm_input = []
+        self._pending_metrics = {}
+
+    def _record_tool_call(self, tool_call: dict[str, Any]) -> None:
+        call_id = tool_call.get("tool_call_id", "")
+        if call_id:
+            for existing in self._pending_tool_calls:
+                if existing.get("tool_call_id") == call_id:
+                    return
+        self._pending_tool_calls.append(tool_call)
+
+    def _consume_agent_input(self, event: Any) -> None:
+        if self._pending_round_complete() or self._pending_thinking.strip() or self._pending_metrics:
+            self._flush_pending_agent_step("")
+        self._pending_llm_input = _serialize_llm_input(getattr(event, "input", None))
+
+    def _consume_tool_call(self, event: Any) -> None:
+        if self._pending_round_complete():
+            self._flush_pending_agent_step("")
+        self._record_tool_call(_tool_call_dict(event))
+
+    def _consume_agent_output(self, event: Any) -> None:
+        usage = _usage_from_event(event)
+        if usage:
+            self._pending_metrics.update(usage)
+        for selection in getattr(event, "tool_calls", None) or []:
+            self._record_tool_call(_tool_call_dict(selection))
+        message = _response_message_text(event)
+        has_thinking = bool(self._pending_thinking.strip())
+        if message.strip() or self._pending_tool_calls or has_thinking or self._pending_metrics:
+            self._flush_pending_agent_step(message)
+
     def _flush_pending_agent_step(self, message: str) -> None:
-        if not self._pending_tool_calls and not message.strip():
+        has_message = bool(message.strip())
+        has_tools = bool(self._pending_tool_calls)
+        has_thinking = bool(self._pending_thinking.strip())
+        has_metrics = bool(self._pending_metrics)
+        if not (has_message or has_tools or has_thinking or has_metrics):
             return
         self._steps.append(
             self._make_step(
@@ -487,7 +680,9 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
                 message=message,
                 tool_calls=self._pending_tool_calls or None,
                 observation_results=self._pending_observations or None,
+                reasoning_content=self._pending_thinking,
+                metrics=self._pending_metrics or None,
+                llm_input=self._pending_llm_input or None,
             )
         )
-        self._pending_tool_calls = []
-        self._pending_observations = []
+        self._clear_pending_agent_state()
