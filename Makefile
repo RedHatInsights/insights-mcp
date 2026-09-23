@@ -289,9 +289,8 @@ catalog-info.yaml: catalog-info.base.yaml $(ALL_PYTHON_FILES) Makefile
 catalog-info: catalog-info.yaml ## Regenerate catalog-info.yaml tool primitives
 
 usage.md: $(ALL_PYTHON_FILES) Makefile
-	uv tool install -e .
 	echo '```' > $@
-	$(SCRIPT_NAME) --help >> $@
+	uv run $(SCRIPT_NAME) --help >> $@
 	echo '```' >> $@
 
 toolsets.md: $(ALL_PYTHON_FILES) Makefile
