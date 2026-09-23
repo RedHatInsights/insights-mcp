@@ -22,6 +22,13 @@ def _kcs_entry_to_rule_ref(item: Any) -> dict[str, str]:
 _RULE_LIST_OMIT_FIELDS = ("resolution_set", "reason", "more_info", "generic")
 _RULE_LIST_MAX_LIMIT = 20
 
+_GROUPS_FIELD_DESC = "Workspace names, comma-separated (impacting=true only)."
+_TAGS_FIELD_DESC = "Tags as namespace/key=value, comma-separated (impacting=true only)."
+_IMPACT_IDS_FIELD_DESC = "Comma-separated impact IDs 1-4 (see toolset instructions)."
+_LIKELIHOOD_IDS_FIELD_DESC = "Comma-separated likelihood IDs 1-4 (see toolset instructions)."
+_CATEGORY_IDS_FIELD_DESC = "Comma-separated category IDs 1-4 (see toolset instructions)."
+_RULE_ID_FIELD_DESC = "Recommendation identifier: rule_name|ERROR_KEY."
+
 
 def _slim_rule_list_response(response: dict[str, Any] | str) -> dict[str, Any] | str:
     """Remove detail-only fields from /rule/ list items.
@@ -57,6 +64,10 @@ class AdvisorMCP(InsightsMCP):
                 "This server provides tools to discover and inspect $container_brand_long Advisor "
                 "Recommendations for RHEL.\n"
                 "(A recommendation was formerly called a rule in Red Hat Insights.)\n\n"
+                "Filters: impact/likelihood/category use IDs 1-4 "
+                "(Low, Medium, High, Critical / Availability, Security, Stability, Performance).\n"
+                "rule_id format: rule_name|ERROR_KEY.\n"
+                "List tools omit resolution_set playbooks; call get_rule_details for remediation.\n\n"
                 "$container_brand_long Advisor requires correct RBAC permissions to be able to use the tools. "
                 "Ensure that your\n"
                 "Service Account has at least this role:\n"
@@ -236,129 +247,37 @@ class AdvisorMCP(InsightsMCP):
         self,
         *,
         impacting: Annotated[
-            bool | str | None, Field(True, description="Only show recommendations currently impacting systems.")
+            bool | str | None, Field(True, description="Only recommendations currently impacting systems.")
         ],
-        incident: Annotated[
-            bool | str | None, Field(None, description="Only show recommendations that cause incidents.")
-        ],
+        incident: Annotated[bool | str | None, Field(None, description="Only recommendations that cause incidents.")],
         has_automatic_remediation: Annotated[
             bool | str | None,
-            Field(
-                None,
-                description="Only show recommendations that have a playbook for automatic remediation.",
-            ),
+            Field(None, description="Only recommendations with an automatic remediation playbook."),
         ],
-        impact: Annotated[
-            str | None,
-            Field(
-                None,
-                description="Impact level filter as comma-separated string, Example: '1,2,3'. "
-                "Accepted values: 1 (Low), 2 (Medium), 3 (High), 4 (Critical). "
-                "Use only these exact values: 1, 2, 3, or 4.",
-            ),
-        ],
-        likelihood: Annotated[
-            str | None,
-            Field(
-                None,
-                description="Likelihood level filter as comma-separated string, Example: '1,2,3'. "
-                "Accepted values: 1 (Low), 2 (Medium), 3 (High), 4 (Very High). "
-                "Use only these exact values: 1, 2, 3, or 4.",
-            ),
-        ],
-        category: Annotated[
-            str | None,
-            Field(
-                None,
-                description=(
-                    "Recommendation category filter as comma-separated string, Example: '1,2,3'. "
-                    "Accepted values: 1 (Availability), 2 (Security), 3 (Stability), 4 (Performance). "
-                ),
-            ),
-        ],
+        impact: Annotated[str | None, Field(None, description=_IMPACT_IDS_FIELD_DESC)],
+        likelihood: Annotated[str | None, Field(None, description=_LIKELIHOOD_IDS_FIELD_DESC)],
+        category: Annotated[str | None, Field(None, description=_CATEGORY_IDS_FIELD_DESC)],
         reboot: Annotated[
             bool | str | None,
-            Field(None, description="Filter recommendations that require a reboot to fix."),
+            Field(None, description="Only recommendations that require a reboot to fix."),
         ],
         sort: Annotated[
             str,
             Field(
                 "-total_risk",
-                description="Sort field as comma-separated string. Example: '-total_risk,rule_id'. "
-                "Available fields: category, description, impact, impacted_count, likelihood, "
-                "playbook_count, publish_date, resolution_risk, rule_id, total_risk. "
-                "Use '-' prefix for descending order.",
+                description="Sort fields; prefix '-' for descending. Default: -total_risk.",
             ),
         ],
-        offset: Annotated[
-            int,
-            Field(
-                0,
-                description="Pagination offset to skip specified number of results. Used with limit.",
-            ),
-        ],
-        limit: Annotated[
-            int,
-            Field(
-                10,
-                description=(
-                    "Pagination: Maximum number of results per page (capped at 20 per request). "
-                    "Use offset to page through larger result sets."
-                ),
-            ),
-        ],
-        groups: Annotated[
-            str | list[str] | None,
-            Field(
-                None,
-                description=(
-                    "Filter based on workspace names. Comma separated list of workspace names."
-                    "Used only when impacting=True. "
-                    "Example: 'workspace1,workspace2'"
-                ),
-            ),
-        ],
-        tags: Annotated[
-            str | list[str] | None,
-            Field(
-                None,
-                description=(
-                    "Filter based on system tags. Accepts a single tag or a comma-separated list."
-                    "Used only when impacting=True. "
-                    "Tag format: 'namespace/key=value'. "
-                    "Example: 'satellite/group=database-servers,insights-client/security=strict'"
-                ),
-            ),
-        ],
+        offset: Annotated[int, Field(0, description="Pagination offset.")],
+        limit: Annotated[int, Field(10, description="Page size (max 20).")],
+        groups: Annotated[str | list[str] | None, Field(None, description=_GROUPS_FIELD_DESC)],
+        tags: Annotated[str | list[str] | None, Field(None, description=_TAGS_FIELD_DESC)],
     ) -> dict[str, Any] | str:
-        """Get active Advisor Recommendations for your account that help identify issues
-        affecting system availability, stability, performance, or security.
+        """Get active Advisor Recommendations affecting system health, security, or performance.
 
-        Use filters to find recommendations by impact level, likelihood, systems affected, workspace, tags,
-        and automatic remediation availability. Higher impact/likelihood values indicate more critical issues.
-
-        List responses omit remediation templates (resolution_set, reason, more_info, generic).
-        Call get_rule_details with a rule_id for full remediation steps and playbook content.
-
-        impacting=true (default) returns recommendations currently affecting your systems.
-        impacting=false returns the global recommendation catalog and is usually not what users want.
-
-        Impact levels: 1=Low, 2=Medium, 3=High (Important), 4=Critical.
-
-        Call examples:
-            Standard call: {"impacting": true, "offset": 0, "limit": 20}
-            High risk only: {"impacting": true, "impact": "3,4", "likelihood": "3,4"}
-            Pagination: {"offset": 20, "limit": 20}
-            With automatic remediation: {"has_automatic_remediation": true}
-            Security and Performance categories: {"category": "2,4"}
-            Reboot required: {"reboot": true}
-            Sorted by total risk: {"sort": "-total_risk"}
-            For workspaces 'workspace1': {"impacting": true, "groups": "workspace1"}
-            For systems tagged 'database-servers': {
-                "impacting": true,
-                "tags": ["insights-client/group=database-servers"]
-            }
-        """  # pylint: disable=line-too-long
+        Lists omit playbooks; use get_rule_details for remediation. impacting=true (default) is
+        usually preferred; impacting=false returns the global catalog.
+        """
 
         # Parameter validation and conversion
 
@@ -430,17 +349,10 @@ class AdvisorMCP(InsightsMCP):
         *,
         node_id: Annotated[
             int,
-            Field(description="Node ID of the knowledge base article or solution. Example: 123456"),
+            Field(description="Knowledge base article or solution node ID."),
         ],
     ) -> list[dict[str, str]] | None:
-        """Find Advisor Recommendations related to a specific Knowledge Base article or solution.
-
-        Use this when you have a Knowledge Base article or solution ID and want to find
-        corresponding Advisor Recommendations that provide system-specific remediation steps.
-
-        Call examples:
-            Standard call: {"node_id": 123456}
-        """
+        """Find Advisor Recommendations linked to a Knowledge Base article or solution ID."""
 
         try:
             response = await self.insights_client.get(f"kcs/{node_id}/")
@@ -456,21 +368,9 @@ class AdvisorMCP(InsightsMCP):
     async def get_rule_details(
         self,
         *,
-        rule_id: Annotated[
-            str,
-            Field(description="Recommendation identifier in format: rule_name|ERROR_KEY."),
-        ],
+        rule_id: Annotated[str, Field(description=_RULE_ID_FIELD_DESC)],
     ) -> dict[str, Any] | str:
-        """Get detailed information about a specific Advisor Recommendation, including
-        impact level, likelihood, remediation steps, and related knowledge base articles.
-
-        This is the only Advisor list/detail tool that returns full resolution_set playbook
-        templates, reason, more_info, and generic text. Use get_active_rules to discover
-        recommendations, then call this tool for remediation details.
-
-        Call Examples:
-            Standard call: {"rule_id": "xfs_with_md_raid_hang|XFS_WITH_MD_RAID_HANG_ISSUE_DEFAULT_KERNEL"}
-        """
+        """Get full Advisor Recommendation details including remediation playbooks (resolution_set)."""
         if not rule_id or not isinstance(rule_id, str) or "|" not in rule_id:
             raise InsightsApiError("Error: Recommendation ID must be a non-empty string in format rule_name|ERROR_KEY.")
 
@@ -489,19 +389,9 @@ class AdvisorMCP(InsightsMCP):
     async def get_hosts_hitting_a_rule(
         self,
         *,
-        rule_id: Annotated[
-            str,
-            Field(description="Recommendation identifier in format: rule_name|ERROR_KEY."),
-        ],
+        rule_id: Annotated[str, Field(description=_RULE_ID_FIELD_DESC)],
     ) -> dict[str, Any] | str:
-        """Get all RHEL systems affected by a specific Advisor Recommendation.
-
-        Shows which systems in your infrastructure have the issue identified
-        by this recommendation. Use this to understand the scope of impact.
-
-        Call Examples:
-            Standard call: {"rule_id": "xfs_with_md_raid_hang|XFS_WITH_MD_RAID_HANG_ISSUE_DEFAULT_KERNEL"}
-        """
+        """List RHEL systems affected by a specific Advisor Recommendation."""
         if not rule_id or not isinstance(rule_id, str) or "|" not in rule_id:
             raise InsightsApiError("Error: Recommendation ID must be a non-empty string.")
 
@@ -519,39 +409,18 @@ class AdvisorMCP(InsightsMCP):
     async def get_hosts_details_for_rule(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
         self,
         *,
-        rule_id: Annotated[
-            str,
-            Field(description="Recommendation identifier in format: rule_name|ERROR_KEY."),
-        ],
-        limit: Annotated[
-            int,
-            Field(10, description="Pagination: Maximum number of results per page."),
-        ],
-        offset: Annotated[
-            int,
-            Field(0, description="Pagination offset to skip specified number of results. Used with limit."),
-        ],
+        rule_id: Annotated[str, Field(description=_RULE_ID_FIELD_DESC)],
+        limit: Annotated[int, Field(10, description="Page size.")],
+        offset: Annotated[int, Field(0, description="Pagination offset.")],
         rhel_version: Annotated[
             str | list[str] | None,
             Field(
                 None,
-                description="Filter systems by RHEL version. Accepts a comma-separated string or a list. "
-                "Allowed values: 6.0-6.10, 7.0-7.10, 8.0-8.10, 9.0-9.8, 10.0-10.2. Example: '9.3,9.4,9.5'",
+                description="RHEL major.minor versions, comma-separated (e.g. 9.4). Invalid values are rejected.",
             ),
         ],
     ) -> dict[str, Any] | str:
-        """Get detailed information about RHEL systems affected by a specific Advisor Recommendation.
-
-        Returns paginated system details with comprehensive information about each affected system,
-        including system identification, impact metrics, RHEL version, and last seen timestamps.
-        Each system entry contains hit counts categorized by severity level and incident status.
-
-        Call examples:
-            Standard call: {"rule_id": "xfs_with_md_raid_hang|XFS_WITH_MD_RAID_HANG_ISSUE_DEFAULT_KERNEL"}
-            With pagination: {"rule_id": "rule_id", "limit": 20, "offset": 0}
-            Filter by RHEL version: {"rule_id": "rule_id", "rhel_version": "9.4"}
-            Combined filters: {"rule_id": "rule_id", "limit": 50, "offset": 20, "rhel_version": "8.9"}
-        """
+        """Get paginated detailed information about systems affected by an Advisor Recommendation."""
         if not rule_id or not isinstance(rule_id, str) or "|" not in rule_id:
             raise InsightsApiError("Error: Recommendation ID must be a non-empty string.")
 
@@ -650,18 +519,11 @@ class AdvisorMCP(InsightsMCP):
     async def get_rule_by_text_search(
         self,
         *,
-        text: Annotated[
-            str,
-            Field(description="The text substring to search for. Example: 'xfs'"),
-        ],
+        text: Annotated[str, Field(description="Text substring to search for.")],
     ) -> dict[str, Any] | str:
-        """Finds Advisor Recommendations that contain an exact text substring.
+        """Find Advisor Recommendations containing an exact text substring.
 
-        List responses omit remediation templates (resolution_set, reason, more_info, generic).
-        Call get_rule_details with a rule_id for full remediation steps and playbook content.
-
-        Call examples:
-            Standard call: {"text": "xfs"}
+        Lists omit playbooks; use get_rule_details for remediation.
         """
         sanitized_text = text.strip()
         if not sanitized_text:
@@ -677,37 +539,10 @@ class AdvisorMCP(InsightsMCP):
     async def get_recommendations_stats(
         self,
         *,
-        groups: Annotated[
-            str | list[str] | None,
-            Field(
-                None,
-                description=(
-                    "Filter based on workspace names. Comma separated list of workspace names."
-                    "Used only when impacting=True. "
-                    "Example: 'workspace1,workspace2'"
-                ),
-            ),
-        ],
-        tags: Annotated[
-            str | list[str] | None,
-            Field(
-                None,
-                description=(
-                    "Filter based on system tags. Accepts a single tag or a comma-separated list."
-                    "Used only when impacting=True. "
-                    "Tag format: 'namespace/key=value'. "
-                    "Example: 'satellite/group=database-servers,insights-client/security=strict'"
-                ),
-            ),
-        ],
+        groups: Annotated[str | list[str] | None, Field(None, description=_GROUPS_FIELD_DESC)],
+        tags: Annotated[str | list[str] | None, Field(None, description=_TAGS_FIELD_DESC)],
     ) -> dict[str, Any] | str:
-        """Show statistics of recommendations across categories and risks.
-
-        Call examples:
-            Standard call showing all recommendations: {}
-            Statistics for the workspace 'workspace1': {"groups": "workspace1"}
-            Statistics for systems tagged 'insights-client/security=strict': {"tags": "insights-client/security=strict"}
-        """
+        """Show statistics of recommendations across categories and risks."""
         params: dict[str, str] = {}
 
         if groups is not None:

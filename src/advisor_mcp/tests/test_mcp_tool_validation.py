@@ -8,6 +8,13 @@ from typing import Any
 
 import pytest
 
+from advisor_mcp.server import (
+    _GROUPS_FIELD_DESC,
+    _IMPACT_IDS_FIELD_DESC,
+    _RULE_ID_FIELD_DESC,
+    _TAGS_FIELD_DESC,
+)
+
 # Import the test pattern functions from top-level tests
 from tests.test_patterns import (  # pylint: disable=import-error
     assert_mcp_tool_descriptions_and_annotations,
@@ -21,47 +28,40 @@ from tests.test_patterns import (  # pylint: disable=import-error
     [
         (
             "advisor__get_active_rules",
-            "Get active Advisor Recommendations for your account that help identify issues",
+            "Get active Advisor Recommendations affecting system health, security, or performance.",
             {
                 "impacting": {
-                    "description": "Only show recommendations currently impacting systems.",
+                    "description": "Only recommendations currently impacting systems.",
                     "default": True,
                     "type": None,
                     "anyOf": [{"type": "boolean"}, {"type": "string"}, {"type": "null"}],
                 },
                 "impact": {
-                    "description": "Impact level filter as comma-separated string, Example: '1,2,3'. "
-                    "Accepted values: 1 (Low), 2 (Medium), 3 (High), 4 (Critical). "
-                    "Use only these exact values: 1, 2, 3, or 4.",
+                    "description": _IMPACT_IDS_FIELD_DESC,
                     "default": None,
                     "type": None,
                     "anyOf": [{"type": "string"}, {"type": "null"}],
                 },
                 "incident": {
-                    "description": "Only show recommendations that cause incidents.",
+                    "description": "Only recommendations that cause incidents.",
                     "default": None,
                     "type": None,
                     "anyOf": [{"type": "boolean"}, {"type": "string"}, {"type": "null"}],
                 },
                 "has_automatic_remediation": {
-                    "description": "Only show recommendations that have a playbook for automatic remediation.",
+                    "description": "Only recommendations with an automatic remediation playbook.",
                     "default": None,
                     "type": None,
                     "anyOf": [{"type": "boolean"}, {"type": "string"}, {"type": "null"}],
                 },
                 "reboot": {
-                    "description": "Filter recommendations that require a reboot to fix.",
+                    "description": "Only recommendations that require a reboot to fix.",
                     "default": None,
                     "type": None,
                     "anyOf": [{"type": "boolean"}, {"type": "string"}, {"type": "null"}],
                 },
                 "tags": {
-                    "description": (
-                        "Filter based on system tags. Accepts a single tag or a comma-separated list."
-                        "Used only when impacting=True. "
-                        "Tag format: 'namespace/key=value'. "
-                        "Example: 'satellite/group=database-servers,insights-client/security=strict'"
-                    ),
+                    "description": _TAGS_FIELD_DESC,
                     "default": None,
                     "type": None,
                     "anyOf": [{"type": "string"}, {"items": {"type": "string"}, "type": "array"}, {"type": "null"}],
@@ -70,10 +70,10 @@ from tests.test_patterns import (  # pylint: disable=import-error
         ),
         (
             "advisor__get_rule_details",
-            "Get detailed information about a specific Advisor Recommendation, including",
+            "Get full Advisor Recommendation details including remediation playbooks (resolution_set).",
             {
                 "rule_id": {
-                    "description": "Recommendation identifier in format: rule_name|ERROR_KEY.",
+                    "description": _RULE_ID_FIELD_DESC,
                     "default": None,
                     "type": "string",
                     "anyOf": None,
@@ -82,10 +82,10 @@ from tests.test_patterns import (  # pylint: disable=import-error
         ),
         (
             "advisor__get_rule_from_node_id",
-            "Find Advisor Recommendations related to a specific Knowledge Base article or solution.",
+            "Find Advisor Recommendations linked to a Knowledge Base article or solution ID.",
             {
                 "node_id": {
-                    "description": "Node ID of the knowledge base article or solution. Example: 123456",
+                    "description": "Knowledge base article or solution node ID.",
                     "default": None,
                     "type": "integer",
                     "anyOf": None,
@@ -94,10 +94,10 @@ from tests.test_patterns import (  # pylint: disable=import-error
         ),
         (
             "advisor__get_hosts_hitting_a_rule",
-            "Get all RHEL systems affected by a specific Advisor Recommendation.",
+            "List RHEL systems affected by a specific Advisor Recommendation.",
             {
                 "rule_id": {
-                    "description": "Recommendation identifier in format: rule_name|ERROR_KEY.",
+                    "description": _RULE_ID_FIELD_DESC,
                     "default": None,
                     "type": "string",
                     "anyOf": None,
@@ -106,23 +106,24 @@ from tests.test_patterns import (  # pylint: disable=import-error
         ),
         (
             "advisor__get_hosts_details_for_rule",
-            "Get detailed information about RHEL systems affected by a specific Advisor Recommendation.",
+            "Get paginated detailed information about systems affected by an Advisor Recommendation.",
             {
                 "rule_id": {
-                    "description": "Recommendation identifier in format: rule_name|ERROR_KEY.",
+                    "description": _RULE_ID_FIELD_DESC,
                     "default": None,
                     "type": "string",
                     "anyOf": None,
                 },
                 "limit": {
-                    "description": "Pagination: Maximum number of results per page.",
+                    "description": "Page size.",
                     "default": 10,
                     "type": "integer",
                     "anyOf": None,
                 },
                 "rhel_version": {
-                    "description": "Filter systems by RHEL version. Accepts a comma-separated string or a list. "
-                    "Allowed values: 6.0-6.10, 7.0-7.10, 8.0-8.10, 9.0-9.8, 10.0-10.2. Example: '9.3,9.4,9.5'",
+                    "description": (
+                        "RHEL major.minor versions, comma-separated (e.g. 9.4). Invalid values are rejected."
+                    ),
                     "default": None,
                     "type": None,
                     "anyOf": [{"type": "string"}, {"items": {"type": "string"}, "type": "array"}, {"type": "null"}],
@@ -131,10 +132,10 @@ from tests.test_patterns import (  # pylint: disable=import-error
         ),
         (
             "advisor__get_rule_by_text_search",
-            "Finds Advisor Recommendations that contain an exact text substring.",
+            "Find Advisor Recommendations containing an exact text substring.",
             {
                 "text": {
-                    "description": "The text substring to search for. Example: 'xfs'",
+                    "description": "Text substring to search for.",
                     "default": None,
                     "type": "string",
                     "anyOf": None,
@@ -146,18 +147,13 @@ from tests.test_patterns import (  # pylint: disable=import-error
             "Show statistics of recommendations across categories and risks.",
             {
                 "groups": {
-                    "description": "Filter based on workspace names. Comma separated list of workspace names."
-                    "Used only when impacting=True. "
-                    "Example: 'workspace1,workspace2'",
+                    "description": _GROUPS_FIELD_DESC,
                     "default": None,
                     "type": None,
                     "anyOf": [{"type": "string"}, {"items": {"type": "string"}, "type": "array"}, {"type": "null"}],
                 },
                 "tags": {
-                    "description": "Filter based on system tags. Accepts a single tag or a comma-separated list."
-                    "Used only when impacting=True. "
-                    "Tag format: 'namespace/key=value'. "
-                    "Example: 'satellite/group=database-servers,insights-client/security=strict'",
+                    "description": _TAGS_FIELD_DESC,
                     "default": None,
                     "type": None,
                     "anyOf": [{"type": "string"}, {"items": {"type": "string"}, "type": "array"}, {"type": "null"}],
