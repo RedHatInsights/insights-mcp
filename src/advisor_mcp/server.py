@@ -12,6 +12,13 @@ from insights_mcp.errors import InsightsApiError
 from insights_mcp.mcp import InsightsMCP
 
 
+def _kcs_entry_to_rule_ref(item: Any) -> dict[str, str]:
+    """Split a KCS retrieve string into rule_id (last path segment) and original url."""
+    if not isinstance(item, str):
+        raise InsightsApiError(f"expected a KCS URL string, got {type(item).__name__}: {item!r}")
+    return {"rule_id": item.rsplit("/", 1)[-1], "url": item}
+
+
 class AdvisorMCP(InsightsMCP):
     """MCP server for $container_brand_long Advisor Recommendations integration.
 
@@ -396,7 +403,7 @@ class AdvisorMCP(InsightsMCP):
             int,
             Field(description="Node ID of the knowledge base article or solution. Example: 123456"),
         ],
-    ) -> dict[str, Any] | list[str] | str:
+    ) -> list[dict[str, str]] | None:
         """Find Advisor Recommendations related to a specific Knowledge Base article or solution.
 
         Use this when you have a Knowledge Base article or solution ID and want to find
@@ -408,10 +415,14 @@ class AdvisorMCP(InsightsMCP):
 
         try:
             response = await self.insights_client.get(f"kcs/{node_id}/")
-            return response
         except Exception as e:  # pylint: disable=broad-except
             self.logger.error("Failed to retrieve recommendation for node ID %s: %s", node_id, str(e))
             raise InsightsApiError(f"Error: Failed to retrieve recommendation for node ID {node_id}: {str(e)}") from e
+        if response is None:
+            return None
+        if not isinstance(response, list):
+            raise InsightsApiError(f"expected a list of KCS URL strings, got {type(response).__name__}: {response!r}")
+        return [_kcs_entry_to_rule_ref(item) for item in response]
 
     async def get_rule_details(
         self,

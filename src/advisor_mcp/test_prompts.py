@@ -20,9 +20,11 @@ PROMPTS = TestScenarioRegistry(
                     "I saw a Knowledge Base Article https://access.redhat.com/articles/6464541; "
                     "does any of my systems are affected by the issue it describes?"
                 ),
-                expected_tools=("advisor__get_rule_from_node_id", "advisor__get_active_rules"),
+                required_tools=("advisor__get_rule_from_node_id",),
+                expected_tools=("advisor__get_hosts_hitting_a_rule", "advisor__get_active_rules"),
             ),
         ),
+        threshold=0,
     ),
     auto_remediation_rules=TestScenario(
         turns=(

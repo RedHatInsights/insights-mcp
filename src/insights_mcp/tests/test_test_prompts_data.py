@@ -97,7 +97,7 @@ def test_collect_markdown_prompts_deduplicates() -> None:
 
 
 def test_registry_rejects_entry_without_tools() -> None:
-    with pytest.raises(ValueError, match="TestScenario must contain at least one expected tool"):
+    with pytest.raises(ValueError, match="TestScenario must contain at least one required or expected tool"):
         TestScenarioRegistry(
             empty_tools=TestScenario(
                 turns=(
@@ -119,4 +119,4 @@ def test_registry_requires_entries() -> None:
 def test_all_scenarios_declare_expected_tools(module_name: str) -> None:
     registry = load_registry(module_name)
     for scenario in registry.iter_test_scenarios():
-        assert any(turn.expected_tools for turn in scenario.turns)
+        assert any(turn.required_tools or turn.expected_tools for turn in scenario.turns)
