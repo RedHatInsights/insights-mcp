@@ -70,6 +70,12 @@ class TestCliArguments:
         "insights-mcp": {
             "get_mcp_version",
         },
+        "rbac": {
+            "rbac__explain_access_denied",
+            "rbac__get_caller_access",
+            "rbac__get_caller_access_all",
+            "rbac__lookup_tool_requirements",
+        },
         "image-builder": {
             "image-builder__get_openapi",
             "image-builder__create_blueprint",
@@ -135,16 +141,18 @@ class TestCliArguments:
 
     @pytest.mark.parametrize("transport", ["stdio"])
     def test_image_builder_toolset_only(self, transport: str):
-        """Test that when --toolset=image-builder, only image-builder tools are available."""
+        """Test that --toolset=image-builder includes image-builder and always-available tools."""
         tools = get_mcp_tools_with_toolset(transport, toolset="image-builder")
         tool_names = {getattr(t.metadata, "name", "") for t in tools}
 
-        # Should only have image-builder tools
+        # Should have image-builder tools plus the always-available tools.
         image_builder_tools = {name for name in tool_names if name.startswith("image-builder__")}
         non_image_builder_tools = {name for name in tool_names if not name.startswith("image-builder__")}
-        # also remove insights-mcp tools from non_image_builder_tools
+        # Remove always-available tools from the selected-toolset comparison.
         non_image_builder_tools = {
-            name for name in non_image_builder_tools if name not in self.EXPECTED_TOOLS["insights-mcp"]
+            name
+            for name in non_image_builder_tools
+            if name not in self.EXPECTED_TOOLS["insights-mcp"] | self.EXPECTED_TOOLS["rbac"]
         }
 
         assert image_builder_tools, f"Expected image-builder tools. Available: {tool_names}"
@@ -152,30 +160,31 @@ class TestCliArguments:
 
         # Verify specific image-builder tools are present
         expected_tools = {"image-builder__get_blueprints", "image-builder__get_composes"}
-        # insights-mcp tools are always available
-        expected_tools.update(self.EXPECTED_TOOLS["insights-mcp"])
+        # insights-mcp and RBAC tools are always available.
+        expected_tools.update(self.EXPECTED_TOOLS["insights-mcp"] | self.EXPECTED_TOOLS["rbac"])
         missing_tools = expected_tools - tool_names
         assert not missing_tools, f"Missing expected image-builder tools: {missing_tools}"
 
     @pytest.mark.parametrize("transport", ["stdio"])
     def test_inventory_toolset_only(self, transport: str):
-        """Test that when --toolset=inventory, only inventory tools are available."""
+        """Test that --toolset=inventory includes inventory and always-available tools."""
         tools = get_mcp_tools_with_toolset(transport, toolset="inventory")
         tool_names = {getattr(t.metadata, "name", "") for t in tools}
 
-        # Should only have inventory tools
+        # Should have inventory tools plus the always-available tools.
         inventory_tools = {name for name in tool_names if name.startswith("inventory__")}
         non_inventory_tools = {name for name in tool_names if not name.startswith("inventory__")}
-        # also remove insights-mcp tools from non_inventory_tools
+        # Remove always-available tools from the selected-toolset comparison.
         non_inventory_tools = {name for name in non_inventory_tools if name not in self.EXPECTED_TOOLS["insights-mcp"]}
+        non_inventory_tools -= self.EXPECTED_TOOLS["rbac"]
 
         assert inventory_tools, f"Expected inventory tools. Available: {tool_names}"
         assert not non_inventory_tools, f"Expected only inventory tools, but found: {non_inventory_tools}"
 
         # Verify specific inventory tools are present
         expected_tools = set(self.EXPECTED_TOOLS["inventory"])
-        # insights-mcp tools are always available
-        expected_tools.update(self.EXPECTED_TOOLS["insights-mcp"])
+        # insights-mcp and RBAC tools are always available.
+        expected_tools.update(self.EXPECTED_TOOLS["insights-mcp"] | self.EXPECTED_TOOLS["rbac"])
         missing_tools = expected_tools - tool_names
         assert not missing_tools, f"Missing expected inventory tools: {missing_tools}"
 
@@ -185,14 +194,14 @@ class TestCliArguments:
         tools = get_mcp_tools_with_toolset(transport, toolset="image-builder, inventory")
         tool_names = {getattr(t.metadata, "name", "") for t in tools}
 
-        # Should have both image-builder and inventory tools
+        # Should have both selected toolsets plus the always-available tools.
         image_builder_tools = {name for name in tool_names if name.startswith("image-builder__")}
         inventory_tools = {name for name in tool_names if name.startswith("inventory__")}
         other_tools = {
             name for name in tool_names if not name.startswith("image-builder__") and not name.startswith("inventory__")
         }
-        # also remove insights-mcp tools from other_tools
-        other_tools = {name for name in other_tools if name not in self.EXPECTED_TOOLS["insights-mcp"]}
+        # Remove always-available tools from the selected-toolset comparison.
+        other_tools -= self.EXPECTED_TOOLS["insights-mcp"] | self.EXPECTED_TOOLS["rbac"]
 
         assert image_builder_tools, f"Expected image-builder tools. Available: {tool_names}"
         assert inventory_tools, f"Expected inventory tools. Available: {tool_names}"
@@ -203,8 +212,8 @@ class TestCliArguments:
             "image-builder__get_blueprints",
             "inventory__list_hosts",
         }
-        # insights-mcp tools are always available
-        expected_tools.update(self.EXPECTED_TOOLS["insights-mcp"])
+        # insights-mcp and RBAC tools are always available.
+        expected_tools.update(self.EXPECTED_TOOLS["insights-mcp"] | self.EXPECTED_TOOLS["rbac"])
         missing_tools = expected_tools - tool_names
         assert not missing_tools, f"Missing expected tools: {missing_tools}"
 
@@ -255,8 +264,8 @@ class TestCliArguments:
             "remediations__create_vulnerability_playbook",
         }
 
-        # insights-mcp tools are always available
-        readonly_tools.update(self.EXPECTED_TOOLS["insights-mcp"])
+        # insights-mcp and RBAC tools are always available.
+        readonly_tools.update(self.EXPECTED_TOOLS["insights-mcp"] | self.EXPECTED_TOOLS["rbac"])
 
         # Check that all readonly tools are present
         missing_readonly = readonly_tools - tool_names

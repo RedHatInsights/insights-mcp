@@ -55,7 +55,10 @@ Tools marked as read-write **`(rw)`** are excluded by default. Use the `--all-to
 - `list_repositories`: List repositories with filtering and pagination options.
 
 ## rbac
-- `get_all_access`: Get access information for all Red Hat insights applications.
+- `explain_access_denied`: Diagnose a 403 access denial for a specific MCP tool call.
+- `get_caller_access`: Get RBAC access for the authenticated caller for one application.
+- `get_caller_access_all`: List all RBAC permissions for the authenticated MCP caller (paginated fetch).
+- `lookup_tool_requirements`: Return the console role names required for an MCP tool.
 
 ## planning
 - `get_appstreams_lifecycle`: Get Application Streams lifecycle information.

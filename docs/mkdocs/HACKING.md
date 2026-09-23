@@ -83,6 +83,32 @@ not this refresh-token flow.
 - Not listed among the supported authentication methods in [README.md](index.md); may be removed
   in future
 
+## RBAC roles and rest map
+
+MCP tools map to REST endpoints and required v1 permission strings in
+[`configs/tool_rest_map.json`](https://github.com/RedHatInsights/insights-mcp/blob/main/configs/tool_rest_map.json) (symlink to the
+packaged file `src/insights_mcp/rbac/data/tool_rest_map.json`). At runtime,
+`rbac__lookup_tool_requirements` and `rbac__explain_access_denied` map those
+permissions to Hybrid Cloud Console **role display names** (least-privilege
+set cover). The live catalog is `GET /api/rbac/v1/roles/`; if that fails, the
+server falls back to [RedHatInsights/rbac-config](https://github.com/RedHatInsights/rbac-config)
+(`configs/rbac_config_ref.txt`).
+
+README and getting-started skill snippets are generated (do not edit the marker
+blocks by hand):
+
+```bash
+make generate-docs
+```
+
+`scripts/generate_rbac_docs.py` fetches rbac-config and rewrites the
+`<!-- BEGIN GENERATED RBAC ROLES -->` block. The weekly workflow
+`.github/workflows/rbac-manifest-weekly.yaml` runs the same target and opens a
+PR when role names change upstream.
+
+On HTTP 403, call `rbac__explain_access_denied` — it returns **missing role
+names only**. Never invent permission or role names.
+
 ## Architecture
 
 ### Application Structure
