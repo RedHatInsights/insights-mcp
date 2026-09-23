@@ -202,7 +202,7 @@ If you see the error `Some tools have naming issues and may be filtered out.`, s
 start the server:
 
 ```
-podman run --net host --rm ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest http
+podman run -p 127.0.0.1:8000:8000 --rm ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest http --host 0.0.0.0
 ```
 
 then integrate using **service account credentials**:
@@ -327,15 +327,8 @@ To start the integration create a file `~/.gemini/settings.json` with the follow
 start the server:
 
 ```
-podman run --net host --rm ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest http
+podman run -p 127.0.0.1:8000:8000 --rm ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest http --host 0.0.0.0
 ```
-
-> [!NOTE]
-> For podman machine on a mac you will need to set the host explicitly and expose the port
->
-> ```
->   podman run -p 8000:8000 --rm ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest http --host 0.0.0.0
-> ```
 
 then integrate using **service account credentials**:
 
@@ -389,7 +382,7 @@ First off, start the SSE server with `sse` argument:
 ```bash
 export LIGHTSPEED_CLIENT_ID=<YOUR_CLIENT_ID>
 export LIGHTSPEED_CLIENT_SECRET=<YOUR_CLIENT_SECRET>
-podman run --env LIGHTSPEED_CLIENT_ID --env LIGHTSPEED_CLIENT_SECRET --net host --rm ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest sse
+podman run --env LIGHTSPEED_CLIENT_ID --env LIGHTSPEED_CLIENT_SECRET -p 127.0.0.1:9000:9000 --rm ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest sse --host 0.0.0.0
 ```
 
 In the `CLine -> Manage MCP Servers` interface, add a new server name and URL:
