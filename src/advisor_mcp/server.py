@@ -19,6 +19,24 @@ def _kcs_entry_to_rule_ref(item: Any) -> dict[str, str]:
     return {"rule_id": item.rsplit("/", 1)[-1], "url": item}
 
 
+_RULE_LIST_OMIT_FIELDS = ("resolution_set", "reason", "more_info", "generic")
+_RULE_LIST_MAX_LIMIT = 20
+
+
+def _slim_rule_list_response(response: dict[str, Any] | str) -> dict[str, Any] | str:
+    """Remove detail-only fields from /rule/ list items.
+
+    Full remediation text and playbook templates are returned by get_rule_details only.
+    """
+    if not isinstance(response, dict):
+        return response
+    for rule in response.get("data", []):
+        if isinstance(rule, dict):
+            for field in _RULE_LIST_OMIT_FIELDS:
+                rule.pop(field, None)
+    return response
+
+
 class AdvisorMCP(InsightsMCP):
     """MCP server for $container_brand_long Advisor Recommendations integration.
 
@@ -283,7 +301,10 @@ class AdvisorMCP(InsightsMCP):
             int,
             Field(
                 10,
-                description="Pagination: Maximum number of results per page.",
+                description=(
+                    "Pagination: Maximum number of results per page (capped at 20 per request). "
+                    "Use offset to page through larger result sets."
+                ),
             ),
         ],
         groups: Annotated[
@@ -315,6 +336,14 @@ class AdvisorMCP(InsightsMCP):
 
         Use filters to find recommendations by impact level, likelihood, systems affected, workspace, tags,
         and automatic remediation availability. Higher impact/likelihood values indicate more critical issues.
+
+        List responses omit remediation templates (resolution_set, reason, more_info, generic).
+        Call get_rule_details with a rule_id for full remediation steps and playbook content.
+
+        impacting=true (default) returns recommendations currently affecting your systems.
+        impacting=false returns the global recommendation catalog and is usually not what users want.
+
+        Impact levels: 1=Low, 2=Medium, 3=High (Important), 4=Critical.
 
         Call examples:
             Standard call: {"impacting": true, "offset": 0, "limit": 20}
@@ -349,7 +378,7 @@ class AdvisorMCP(InsightsMCP):
 
         params: dict[str, bool | int | str] = {}
         params["offset"] = offset
-        params["limit"] = limit
+        params["limit"] = min(limit, _RULE_LIST_MAX_LIMIT)
 
         if impacting is not None:
             params["impacting"] = impacting
@@ -391,7 +420,7 @@ class AdvisorMCP(InsightsMCP):
 
         try:
             response = await self.insights_client.get("rule/", params=params)
-            return response
+            return _slim_rule_list_response(response)
         except Exception as e:  # pylint: disable=broad-except
             self.logger.error("Error: Failed to retrieve recommendations: %s", str(e))
             raise InsightsApiError(f"Error: Failed to retrieve recommendations: {str(e)}") from e
@@ -434,6 +463,10 @@ class AdvisorMCP(InsightsMCP):
     ) -> dict[str, Any] | str:
         """Get detailed information about a specific Advisor Recommendation, including
         impact level, likelihood, remediation steps, and related knowledge base articles.
+
+        This is the only Advisor list/detail tool that returns full resolution_set playbook
+        templates, reason, more_info, and generic text. Use get_active_rules to discover
+        recommendations, then call this tool for remediation details.
 
         Call Examples:
             Standard call: {"rule_id": "xfs_with_md_raid_hang|XFS_WITH_MD_RAID_HANG_ISSUE_DEFAULT_KERNEL"}
@@ -624,6 +657,9 @@ class AdvisorMCP(InsightsMCP):
     ) -> dict[str, Any] | str:
         """Finds Advisor Recommendations that contain an exact text substring.
 
+        List responses omit remediation templates (resolution_set, reason, more_info, generic).
+        Call get_rule_details with a rule_id for full remediation steps and playbook content.
+
         Call examples:
             Standard call: {"text": "xfs"}
         """
@@ -633,7 +669,7 @@ class AdvisorMCP(InsightsMCP):
 
         try:
             response = await self.insights_client.get("rule/", params={"text": sanitized_text})
-            return response
+            return _slim_rule_list_response(response)
         except Exception as e:  # pylint: disable=broad-except
             self.logger.error("Error: Failed to retrieve recommendations for text search '%s': %s", text, str(e))
             raise InsightsApiError(f"Error: Failed to retrieve recommendations for text search {text}: {str(e)}") from e
