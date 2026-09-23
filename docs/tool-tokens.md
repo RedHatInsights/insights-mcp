@@ -7,13 +7,13 @@ Every row uses `--all-tools` (maximum tools per mode).
 
 | Mode | Tools | Input tokens |
 |------|------:|-------------:|
-| all-tools | 46 | 12588 |
-| advisor | 8 | 2224 |
-| content-sources | 2 | 489 |
-| image-builder | 11 | 1053 |
-| inventory | 10 | 2392 |
-| planning | 7 | 3507 |
-| rbac | 2 | 249 |
-| remediations | 2 | 432 |
-| rhsm | 3 | 424 |
-| vulnerability | 9 | 2482 |
+| all-tools | 49 | 13023 |
+| advisor | 12 | 2827 |
+| content-sources | 6 | 1092 |
+| image-builder | 15 | 1656 |
+| inventory | 14 | 2993 |
+| planning | 11 | 4110 |
+| rbac | 5 | 686 |
+| remediations | 6 | 1035 |
+| rhsm | 7 | 1027 |
+| vulnerability | 13 | 3085 |
