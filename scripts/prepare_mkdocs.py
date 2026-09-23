@@ -21,6 +21,7 @@ PATCHED_SOURCES: dict[Path, Path] = {
 SYMLINK_SOURCES: dict[str, Path] = {
     "usage.md": PROJECT_ROOT / "usage.md",
     "toolsets.md": PROJECT_ROOT / "toolsets.md",
+    "mcp-llm-eval.md": PROJECT_ROOT / "tests" / "mcp_llm_eval" / "README.md",
 }
 
 # Static assets copied into docs/mkdocs/ (MkDocs cannot reliably copy symlinked files).
@@ -41,6 +42,7 @@ def patch_for_mkdocs(content: str) -> str:
     content = content.replace("](docs/architecture-", "](architecture-")
     content = content.replace("](docs/", "](../")
     content = content.replace("](README.md", "](index.md")
+    content = content.replace("](tests/mcp_llm_eval/README.md)", "](mcp-llm-eval.md)")
     content = content.replace("](src/", f"]({GITHUB_BLOB_BASE}/src/")
     for github_anchor, mkdocs_anchor in GITHUB_TO_MKDOCS_ANCHORS.items():
         content = content.replace(f"#{github_anchor}", f"#{mkdocs_anchor}")

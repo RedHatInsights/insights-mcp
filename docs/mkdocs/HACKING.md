@@ -15,7 +15,7 @@ locally by running `make test`.
 
 The toolset LLM tests use the shared `mcp_llm_eval` module. Its API, scenario
 data structures, execution behavior, and consumer fixture contract are
-documented in [`tests/mcp_llm_eval/README.md`](tests/mcp_llm_eval/README.md).
+documented in [`tests/mcp_llm_eval/README.md`](mcp-llm-eval.md).
 
 Although there are tests to use the `main` code, to double check that
 especially handing over environment variables and credentials

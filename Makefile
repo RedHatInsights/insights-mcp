@@ -269,7 +269,7 @@ src/content_sources_mcp/test_prompts.md: src/content_sources_mcp/test_prompts.py
 src/planning_mcp/test_prompts.md: src/planning_mcp/test_prompts.py $(PROMPTS_GENERATOR_DEPS)
 	uv run python scripts/generate_test_prompts.py --module planning_mcp.test_prompts -o $@
 
-prepare-mkdocs: usage.md toolsets.md docs/architecture-structure.svg docs/architecture-deployment.svg README.md HACKING.md ## Prepare MkDocs staging files under docs/mkdocs/
+prepare-mkdocs: usage.md toolsets.md docs/architecture-structure.svg docs/architecture-deployment.svg README.md HACKING.md tests/mcp_llm_eval/README.md ## Prepare MkDocs staging files under docs/mkdocs/
 	uv run python scripts/prepare_mkdocs.py
 
 build-mkdocs: install-test-deps prepare-mkdocs ## Build mkdocs documentation (--strict)
