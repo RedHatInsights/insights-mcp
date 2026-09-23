@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import uuid
-from typing import Any, Optional, Sequence, cast
+from typing import Any, Optional, Sequence
 
 import httpx
 from deepeval.test_case import ToolCall
@@ -11,7 +11,6 @@ from llama_index.core.agent.workflow.function_agent import FunctionAgent
 from llama_index.core.agent.workflow.workflow_events import AgentOutput, AgentWorkflowStartEvent
 from llama_index.core.base.llms.types import ChatResponse, ToolCallBlock
 from llama_index.core.llms import ChatMessage
-from llama_index.core.llms.function_calling import FunctionCallingLLM
 from llama_index.core.memory import Memory
 from llama_index.core.storage.chat_store.sql import MessageStatus
 from llama_index.core.tools import AsyncBaseTool, FunctionTool
@@ -19,8 +18,9 @@ from llama_index.core.workflow import Context
 from llama_index.llms.openai_like import OpenAILike
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 from mcp.shared._httpx_utils import create_mcp_http_client
-from mcp_llm_eval.deepeval_support.tracing import WorkflowToolCallCollector, tools_called_from_agent_run
-from mcp_llm_eval.mcp_jsonrpc import fetch_mcp_instructions_http, fetch_mcp_instructions_stdio
+
+from tests.mcp_llm_eval.deepeval_support.tracing import WorkflowToolCallCollector, tools_called_from_agent_run
+from tests.mcp_llm_eval.mcp_jsonrpc import fetch_mcp_instructions_http, fetch_mcp_instructions_stdio
 
 _MCP_INSTRUCTIONS_HEADER = "## MCP server instructions"
 _USER_REQUEST_HEADER = "## User request"
@@ -108,8 +108,8 @@ class ToolRequiredFunctionAgent(FunctionAgent):
         }
         if self.initial_tool_choice is not None and current_llm_input[-1].role == "user":
             chat_kwargs["tool_choice"] = self.initial_tool_choice
-        function_calling_llm = cast(FunctionCallingLLM, self.llm)
-        return await function_calling_llm.achat_with_tools(**chat_kwargs)
+        llm: Any = self.llm
+        return await getattr(llm, "achat_with_tools")(**chat_kwargs)
 
 
 class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
@@ -272,6 +272,49 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
 
         self.logger.info("📝 Initialized workflow with event streaming for step logging")
 
+    def _log_workflow_event(self, ev: Any) -> None:
+        """Record a workflow stream event name and optionally log its payload."""
+        ev_name = ev.__class__.__name__
+        self._step_names.append(ev_name)
+        if not self.logger or ev_name in ["AgentStream"]:
+            return
+        data_str = f"{ev}"
+        if len(data_str) > 2000:
+            data_str = data_str[:1000] + "\n<… abbreviated log …>\n" + data_str[-1000:]
+        log_function = self.logger.info if ev_name == "ToolCall" else self.logger.debug
+        log_function("📡 Event %s: %s", ev_name, data_str)
+
+    async def _drain_workflow_stream(self, handler: Any, tool_collector: WorkflowToolCallCollector) -> None:
+        """Consume workflow events until the stream ends."""
+        async for ev in handler.stream_events():
+            tool_collector.consume_event(ev)
+            self._log_workflow_event(ev)
+
+    async def _run_workflow_attempt(
+        self,
+        agent_user_msg: str,
+        max_iterations: int,
+        tool_collector: WorkflowToolCallCollector,
+    ) -> Any:
+        """Run one agent workflow and drain its event stream."""
+        if self.agent is None:
+            raise ValueError("Agent not initialized")
+        start_event = AgentWorkflowStartEvent(
+            user_msg=agent_user_msg, memory=self._memory, max_iterations=max_iterations
+        )
+        # the deprecated function is a more generic overload, non-deprecated overload is used during runtime
+        handler = self.agent.run(  # type: ignore[deprecated]
+            ctx=self.context, start_event=start_event
+        )
+        stream_task = asyncio.create_task(self._drain_workflow_stream(handler, tool_collector))
+        try:
+            return await handler
+        finally:
+            try:
+                await asyncio.wait_for(stream_task, timeout=0.5)
+            except asyncio.TimeoutError:
+                stream_task.cancel()
+
     async def execute_with_reasoning(
         self,
         user_msg: str,
@@ -298,40 +341,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         for attempt in range(2):
             tool_collector.clear()
             self._step_names = []
-
-            start_event = AgentWorkflowStartEvent(
-                user_msg=agent_user_msg, memory=self._memory, max_iterations=max_iterations
-            )
-            # the deprecated function is a more generic overload, non-deprecated overload is used during runtime
-            handler = self.agent.run(  # type: ignore[deprecated]
-                ctx=self.context, start_event=start_event
-            )
-
-            async def _stream_events() -> None:
-                async for ev in handler.stream_events():
-                    tool_collector.consume_event(ev)
-                    ev_name = ev.__class__.__name__
-                    self._step_names.append(ev_name)
-                    if self.logger and ev_name not in ["AgentStream"]:
-                        data_str = f"{ev}"
-                        if len(data_str) > 2000:
-                            data_str = data_str[:1000] + "\n<… abbreviated log …>\n" + data_str[-1000:]
-                        if ev_name == "ToolCall":
-                            log_function = self.logger.info
-                        else:
-                            log_function = self.logger.debug
-                        log_function("📡 Event %s: %s", ev_name, data_str)
-
-            stream_task = asyncio.create_task(_stream_events())
-            try:
-                response = await handler
-            except Exception:
-                raise
-            finally:
-                try:
-                    await asyncio.wait_for(stream_task, timeout=0.5)
-                except asyncio.TimeoutError:
-                    stream_task.cancel()
+            response = await self._run_workflow_attempt(agent_user_msg, max_iterations, tool_collector)
 
             attempt_text = _assistant_text_from_handler_response(response)
             if attempt_text.strip():

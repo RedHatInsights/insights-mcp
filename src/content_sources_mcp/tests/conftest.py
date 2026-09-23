@@ -1,13 +1,13 @@
 """Conftest for content_sources_mcp tests."""
 
 import pytest
-from mcp_llm_eval.fixtures import test_agent, verbose_logger
 
 from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 from tests.conftest import (
     llm_api_context,
     mcp_tools,
 )
+from tests.mcp_llm_eval.fixtures import test_agent, verbose_logger
 
 __all__ = [
     "llm_api_context",

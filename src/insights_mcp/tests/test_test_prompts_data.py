@@ -1,15 +1,15 @@
 """Unit tests for test prompt registry helpers."""
 
 import pytest
-from mcp_llm_eval.data import (
+
+from tests.llm_prompt_catalog import TOOLSET_PROMPT_MODULES, load_registry
+from tests.mcp_llm_eval.data import (
     PromptWithTools,
     TestScenario,
     TestScenarioRegistry,
     collect_markdown_prompts,
     format_template_for_markdown,
 )
-
-from tests.llm_prompt_catalog import TOOLSET_PROMPT_MODULES, load_registry
 
 
 def test_prompt_with_tools_and_templates() -> None:

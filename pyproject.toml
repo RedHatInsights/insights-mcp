@@ -79,6 +79,10 @@ vulnerability_mcp = ["*.html", "*.css"]
 [tool.pylint.format]
 max-line-length = 120
 
+[tool.pylint.basic]
+# Test functions are named for pytest collection; they do not need docstrings.
+no-docstring-rgx = "^(_|test_)"
+
 [tool.pylint.messages_control]
 disable = ["fixme"]
 
@@ -108,7 +112,7 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.pytest.ini_options]
-pythonpath = ["src", "scripts", ".", "tests"]
+pythonpath = ["src", "scripts", "."]
 testpaths = ["tests", "src"]
 # Session event loop lets httpx/OpenAI clients finish aclose between parametrized LLM tests.
 asyncio_default_fixture_loop_scope = "session"

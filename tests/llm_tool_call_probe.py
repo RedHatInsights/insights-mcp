@@ -25,7 +25,8 @@ from typing import Any
 
 import pytest
 import requests
-from mcp_llm_eval.utils import load_llm_configurations, should_skip_llm_matrix_tests
+
+from tests.mcp_llm_eval.utils import load_llm_configurations, should_skip_llm_matrix_tests
 
 PROBE_TOOL_NAME = "image-builder__get_blueprints"
 PROBE_USER_MESSAGE = "List my latest 2 blueprints"
@@ -83,6 +84,31 @@ def _build_payload(model_id: str, force_tool: bool) -> dict[str, Any]:
     return payload
 
 
+def _fill_probe_from_response(result: dict[str, Any], response: requests.Response) -> dict[str, Any]:
+    """Parse a chat/completions HTTP response into the probe summary dict."""
+    result["http_status"] = response.status_code
+    if response.status_code != 200:
+        result["error"] = response.text[:2000]
+        return result
+
+    body = response.json()
+    choices = body.get("choices") or []
+    if not choices:
+        result["error"] = f"no choices in response: {json.dumps(body)[:500]}"
+        return result
+
+    message = choices[0].get("message") or {}
+    tool_calls = message.get("tool_calls") or []
+    content = message.get("content") or ""
+    if isinstance(content, list):
+        content = json.dumps(content)
+
+    result["tool_calls"] = tool_calls
+    result["has_tool_calls"] = bool(tool_calls)
+    result["content_preview"] = str(content)[:500]
+    return result
+
+
 def probe_tool_calling(
     llm_config: dict[str, str],
     *,
@@ -113,30 +139,10 @@ def probe_tool_calling(
 
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=timeout)
-        result["http_status"] = response.status_code
-        if response.status_code != 200:
-            result["error"] = response.text[:2000]
-            return result
-
-        body = response.json()
-        choices = body.get("choices") or []
-        if not choices:
-            result["error"] = f"no choices in response: {json.dumps(body)[:500]}"
-            return result
-
-        message = choices[0].get("message") or {}
-        tool_calls = message.get("tool_calls") or []
-        content = message.get("content") or ""
-        if isinstance(content, list):
-            content = json.dumps(content)
-
-        result["tool_calls"] = tool_calls
-        result["has_tool_calls"] = bool(tool_calls)
-        result["content_preview"] = str(content)[:500]
+        return _fill_probe_from_response(result, response)
     except requests.RequestException as exc:
         result["error"] = str(exc)
-
-    return result
+        return result
 
 
 def _print_probe_report(probe: dict[str, Any]) -> None:
@@ -235,26 +241,23 @@ def main(argv: list[str] | None = None) -> int:
 
 @pytest.mark.skipif(should_skip_llm_matrix_tests(), reason="No valid LLM configurations found")
 @pytest.mark.llm
-class TestLLMToolCallProbe:
-    """Live probe: OpenAI-compatible gateways must return tool_calls for the paging prompt."""
-
-    @pytest.mark.parametrize(
-        "llm_config",
-        llm_configurations,
-        ids=[str(config["name"]) for config in llm_configurations],
+@pytest.mark.parametrize(
+    "llm_config",
+    llm_configurations,
+    ids=[str(config["name"]) for config in llm_configurations],
+)
+def test_chat_completions_returns_tool_calls(llm_config: dict[str, str | None]) -> None:
+    typed_config = {
+        "name": str(llm_config["name"]),
+        "MODEL_API": str(llm_config["MODEL_API"]),
+        "MODEL_ID": str(llm_config["MODEL_ID"]),
+        "USER_KEY": str(llm_config["USER_KEY"]),
+    }
+    probe = probe_tool_calling(typed_config)
+    assert probe["http_status"] == 200, probe.get("error") or probe
+    assert probe["has_tool_calls"], (
+        f"expected tool_calls for {typed_config['name']}; got content only: {probe['content_preview']!r}"
     )
-    def test_chat_completions_returns_tool_calls(self, llm_config: dict[str, str | None]) -> None:
-        typed_config = {
-            "name": str(llm_config["name"]),
-            "MODEL_API": str(llm_config["MODEL_API"]),
-            "MODEL_ID": str(llm_config["MODEL_ID"]),
-            "USER_KEY": str(llm_config["USER_KEY"]),
-        }
-        probe = probe_tool_calling(typed_config)
-        assert probe["http_status"] == 200, probe.get("error") or probe
-        assert probe["has_tool_calls"], (
-            f"expected tool_calls for {typed_config['name']}; got content only: {probe['content_preview']!r}"
-        )
 
 
 if __name__ == "__main__":

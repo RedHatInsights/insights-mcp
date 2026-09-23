@@ -13,7 +13,8 @@ import requests
 _MCP_JSON_HEADERS = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
 
 
-def _create_mcp_init_request() -> dict:
+def create_mcp_init_request() -> dict:
+    """Return a JSON-RPC MCP initialize request body."""
     return {
         "jsonrpc": "2.0",
         "id": 1,
@@ -128,6 +129,34 @@ def _server_worker(config: _ServerWorkerConfig, server_queue: multiprocessing.Qu
         server_queue.put(f"error: {exc}")
 
 
+def _wait_for_http_mcp(server_url: str, server_process: multiprocessing.Process, port: int) -> None:
+    """POST MCP initialize until the HTTP server answers, or raise."""
+    if not server_process.is_alive():
+        raise ServerStartupError(
+            f"Server process died before init request to {server_url}. exit code: {server_process.exitcode}"
+        )
+
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(server_url, json=create_mcp_init_request(), headers=_MCP_JSON_HEADERS, timeout=10)
+            if response.status_code == 200:
+                return
+            if attempt == max_retries - 1:
+                raise ServerConnectionError(
+                    f"Server not responding after {max_retries} attempts: "
+                    f"{response.status_code} - {response.text}. "
+                    f"process alive: {server_process.is_alive()}"
+                )
+            time.sleep(2)
+        except requests.exceptions.RequestException as exc:
+            if attempt == max_retries - 1:
+                raise ServerConnectionError(
+                    f"Failed to connect after {max_retries} attempts. URL: {server_url}, port: {port}, error: {exc}"
+                ) from exc
+            time.sleep(2)
+
+
 def start_insights_mcp_server(
     transport: str,
     timeout: int = 30,
@@ -162,36 +191,7 @@ def start_insights_mcp_server(
         time.sleep(3)
 
         if transport == "http":
-            if not server_process.is_alive():
-                raise ServerStartupError(
-                    f"Server process died before init request to {server_url}. exit code: {server_process.exitcode}"
-                )
-
-            max_retries = 5
-            for attempt in range(max_retries):
-                try:
-                    test_request = _create_mcp_init_request()
-                    response = requests.post(server_url, json=test_request, headers=_MCP_JSON_HEADERS, timeout=10)
-
-                    if response.status_code == 200:
-                        break
-
-                    if attempt == max_retries - 1:
-                        raise ServerConnectionError(
-                            f"Server not responding after {max_retries} attempts: "
-                            f"{response.status_code} - {response.text}. "
-                            f"process alive: {server_process.is_alive()}"
-                        )
-
-                    time.sleep(2)
-
-                except requests.exceptions.RequestException as exc:
-                    if attempt == max_retries - 1:
-                        raise ServerConnectionError(
-                            f"Failed to connect after {max_retries} attempts. "
-                            f"URL: {server_url}, port: {port}, error: {exc}"
-                        ) from exc
-                    time.sleep(2)
+            _wait_for_http_mcp(server_url, server_process, port)
 
         return server_url, server_process
 

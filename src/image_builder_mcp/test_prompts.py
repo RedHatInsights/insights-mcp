@@ -1,6 +1,6 @@
 """Single source of truth for image-builder LLM test prompts and example questions."""
 
-from mcp_llm_eval.data import PromptWithTools, TestScenario, TestScenarioRegistry
+from tests.mcp_llm_eval.data import PromptWithTools, TestScenario, TestScenarioRegistry
 
 TOOLSET_TITLE = "Image Builder MCP Test Prompts"
 

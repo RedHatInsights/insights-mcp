@@ -1,9 +1,9 @@
 """Checks on MCP initialize instructions (no LLM calls)."""
 
 import pytest
-from mcp_llm_eval.mcp_jsonrpc import fetch_mcp_instructions_http
 
 from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
+from tests.mcp_llm_eval.mcp_jsonrpc import fetch_mcp_instructions_http
 
 # Claude Code truncates MCP server instructions at 2 KiB.
 MCP_INSTRUCTIONS_RECOMMENDED_MAX_LEN = 2048

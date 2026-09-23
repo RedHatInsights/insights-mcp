@@ -2,7 +2,8 @@
 
 from llama_index.core.llms.mock import MockLLM
 from llama_index.core.workflow import Context
-from mcp_llm_eval.llama_index_support.agent_mcp import (
+
+from .agent_mcp import (
     ToolRequiredFunctionAgent,
     format_user_message_with_mcp_instructions,
 )

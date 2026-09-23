@@ -1,6 +1,6 @@
 """Single source of truth for content-sources LLM test prompts."""
 
-from mcp_llm_eval.data import PromptWithTools, TestScenario, TestScenarioRegistry
+from tests.mcp_llm_eval.data import PromptWithTools, TestScenario, TestScenarioRegistry
 
 TOOLSET_TITLE = "Content Sources MCP Test Prompts"
 

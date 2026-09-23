@@ -4,6 +4,10 @@ import json
 from typing import Any, Dict, List, Optional
 
 import requests
+from mcp import ClientSession
+from mcp.client.stdio import StdioServerParameters, stdio_client
+
+from insights_mcp.mcp_subprocess import create_mcp_init_request
 
 # Used by MCP HTTP transport (JSON-RPC and SSE payloads).
 DEFAULT_JSON_HEADERS = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
@@ -30,20 +34,6 @@ def parse_mcp_response(response_text: str) -> Dict[str, Any]:
                 except json.JSONDecodeError:
                     continue
         raise ValueError(f"No valid JSON found in response: {response_text}") from exc
-
-
-def create_mcp_init_request() -> dict:
-    """Create standard MCP initialization request."""
-    return {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "initialize",
-        "params": {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {},
-            "clientInfo": {"name": "test-client", "version": "1.0.0"},
-        },
-    }
 
 
 def fetch_mcp_instructions_http(
@@ -75,9 +65,6 @@ def fetch_mcp_instructions_http(
 
 async def fetch_mcp_instructions_stdio(command: str, args: List[str]) -> str:
     """Return MCP ``initialize`` ``instructions`` from a stdio MCP server subprocess."""
-    from mcp import ClientSession
-    from mcp.client.stdio import StdioServerParameters, stdio_client
-
     server_parameters = StdioServerParameters(command=command, args=args)
     async with stdio_client(server_parameters) as (read, write):
         async with ClientSession(read, write) as session:

@@ -1,7 +1,8 @@
 # `mcp_llm_eval`
 
-`mcp_llm_eval` is the reusable LLM-evaluation harness for MCP toolsets. It is
-currently a test-only module under this repository's `tests/` directory.
+`tests.mcp_llm_eval` is the reusable LLM-evaluation harness for MCP toolsets.
+It lives under this repository's `tests/` directory and is not installed with
+the application package.
 
 This document describes the public scenario model, how scenarios are executed,
 and the fixtures that a consuming project must provide.
@@ -115,7 +116,7 @@ it with keyword arguments; the keyword is the stable `prompt_id` used in pytest
 IDs and log messages:
 
 ```python
-from mcp_llm_eval.data import PromptWithTools, TestScenario, TestScenarioRegistry
+from tests.mcp_llm_eval.data import PromptWithTools, TestScenario, TestScenarioRegistry
 
 PROMPTS = TestScenarioRegistry(
     list_hosts=TestScenario(
@@ -144,8 +145,8 @@ Each toolset defines `PROMPTS` and creates a pytest class with the shared
 generator:
 
 ```python
-from mcp_llm_eval.data import PromptWithTools, TestScenario, TestScenarioRegistry
-from mcp_llm_eval.generators import create_test_suite
+from tests.mcp_llm_eval.data import PromptWithTools, TestScenario, TestScenarioRegistry
+from tests.mcp_llm_eval.generators import create_test_suite
 
 PROMPTS = TestScenarioRegistry(
     list_hosts=TestScenario(
@@ -214,7 +215,7 @@ The consuming project registers the generic fixtures from its pytest
 configuration:
 
 ```python
-pytest_plugins = ("mcp_llm_eval.fixtures",)
+pytest_plugins = ("tests.mcp_llm_eval.fixtures",)
 ```
 
 It must provide these fixtures:

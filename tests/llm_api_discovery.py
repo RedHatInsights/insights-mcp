@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
 from typing import Any
 
 from insights_mcp.client import InsightsClient
@@ -47,59 +46,9 @@ def _first_item_id(items: list[dict[str, Any]], *keys: str) -> str | None:
     return None
 
 
-@dataclass
-class LlmApiContext:
-    """Resolved placeholder values from live Insights APIs (optional per field)."""
-
-    cve_id: str | None = None
-    system_id: str | None = None
-    host_id: str | None = None
-    hostname: str | None = None
-    host_ids: str | None = None
-    rule_id: str | None = None
-    workspace: str | None = None
-    satellite_tag: str | None = None
-    rbac_username: str | None = None
-    _extra: dict[str, str] = field(default_factory=dict)
-
-    def available_keys(self) -> frozenset[str]:
-        """Return placeholder names that have non-empty values."""
-        keys: set[str] = set()
-        for name in (
-            "cve_id",
-            "system_id",
-            "host_id",
-            "hostname",
-            "host_ids",
-            "rule_id",
-            "workspace",
-            "satellite_tag",
-            "rbac_username",
-        ):
-            if getattr(self, name):
-                keys.add(name)
-        keys.update(self._extra.keys())
-        return frozenset(keys)
-
-    def as_dict(self) -> dict[str, str]:
-        """Mapping for str.format on prompt templates."""
-        result: dict[str, str] = {}
-        for name in (
-            "cve_id",
-            "system_id",
-            "host_id",
-            "hostname",
-            "host_ids",
-            "rule_id",
-            "workspace",
-            "satellite_tag",
-            "rbac_username",
-        ):
-            value = getattr(self, name)
-            if value:
-                result[name] = value
-        result.update(self._extra)
-        return result
+def _nonempty_placeholders(**values: str | None) -> dict[str, str]:
+    """Drop unset discovery results so prompt formatting only sees real values."""
+    return {key: value for key, value in values.items() if value}
 
 
 async def _client_for_api_path(api_path: str) -> InsightsClient:
@@ -184,7 +133,7 @@ async def discover_rule_id(client: InsightsClient) -> str | None:
     return _first_item_id(_api_data(response), "rule_id")
 
 
-async def discover_rbac_username(client: InsightsClient) -> str | None:
+async def discover_rbac_username() -> str | None:
     """Return the service account username derived from credentials."""
     client_id, _ = _insights_credentials()
     if client_id:
@@ -192,23 +141,22 @@ async def discover_rbac_username(client: InsightsClient) -> str | None:
     return None
 
 
-async def build_llm_api_context() -> LlmApiContext:
-    """Populate context from live APIs (fields stay None when discovery fails)."""
+async def build_llm_api_context() -> dict[str, str]:
+    """Populate placeholder values from live APIs (omit a key when discovery fails)."""
     workspace = os.getenv("INSIGHTS_TEST_WORKSPACE") or None
 
     vuln_client = await _client_for_api_path("api/vulnerability/v1")
     inventory_client = await _client_for_api_path("api/inventory/v1")
     advisor_client = await _client_for_api_path("api/insights/v1")
-    rbac_client = await _client_for_api_path("api/rbac/v1")
 
     cve_id = await discover_cve_id(vuln_client)
     system_id = await discover_system_id_for_cve(vuln_client, cve_id) if cve_id else None
     host_id, hostname, host_ids = await discover_inventory_hosts(inventory_client)
     satellite_tag = await discover_satellite_tag(inventory_client, host_id) if host_id else None
     rule_id = await discover_rule_id(advisor_client)
-    rbac_username = await discover_rbac_username(rbac_client)
+    rbac_username = await discover_rbac_username()
 
-    return LlmApiContext(
+    return _nonempty_placeholders(
         cve_id=cve_id,
         system_id=system_id,
         host_id=host_id,

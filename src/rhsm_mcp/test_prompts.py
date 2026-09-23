@@ -1,6 +1,6 @@
 """Single source of truth for RHSM LLM test prompts."""
 
-from mcp_llm_eval.data import PromptWithTools, TestScenario, TestScenarioRegistry
+from tests.mcp_llm_eval.data import PromptWithTools, TestScenario, TestScenarioRegistry
 
 TOOLSET_TITLE = "Red Hat Subscription Management (RHSM) MCP Test Prompts"
 

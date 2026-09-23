@@ -112,6 +112,10 @@ class TestScenarioRegistry:
             _ScenarioRecord.from_scenario(prompt_id, value) for prompt_id, value in entries.items()
         )
 
+    def __len__(self) -> int:
+        """Number of registered scenarios."""
+        return len(self._records)
+
     def iter_test_scenarios(self) -> list[PromptTestScenario]:
         """Return unresolved scenarios for LLM tests."""
         return [

@@ -1,6 +1,6 @@
 """Single source of truth for inventory LLM test prompts."""
 
-from mcp_llm_eval.data import PromptWithTools, TestScenario, TestScenarioRegistry
+from tests.mcp_llm_eval.data import PromptWithTools, TestScenario, TestScenarioRegistry
 
 TOOLSET_TITLE = "Inventory MCP Test Prompts"
 

@@ -9,10 +9,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# The prompt registries use the test-only mcp_llm_eval package. Keep this script
-# runnable directly without requiring callers to configure PYTHONPATH.
+# Prompt registries live under tests/ (imported as tests.mcp_llm_eval). Keep this
+# script runnable directly without requiring callers to configure PYTHONPATH.
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPOSITORY_ROOT / "tests"))
+sys.path.insert(0, str(REPOSITORY_ROOT))
+
+from insights_mcp.test_prompts_markdown import format_bullet_prompts  # noqa: E402
+from tests.mcp_llm_eval.data import TestScenarioRegistry, collect_markdown_prompts  # noqa: E402
 
 # Doc-only examples for generated test_prompts.md (never used at test runtime).
 MARKDOWN_PLACEHOLDER_EXAMPLES: dict[str, str] = {
@@ -29,8 +32,6 @@ MARKDOWN_PLACEHOLDER_EXAMPLES: dict[str, str] = {
 
 
 def _load_prompt_module(module_name: str) -> Any:
-    from mcp_llm_eval.data import TestScenarioRegistry
-
     module = importlib.import_module(module_name)
     if not hasattr(module, "TOOLSET_TITLE"):
         raise ValueError(f"{module_name} must define TOOLSET_TITLE")
@@ -57,10 +58,6 @@ def main() -> int:
         help="Output markdown file path (e.g. src/image_builder_mcp/test_prompts.md)",
     )
     args = parser.parse_args()
-
-    from mcp_llm_eval.data import collect_markdown_prompts
-
-    from insights_mcp.test_prompts_markdown import format_bullet_prompts
 
     module = _load_prompt_module(args.module)
     prompt_texts = collect_markdown_prompts(module.PROMPTS, MARKDOWN_PLACEHOLDER_EXAMPLES)

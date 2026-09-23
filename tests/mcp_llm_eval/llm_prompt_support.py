@@ -7,10 +7,11 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from deepeval.test_case import ToolCall
 from llama_index.core.base.llms.types import ChatMessage
-from mcp_llm_eval.data import PromptTestScenario
+
+from .data import PromptTestScenario
 
 if TYPE_CHECKING:
-    from mcp_llm_eval.llama_index_support.agent_mcp import MCPAgentWrapper
+    from .llama_index_support.agent_mcp import MCPAgentWrapper
 
 
 def resolve_scenario_prompts(scenario: PromptTestScenario, context: dict[str, str]) -> tuple[str, ...]:

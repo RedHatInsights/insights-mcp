@@ -30,7 +30,7 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 # nest_asyncio.apply().
 nest_asyncio.apply = lambda: None
 
-pytest_plugins = ("mcp_llm_eval.fixtures",)
+pytest_plugins = ("tests.mcp_llm_eval.fixtures",)
 
 
 @pytest.fixture(scope="session")

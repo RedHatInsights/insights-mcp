@@ -83,7 +83,7 @@ make help  # Show all available make targets
 - `tests/` - Main test directory with cross-toolset auth and utility tests
 - `src/<toolset_name>_mcp/tests/` - Toolset-specific tests (when present)
 - `tests/mcp_llm_eval/` - Shared LLM evaluation module used by the toolset prompt tests; see [`tests/mcp_llm_eval/README.md`](tests/mcp_llm_eval/README.md) for its API, execution model, and fixtures
-- `src/<toolset_name>_mcp/test_prompts.py` - `PROMPTS = TestScenarioRegistry(...)` from `mcp_llm_eval.data`; see [`tests/mcp_llm_eval/README.md`](tests/mcp_llm_eval/README.md) for the scenario API
+- `src/<toolset_name>_mcp/test_prompts.py` - `PROMPTS = TestScenarioRegistry(...)` from `tests.mcp_llm_eval.data`; see [`tests/mcp_llm_eval/README.md`](tests/mcp_llm_eval/README.md) for the scenario API
 - `src/<toolset_name>_mcp/test_prompts.md` - Generated bullet-list examples for users (`make test-prompts-md`)
 
 The `mcp_llm_eval` README is the source of truth for scenario parameters,

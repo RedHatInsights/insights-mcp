@@ -4,9 +4,10 @@ import logging
 
 import pytest
 import pytest_asyncio
-from mcp_llm_eval.llama_index_support.agent_mcp import MCPAgentWrapper
-from mcp_llm_eval.llm_tracing import enable_llm_test_tracing
-from mcp_llm_eval.utils import gpt_model_from_config, load_llm_configurations
+
+from .llama_index_support.agent_mcp import MCPAgentWrapper
+from .llm_tracing import enable_llm_test_tracing
+from .utils import gpt_model_from_config, load_llm_configurations
 
 _, guardian_llm_config = load_llm_configurations()
 
@@ -33,7 +34,7 @@ def mcp_stdio_config() -> tuple[str, list[str]]:
 
 
 @pytest_asyncio.fixture
-async def test_agent(
+async def test_agent(  # pylint: disable=too-many-arguments,too-many-positional-arguments,redefined-outer-name
     mcp_server_url: str,
     mcp_http_headers: dict[str, str] | None,
     mcp_stdio_config: tuple[str, list[str]],

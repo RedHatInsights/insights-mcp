@@ -4,7 +4,7 @@ import json
 import logging
 import os
 
-from deepeval.models import GPTModel
+from deepeval.models import OpenAIModel
 from llama_index.core.llms import ChatMessage
 
 
@@ -75,9 +75,9 @@ def load_llm_configurations() -> tuple[list[dict[str, str | None]], dict[str, st
         return [], None
 
 
-def gpt_model_from_config(config: dict[str, str]) -> GPTModel:
-    """Build deepeval GPTModel for OpenAI-compatible endpoints from test config."""
-    return GPTModel(
+def gpt_model_from_config(config: dict[str, str]) -> OpenAIModel:
+    """Build a deepeval OpenAI-compatible judge model from test config."""
+    return OpenAIModel(
         model=config["MODEL_ID"],
         base_url=config["MODEL_API"],
         api_key=config["USER_KEY"],

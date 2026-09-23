@@ -10,6 +10,9 @@ from __future__ import annotations
 
 import logging
 
+import llama_index.core.instrumentation as instrument
+from deepeval.integrations.llama_index import instrument_llama_index
+
 _LOGGER = logging.getLogger(__name__)
 
 _LLAMA_INDEX_INSTRUMENTED: bool = False
@@ -20,9 +23,6 @@ def enable_deepeval_llama_index_tracing() -> None:
     global _LLAMA_INDEX_INSTRUMENTED  # pylint: disable=global-statement
     if _LLAMA_INDEX_INSTRUMENTED:
         return
-    import llama_index.core.instrumentation as instrument
-    from deepeval.integrations.llama_index import instrument_llama_index
-
     instrument_llama_index(instrument.get_dispatcher())
     _LLAMA_INDEX_INSTRUMENTED = True
     _LOGGER.debug("DeepEval instrument_llama_index enabled")

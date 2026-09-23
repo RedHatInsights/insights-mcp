@@ -12,7 +12,7 @@ from insights_mcp.client import InsightsClient, build_mounted_tool_names
 from insights_mcp.config import INSIGHTS_BASE_URL
 from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 from tests import oauth_utils as oauth_utils_module
-from tests.llm_api_discovery import LlmApiContext
+from tests.llm_api_discovery import build_llm_api_context
 
 
 @pytest.fixture
@@ -191,13 +191,11 @@ def multi_user_tokens():
 
 
 @functools.cache
-def _build_llm_api_context() -> LlmApiContext:
-    from tests.llm_api_discovery import build_llm_api_context
-
+def _build_llm_api_context() -> dict[str, str]:
     return asyncio.run(build_llm_api_context())
 
 
 @pytest.fixture(scope="session")
 def llm_api_context() -> dict[str, str]:
     """Live API-derived placeholder values for LLM prompt tests (session scope)."""
-    return _build_llm_api_context().as_dict()
+    return dict(_build_llm_api_context())
