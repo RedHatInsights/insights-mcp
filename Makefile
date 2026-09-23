@@ -149,23 +149,23 @@ run-sse: build ## Run the MCP server with SSE transport
 	# add firewall rules for fedora
 	# !! ONLY set INSIGHTS_* environment variables in case you need to
 	# contact another server than production
-	podman run --rm --network=host \
+	podman run --rm -p 127.0.0.1:9000:9000 \
 	  --env INSIGHTS_PROXY_URL \
 	  --env INSIGHTS_BASE_URL \
 	  --env INSIGHTS_SSO_BASE_URL \
-	  --name $(CONTAINER_BRAND)-mcp-sse localhost/$(CONTAINER_BRAND)-mcp:latest sse
+	  --name $(CONTAINER_BRAND)-mcp-sse localhost/$(CONTAINER_BRAND)-mcp:latest sse --host 0.0.0.0
 
 define run_http_cmd
 # add firewall rules for fedora
 # !! ONLY set INSIGHTS_PROXY_URL, INSIGHTS_BASE_URL and INSIGHTS_SSO_BASE_URL
 # environment variables in case you really need to
 # contact another server than production
-podman run --rm --network=host \
+podman run --rm -p 127.0.0.1:8000:8000 \
   --env INSIGHTS_PROXY_URL \
   --env INSIGHTS_BASE_URL \
   --env INSIGHTS_SSO_BASE_URL \
   --name $(CONTAINER_BRAND)-mcp-http \
-  localhost/$(CONTAINER_BRAND)-mcp:latest $(1) http
+  localhost/$(CONTAINER_BRAND)-mcp:latest $(1) http --host 0.0.0.0
 endef
 
 .PHONY: run-http run-http-all-tools
@@ -192,10 +192,10 @@ run-stdio: build ## Run the MCP server with stdio transport
 	  --name $(CONTAINER_BRAND)-mcp-stdio localhost/$(CONTAINER_BRAND)-mcp:latest
 
 run-oauth: build ## Run the MCP server with OAuth transport
-	podman run --rm --network=host \
+	podman run --rm -p 127.0.0.1:8000:8000 \
 	--env SSO_CLIENT_ID --env SSO_CLIENT_SECRET --env OAUTH_ENABLED=True \
 	--name insights-mcp-oauth localhost/insights-mcp:latest http \
-	--host localhost
+	--host 0.0.0.0
 
 ALL_PYTHON_FILES := $(shell find src -name "*.py")
 
