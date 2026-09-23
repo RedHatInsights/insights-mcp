@@ -391,6 +391,128 @@ def test_atif_builder_usage_tokens_become_step_metrics() -> None:
     assert trajectory["steps"][1]["metrics"] == {"prompt_tokens": 128, "completion_tokens": 17}
 
 
+def test_atif_builder_agent_output_with_tools_does_not_flush_before_result() -> None:
+    """AgentOutput with tool_calls must not flush until ToolCallResult observations arrive."""
+    builder = _builder()
+    builder.begin_turn("kb article")
+    builder.consume_event(
+        AgentInput(
+            [
+                SimpleNamespace(role="user", content="kb article", blocks=[]),
+            ]
+        )
+    )
+    builder.consume_event(
+        AgentOutput(
+            "",
+            tool_calls=[
+                SimpleNamespace(
+                    tool_id="c1",
+                    tool_name="advisor__get_rule_from_node_id",
+                    tool_kwargs={"node_id": 6464541},
+                )
+            ],
+            raw={"usage": {"prompt_tokens": 3878, "completion_tokens": 198}},
+        )
+    )
+    builder.consume_event(ToolCall("advisor__get_rule_from_node_id", {"node_id": 6464541}, "c1"))
+    builder.consume_event(ToolCallResult("c1", '[{"rule_id": "libdb_deprecated|LIBDB_DEPRECATED_WARN"}]'))
+    agent_steps = [step for step in builder.recorded_steps() if step["source"] == "agent"]
+    assert agent_steps == []
+    builder.consume_event(
+        AgentInput(
+            [
+                SimpleNamespace(role="user", content="kb article", blocks=[]),
+                SimpleNamespace(role="assistant", content="", blocks=[]),
+                SimpleNamespace(
+                    role="tool", content='[{"rule_id": "libdb_deprecated|LIBDB_DEPRECATED_WARN"}]', blocks=[]
+                ),
+            ]
+        )
+    )
+    agent_steps = [step for step in builder.recorded_steps() if step["source"] == "agent"]
+    assert len(agent_steps) == 1
+    assert agent_steps[0]["tool_calls"][0]["function_name"] == "advisor__get_rule_from_node_id"
+    assert agent_steps[0]["observation"]["results"][0]["content"] == (
+        '[{"rule_id": "libdb_deprecated|LIBDB_DEPRECATED_WARN"}]'
+    )
+    assert agent_steps[0]["metrics"] == {"prompt_tokens": 3878, "completion_tokens": 198}
+
+
+def test_atif_builder_live_workflow_event_order_one_step_per_tool_round() -> None:
+    """Live LlamaIndex event order yields one agent step per LLM tool round plus a final answer."""
+    builder = _builder()
+    builder.begin_turn("kb article")
+    user_messages = [SimpleNamespace(role="user", content="kb article", blocks=[])]
+    builder.consume_event(AgentInput(user_messages))
+    builder.consume_event(
+        AgentOutput(
+            "",
+            tool_calls=[
+                SimpleNamespace(
+                    tool_id="c1",
+                    tool_name="advisor__get_rule_from_node_id",
+                    tool_kwargs={"node_id": 1},
+                )
+            ],
+            raw={"usage": {"prompt_tokens": 100, "completion_tokens": 10}},
+        )
+    )
+    builder.consume_event(ToolCall("advisor__get_rule_from_node_id", {"node_id": 1}, "c1"))
+    builder.consume_event(ToolCallResult("c1", '["rule-a"]'))
+    builder.consume_event(
+        AgentInput(
+            [
+                *user_messages,
+                SimpleNamespace(role="assistant", content="", blocks=[]),
+                SimpleNamespace(role="tool", content='["rule-a"]', blocks=[]),
+            ]
+        )
+    )
+    builder.consume_event(
+        AgentOutput(
+            "",
+            tool_calls=[
+                SimpleNamespace(
+                    tool_id="c2",
+                    tool_name="advisor__get_hosts_hitting_a_rule",
+                    tool_kwargs={"rule_id": "rule-a"},
+                )
+            ],
+            raw={"usage": {"prompt_tokens": 200, "completion_tokens": 20}},
+        )
+    )
+    builder.consume_event(ToolCall("advisor__get_hosts_hitting_a_rule", {"rule_id": "rule-a"}, "c2"))
+    builder.consume_event(ToolCallResult("c2", '{"host_ids": []}'))
+    builder.consume_event(
+        AgentInput(
+            [
+                *user_messages,
+                SimpleNamespace(role="assistant", content="", blocks=[]),
+                SimpleNamespace(role="tool", content='["rule-a"]', blocks=[]),
+                SimpleNamespace(role="assistant", content="", blocks=[]),
+                SimpleNamespace(role="tool", content='{"host_ids": []}', blocks=[]),
+            ]
+        )
+    )
+    builder.consume_event(
+        AgentOutput(
+            "none of your systems are affected",
+            raw={"usage": {"prompt_tokens": 300, "completion_tokens": 30}},
+        )
+    )
+    trajectory = builder.finish(pytest_outcome="passed")
+    agent_steps = [step for step in trajectory["steps"] if step["source"] == "agent"]
+    assert len(agent_steps) == 3
+    assert agent_steps[0]["tool_calls"][0]["function_name"] == "advisor__get_rule_from_node_id"
+    assert agent_steps[0]["observation"]["results"][0]["content"] == '["rule-a"]'
+    assert agent_steps[1]["tool_calls"][0]["function_name"] == "advisor__get_hosts_hitting_a_rule"
+    assert agent_steps[1]["observation"]["results"][0]["content"] == '{"host_ids": []}'
+    assert agent_steps[2]["message"] == "none of your systems are affected"
+    assert "tool_calls" not in agent_steps[2]
+    assert trajectory["final_metrics"]["total_steps"] == 4
+
+
 def test_atif_builder_empty_output_with_tools_still_flushes() -> None:
     """A tool round is recorded even when AgentOutput has no assistant prose."""
     builder = _builder()

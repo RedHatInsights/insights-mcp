@@ -489,6 +489,10 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         """Return True when at least one ATIF step has been recorded."""
         return bool(self._steps) or bool(self._pending_tool_calls) or bool(self._pending_thinking.strip())
 
+    def recorded_steps(self) -> list[dict[str, Any]]:
+        """Return steps flushed so far (pending agent output is not included)."""
+        return list(self._steps)
+
     def begin_turn(self, user_msg: str) -> None:
         """Start a user turn, flushing any pending agent step first.
 
@@ -631,6 +635,10 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
     def _pending_round_complete(self) -> bool:
         return bool(self._pending_tool_calls) and (len(self._pending_observations) >= len(self._pending_tool_calls))
 
+    def _has_incomplete_tool_round(self) -> bool:
+        """Return True when tool calls are recorded but not all results are in yet."""
+        return bool(self._pending_tool_calls) and not self._pending_round_complete()
+
     def _clear_pending_agent_state(self) -> None:
         self._pending_tool_calls = []
         self._pending_observations = []
@@ -647,7 +655,11 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         self._pending_tool_calls.append(tool_call)
 
     def _consume_agent_input(self, event: Any) -> None:
-        if self._pending_round_complete() or self._pending_thinking.strip() or self._pending_metrics:
+        if self._pending_round_complete():
+            self._flush_pending_agent_step("")
+        elif self._pending_thinking.strip() and not self._pending_tool_calls:
+            self._flush_pending_agent_step("")
+        elif self._pending_metrics and not self._pending_tool_calls:
             self._flush_pending_agent_step("")
         self._pending_llm_input = _serialize_llm_input(getattr(event, "input", None))
 
@@ -663,6 +675,8 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         for selection in getattr(event, "tool_calls", None) or []:
             self._record_tool_call(_tool_call_dict(selection))
         message = _response_message_text(event)
+        if self._has_incomplete_tool_round():
+            return
         has_thinking = bool(self._pending_thinking.strip())
         if message.strip() or self._pending_tool_calls or has_thinking or self._pending_metrics:
             self._flush_pending_agent_step(message)
