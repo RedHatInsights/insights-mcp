@@ -19,6 +19,7 @@ from llama_index.llms.openai_like import OpenAILike
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 from mcp.shared._httpx_utils import create_mcp_http_client
 
+from tests.mcp_llm_eval.atif_export import AtifTrajectoryBuilder
 from tests.mcp_llm_eval.deepeval_support.tracing import WorkflowToolCallCollector, tools_called_from_agent_run
 from tests.mcp_llm_eval.mcp_jsonrpc import fetch_mcp_instructions_http, fetch_mcp_instructions_stdio
 
@@ -146,6 +147,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         self._stdio_args = stdio_args or []
         self.agent: FunctionAgent | None = None
         self.context: Context | None = None
+        self.atif_recorder: AtifTrajectoryBuilder | None = None
 
         self._session_id = str(uuid.uuid4())
         self._memory: Memory | None = None
@@ -286,8 +288,11 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
 
     async def _drain_workflow_stream(self, handler: Any, tool_collector: WorkflowToolCallCollector) -> None:
         """Consume workflow events until the stream ends."""
+        recorder = self.atif_recorder
         async for ev in handler.stream_events():
             tool_collector.consume_event(ev)
+            if recorder is not None:
+                recorder.consume_event(ev)
             self._log_workflow_event(ev)
 
     async def _run_workflow_attempt(
@@ -338,7 +343,11 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         response: Any = None
         tool_collector = WorkflowToolCallCollector()
         self.context = Context(self.agent)
+        if self.atif_recorder is not None:
+            self.atif_recorder.begin_turn(user_msg)
         for attempt in range(2):
+            if attempt > 0 and self.atif_recorder is not None:
+                self.atif_recorder.reset_turn(user_msg)
             tool_collector.clear()
             self._step_names = []
             response = await self._run_workflow_attempt(agent_user_msg, max_iterations, tool_collector)
