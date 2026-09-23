@@ -289,7 +289,8 @@ class InsightsClientBase(httpx.AsyncClient):
             f"User Access overview: {self.insights_base_url}/iam/user-access/overview\n"
             "Come up with a detailed description for the user. "
             "Only describe this, don't expose details about the tool function itself. "
-            f"Error: {str(e)}."
+            f"Error: {str(e)}. "
+            f"Response: {e.response.text}"
         )
         return message
 
