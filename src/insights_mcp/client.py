@@ -45,7 +45,8 @@ USER_AGENT = f"insights-mcp/{__version__}"
 _PII_CLAIM_KEYS = frozenset({"subject", "account_id", "username", "email"})
 
 MCP_VERSION_TOOL = "get_mcp_version"
-RBAC_DIAGNOSTIC_TOOL = "rbac__get_all_access"
+RBAC_DIAGNOSTIC_TOOL = "rbac__get_caller_access_all"
+RBAC_EXPLAIN_DENIED_TOOL = "rbac__explain_access_denied"
 
 
 def build_mounted_tool_names(allowed_toolsets: list[str]) -> frozenset[str]:
@@ -53,6 +54,7 @@ def build_mounted_tool_names(allowed_toolsets: list[str]) -> frozenset[str]:
     names = {MCP_VERSION_TOOL}
     if "rbac" in allowed_toolsets:
         names.add(RBAC_DIAGNOSTIC_TOOL)
+        names.add(RBAC_EXPLAIN_DENIED_TOOL)
     return frozenset(names)
 
 
@@ -179,7 +181,7 @@ class InsightsClientBase(httpx.AsyncClient):
                 )
 
     def _mentions_rbac_diagnostic(self) -> bool:
-        return RBAC_DIAGNOSTIC_TOOL in self.mounted_tool_names
+        return bool(self.mounted_tool_names & {RBAC_DIAGNOSTIC_TOOL, RBAC_EXPLAIN_DENIED_TOOL})
 
     def _auth_diagnostic_preamble(self) -> str:
         preamble = (
@@ -273,19 +275,19 @@ class InsightsClientBase(httpx.AsyncClient):
         Returns:
             Detailed permissions error message with access request instructions
         """
-        message = "[INSTRUCTION] Use get_mcp_version() to check if we are on the latest release. "
+        message = (
+            "[INSTRUCTION] The user is authenticated but lacks permission for this resource (HTTP 403). "
+            "Use get_mcp_version() to check if we are on the latest release. "
+        )
         if self._mentions_rbac_diagnostic():
             message += (
-                f"Also use {RBAC_DIAGNOSTIC_TOOL}() to list all current permissions "
-                "and help the user find out which permissions might be missing. "
+                f"Call {RBAC_EXPLAIN_DENIED_TOOL} with failed_method={e.request.method} and either "
+                "failed_tool=<the MCP tool that failed> or failed_url=<URL from the error>. "
+                "Do not invent permission names. "
             )
         message += (
-            f"Then the user should go to [{self.insights_base_url}/iam/user-access/overview]"
-            f"({self.insights_base_url}/iam/user-access/overview) to check their RBAC permissions and roles. "
-            "They may need to request additional access or have an "
-            "administrator grant them the necessary permissions for this resource. The user is authenticated but "
-            "lacks the required permissions to access this resource.\n"
-            "Come up with a detailed description of this for the user. "
+            f"User Access overview: {self.insights_base_url}/iam/user-access/overview\n"
+            "Come up with a detailed description for the user. "
             "Only describe this, don't expose details about the tool function itself. "
             f"Error: {str(e)}."
         )

@@ -9,7 +9,7 @@ PROMPTS = TestScenarioRegistry(
         turns=(
             PromptWithTools(
                 prompt="please check my insights permissions are there any missing for insights-mcp?",
-                expected_tools=("rbac__get_all_access",),
+                expected_tools=("rbac__get_caller_access_all",),
             ),
         ),
     ),
@@ -17,15 +17,15 @@ PROMPTS = TestScenarioRegistry(
         turns=(
             PromptWithTools(
                 prompt='Show me access permissions for user "{rbac_username}" across all applications',
-                expected_tools=("rbac__get_all_access",),
+                expected_tools=("rbac__get_caller_access_all",),
             ),
         ),
     ),
-    paginated_access=TestScenario(
+    access_for_application=TestScenario(
         turns=(
             PromptWithTools(
-                prompt="Get the first 50 access records across all applications",
-                expected_tools=("rbac__get_all_access",),
+                prompt="Show my RBAC permissions for the vulnerability application",
+                expected_tools=("rbac__get_caller_access",),
             ),
         ),
     ),
@@ -36,7 +36,7 @@ PROMPTS = TestScenarioRegistry(
                     'What access permissions does service account "{rbac_username}" have '
                     "across all Red Hat applications?"
                 ),
-                expected_tools=("rbac__get_all_access",),
+                expected_tools=("rbac__get_caller_access_all",),
             ),
         ),
     ),
@@ -47,7 +47,15 @@ PROMPTS = TestScenarioRegistry(
                     "I can't access certain features in Red Hat services. Show me all my access permissions "
                     "across all applications to help debug the issue."
                 ),
-                expected_tools=("rbac__get_all_access",),
+                expected_tools=("rbac__get_caller_access_all",),
+            ),
+        ),
+    ),
+    diagnose_403=TestScenario(
+        turns=(
+            PromptWithTools(
+                prompt="vulnerability__get_system_cves returned 403. Explain why I don't have access.",
+                expected_tools=("rbac__explain_access_denied",),
             ),
         ),
     ),
@@ -58,7 +66,7 @@ PROMPTS = TestScenarioRegistry(
                     'Review access permissions for user "{rbac_username}" across all Red Hat applications '
                     "to ensure they have appropriate access."
                 ),
-                expected_tools=("rbac__get_all_access",),
+                expected_tools=("rbac__get_caller_access_all",),
             ),
         ),
     ),

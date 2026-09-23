@@ -1,0 +1,186 @@
+"""Resolve tool RBAC requirements at runtime from the rest map and live OpenAPI."""
+
+from __future__ import annotations
+
+import os
+import re
+import time
+from contextlib import suppress
+from dataclasses import dataclass
+from typing import Any
+
+from insights_mcp.rbac.manifest import ToolRbacCall
+from insights_mcp.rbac.permissions import permission_set_satisfied
+from insights_mcp.rbac.requirements_format import PermissionRequirements, RequirementResolution
+
+PERMISSION_RE = re.compile(
+    r"\b([a-z][a-z0-9_-]*:[a-z0-9_.*-]+:[a-z*]+|[a-z][a-z0-9_-]*:\*:\*)\b",
+    re.IGNORECASE,
+)
+
+_openapi_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+_OPENAPI_TTL_SECONDS = 3600
+
+
+@dataclass(frozen=True)
+class ResolvedRequirements:
+    """RBAC requirements resolved for one tool."""
+
+    permissions: PermissionRequirements
+    resolution: RequirementResolution
+
+
+def _extract_permissions_from_text(text: str) -> list[str]:
+    return sorted(set(PERMISSION_RE.findall(text or "")))
+
+
+def _openapi_cache_ttl() -> int:
+    return int(os.environ.get("RBAC_OPENAPI_CACHE_TTL_SECONDS", str(_OPENAPI_TTL_SECONDS)))
+
+
+def _get_cached_openapi(api_path: str) -> dict[str, Any] | None:
+    api_key = api_path.rstrip("/")
+    now = time.time()
+    cached = _openapi_cache.get(api_key)
+    if cached and now - cached[0] < _openapi_cache_ttl():
+        return cached[1]
+    return None
+
+
+def _set_cached_openapi(api_path: str, spec: dict[str, Any]) -> None:
+    _openapi_cache[api_path.rstrip("/")] = (time.time(), spec)
+
+
+async def _fetch_live_openapi(insights_client: Any, api_path: str) -> dict[str, Any] | None:
+    """Fetch openapi.json for an Insights API path (may differ from client's api_path)."""
+    cached = _get_cached_openapi(api_path)
+    if cached is not None:
+        return cached
+
+    base_url = getattr(insights_client, "insights_base_url", "").rstrip("/")
+    api_segment = api_path.strip("/")
+    url = f"{base_url}/{api_segment}/openapi.json"
+    response: Any = None
+    with suppress(Exception):
+        if hasattr(insights_client, "get") and getattr(insights_client, "api_path", "").strip("/") == api_segment:
+            response = await insights_client.get("openapi.json", noauth=True)
+        else:
+            http_client = getattr(insights_client, "client_noauth", None) or getattr(insights_client, "client", None)
+            if http_client is None or not hasattr(http_client, "make_request"):
+                return None
+            response = await http_client.make_request(http_client.get, url=url)
+    if isinstance(response, dict):
+        _set_cached_openapi(api_path, response)
+        return response
+    return None
+
+
+def _path_template_to_regex(path_template: str) -> re.Pattern[str]:
+    pattern = re.sub(r"\{[^}]+\}", r"[^/]+", path_template)
+    if not pattern.startswith("/"):
+        pattern = "/" + pattern
+    return re.compile("^" + pattern.rstrip("/") + "/?$")
+
+
+def _match_openapi_operation(
+    spec: dict[str, Any],
+    method: str,
+    path_template: str,
+) -> dict[str, Any] | None:
+    """Find OpenAPI operation matching method and path template."""
+    paths = spec.get("paths", {})
+    method_lower = method.lower()
+    template_re = _path_template_to_regex(path_template)
+
+    for path, methods in paths.items():
+        if not template_re.match(path):
+            continue
+        operation = methods.get(method_lower)
+        if isinstance(operation, dict):
+            return operation
+    return None
+
+
+def _permissions_from_call(call: ToolRbacCall) -> PermissionRequirements:
+    return PermissionRequirements(
+        required_v1_permissions=call.permissions.required_v1_permissions,
+        kessel_permission=call.permissions.kessel_permission,
+        kessel_note=call.permissions.kessel_note,
+        sources=tuple(call.openapi_sources),
+        verified=call.permissions.verified,
+    )
+
+
+def _resolved(
+    permissions: PermissionRequirements,
+    source: str,
+    *,
+    requirements_unknown: bool = False,
+) -> ResolvedRequirements:
+    return ResolvedRequirements(
+        permissions=permissions,
+        resolution=RequirementResolution(
+            source=source,
+            requirements_unknown=requirements_unknown,
+        ),
+    )
+
+
+def _resolve_from_live_openapi(call: ToolRbacCall, spec: dict[str, Any]) -> ResolvedRequirements | None:
+    operation = _match_openapi_operation(spec, call.rest.method, call.rest.path_template)
+    if not operation:
+        return None
+    text = " ".join(
+        filter(
+            None,
+            [operation.get("summary", ""), operation.get("description", "")],
+        )
+    )
+    perms = _extract_permissions_from_text(text)
+    if not perms:
+        return None
+    sources = tuple(call.openapi_sources) + (f"live:{call.rest.api_path}/openapi.json",)
+    permissions = PermissionRequirements(
+        required_v1_permissions=(tuple(perms),),
+        kessel_permission=call.permissions.kessel_permission,
+        kessel_note=call.permissions.kessel_note,
+        sources=sources,
+        verified=False,
+    )
+    return _resolved(permissions, "live_openapi")
+
+
+async def resolve_tool_requirements(
+    call: ToolRbacCall,
+    insights_client: Any | None = None,
+) -> ResolvedRequirements:
+    """Resolve requirements: rest-map verified > live OpenAPI > rest-map partial > unknown."""
+    if call.permissions.verified and call.permissions.required_v1_permissions:
+        return _resolved(_permissions_from_call(call), "bundled", requirements_unknown=False)
+
+    if insights_client is not None and not call.permissions.required_v1_permissions:
+        spec = await _fetch_live_openapi(insights_client, call.rest.api_path)
+        if spec:
+            live = _resolve_from_live_openapi(call, spec)
+            if live and live.permissions.required_v1_permissions:
+                return live
+
+    bundled = _permissions_from_call(call)
+    if bundled.required_v1_permissions:
+        return _resolved(bundled, "bundled", requirements_unknown=False)
+
+    unknown_permissions = PermissionRequirements(
+        required_v1_permissions=(),
+        kessel_permission=call.permissions.kessel_permission,
+        kessel_note=call.permissions.kessel_note,
+        sources=tuple(call.openapi_sources),
+        verified=False,
+    )
+    return _resolved(unknown_permissions, "unknown", requirements_unknown=True)
+
+
+__all__ = [
+    "ResolvedRequirements",
+    "permission_set_satisfied",
+    "resolve_tool_requirements",
+]

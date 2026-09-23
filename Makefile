@@ -221,8 +221,12 @@ ALL_PYTHON_FILES := $(shell find src -name "*.py")
 
 PROMPTS_GENERATOR_DEPS := scripts/generate_test_prompts.py src/insights_mcp/test_prompts_markdown.py tests/mcp_llm_eval/data.py
 
+.PHONY: generate-rbac-docs
+generate-rbac-docs: ## Refresh generated RBAC role names in README and getting-started skills
+	uv run python scripts/generate_rbac_docs.py
+
 .PHONY: generate-docs tool-tokens-md test-prompts-md prepare-mkdocs build-mkdocs serve-mkdocs catalog-info
-generate-docs: usage.md toolsets.md catalog-info.yaml docs/tool-tokens.md test-prompts-md docs/architecture-structure.svg docs/architecture-deployment.svg prepare-mkdocs .agents/skills/README.md ## Generate documentation from the MCP server
+generate-docs: generate-rbac-docs usage.md toolsets.md catalog-info.yaml docs/tool-tokens.md test-prompts-md docs/architecture-structure.svg docs/architecture-deployment.svg prepare-mkdocs .agents/skills/README.md .claude/skills/README.md ## Generate documentation from the MCP server
 
 tool-tokens-md: docs/tool-tokens.md ## Generate MCP tool input token table
 
@@ -269,7 +273,7 @@ src/content_sources_mcp/test_prompts.md: src/content_sources_mcp/test_prompts.py
 src/planning_mcp/test_prompts.md: src/planning_mcp/test_prompts.py $(PROMPTS_GENERATOR_DEPS)
 	uv run python scripts/generate_test_prompts.py --module planning_mcp.test_prompts -o $@
 
-prepare-mkdocs: usage.md toolsets.md docs/architecture-structure.svg docs/architecture-deployment.svg README.md HACKING.md tests/mcp_llm_eval/README.md ## Prepare MkDocs staging files under docs/mkdocs/
+prepare-mkdocs: generate-rbac-docs usage.md toolsets.md docs/architecture-structure.svg docs/architecture-deployment.svg README.md HACKING.md tests/mcp_llm_eval/README.md ## Prepare MkDocs staging files under docs/mkdocs/
 	uv run python scripts/prepare_mkdocs.py
 
 build-mkdocs: install-test-deps prepare-mkdocs ## Build mkdocs documentation (--strict)
@@ -296,5 +300,8 @@ toolsets.md: $(ALL_PYTHON_FILES) Makefile
 docs/architecture-structure.svg docs/architecture-deployment.svg docs/architecture-structure.png docs/architecture-deployment.png: HACKING.md scripts/generate_diagrams.py
 	uv run python scripts/generate_diagrams.py --format svg,png
 
-.agents/skills/README.md: README.md
+.agents/skills/README.md: README.md generate-rbac-docs
 	cp README.md .agents/skills/README.md
+
+.claude/skills/README.md: README.md generate-rbac-docs
+	cp README.md .claude/skills/README.md

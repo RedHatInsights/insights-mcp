@@ -1,5 +1,6 @@
 ai
 Ansible
+apis
 appstream
 Appstream
 appstreams
@@ -23,6 +24,7 @@ Containerfile
 Cryptographic
 customizations
 CVE
+cves
 DCR
 deduplicated
 deepeval
@@ -47,6 +49,7 @@ HTTPS
 integrations
 Integrations
 js
+json
 JSON
 JWKS
 JWT
@@ -112,6 +115,7 @@ Starlette
 Streamable
 summarization
 Summarization
+symlink
 Tekton
 tiktoken
 TLS
@@ -131,5 +135,6 @@ URI
 UUID
 UUIDs
 vendored
+Vendored
 verifier
 workspaces
