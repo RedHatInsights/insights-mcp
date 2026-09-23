@@ -46,8 +46,11 @@ PROMPTS = TestScenarioRegistry(
         turns=(
             PromptWithTools(
                 prompt='List all the systems affected by the advisor recommendation "{rule_id}" and show the details',
-                required_tools=("advisor__get_hosts_hitting_a_rule",),
-                expected_tools=("advisor__get_hosts_details_for_rule", "advisor__get_rule_details"),
+                expected_tools=(
+                    "advisor__get_hosts_hitting_a_rule",
+                    "advisor__get_hosts_details_for_rule",
+                    "advisor__get_rule_details",
+                ),
             ),
         ),
         threshold=0,
@@ -94,6 +97,7 @@ PROMPTS = TestScenarioRegistry(
                 expected_tools=("advisor__get_hosts_details_for_rule", "advisor__get_hosts_hitting_a_rule"),
             ),
         ),
+        threshold=0,
     ),
     reboot_recommendations=TestScenario(
         turns=(
@@ -107,8 +111,10 @@ PROMPTS = TestScenarioRegistry(
         turns=(
             PromptWithTools(
                 prompt="Explain the risk associated with the 'Disable Transparent Huge Pages' recommendation.",
-                expected_tools=("advisor__get_rule_by_text_search", "advisor__get_active_rules"),
+                required_tools=("advisor__get_rule_by_text_search",),
+                expected_tools=("advisor__get_active_rules", "advisor__get_rule_details"),
             ),
         ),
+        threshold=0,
     ),
 )
