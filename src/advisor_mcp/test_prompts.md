@@ -6,7 +6,7 @@
 - Show me the details for the advisor recommendation "network_firewall_zone_drift_enabled|ENABLE_FIREWALL_ZONE_DRIFTING_WARN"
 - List all the systems affected by the advisor recommendation "network_firewall_zone_drift_enabled|ENABLE_FIREWALL_ZONE_DRIFTING_WARN"
 - Show me Advisor recommendations for systems tagged 'insights-client/security=strict'.
-- Show me Advisor recommendations for systems in the workspace "your_workspace".
+- Show me Advisor recommendations for systems in the workspace "mcp_test".
 - Show me the 10 recommendations that affect the most systems.
 - Show me all 'Critical' or 'Important' security recommendations that have a playbook available for remediation.
 - List me RHEL 8 systems affected by the issue "network_firewall_zone_drift_enabled|ENABLE_FIREWALL_ZONE_DRIFTING_WARN".

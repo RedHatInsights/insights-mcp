@@ -85,4 +85,42 @@ PROMPTS = TestScenarioRegistry(
             ),
         ),
     ),
+    list_workspaces_including_ungrouped=TestScenario(
+        turns=(
+            PromptWithTools(
+                prompt="List all workspaces, including Ungrouped Hosts",
+                expected_tools=("inventory__list_workspaces",),
+            ),
+        ),
+    ),
+    hosts_in_named_workspace=TestScenario(
+        turns=(
+            PromptWithTools(
+                prompt="Show hosts in the workspace named {workspace}",
+                expected_tools=(
+                    "inventory__list_workspaces",
+                    "inventory__list_workspace_hosts",
+                    "inventory__list_hosts",
+                ),
+            ),
+        ),
+    ),
+    open_inventory_dashboard=TestScenario(
+        turns=(
+            PromptWithTools(
+                prompt="Open the inventory dashboard",
+                expected_tools=("inventory__load_inventory_dashboard",),
+            ),
+        ),
+        threshold=0,
+    ),
+    show_fleet_in_dashboard=TestScenario(
+        turns=(
+            PromptWithTools(
+                prompt="Show my fleet in the inventory dashboard",
+                expected_tools=("inventory__load_inventory_dashboard",),
+            ),
+        ),
+        threshold=0,
+    ),
 )

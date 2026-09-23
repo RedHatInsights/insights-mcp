@@ -25,7 +25,7 @@ MARKDOWN_PLACEHOLDER_EXAMPLES: dict[str, str] = {
     "hostname": "web-server-prod-01",
     "host_ids": "12345678-1234-1234-1234-123456789abc, 87654321-4321-4321-4321-ba9876543210",
     "rule_id": "network_firewall_zone_drift_enabled|ENABLE_FIREWALL_ZONE_DRIFTING_WARN",
-    "workspace": "your_workspace",
+    "workspace": "mcp_test",
     "satellite_tag": "lifecycle_environment=Prod",
     "rbac_username": "john.doe",
 }

@@ -81,9 +81,11 @@ uv run pytest src/vulnerability_mcp/tests/test_vulnerability_llm_prompts.py -m l
 Each prompt registry in `src/<toolset>_mcp/test_prompts.py` declares `TestScenario` entries with
 per-turn `expected_tools`, optional forbidden tools, argument expectations, and guardian criteria.
 The generated suite fails if a turn calls none of its expected tools. Placeholders (`{cve_id}`, …)
-are resolved from live APIs; scenarios skip when data is missing (`-rs`). Optional:
-`INSIGHTS_TEST_WORKSPACE` for advisor workspace prompts. Regenerate example Markdown with
-`make test-prompts-md`.
+are resolved from live APIs; scenarios skip when data is missing (`-rs`). `{workspace}` comes from
+`INSIGHTS_TEST_WORKSPACE` when set, otherwise the first user-created Inventory group (Ungrouped
+Hosts is never used as `{workspace}`). Creating a named group such as `mcp_test` in the test
+account is optional. Dashboard LLM prompts check that the model calls `load_*_dashboard`; they do
+not render MCP Apps UI. Regenerate example Markdown with `make test-prompts-md`.
 
 ### LLM test tracing
 

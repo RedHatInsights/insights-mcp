@@ -108,8 +108,8 @@ def setup_inventory_mock(
         yield
 
 
-def list_hosts_kwargs(**overrides: Any) -> dict[str, Any]:
-    """Default arguments for calling list_hosts from unit tests."""
+def inventory_host_filter_kwargs(**overrides: Any) -> dict[str, Any]:
+    """Default host-filter kwargs shared by list_hosts and dashboard unit tests."""
     params: dict[str, Any] = {
         "hostname_or_id": "",
         "display_name": "",
@@ -120,12 +120,19 @@ def list_hosts_kwargs(**overrides: Any) -> dict[str, Any]:
         "provider_type": "",
         "workspace_id": "",
         "workspace_name": "",
-        "updated_start": "",
-        "updated_end": "",
         "per_page": 10,
         "page": 1,
         "order_by": "",
         "order_how": "ASC",
     }
+    params.update(overrides)
+    return params
+
+
+def list_hosts_kwargs(**overrides: Any) -> dict[str, Any]:
+    """Default arguments for calling list_hosts from unit tests."""
+    params = inventory_host_filter_kwargs()
+    params["updated_start"] = ""
+    params["updated_end"] = ""
     params.update(overrides)
     return params

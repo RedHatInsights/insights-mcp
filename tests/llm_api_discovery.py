@@ -133,6 +133,25 @@ async def discover_rule_id(client: InsightsClient) -> str | None:
     return _first_item_id(_api_data(response), "rule_id")
 
 
+async def discover_workspace_name(client: InsightsClient) -> str | None:
+    """Return a user-created Inventory workspace name.
+
+    ``INSIGHTS_TEST_WORKSPACE`` overrides discovery. Ungrouped Hosts is skipped so
+    prompts that name a workspace refer to a real group when one exists.
+    """
+    override = os.getenv("INSIGHTS_TEST_WORKSPACE") or None
+    if override:
+        return override
+    response = await client.get("groups", params={"per_page": 20, "page": 1, "group_type": "standard"})
+    for item in _api_data(response):
+        if item.get("ungrouped") is True:
+            continue
+        name = item.get("name")
+        if isinstance(name, str) and name:
+            return name
+    return None
+
+
 async def discover_rbac_username() -> str | None:
     """Return the service account username derived from credentials."""
     client_id, _ = _insights_credentials()
@@ -143,8 +162,6 @@ async def discover_rbac_username() -> str | None:
 
 async def build_llm_api_context() -> dict[str, str]:
     """Populate placeholder values from live APIs (omit a key when discovery fails)."""
-    workspace = os.getenv("INSIGHTS_TEST_WORKSPACE") or None
-
     vuln_client = await _client_for_api_path("api/vulnerability/v1")
     inventory_client = await _client_for_api_path("api/inventory/v1")
     advisor_client = await _client_for_api_path("api/insights/v1")
@@ -154,6 +171,7 @@ async def build_llm_api_context() -> dict[str, str]:
     host_id, hostname, host_ids = await discover_inventory_hosts(inventory_client)
     satellite_tag = await discover_satellite_tag(inventory_client, host_id) if host_id else None
     rule_id = await discover_rule_id(advisor_client)
+    workspace = await discover_workspace_name(inventory_client)
     rbac_username = await discover_rbac_username()
 
     return _nonempty_placeholders(
