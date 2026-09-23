@@ -45,14 +45,12 @@ PROMPTS = TestScenarioRegistry(
     rule_affected_systems=TestScenario(
         turns=(
             PromptWithTools(
-                prompt='List all the systems affected by the advisor recommendation "{rule_id}"',
-                expected_tools=(
-                    "advisor__get_hosts_hitting_a_rule",
-                    "advisor__get_hosts_details_for_rule",
-                    "advisor__get_rule_details",
-                ),
+                prompt='List all the systems affected by the advisor recommendation "{rule_id}" and show the details',
+                required_tools=("advisor__get_hosts_hitting_a_rule",),
+                expected_tools=("advisor__get_hosts_details_for_rule", "advisor__get_rule_details"),
             ),
         ),
+        threshold=0,
     ),
     recommendations_by_tag=TestScenario(
         turns=(
