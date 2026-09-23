@@ -323,7 +323,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         self,
         user_msg: str,
         chat_history: Optional[list[ChatMessage]] = None,
-        max_iterations: int = 10,
+        max_iterations: int = 20,
     ) -> tuple[str, list[dict[str, Any]], list[ToolCall], list[ChatMessage]]:
         """Execute agent, record tool calls and steps, return response and artifacts."""
         if not self.agent or self.llama_llm is None or self._memory is None:
