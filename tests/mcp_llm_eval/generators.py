@@ -19,6 +19,7 @@ from .deepeval_support.judges import (
 )
 from .llama_index_support.agent_mcp import MCPAgentWrapper
 from .llm_prompt_support import (
+    assert_all_required_tools,
     assert_at_least_one_expected_tool,
     assert_correct_tool_args,
     assert_no_forbidden_tool,
@@ -57,15 +58,23 @@ async def _evaluate_scenario_turns(
         zip(prompts, tools_per_turn, scenario.turns, responses)
     ):
         assert response.strip(), f"empty assistant response for {llm_name} on {scenario.prompt_id}"
+        logger.info("Turn %d - Required: %s", turn_idx + 1, turn.required_tools)
         logger.info("Turn %d - Expected: %s", turn_idx + 1, turn.expected_tools)
         logger.info("Turn %d - Forbidden: %s", turn_idx + 1, turn.forbidden_tools)
+        if turn.required_tools:
+            assert_all_required_tools(executed_tools, turn.required_tools)
         if turn.expected_tools:
             assert_at_least_one_expected_tool(executed_tools, turn.expected_tools)
         if turn.forbidden_tools:
             assert_no_forbidden_tool(executed_tools, turn.forbidden_tools)
         if turn.expected_args:
             assert_correct_tool_args(executed_tools, turn.expected_args)
-        turn_test_case = build_turn_test_case(request, response, executed_tools, turn.expected_tools)
+        turn_test_case = build_turn_test_case(
+            request,
+            response,
+            executed_tools,
+            tuple(turn.required_tools) + tuple(turn.expected_tools),
+        )
         if scenario.threshold > 0:
             await evaluate_tool_correctness(turn_test_case, guardian, logger, scenario.threshold)
         if turn.turn_criteria:

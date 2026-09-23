@@ -37,9 +37,10 @@ that turn.
 | Parameter | Type | Meaning |
 | --- | --- | --- |
 | `prompt` | `str` | Prompt template sent to the model. It may contain placeholders such as `{host_id}`; those are resolved from the consumer's `llm_api_context` fixture before execution. |
-| `expected_tools` | `tuple[str, ...]` | Tool names checked for this turn. The direct assertion requires at least one call to one of these tools when the tuple is non-empty. All listed names are also passed to the guardian `ToolCorrectnessMetric`. |
+| `required_tools` | `tuple[str, ...]` | Tool names that must all be called during this turn. |
+| `expected_tools` | `tuple[str, ...]` | Tool names checked for this turn. The direct assertion requires at least one call to one of these tools when the tuple is non-empty. All listed names are also passed to the guardian `ToolCorrectnessMetric`, together with `required_tools`. |
 | `forbidden_tools` | `tuple[str, ...]` | Tool names that must not be called during this turn. |
-| `expected_args` | `dict[str, list[dict[str, Any]]] \| None` | Expected calls grouped by tool name. For each tool, the number and order of calls are checked. Each expected dictionary specifies a subset of the arguments, so additional model-generated arguments are allowed. Values are compared literally; placeholders are not substituted. Every key must also appear in `expected_tools`. |
+| `expected_args` | `dict[str, list[dict[str, Any]]] \| None` | Expected calls grouped by tool name. For each tool, the number and order of calls are checked. Each expected dictionary specifies a subset of the arguments, so additional model-generated arguments are allowed. Values are compared literally; placeholders are not substituted. Every key must also appear in `required_tools` or `expected_tools`. |
 | `turn_criteria` | `str \| None` | Optional single-turn natural-language criterion evaluated against that turn with DeepEval `GEval`. |
 
 The expected tool names are the MCP names exposed to the agent, including any
@@ -49,11 +50,17 @@ it does not assert that no tool is called. The guardian tool metric still runs
 for that turn when `threshold > 0`, and the agent may still request a tool.
 The scenario as a whole must declare at least one expected tool.
 
-When multiple tools are listed, the direct assertion accepts any one of them,
-but the guardian metric evaluates the complete list. Therefore, do not use
-multiple names as guardian-metric alternatives unless that difference is
-intentional. Set `threshold=0` when a turn's tools are alternatives and only
+When multiple tools are listed in `expected_tools`, the direct assertion accepts
+any one of them, but the guardian metric evaluates the complete list. Therefore,
+do not use multiple names as guardian-metric alternatives unless that difference
+is intentional. Set `threshold=0` when a turn's tools are alternatives and only
 the direct assertion should apply.
+
+Use `required_tools` together with `expected_tools` when a turn must call one
+set of tools and at least one tool from another set. For example,
+`required_tools=("advisor__get_rule_from_node_id",)` with
+`expected_tools=("advisor__get_hosts_hitting_a_rule", "advisor__get_active_rules")`
+requires the KB lookup tool and either way of checking affected systems.
 
 Example:
 

@@ -44,6 +44,13 @@ def _tool_names(tools: list[ToolCall]) -> set[str]:
     return {tool.name for tool in tools}
 
 
+def assert_all_required_tools(tools_executed: list[ToolCall], required_tools: tuple[str, ...]) -> None:
+    """Assert every *required_tools* name appears in *tools_executed*."""
+    names = _tool_names(tools_executed)
+    missing = [required for required in required_tools if required not in names]
+    assert not missing, f"expected required tools {missing}, got tool calls: {sorted(names)}"
+
+
 def assert_at_least_one_expected_tool(tools_executed: list[ToolCall], expected_tools: tuple[str, ...]) -> None:
     """Assert at least one *expected_tools* name appears in *tools_executed*."""
     names = _tool_names(tools_executed)
