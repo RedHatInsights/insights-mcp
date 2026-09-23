@@ -127,6 +127,12 @@ markers = [
 dev = [
     "pytest-subtests>=0.14.2",
 ]
+# Opt-in Phoenix live upload for LLM tests. Not a default group and not a package extra, so
+# `uv sync --all-extras --dev` does not install it. `make install-test-deps` adds this group when
+# PHOENIX_COLLECTOR_ENDPOINT is set; otherwise use `uv sync --group phoenix`.
+phoenix = [
+    "arize-phoenix-client",
+]
 
 # redesign of fastmcp makes this necessary
 # as we want to keep our inheritance

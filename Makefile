@@ -141,7 +141,7 @@ test-upstream-containers: ## Pull the upstream container images and check if the
 
 .PHONY: install-test-deps
 install-test-deps: pyproject.toml uv.lock ## Install test dependencies (dev optional extras)
-	uv sync --locked --all-extras --dev
+	uv sync --locked --all-extras --dev $(if $(PHOENIX_COLLECTOR_ENDPOINT),--group phoenix)
 
 .PHONY: clean-test
 clean-test: ## Clean test artifacts and cache

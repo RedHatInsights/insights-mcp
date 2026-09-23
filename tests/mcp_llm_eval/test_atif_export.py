@@ -71,11 +71,11 @@ def test_ensure_phoenix_ready_ok_without_endpoint(monkeypatch: pytest.MonkeyPatc
     atif_export.ensure_phoenix_ready()
 
 
-def test_require_phoenix_client_asks_for_pip_install(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Missing client tells the user to pip install or unset the endpoint."""
+def test_require_phoenix_client_asks_for_group_install(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Missing client tells the user to sync the phoenix group or unset the endpoint."""
     monkeypatch.setattr(atif_export, "Client", None)
     monkeypatch.setattr(atif_export, "_convert_atif_trajectories_to_spans", None)
-    with pytest.raises(RuntimeError, match="uv pip install arize-phoenix-client"):
+    with pytest.raises(RuntimeError, match="uv sync --group phoenix"):
         atif_export.require_phoenix_client()
 
 

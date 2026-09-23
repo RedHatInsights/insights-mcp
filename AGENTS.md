@@ -228,7 +228,7 @@ insights-mcp --toolset=image-builder,vulnerability # Multiple specific toolsets
 - `IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK=True` - Disable blueprint watermarks
 - `DEEPEVAL_TELEMETRY_OPT_OUT=YES` - Disable telemetry in tests
 - `INSIGHTS_MCP_DISABLE_TRACE_EXPORT=true` - Skip writing LLM ATIF traces under `tests/logs/`
-- `PHOENIX_COLLECTOR_ENDPOINT` - If set, LLM tests also upload traces to Phoenix (`uv pip install arize-phoenix-client`)
+- `PHOENIX_COLLECTOR_ENDPOINT` - If set, LLM tests also upload traces to Phoenix. `make install-test-deps` then adds `--group phoenix` (`arize-phoenix-client`).
 
 ## Security Notes for Development
 

@@ -24,7 +24,7 @@ ATIF_SCHEMA_VERSION = "ATIF-v1.7"
 FAILED_PYTEST_OUTCOMES = frozenset({"failed", "error"})
 _TRUTHY_ENV_VALUES = frozenset({"1", "true", "yes", "on"})
 MISSING_PHOENIX_CLIENT = (
-    "arize-phoenix-client is not installed. Unset PHOENIX_COLLECTOR_ENDPOINT or uv pip install arize-phoenix-client"
+    "arize-phoenix-client is not installed. Unset PHOENIX_COLLECTOR_ENDPOINT or uv sync --group phoenix"
 )
 
 _TESTS_DIR = Path(__file__).resolve().parents[1]
