@@ -8,6 +8,7 @@ aspell
 auth
 autopep
 backend
+basename
 baseos
 bool
 booleans
@@ -22,6 +23,7 @@ Cryptographic
 customizations
 CVE
 DCR
+deduplicated
 deepeval
 DeepEval
 deeplink
@@ -30,6 +32,7 @@ deprecations
 Deprecations
 Dev
 direnv
+distro
 env
 EPEL
 FastMCP's
@@ -66,6 +69,9 @@ nodejs
 OAuth
 OCI
 OIDC
+openapi
+parametrized
+parametrizes
 permissioned
 PII
 PKCE
@@ -74,6 +80,7 @@ podman
 postgresql
 pre
 Pre
+prepends
 proxying
 PyPI
 pyproject

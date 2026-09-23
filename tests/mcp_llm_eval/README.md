@@ -72,7 +72,7 @@ PromptWithTools(
 can express repeated calls:
 
 ```python
-expected_args={
+expected_args = {
     "inventory__get_host": [
         {"host_id": "first-host"},
         {"host_id": "second-host"},
