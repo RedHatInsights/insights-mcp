@@ -26,14 +26,13 @@ from .atif_export import (
 )
 from .llama_index_support.agent_mcp import MCPAgentWrapper
 from .llm_tracing import enable_llm_test_tracing
-from .utils import gpt_model_from_config, load_llm_configurations
+from .utils import abbreviate_middle, gpt_model_from_config, load_llm_configurations
 
 _, guardian_llm_config = load_llm_configurations()
 
 _ATIF_RUN_ID = pytest.StashKey[str]()
 _ATIF_RUN_DIR = pytest.StashKey[Path]()
 _ATIF_AGENT = pytest.StashKey[MCPAgentWrapper]()
-_ATIF_STATUS_MESSAGE_LIMIT = 2000
 
 
 @pytest.fixture(scope="session")
@@ -129,13 +128,10 @@ def _attach_atif_recorder(item: pytest.Item, agent: MCPAgentWrapper) -> None:
 
 
 def _status_message_from_report(report: pytest.TestReport) -> str:
-    """Return a truncated pytest failure representation."""
+    """Return a pytest failure representation, abbreviated in the middle when too long."""
     if report.outcome != "failed" or report.longrepr is None:
         return ""
-    text = str(report.longrepr)
-    if len(text) > _ATIF_STATUS_MESSAGE_LIMIT:
-        return text[:_ATIF_STATUS_MESSAGE_LIMIT] + "…"
-    return text
+    return abbreviate_middle(str(report.longrepr))
 
 
 def _export_atif_for_item(item: pytest.Item, report: pytest.TestReport) -> None:

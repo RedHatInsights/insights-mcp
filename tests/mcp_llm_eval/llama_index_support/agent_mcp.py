@@ -22,6 +22,7 @@ from mcp.shared._httpx_utils import create_mcp_http_client
 from tests.mcp_llm_eval.atif_export import AtifTrajectoryBuilder
 from tests.mcp_llm_eval.deepeval_support.tracing import WorkflowToolCallCollector, tools_called_from_agent_run
 from tests.mcp_llm_eval.mcp_jsonrpc import fetch_mcp_instructions_http, fetch_mcp_instructions_stdio
+from tests.mcp_llm_eval.utils import abbreviate_middle
 
 _MCP_INSTRUCTIONS_HEADER = "## MCP server instructions"
 _USER_REQUEST_HEADER = "## User request"
@@ -280,9 +281,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         self._step_names.append(ev_name)
         if not self.logger or ev_name in ["AgentStream"]:
             return
-        data_str = f"{ev}"
-        if len(data_str) > 2000:
-            data_str = data_str[:1000] + "\n<… abbreviated log …>\n" + data_str[-1000:]
+        data_str = abbreviate_middle(f"{ev}")
         log_function = self.logger.info if ev_name == "ToolCall" else self.logger.debug
         log_function("📡 Event %s: %s", ev_name, data_str)
 
