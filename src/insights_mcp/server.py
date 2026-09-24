@@ -409,6 +409,11 @@ def get_latest_release_tag() -> str:
     return response.json()["tag_name"]
 
 
+def _version_check_disabled() -> bool:
+    """Return whether remote release checks are disabled by configuration."""
+    return (config.INSIGHTS_MCP_DISABLE_VERSION_CHECK or "").lower() == "true"
+
+
 def validate_oauth_config(logger: logging.Logger) -> None:
     """Fail fast with a clear message when AUTH_SERVER is set but AUTH_ISSUER is missing."""
     if config.AUTH_SERVER and not config.AUTH_ISSUER:
@@ -463,7 +468,11 @@ def get_mcp_version() -> str:
     """Get the version of the {container_brand_long} MCP server.
     Always call this if the user asks for the version of the {container_brand_long} MCP server.
     or when there is an API or authentication issue.
-    Present the comparison URL to the user."""
+    If the latest version check is disabled, return only the current version.
+    Otherwise, present the comparison URL to the user."""
+    if _version_check_disabled():
+        return f"Current version: {__version__}"
+
     # TBD get the latest release tag from github, provide the difference
     # between the latest release tag and the current version
     latest_release_tag = get_latest_release_tag()
