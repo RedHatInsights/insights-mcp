@@ -72,7 +72,7 @@ repos:
         args: [--recursive=y, src, tests, scripts/mcp_registry]
       - id: check-generated-docs
         name: Check generated docs (usage, toolsets, catalog-info)
-        entry: bash -c 'make generate-docs && git diff --exit-code usage.md toolsets.md catalog-info.yaml docs/mkdocs/index.md docs/mkdocs/HACKING.md README.md .agents/skills/README.md .claude/skills/README.md .agents/skills/getting-started/SKILL.md .claude/skills/getting-started/SKILL.md'
+        entry: bash -c 'make generate-docs && git diff --exit-code usage.md toolsets.md catalog-info.yaml docs/mkdocs/index.md docs/mkdocs/HACKING.md docs/mkdocs/mcp-llm-eval.md README.md .agents/skills/README.md .claude/skills/README.md .agents/skills/getting-started/SKILL.md .claude/skills/getting-started/SKILL.md'
         language: system
         pass_filenames: false
         stages: [manual]

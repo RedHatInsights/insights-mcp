@@ -496,7 +496,7 @@ Please explain red-hat-lightspeed-mcp and what I can do with it?
 
 For example questions specific to each toolset please have a look at the test files:
 
- * [`image-builder-mcp`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/image_builder_mcp/tests/test_llm_integration_easy.py#L20)
+ * [`image-builder-mcp`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/image_builder_mcp/test_prompts.md)
  * [`inventory-mcp`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/inventory_mcp/test_prompts.md)
  * [`planning-mcp`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/planning_mcp/test_prompts.md)
  * [`remediations-mcp`](https://github.com/RedHatInsights/insights-mcp/blob/main/src/remediations_mcp/test_prompts.md)

@@ -13,6 +13,10 @@ Also checkout `make help` for the available commands.
 The majority of tests are automatically run by CI/CD pipelines or
 locally by running `make test`.
 
+The toolset LLM tests use the shared `mcp_llm_eval` module. Its API, scenario
+data structures, execution behavior, and consumer fixture contract are
+documented in [`tests/mcp_llm_eval/README.md`](tests/mcp_llm_eval/README.md).
+
 Although there are tests to use the `main` code, to double check that
 especially handing over environment variables and credentials
 (in multiple ways) work, those are the use cases that should be working:

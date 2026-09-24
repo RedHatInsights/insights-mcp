@@ -51,6 +51,8 @@ dev = [
     "llama-index-core",
     "llama-index-tools-mcp",
     "llama-index-llms-openai",
+    "llama-index-llms-openai-like",
+    "llama-index-workflows>=2.24.1",
     "mkdocs-techdocs-core",
 ]
 
@@ -76,6 +78,10 @@ vulnerability_mcp = ["*.html", "*.css"]
 
 [tool.pylint.format]
 max-line-length = 120
+
+[tool.pylint.basic]
+# Test functions are named for pytest collection; they do not need docstrings.
+no-docstring-rgx = "^(_|test_)"
 
 [tool.pylint.messages_control]
 disable = ["fixme"]
@@ -108,13 +114,24 @@ indent-style = "space"
 [tool.pytest.ini_options]
 pythonpath = ["src", "scripts", "."]
 testpaths = ["tests", "src"]
+# Session event loop lets httpx/OpenAI clients finish aclose between parametrized LLM tests.
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 markers = [
     "integration: tests that call external APIs (e.g. GitHub API)",
+    "instrumentation: structural MCP / wiring checks without LLM behavior assertions",
+    "llm: behavioral LLM integration tests (requires test_config.json or MODEL_* env)",
 ]
 
 [dependency-groups]
 dev = [
     "pytest-subtests>=0.14.2",
+]
+# Opt-in Phoenix live upload for LLM tests. Not a default group and not a package extra, so
+# `uv sync --all-extras --dev` does not install it. `make install-test-deps` adds this group when
+# PHOENIX_COLLECTOR_ENDPOINT is set; otherwise use `uv sync --group phoenix`.
+phoenix = [
+    "arize-phoenix-client",
 ]
 
 # redesign of fastmcp makes this necessary

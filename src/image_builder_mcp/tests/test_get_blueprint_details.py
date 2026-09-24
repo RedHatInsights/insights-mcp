@@ -10,7 +10,7 @@ from tests.conftest import (
     assert_api_error_message,
 )
 
-from .conftest import setup_imagebuilder_mock
+from .conftest import setup_toolset_mock
 
 
 class TestGetBlueprintDetails:
@@ -37,7 +37,7 @@ class TestGetBlueprintDetails:
         blueprint_uuid = TEST_BLUEPRINT_UUID
 
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call the method
             result = await imagebuilder_mcp_server.get_blueprint_details(blueprint_identifier=blueprint_uuid)
 
@@ -56,7 +56,7 @@ class TestGetBlueprintDetails:
         invalid_uuid = "invalid-uuid-format"
 
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, [{"id": "test-id"}]):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, [{"id": "test-id"}]):
             # Call the method
             with pytest.raises(InsightsApiError) as exc_info:
                 await imagebuilder_mcp_server.get_blueprint_details(blueprint_identifier=invalid_uuid)
@@ -81,9 +81,7 @@ class TestGetBlueprintDetails:
         blueprint_uuid = TEST_BLUEPRINT_UUID
 
         # Setup mocks
-        with setup_imagebuilder_mock(
-            imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")
-        ):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")):
             # Call the method
             with pytest.raises(InsightsApiError) as exc_info:
                 await imagebuilder_mcp_server.get_blueprint_details(blueprint_identifier=blueprint_uuid)
@@ -98,7 +96,7 @@ class TestGetBlueprintDetails:
         blueprint_uuid = TEST_BLUEPRINT_UUID
 
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, [{"id": "test-id"}]):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, [{"id": "test-id"}]):
             # Call the method
             result = await imagebuilder_mcp_server.get_blueprint_details(blueprint_identifier=blueprint_uuid)
 

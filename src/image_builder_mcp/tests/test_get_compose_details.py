@@ -10,7 +10,7 @@ from tests.conftest import (
     assert_api_error_message,
 )
 
-from .conftest import setup_imagebuilder_mock
+from .conftest import setup_toolset_mock
 
 
 class TestGetComposeDetails:
@@ -66,7 +66,7 @@ class TestGetComposeDetails:
         compose_uuid = "abcd1234-5678-9012-3456-789012345678"
 
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_compose_details_success):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_compose_details_success):
             # Call the method
             result = await imagebuilder_mcp_server.get_compose_details(compose_identifier=compose_uuid)
 
@@ -91,7 +91,7 @@ class TestGetComposeDetails:
         compose_uuid = "abcd1234-5678-9012-3456-789012345678"
 
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_compose_details_gcp):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_compose_details_gcp):
             # Call the method
             result = await imagebuilder_mcp_server.get_compose_details(compose_identifier=compose_uuid)
 
@@ -106,7 +106,7 @@ class TestGetComposeDetails:
         invalid_uuid = "invalid-uuid-format"
 
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, [{"id": "test-id"}]):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, [{"id": "test-id"}]):
             # Call the method
             with pytest.raises(InsightsApiError) as exc_info:
                 await imagebuilder_mcp_server.get_compose_details(compose_identifier=invalid_uuid)
@@ -131,9 +131,7 @@ class TestGetComposeDetails:
         compose_uuid = "abcd1234-5678-9012-3456-789012345678"
 
         # Setup mocks
-        with setup_imagebuilder_mock(
-            imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")
-        ):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")):
             # Call the method
             with pytest.raises(InsightsApiError) as exc_info:
                 await imagebuilder_mcp_server.get_compose_details(compose_identifier=compose_uuid)
@@ -148,7 +146,7 @@ class TestGetComposeDetails:
         compose_uuid = "abcd1234-5678-9012-3456-789012345678"
 
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, [{"id": "test-id"}]):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, [{"id": "test-id"}]):
             # Call the method
             with pytest.raises(InsightsApiError) as exc_info:
                 await imagebuilder_mcp_server.get_compose_details(compose_identifier=compose_uuid)

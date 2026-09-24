@@ -98,3 +98,32 @@ class TestGetOpenAPI:
 
             assert "ImageTypes" not in result_small
             assert "ImageTypes" not in result_large
+
+    @pytest.mark.asyncio
+    async def test_get_openapi_omits_deprecated_image_types(self, imagebuilder_mcp_server):
+        """get_openapi must not expose deprecated edge image types from the upstream enum."""
+        mock_openapi_response = {
+            "openapi": "3.0.0",
+            "components": {
+                "schemas": {
+                    "ImageTypes": {
+                        "enum": [
+                            "guest-image",
+                            "edge-commit",
+                            "edge-installer",
+                            "rhel-edge-commit",
+                            "rhel-edge-installer",
+                            "ami",
+                        ]
+                    }
+                }
+            },
+        }
+        with patch.object(imagebuilder_mcp_server.insights_client, "get") as mock_get:
+            mock_get.return_value = mock_openapi_response
+            result = await imagebuilder_mcp_server.get_openapi(endpoints="")
+
+        parsed = json.loads(result)
+        image_type_enum = parsed["components"]["schemas"]["ImageTypes"]["enum"]
+        assert image_type_enum == ["guest-image", "ami"]
+        assert "edge-commit" not in result

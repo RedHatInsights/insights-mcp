@@ -1,77 +1,18 @@
 """Pytest configuration and common fixtures."""
 
-# Apply defensive patch for llama-index MCP schema violation bug
-# This prevents TypeError when llama-index incorrectly generates additionalProperties: true
-# (which violates MCP specification that expects explicit object properties)
-
 import asyncio
-import logging
+import functools
 from contextlib import contextmanager
 from unittest.mock import Mock, patch
 
 import pytest
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 
-# Add imports for mock client creation
-from insights_mcp.client import InsightsClient
+from insights_mcp.client import InsightsClient, build_mounted_tool_names
 from insights_mcp.config import INSIGHTS_BASE_URL
+from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 from tests import oauth_utils as oauth_utils_module
-
-# pylint: disable=wrong-import-position
-from .llama_index_non_iterable_bool_patch import apply_llama_index_bool_patch
-
-if apply_llama_index_bool_patch():
-    print("✅ Patch applied successfully")
-else:
-    print("❌ Failed to apply patch")
-
-from .utils import CustomVLLMModel, cleanup_server_process, load_llm_configurations, start_insights_mcp_server
-from .utils_agent import MCPAgentWrapper
-
-# Load LLM configurations for fixtures
-_, guardian_llm_config = load_llm_configurations()
-
-
-@pytest.fixture
-def test_agent(mcp_server_url, verbose_logger, request):  # pylint: disable=redefined-outer-name
-    """Create and configure a simplified test agent for the current LLM configuration."""
-    # Get llm_config from the test's parametrization
-    llm_config = request.node.callspec.params["llm_config"]
-
-    agent = MCPAgentWrapper(
-        server_url=mcp_server_url,
-        api_url=llm_config["MODEL_API"],
-        model_id=llm_config["MODEL_ID"],
-        api_key=llm_config["USER_KEY"],
-        verbose_logger=verbose_logger,
-    )
-    verbose_logger.info("🧪 Testing the model: %s", agent.model_id)
-
-    return agent
-
-
-@pytest.fixture
-def guardian_agent(verbose_logger, request):  # pylint: disable=redefined-outer-name
-    """Create and configure a guardian agent for evaluation."""
-    # Get llm_config from the test's parametrization
-    llm_config = request.node.callspec.params["llm_config"]
-
-    # if there is a guardian LLM, use it for the guardian agent
-    # otherwise, use the test LLM for the guardian agent
-    if guardian_llm_config:
-        agent = CustomVLLMModel(
-            api_url=guardian_llm_config["MODEL_API"],
-            model_id=guardian_llm_config["MODEL_ID"],
-            api_key=guardian_llm_config["USER_KEY"],
-        )
-    else:
-        agent = CustomVLLMModel(
-            api_url=llm_config["MODEL_API"], model_id=llm_config["MODEL_ID"], api_key=llm_config["USER_KEY"]
-        )
-
-    verbose_logger.info("🧪 Verifying with the model: %s", agent.get_model_name())
-
-    return agent
+from tests.llm_api_discovery import build_llm_api_context
 
 
 @pytest.fixture
@@ -123,36 +64,20 @@ def mcp_tools(mcp_server_url):  # pylint: disable=redefined-outer-name
     For stdio transport, uses BasicMCPClient subprocess approach.
     For HTTP/SSE transports, connects to the running server.
     """
-    if mcp_server_url == "stdio":
-        # For stdio, use subprocess approach
-        client = BasicMCPClient("python", args=["-m", "insights_mcp.server", "stdio"])
-    else:
-        # For HTTP/SSE, connect to running server
-        client = BasicMCPClient(mcp_server_url)
-
-    tool_spec = McpToolSpec(client=client)
 
     async def _fetch():
-        return await tool_spec.to_tool_list_async()
+        if mcp_server_url == "stdio":
+            client = BasicMCPClient("python", args=["-m", "insights_mcp.server", "stdio"])
+        else:
+            client = BasicMCPClient(mcp_server_url)
+        try:
+            tool_spec = McpToolSpec(client=client)
+            return await tool_spec.to_tool_list_async()
+        finally:
+            if not client.client_provided:
+                await client.http_client.aclose()
 
     return asyncio.run(_fetch())
-
-
-@pytest.fixture
-def verbose_logger(request):
-    """Get a logger that respects pytest verbosity."""
-    logger = logging.getLogger(__name__)
-
-    verbosity = request.config.getoption("verbose", default=0)
-
-    if verbosity >= 3:
-        logger.setLevel(logging.DEBUG)
-    elif verbosity == 2:
-        logger.setLevel(logging.INFO)
-    else:
-        logger.setLevel(logging.WARNING)
-
-    return logger
 
 
 TEST_CLIENT_ID = "test-client-id"
@@ -163,9 +88,11 @@ TEST_BLUEPRINT_UUID = "12345678-1234-1234-1234-123456789012"
 def create_mcp_server(server_class, client_id=TEST_CLIENT_ID, client_secret=TEST_CLIENT_SECRET):
     """Create a mock MCP server instance for any server class."""
     server = server_class()
+    mounted_tool_names = build_mounted_tool_names([server.toolset_name])
     server.init_insights_client(
         client_id=client_id,
         client_secret=client_secret,
+        mounted_tool_names=mounted_tool_names,
     )
     server.register_tools()
     return server
@@ -182,54 +109,24 @@ def create_mock_client(client_id=TEST_CLIENT_ID, client_secret=TEST_CLIENT_SECRE
     return client
 
 
-# No server-specific fixtures needed!
-# Tests can import the server class directly and use create_mcp_server(ServerClass)
-
-
 @contextmanager
-# pylint: disable=too-many-arguments,too-many-positional-arguments
-def setup_mcp_mock(
-    server_module,
-    mcp_server,
-    mock_client,
-    mock_response=None,
-    side_effect=None,
-    client_id=TEST_CLIENT_ID,
-    brand="insights",
-):
-    """Generic context manager for setting up MCP server mock patterns.
+def setup_toolset_mock(mcp_server, mock_client, mock_response=None, side_effect=None):
+    """Context manager for setting up MCP server mock patterns.
 
-    Args:
-        server_module: The server module to patch get_http_headers on
-        mcp_server: The MCP server instance
-        mock_client: The mock client to use
-        mock_response: Optional response to return from client methods
-        side_effect: Optional side effect for client methods
-        client_id: Client ID to use (default: TEST_CLIENT_ID)
-        brand: Brand for header names (default: "insights"). Use "red-hat-lightspeed" for lightspeed.
+    Replaces the server's insights_client with a mock and configures
+    its HTTP methods to return mock_response or raise side_effect.
     """
-    # Derive headers from brand (same logic as config.py)
-    brand_prefix = brand.replace("red-hat-", "")
-    id_header = f"{brand_prefix.lower()}-client-id"
-    secret_header = f"{brand_prefix.lower()}-client-secret"
+    if side_effect:
+        mock_client.get.side_effect = side_effect
+        mock_client.post.side_effect = side_effect
+        mock_client.put.side_effect = side_effect
+    else:
+        mock_client.get.return_value = mock_response
+        mock_client.post.return_value = mock_response
+        mock_client.put.return_value = mock_response
 
-    with patch.object(server_module, "get_http_headers") as mock_headers:
-        mock_headers.return_value = {
-            id_header: client_id,
-            secret_header: TEST_CLIENT_SECRET,
-        }
-
-        if side_effect:
-            mock_client.get.side_effect = side_effect
-            mock_client.post.side_effect = side_effect
-            mock_client.put.side_effect = side_effect
-        elif mock_response is not None:
-            mock_client.get.return_value = mock_response
-            mock_client.post.return_value = mock_response
-            mock_client.put.return_value = mock_response
-
-        mcp_server.clients[client_id] = mock_client
-        yield mock_headers
+    with patch.object(mcp_server, "insights_client", mock_client):
+        yield
 
 
 def assert_api_error_message(exception: BaseException, error_message: str = "API Error") -> None:
@@ -291,3 +188,14 @@ def multi_user_tokens():
         ...     assert user1_token.claims["organization"]["id"] != user2_token.claims["organization"]["id"]
     """
     return oauth_utils_module.create_multi_user_tokens(num_users=3)
+
+
+@functools.cache
+def _build_llm_api_context() -> dict[str, str]:
+    return asyncio.run(build_llm_api_context())
+
+
+@pytest.fixture(scope="session")
+def llm_api_context() -> dict[str, str]:
+    """Live API-derived placeholder values for LLM prompt tests (session scope)."""
+    return dict(_build_llm_api_context())

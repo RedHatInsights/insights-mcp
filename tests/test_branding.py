@@ -16,7 +16,8 @@ def test_get_mcp_version_description_uses_container_brand(
     brand: str,
     expected_brand_long: str,
 ) -> None:
-    """Ensure get_mcp_version description uses the correct container brand."""
+    """Ensure get_mcp_version exposes only the concise first-line LLM description."""
+    _ = expected_brand_long
     tools = get_mcp_tools_with_toolset("http", toolset=None, container_brand=brand)
     tool_map = {getattr(t.metadata, "name", ""): t for t in tools}
 
@@ -24,6 +25,5 @@ def test_get_mcp_version_description_uses_container_brand(
     version_tool = tool_map["get_mcp_version"]
 
     description = getattr(version_tool.metadata, "description", "") or ""
-    expected_prefix = f"Get the version of the {expected_brand_long} MCP server."
-
-    assert description.startswith(expected_prefix)
+    assert description.startswith("MCP server package version only—not image builds or compose status.")
+    assert "API or authentication issue" in description

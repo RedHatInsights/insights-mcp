@@ -2,12 +2,10 @@
 Conftest for advisor_mcp tests - re-exports fixtures from top-level tests.
 """
 
-from contextlib import contextmanager
-from unittest.mock import patch
-
 import pytest
 
 from advisor_mcp import AdvisorMCP
+from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 
 # Import directly from tests since pytest now knows where to find packages
 from tests.conftest import (
@@ -19,15 +17,29 @@ from tests.conftest import (
     create_mcp_server,
     create_mock_client,
     default_response_size,
-    guardian_agent,
-    mcp_server_url,
+    llm_api_context,
     mcp_tools,
     mock_http_headers,
-    setup_mcp_mock,
-    test_agent,
+    setup_toolset_mock,
     test_client_credentials,
-    verbose_logger,
 )
+from tests.mcp_llm_eval.fixtures import guardian_agent, test_agent, verbose_logger
+
+
+@pytest.fixture(scope="session")
+def mcp_server_url(request):
+    """Start MCP server with only the advisor toolset for LLM integration tests."""
+    transport = getattr(request, "param", "http")
+    if hasattr(request.node, "callspec") and "transport" in request.node.callspec.params:
+        transport = request.node.callspec.params["transport"]
+
+    server_url, server_process = start_insights_mcp_server(transport, toolset="advisor")
+
+    try:
+        yield server_url
+    finally:
+        cleanup_server_process(server_process)
+
 
 # Test constants specific to advisor
 TEST_RULE_ID = "xfs_with_md_raid_hang|XFS_WITH_MD_RAID_HANG_ISSUE_DEFAULT_KERNEL"
@@ -80,33 +92,6 @@ def advisor_mock_client():
     return create_mock_client(api_path="api/insights/v1")
 
 
-@contextmanager
-def setup_advisor_mock(mcp_server, mock_client, mock_response=None, side_effect=None):
-    """Context manager for setting up Advisor mock patterns.
-
-    Advisor MCP uses a different architecture than Image Builder MCP:
-    - No get_http_headers() function
-    - Uses self.insights_client directly from InsightsMCP base class
-    """
-    # pylint: disable=duplicate-code  # Similar mock setup patterns across toolsets
-    # Set up mock responses
-    if side_effect:
-        mock_client.get.side_effect = side_effect
-        mock_client.post.side_effect = side_effect
-        mock_client.put.side_effect = side_effect
-    else:
-        # Set return value for all cases, including when mock_response is None
-        mock_client.get.return_value = mock_response
-        mock_client.post.return_value = mock_response
-        mock_client.put.return_value = mock_response
-
-    # Mock the insights_client directly on the server instance
-    with patch.object(mcp_server, "insights_client", mock_client):
-        yield None  # No headers needed for advisor architecture
-
-
-# pylint: disable=duplicate-code  # Test fixture patterns are similar across toolsets
-# Make the fixtures available for import
 __all__ = [
     "assert_api_error_result",
     "assert_empty_response",
@@ -119,11 +104,11 @@ __all__ = [
     "get_default_active_rules_params",
     "get_default_hosts_details_params",
     "guardian_agent",
+    "llm_api_context",
     "mcp_server_url",
     "mcp_tools",
     "mock_http_headers",
-    "setup_advisor_mock",
-    "setup_mcp_mock",
+    "setup_toolset_mock",
     "test_agent",
     "test_client_credentials",
     "TEST_CLIENT_ID",

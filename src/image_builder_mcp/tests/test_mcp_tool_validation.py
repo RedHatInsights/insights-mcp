@@ -4,7 +4,7 @@ This module provides parametrized tests for image-builder tools using
 the reusable test patterns from the top-level tests package.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 
@@ -21,7 +21,7 @@ from tests.test_patterns import (
     [
         (
             "image-builder__get_blueprints",
-            "Show user's image blueprints",
+            "🟢 List blueprints",
             {
                 "limit": {
                     "description": "Maximum number of items to return (use 7 as default)",
@@ -33,7 +33,7 @@ from tests.test_patterns import (
         ),
         (
             "image-builder__get_composes",
-            "Get a list of all image builds (composes)",
+            "🟢 List image builds",
             {
                 "limit": {
                     "description": "Maximum number of items to return (use 7 as default)",
@@ -57,7 +57,7 @@ from tests.test_patterns import (
         ),
         (
             "image-builder__get_openapi",
-            "Get OpenAPI spec. Use this to get details e.g for a new blueprint",
+            "🟢 OpenAPI spec",
             {
                 "endpoints": {
                     "description": "Comma-separated list of endpoint specs to reduce the spec",
@@ -75,7 +75,7 @@ def test_mcp_tools_include_descriptions_and_annotations(
     subtests,
     tool_name: str,
     expected_desc: str,
-    params: Dict[str, Dict[str, Any]],
+    params: dict[str, dict[str, Any]],
 ):  # pylint: disable=redefined-outer-name
     """Test that the image-builder MCP tools include descriptions and annotations."""
     assert_mcp_tool_descriptions_and_annotations(mcp_tools, subtests, tool_name, expected_desc, params)
