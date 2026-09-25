@@ -6,11 +6,12 @@ import json
 import re
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Literal, cast
 
 import pytest
 
 from tests.mcp_llm_eval import atif_export
+from tests.mcp_llm_eval import fixtures as eval_fixtures
 
 
 def test_node_display_id_strips_module_path():
@@ -535,6 +536,110 @@ def test_atif_builder_empty_output_with_tools_still_flushes() -> None:
     assert agent_steps[0]["message"] == ""
     assert agent_steps[0]["tool_calls"][0]["function_name"] == "advisor__get_rule_from_node_id"
     assert agent_steps[0]["tool_calls"][0]["arguments"] == {"node_id": 1}
+
+
+def test_atif_builder_setup_failure_without_steps() -> None:
+    """A fixture failure with no LLM turns still finishes as one system step."""
+    builder = _builder()
+    message = "InsightsApiError: [INSTRUCTION] HTTP 403 lacks permission"
+    builder.record_fixture_failure(message)
+    trajectory = builder.finish(
+        pytest_outcome="failed",
+        pytest_status_message=message,
+        pytest_when="setup",
+    )
+    assert trajectory["extra"]["pytest_outcome"] == "failed"
+    assert trajectory["extra"]["pytest_when"] == "setup"
+    assert trajectory["extra"]["pytest_status_message"] == message
+    assert len(trajectory["steps"]) == 1
+    step = trajectory["steps"][0]
+    assert step["source"] == "system"
+    assert step["message"] == message
+    assert step["extra"]["pytest_outcome"] == "failed"
+    assert step["extra"]["pytest_when"] == "setup"
+
+
+def test_record_fixture_failure_empty_message_uses_fallback() -> None:
+    """Blank fixture-failure text is replaced so the system step is not empty."""
+    builder = _builder()
+    builder.record_fixture_failure("  ")
+    trajectory = builder.finish(pytest_outcome="failed", pytest_when="teardown")
+    assert trajectory["steps"][0]["message"] == "pytest failed before any LLM turn"
+    assert trajectory["extra"]["pytest_when"] == "teardown"
+
+
+def _pytest_report(
+    when: Literal["setup", "call", "teardown"],
+    outcome: Literal["passed", "failed", "skipped"],
+    longrepr: str | None = None,
+) -> pytest.TestReport:
+    """Build a pytest report without running a test."""
+    return pytest.TestReport(
+        nodeid="tests/mcp_llm_eval/test_atif_export.py::test_report",
+        location=("tests/mcp_llm_eval/test_atif_export.py", 0, "test_report"),
+        keywords={},
+        outcome=outcome,
+        longrepr=longrepr,
+        when=when,
+    )
+
+
+def test_report_should_export_setup_and_teardown_failures() -> None:
+    """Failed setup and teardown export; passed setup and teardown wait for the call."""
+    should_export = eval_fixtures._report_should_export  # pylint: disable=protected-access
+    assert should_export(_pytest_report("setup", "failed")) is True
+    assert should_export(_pytest_report("setup", "passed")) is False
+    assert should_export(_pytest_report("call", "passed")) is True
+    assert should_export(_pytest_report("teardown", "failed")) is True
+    assert should_export(_pytest_report("teardown", "passed")) is False
+
+
+def test_export_setup_failure_without_agent_writes_and_uploads(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A setup error with no agent still writes ATIF JSON and uploads it to Phoenix."""
+    run_id = "20260925113900"
+    node_id = (
+        "src/advisor_mcp/tests/test_advisor_llm_prompts.py::"
+        "TestAdvisorLLMPrompts::test_llm_eval[top_critical_issues-Qwen3.5 9b]"
+    )
+    config = SimpleNamespace(stash=pytest.Stash(), rootpath=tmp_path)
+    config.stash[eval_fixtures._ATIF_RUN_ID] = run_id  # pylint: disable=protected-access
+    config.stash[eval_fixtures._ATIF_RUN_DIR] = tmp_path  # pylint: disable=protected-access
+    item = SimpleNamespace(
+        config=config,
+        stash=pytest.Stash(),
+        nodeid=node_id,
+        location=("/tmp/not-a-test.py", 8, "TestAdvisorLLMPrompts.test_llm_eval"),
+        callspec=SimpleNamespace(params={"llm_config": {"MODEL_ID": "qwen3.5-9b", "name": "Qwen3.5 9b"}}),
+    )
+    status = "InsightsApiError: [INSTRUCTION] The user is authenticated but lacks permission (HTTP 403)."
+    report = _pytest_report("setup", "failed", status)
+    uploaded: dict[str, Any] = {}
+
+    def _capture_upload(trajectories: list[dict[str, Any]], *, project_name: str, endpoint: str) -> None:
+        uploaded["trajectories"] = trajectories
+        uploaded["project_name"] = project_name
+        uploaded["endpoint"] = endpoint
+
+    monkeypatch.setattr(eval_fixtures, "trace_export_disabled", lambda: False)
+    monkeypatch.setattr(eval_fixtures, "phoenix_collector_endpoint", lambda: "http://phoenix.example")
+    monkeypatch.setattr(eval_fixtures, "upload_trajectories", _capture_upload)
+
+    eval_fixtures._export_atif_for_item(cast(pytest.Item, item), report)  # pylint: disable=protected-access
+
+    display_id = atif_export.node_display_id(node_id)
+    written = json.loads((tmp_path / f"{display_id}.json").read_text(encoding="utf-8"))
+    assert written["extra"]["pytest_outcome"] == "failed"
+    assert written["extra"]["pytest_when"] == "setup"
+    assert "HTTP 403" in written["extra"]["pytest_status_message"]
+    assert written["agent"]["model_name"] == "qwen3.5-9b"
+    assert len(written["steps"]) == 1
+    assert written["steps"][0]["source"] == "system"
+    assert uploaded["endpoint"] == "http://phoenix.example"
+    assert uploaded["project_name"] == atif_export.phoenix_project_name(run_id)
+    assert uploaded["trajectories"][0]["extra"]["pytest_when"] == "setup"
 
 
 def test_write_atif_json_round_trip(tmp_path: Path) -> None:

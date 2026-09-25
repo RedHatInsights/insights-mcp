@@ -134,6 +134,51 @@ def _status_message_from_report(report: pytest.TestReport) -> str:
     return abbreviate_middle(str(report.longrepr))
 
 
+def _report_should_export(report: pytest.TestReport) -> bool:
+    """Return True for the test call and for failed setup or teardown."""
+    if report.when == "call":
+        return True
+    return report.when in {"setup", "teardown"} and report.outcome == "failed"
+
+
+def _llm_model_name(item: pytest.Item) -> str:
+    """Return ``MODEL_ID`` from the item's ``llm_config`` parameter, or empty."""
+    callspec = getattr(item, "callspec", None)
+    if callspec is None:
+        return ""
+    llm_config = callspec.params.get("llm_config")
+    if not isinstance(llm_config, dict):
+        return ""
+    model_id = llm_config.get("MODEL_ID", "")
+    return model_id if isinstance(model_id, str) else ""
+
+
+def _new_atif_recorder(item: pytest.Item, run_id: str) -> AtifTrajectoryBuilder:
+    """Build a recorder for an LLM item whose agent never started."""
+    display_id = node_display_id(item.nodeid)
+    test_file, test_line = _item_test_location(item)
+    return AtifTrajectoryBuilder(
+        session_id=atif_session_id(run_id, display_id),
+        trajectory_id=display_id,
+        pytest_node_id=item.nodeid,
+        model_name=_llm_model_name(item),
+        tool_definitions=[],
+        test_file=test_file,
+        test_line=test_line,
+        testrun=run_id,
+    )
+
+
+def _recorder_for_export(item: pytest.Item, run_id: str) -> AtifTrajectoryBuilder | None:
+    """Return the item's recorder, or a new one for an LLM test that failed in setup."""
+    agent = item.stash.get(_ATIF_AGENT, None)
+    if agent is not None and agent.atif_recorder is not None:
+        return agent.atif_recorder
+    if not _node_requests_llm_tracing(item):
+        return None
+    return _new_atif_recorder(item, run_id)
+
+
 def _export_atif_for_item(item: pytest.Item, report: pytest.TestReport) -> None:
     """Write ATIF JSON for an LLM test and optionally upload it to Phoenix."""
     if trace_export_disabled():
@@ -142,15 +187,19 @@ def _export_atif_for_item(item: pytest.Item, report: pytest.TestReport) -> None:
     run_id = item.config.stash.get(_ATIF_RUN_ID, "")
     if run_dir is None or not run_id:
         return
-    agent = item.stash.get(_ATIF_AGENT, None)
-    if agent is None or agent.atif_recorder is None:
+    recorder = _recorder_for_export(item, run_id)
+    if recorder is None:
         return
-    recorder = agent.atif_recorder
+    status_message = _status_message_from_report(report)
     if not recorder.has_steps():
-        return
+        if report.outcome != "failed":
+            return
+        fallback = f"pytest {report.when} failed before any LLM turn"
+        recorder.record_fixture_failure(status_message or fallback)
     trajectory = recorder.finish(
         pytest_outcome=report.outcome,
-        pytest_status_message=_status_message_from_report(report),
+        pytest_status_message=status_message,
+        pytest_when=report.when,
     )
     write_atif_json(run_dir / f"{recorder.trajectory_id}.json", trajectory)
     endpoint = phoenix_collector_endpoint()
@@ -188,11 +237,11 @@ def pytest_collection_finish(session: pytest.Session) -> None:
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]) -> Generator[None, Any, None]:
-    """Export ATIF after the test call, including failures."""
+    """Export ATIF after failed setup, the test call, and failed teardown."""
     _ = call
     outcome = yield
     report = outcome.get_result()
-    if report.when == "call":
+    if _report_should_export(report):
         _export_atif_for_item(item, report)
 
 
