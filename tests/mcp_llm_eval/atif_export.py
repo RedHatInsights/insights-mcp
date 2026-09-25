@@ -543,17 +543,28 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         if event_name == "AgentOutput":
             self._consume_agent_output(event)
 
+    def record_fixture_failure(self, message: str) -> None:
+        """Record a system step when pytest failed before any LLM turn.
+
+        Args:
+            message: Pytest failure representation. Empty text uses a fixed fallback.
+        """
+        text = message.strip() or "pytest failed before any LLM turn"
+        self._steps.append(self._make_step(source="system", message=text))
+
     def finish(
         self,
         *,
         pytest_outcome: str,
         pytest_status_message: str = "",
+        pytest_when: str = "",
     ) -> dict[str, Any]:
         """Build the ATIF trajectory object.
 
         Args:
-            pytest_outcome: Pytest call outcome (``passed``, ``failed``, ``skipped``).
+            pytest_outcome: Pytest report outcome (``passed``, ``failed``, ``skipped``).
             pytest_status_message: Failure representation; empty on success.
+            pytest_when: Pytest phase (``setup``, ``call``, or ``teardown``). Empty omits the field.
 
         Returns:
             ATIF trajectory dict ready to serialize.
@@ -565,10 +576,14 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         extra["testrun"] = self.testrun
         if pytest_status_message:
             extra["pytest_status_message"] = pytest_status_message
+        if pytest_when:
+            extra["pytest_when"] = pytest_when
         for step in self._steps:
             step_extra = dict(step.get("extra") or {})
             step_extra.update(self._location_extra())
             step_extra["pytest_outcome"] = pytest_outcome
+            if pytest_when:
+                step_extra["pytest_when"] = pytest_when
             step["extra"] = step_extra
         return {
             "schema_version": ATIF_SCHEMA_VERSION,
