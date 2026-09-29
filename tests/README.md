@@ -95,6 +95,9 @@ When pytest collects any test parametrized with ``llm_config``, the shared fixtu
 Actual ``tools_called`` for ``ToolCorrectnessMetric`` come from workflow stream events in
 ``mcp_llm_eval.deepeval_support.tracing``, not from Phoenix.
 
+See [View LLM test results in Phoenix](mcp_llm_eval/README.md#view-llm-test-results-in-phoenix)
+for the Phoenix setup.
+
 Environment:
 
 - ``DEEPEVAL_TELEMETRY_OPT_OUT=YES`` — disable DeepEval telemetry (recommended in CI/docs).

@@ -209,6 +209,24 @@ The data helpers also provide:
   deduplicated prompt examples in registry and turn order for
   `make test-prompts-md`.
 
+## View LLM test results in Phoenix
+
+[Arize Phoenix](https://arize.com/docs/phoenix) provides a web interface for inspecting LLM test traces.
+
+```bash
+# Start Phoenix.
+uvx arize-phoenix serve
+
+# In another terminal, enable the connector and install its dependency.
+export PHOENIX_COLLECTOR_ENDPOINT=http://localhost:6006
+make install-test-deps
+
+# Run the LLM tests.
+make test-llm
+```
+
+Open <http://localhost:6006> to view the results.
+
 ## Fixtures supplied by the consumer
 
 The consuming project registers the generic fixtures from its pytest
