@@ -52,6 +52,9 @@ INSIGHTS_REFRESH_TOKEN = os.getenv("INSIGHTS_REFRESH_TOKEN") or os.getenv("LIGHT
 
 # Argument toolset
 INSIGHTS_MCP_TOOLSET = os.getenv("INSIGHTS_TOOLSET") or os.getenv("LIGHTSPEED_TOOLSET") or "all"
+INSIGHTS_MCP_DISABLE_VERSION_CHECK = (
+    os.getenv("INSIGHTS_MCP_DISABLE_VERSION_CHECK") or os.getenv("LIGHTSPEED_MCP_DISABLE_VERSION_CHECK") or None
+)
 
 # Brand configuration for dynamic variable naming in user-facing messages
 CONTAINER_BRAND = os.getenv("CONTAINER_BRAND", "insights")

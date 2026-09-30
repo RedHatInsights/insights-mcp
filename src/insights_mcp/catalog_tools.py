@@ -51,7 +51,7 @@ def _list_mounted_tools() -> list[Tool]:
             temp_sub = type(mcp)()  # type: ignore[call-arg]
             temp_sub.register_tools()
             temp_root.mount(temp_sub, prefix=f"{mcp.toolset_name}_")
-        except (NotImplementedError, TypeError, ValueError):
+        except (NotImplementedError, TypeError):
             temp_root.mount(mcp, prefix=f"{mcp.toolset_name}_")
 
     return list(asyncio.run(temp_root.list_tools()))

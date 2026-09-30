@@ -463,6 +463,7 @@ make run-stdio
 ### Additional info
 
 You can set the environment variable `IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK` to `True` to avoid adding a hint to newly created image builder blueprints.
+You can set the environment variable `INSIGHTS_MCP_DISABLE_VERSION_CHECK` or `LIGHTSPEED_MCP_DISABLE_VERSION_CHECK` to `True` to make `get_mcp_version` return only the locally installed version without making GitHub requests.
 
 
 ## Hosted MCP Server with Auth Provider (HTTP transport)
@@ -538,7 +539,7 @@ To start the PipelineRun, add a new comment in a pull-request with content `/ok-
 
 If a test fails, add a new comment in a pull-request with content `/retest` to re-run the test.
 
-For more detailed information about running a PipelineRun, please refer to Pipelines as Code documentation [Running the PipelineRun](https://pipelinesascode.com/docs/guide/running/)
+For more detailed information about running a PipelineRun, please refer to Pipelines as Code documentation [Running the PipelineRun](https://pipelinesascode.com/docs/guides/running-pipelines/)
 
 To customize the proposed PipelineRuns after merge, please refer to [Build Pipeline customization](https://konflux-ci.dev/docs/building/customizing-the-build/)
 
