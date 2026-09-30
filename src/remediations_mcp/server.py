@@ -19,7 +19,6 @@ mcp = InsightsMCP(
     You can create playbooks for different issues, such as vulnerability mitigation or applying
     $container_brand_long Advisor recommendations.
 
-    [INSTRUCTION] Be communicative. Ask user if they want to get a link to the playbook or to get the YAML content.
     Playbooks in YAML format MUST be returned as is without any changes.
     """,
 )
@@ -30,17 +29,6 @@ async def create_vuln_playbook(playbook_name: str, cves: list[str], uuids: list[
     """Create remediation playbook for given CVEs on given systems to mitigate vulnerabilities.
 
     Don't process the playbook. You MUST return the YAML as is.
-    Ask user if they want to get a link to the playbook or to get the YAML content.
-    Inform them about the limitations of the link and that printing the YAML can be slow.
-
-    If user ask for it, you can also respond with a link to the playbook in a format like this:
-    ```
-    https://console.redhat.com/insights/remediations/{playbook_id}
-    ```
-    Inform user that they can't see the playbook with user other than Service Account used to create it.
-    This limitation is reported at https://issues.redhat.com/browse/RHINENG-20235.
-    Therefore to download the playbook, user needs to authenticate with $container_brand_long with their
-    Red Hat Service Account.
 
     Args:
         playbook_name: Name of the playbook. Example: "Remediation Playbook"
