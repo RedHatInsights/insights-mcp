@@ -75,7 +75,7 @@ build-claude-extension-dev: build ## Build Claude extension for local developmen
 
 .PHONY: lint
 lint: install-test-deps ## Run linting with pre-commit (same hooks as CI lint workflow)
-	uv run pre-commit run --all-files --hook-stage manual
+	uv run pre-commit run --show-diff-on-failure --all-files --hook-stage manual
 
 .PHONY: test
 test: install-test-deps test-instrumentation ## Run tests with pytest (hides logging output)
@@ -244,7 +244,7 @@ TEST_PROMPTS_MD := \
 test-prompts-md: $(TEST_PROMPTS_MD) ## Generate all toolset test_prompts.md files
 
 docs/tool-tokens.md: $(ALL_PYTHON_FILES) scripts/dump_tool_tokens.py
-	uv run python scripts/dump_tool_tokens.py -o $@
+	uv run --isolated --frozen --python 3.12 --all-extras python scripts/dump_tool_tokens.py -o $@
 
 src/image_builder_mcp/test_prompts.md: src/image_builder_mcp/test_prompts.py $(PROMPTS_GENERATOR_DEPS)
 	uv run python scripts/generate_test_prompts.py --module image_builder_mcp.test_prompts -o $@
