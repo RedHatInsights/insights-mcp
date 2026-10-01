@@ -1,10 +1,12 @@
 """Test suite for the get_hosts_hitting_a_rule() method."""
 
+from http import HTTPMethod
+
 import pytest
 
 from insights_mcp.errors import InsightsApiError
 
-from .conftest import TEST_RULE_ID, setup_toolset_mock
+from .conftest import TEST_RULE_ID
 
 
 class TestGetHostsHittingARule:
@@ -21,17 +23,19 @@ class TestGetHostsHittingARule:
     ):
         """Test get_hosts_hitting_a_rule with valid rule ID."""
         rule_id = TEST_RULE_ID
+        endpoint = f"rule/{rule_id}/systems/"
+        query = {}
 
         # Setup mocks
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
-            # Call the method
-            result = await advisor_mcp_server.get_hosts_hitting_a_rule(rule_id=rule_id)
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_api_response)
+        # Call the method
+        result = await advisor_mcp_server.get_hosts_hitting_a_rule(rule_id=rule_id)
 
-            # Verify API was called correctly
-            advisor_mock_client.get.assert_called_once_with(f"rule/{rule_id}/systems/")
+        # Verify API was called correctly
+        advisor_mock_client.get.assert_called_once_with(endpoint)
 
-            # Verify the result
-            assert result == mock_api_response
+        # Verify the result
+        assert result == mock_api_response
 
     @pytest.mark.parametrize(
         "rule_id, expected_error",
@@ -62,38 +66,44 @@ class TestGetHostsHittingARule:
     ):
         """Test get_hosts_hitting_a_rule with whitespace in rule ID."""
         rule_id = f"  {TEST_RULE_ID}  "
+        endpoint = f"rule/{TEST_RULE_ID}/systems/"
+        query = {}
 
         # Setup mocks
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
-            # Call the method
-            await advisor_mcp_server.get_hosts_hitting_a_rule(rule_id=rule_id)
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_api_response)
+        # Call the method
+        await advisor_mcp_server.get_hosts_hitting_a_rule(rule_id=rule_id)
 
-            # Verify API was called with trimmed rule_id
-            advisor_mock_client.get.assert_called_once_with(f"rule/{TEST_RULE_ID}/systems/")
+        # Verify API was called with trimmed rule_id
+        advisor_mock_client.get.assert_called_once_with(endpoint)
 
     @pytest.mark.asyncio
     async def test_get_hosts_hitting_a_rule_api_error(self, advisor_mcp_server, advisor_mock_client):
         """Test get_hosts_hitting_a_rule when API returns error."""
         rule_id = TEST_RULE_ID
+        endpoint = f"rule/{rule_id}/systems/"
+        query = {}
 
         # Setup mocks
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
-            with pytest.raises(InsightsApiError) as exc_info:
-                await advisor_mcp_server.get_hosts_hitting_a_rule(rule_id=rule_id)
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, error=Exception("API Error"))
+        with pytest.raises(InsightsApiError) as exc_info:
+            await advisor_mcp_server.get_hosts_hitting_a_rule(rule_id=rule_id)
 
-            error_message = str(exc_info.value)
-            assert f"Failed to retrieve systems for recommendation {rule_id}:" in error_message
-            assert "API Error" in error_message
+        error_message = str(exc_info.value)
+        assert f"Failed to retrieve systems for recommendation {rule_id}:" in error_message
+        assert "API Error" in error_message
 
     @pytest.mark.asyncio
     async def test_get_hosts_hitting_a_rule_empty_response(self, advisor_mcp_server, advisor_mock_client):
         """Test get_hosts_hitting_a_rule when API returns empty response."""
         rule_id = TEST_RULE_ID
+        endpoint = f"rule/{rule_id}/systems/"
+        query = {}
 
         # Setup mocks
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, None):
-            # Call the method
-            result = await advisor_mcp_server.get_hosts_hitting_a_rule(rule_id=rule_id)
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=None)
+        # Call the method
+        result = await advisor_mcp_server.get_hosts_hitting_a_rule(rule_id=rule_id)
 
-            # Should return None when API returns None
-            assert result is None
+        # Should return None when API returns None
+        assert result is None
