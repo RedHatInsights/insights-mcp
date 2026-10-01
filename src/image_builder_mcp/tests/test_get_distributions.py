@@ -1,12 +1,11 @@
 """Test suite for the get_distributions() method."""
 
 import json
+from http import HTTPMethod
 
 import pytest
 
 from insights_mcp.errors import InsightsApiError
-
-from .conftest import setup_toolset_mock
 
 
 class TestGetDistributions:
@@ -28,55 +27,63 @@ class TestGetDistributions:
         self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_distributions_response
     ):
         """Test basic functionality of get_distributions method."""
+        endpoint = "distributions"
+        query = {}
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_distributions_response):
-            # Call the method
-            result = await imagebuilder_mcp_server.get_distributions()
+        imagebuilder_mock_client.api.register(
+            HTTPMethod.GET, endpoint, response_body=mock_distributions_response, query=query
+        )
+        # Call the method
+        result = await imagebuilder_mcp_server.get_distributions()
 
-            # Verify API was called correctly
-            imagebuilder_mock_client.get.assert_called_once_with("distributions")
+        # Verify API was called correctly
+        imagebuilder_mock_client.get.assert_called_once_with("distributions")
 
-            # Parse the result
-            parsed_result = json.loads(result)
-            assert isinstance(parsed_result, list)
-            assert len(parsed_result) == 5
+        # Parse the result
+        parsed_result = json.loads(result)
+        assert isinstance(parsed_result, list)
+        assert len(parsed_result) == 5
 
-            # Check that all expected distributions are present
-            distribution_names = [dist["name"] for dist in parsed_result]
-            assert "rhel-8" in distribution_names
-            assert "rhel-9" in distribution_names
-            assert "rhel-10" in distribution_names
-            assert "fedora-40" in distribution_names
-            assert "centos-stream-9" in distribution_names
+        # Check that all expected distributions are present
+        distribution_names = [dist["name"] for dist in parsed_result]
+        assert "rhel-8" in distribution_names
+        assert "rhel-9" in distribution_names
+        assert "rhel-10" in distribution_names
+        assert "fedora-40" in distribution_names
+        assert "centos-stream-9" in distribution_names
 
-            # Verify structure of distribution objects
-            for dist in parsed_result:
-                assert "name" in dist
-                assert "description" in dist
-                assert "version" in dist
+        # Verify structure of distribution objects
+        for dist in parsed_result:
+            assert "name" in dist
+            assert "description" in dist
+            assert "version" in dist
 
     @pytest.mark.asyncio
     async def test_get_distributions_empty_response(self, imagebuilder_mcp_server, imagebuilder_mock_client):
         """Test get_distributions with empty API response."""
+        endpoint = "distributions"
+        query = {}
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, []):
-            # Call the method
-            result = await imagebuilder_mcp_server.get_distributions()
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, endpoint, response_body=[], query=query)
+        # Call the method
+        result = await imagebuilder_mcp_server.get_distributions()
 
-            # Should return empty list
-            parsed_result = json.loads(result)
-            assert parsed_result == []
+        # Should return empty list
+        parsed_result = json.loads(result)
+        assert parsed_result == []
 
     @pytest.mark.asyncio
     async def test_get_distributions_api_error(self, imagebuilder_mcp_server, imagebuilder_mock_client):
         """Test get_distributions when API returns error."""
+        endpoint = "distributions"
+        query = {}
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")):
-            # Call the method
-            with pytest.raises(InsightsApiError) as exc_info:
-                await imagebuilder_mcp_server.get_distributions()
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, error=Exception("API Error"))
+        # Call the method
+        with pytest.raises(InsightsApiError) as exc_info:
+            await imagebuilder_mcp_server.get_distributions()
 
-            assert str(exc_info.value).startswith("Error getting distributions: API Error")
+        assert str(exc_info.value).startswith("Error getting distributions: API Error")
 
     @pytest.mark.asyncio
     async def test_get_distributions_auth_error(self, imagebuilder_mcp_server):
@@ -94,11 +101,15 @@ class TestGetDistributions:
         self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_distributions_response
     ):
         """Test that get_distributions works without any parameters."""
+        endpoint = "distributions"
+        query = {}
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_distributions_response):
-            # Call the method without any parameters
-            result = await imagebuilder_mcp_server.get_distributions()
+        imagebuilder_mock_client.api.register(
+            HTTPMethod.GET, endpoint, response_body=mock_distributions_response, query=query
+        )
+        # Call the method without any parameters
+        result = await imagebuilder_mcp_server.get_distributions()
 
-            # Should work without parameters
-            parsed_result = json.loads(result)
-            assert len(parsed_result) == 5
+        # Should work without parameters
+        parsed_result = json.loads(result)
+        assert len(parsed_result) == 5
