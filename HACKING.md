@@ -2,7 +2,7 @@
 
 ## Run
 
-⚠️ Usually you want to just use the MCP server via a tool like VSCode, Cursor, etc.
+Usually you want to just use the MCP server via a tool like VSCode, Cursor, etc.
 so please refer to the [integrations](README.md#integrations) section unless you want to
 develop the MCP server.
 
