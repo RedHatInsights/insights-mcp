@@ -19,7 +19,9 @@ from mcp.types import Icon, ToolAnnotations
 
 from insights_mcp import __version__, config
 from insights_mcp.catalog_tools import catalog_tool_description
+from insights_mcp.client import build_mounted_tool_names
 from insights_mcp.mcp import InsightsMCP
+from insights_mcp.tool_description import mcp_tool_title_from_docstring
 from insights_mcp.toolsets import MCPS
 
 # Insights MCP token claims (see tests/oauth_utils.py).
@@ -181,6 +183,7 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
             allowed_mcps: List of MCP server names to register and mount
             readonly: If True, only register read-only tools
         """
+        mounted_tool_names = build_mounted_tool_names(allowed_mcps)
         for mcp in MCPS:
             if mcp.toolset_name not in allowed_mcps:
                 continue
@@ -194,6 +197,7 @@ class InsightsMCPServer(FastMCP):  # pylint: disable=too-many-instance-attribute
                 headers=mcp.headers,
                 mcp_transport=self.mcp_transport,
                 token_endpoint=self.token_endpoint,
+                mounted_tool_names=mounted_tool_names,
             )
             try:
                 mcp.register_tools()
@@ -465,8 +469,8 @@ def setup_credentials(mcp_server_config: dict, logger: logging.Logger) -> None:
 
 
 def get_mcp_version() -> str:
-    """Get the version of the {container_brand_long} MCP server.
-    Always call this if the user asks for the version of the {container_brand_long} MCP server.
+    """MCP server package version only—not image builds or compose status.
+    Use ONLY if the user asks for the {container_brand_long} MCP server version,
     or when there is an API or authentication issue.
     If the latest version check is disabled, return only the current version.
     Otherwise, present the comparison URL to the user."""
@@ -681,11 +685,12 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
 
     mcp_server.register_mcps(toolset_list, readonly=args.readonly)
 
-    # Register the version checking tool
+    version_doc = (get_mcp_version.__doc__ or "").format(container_brand_long=container_brand_long).strip()
     mcp_server.tool(
         get_mcp_version,
         annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
-        description=get_mcp_version.__doc__.format(container_brand_long=container_brand_long),
+        description=version_doc,
+        title=mcp_tool_title_from_docstring(version_doc),
     )
 
     # Iterate over all MCPs and their tools to format any descriptions and titles

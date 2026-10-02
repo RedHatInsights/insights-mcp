@@ -36,3 +36,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: make test
+
+      - name: Run instrumentation tests
+        run: make test-instrumentation

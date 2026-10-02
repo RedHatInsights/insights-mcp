@@ -1,4 +1,4 @@
-"""Fixtures for inventory MCP unit tests."""
+"""Fixtures for inventory MCP unit tests and LLM integration tests."""
 
 from contextlib import contextmanager
 from typing import Any
@@ -6,7 +6,27 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 from inventory_mcp.server import mcp
+from tests.conftest import llm_api_context
+from tests.mcp_llm_eval.fixtures import test_agent, verbose_logger
+
+__all__ = ["llm_api_context", "mcp_server_url", "test_agent", "verbose_logger"]
+
+
+@pytest.fixture(scope="session")
+def mcp_server_url(request):
+    """Start MCP server with only the inventory toolset for LLM integration tests."""
+    transport = getattr(request, "param", "http")
+    if hasattr(request.node, "callspec") and "transport" in request.node.callspec.params:
+        transport = request.node.callspec.params["transport"]
+
+    server_url, server_process = start_insights_mcp_server(transport, toolset="inventory")
+
+    try:
+        yield server_url
+    finally:
+        cleanup_server_process(server_process)
 
 
 @pytest.fixture
@@ -88,8 +108,8 @@ def setup_inventory_mock(
         yield
 
 
-def list_hosts_kwargs(**overrides: Any) -> dict[str, Any]:
-    """Default arguments for calling list_hosts from unit tests."""
+def inventory_host_filter_kwargs(**overrides: Any) -> dict[str, Any]:
+    """Default host-filter kwargs shared by list_hosts and dashboard unit tests."""
     params: dict[str, Any] = {
         "hostname_or_id": "",
         "display_name": "",
@@ -100,12 +120,19 @@ def list_hosts_kwargs(**overrides: Any) -> dict[str, Any]:
         "provider_type": "",
         "workspace_id": "",
         "workspace_name": "",
-        "updated_start": "",
-        "updated_end": "",
         "per_page": 10,
         "page": 1,
         "order_by": "",
         "order_how": "ASC",
     }
+    params.update(overrides)
+    return params
+
+
+def list_hosts_kwargs(**overrides: Any) -> dict[str, Any]:
+    """Default arguments for calling list_hosts from unit tests."""
+    params = inventory_host_filter_kwargs()
+    params["updated_start"] = ""
+    params["updated_end"] = ""
     params.update(overrides)
     return params

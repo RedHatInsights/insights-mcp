@@ -9,7 +9,7 @@ from tests.conftest import (
     assert_instruction_in_result,
 )
 
-from .conftest import setup_imagebuilder_mock
+from .conftest import setup_toolset_mock
 
 
 class TestBlueprintCompose:
@@ -34,7 +34,7 @@ class TestBlueprintCompose:
         blueprint_uuid = TEST_BLUEPRINT_UUID
 
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_compose_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_compose_response):
             # Call the method
             result = await imagebuilder_mcp_server.blueprint_compose(blueprint_uuid=blueprint_uuid)
 
@@ -61,7 +61,7 @@ class TestBlueprintCompose:
         ]
 
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, multi_build_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, multi_build_response):
             # Call the method
             result = await imagebuilder_mcp_server.blueprint_compose(blueprint_uuid=blueprint_uuid)
 
@@ -75,9 +75,7 @@ class TestBlueprintCompose:
         blueprint_uuid = TEST_BLUEPRINT_UUID
 
         # Setup mocks
-        with setup_imagebuilder_mock(
-            imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")
-        ):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")):
             # Call the method
             with pytest.raises(InsightsApiError) as exc_info:
                 await imagebuilder_mcp_server.blueprint_compose(blueprint_uuid=blueprint_uuid)
@@ -92,7 +90,7 @@ class TestBlueprintCompose:
 
         # Setup mocks
         # Return dict instead of list (unexpected)
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, {"error": "Some error"}):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, {"error": "Some error"}):
             # Call the method
             with pytest.raises(InsightsApiError) as exc_info:
                 await imagebuilder_mcp_server.blueprint_compose(blueprint_uuid=blueprint_uuid)
@@ -109,7 +107,7 @@ class TestBlueprintCompose:
         ]
 
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, invalid_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, invalid_response):
             # Call the method
             result = await imagebuilder_mcp_server.blueprint_compose(blueprint_uuid=blueprint_uuid)
 

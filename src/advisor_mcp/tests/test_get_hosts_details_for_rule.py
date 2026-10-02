@@ -4,7 +4,7 @@ import pytest
 
 from insights_mcp.errors import InsightsApiError
 
-from .conftest import TEST_RHEL_VERSION, TEST_RULE_ID, get_default_hosts_details_params, setup_advisor_mock
+from .conftest import TEST_RHEL_VERSION, TEST_RULE_ID, get_default_hosts_details_params, setup_toolset_mock
 
 
 class TestGetHostsDetailsForRule:
@@ -65,7 +65,7 @@ class TestGetHostsDetailsForRule:
         rule_id = TEST_RULE_ID
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method
             params = get_default_hosts_details_params(rule_id=rule_id)
             result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
@@ -86,7 +86,7 @@ class TestGetHostsDetailsForRule:
         rule_id = TEST_RULE_ID
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method with pagination
             params = get_default_hosts_details_params(rule_id=rule_id, limit=10, offset=5)
             await advisor_mcp_server.get_hosts_details_for_rule(**params)
@@ -103,7 +103,7 @@ class TestGetHostsDetailsForRule:
         rule_id = TEST_RULE_ID
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method with RHEL version
             params = get_default_hosts_details_params(rule_id=rule_id, rhel_version=TEST_RHEL_VERSION)
             await advisor_mcp_server.get_hosts_details_for_rule(**params)
@@ -120,7 +120,7 @@ class TestGetHostsDetailsForRule:
         rule_id = TEST_RULE_ID
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method with all parameters
             params = get_default_hosts_details_params(
                 rule_id=rule_id, limit=50, offset=20, rhel_version=TEST_RHEL_VERSION
@@ -139,7 +139,7 @@ class TestGetHostsDetailsForRule:
         rule_id = TEST_RULE_ID
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method with string parameters
             params = get_default_hosts_details_params(rule_id=rule_id, limit="25", offset="10")
             await advisor_mcp_server.get_hosts_details_for_rule(**params)
@@ -183,7 +183,7 @@ class TestGetHostsDetailsForRule:
         rule_id = TEST_RULE_ID
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
             params = get_default_hosts_details_params(rule_id=rule_id)
             with pytest.raises(InsightsApiError) as exc_info:
                 await advisor_mcp_server.get_hosts_details_for_rule(**params)
@@ -198,7 +198,7 @@ class TestGetHostsDetailsForRule:
         rule_id = TEST_RULE_ID
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, None):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, None):
             # Call the method
             params = get_default_hosts_details_params(rule_id=rule_id)
             result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
@@ -232,7 +232,7 @@ class TestGetHostsDetailsForRule:
         rule_id = TEST_RULE_ID
 
         # Setup mocks with exception
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, side_effect=exception):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, side_effect=exception):
             params = get_default_hosts_details_params(rule_id=rule_id)
             with pytest.raises(InsightsApiError) as exc_info:
                 await advisor_mcp_server.get_hosts_details_for_rule(**params)
@@ -254,7 +254,7 @@ class TestGetHostsDetailsForRule:
             advisor_mock_client.reset_mock()
 
             # Setup mocks
-            with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+            with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
                 # Call the method with valid RHEL version
                 params = get_default_hosts_details_params(rule_id=rule_id, rhel_version=version)
                 result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
@@ -277,7 +277,7 @@ class TestGetHostsDetailsForRule:
         rhel_versions = ["9.3", "9.4", "9.5"]
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method with list of RHEL versions
             params = get_default_hosts_details_params(rule_id=rule_id, rhel_version=rhel_versions)
             result = await advisor_mcp_server.get_hosts_details_for_rule(**params)
@@ -298,7 +298,7 @@ class TestGetHostsDetailsForRule:
         rhel_versions = "9.3,9.4,9.5"
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method with comma-separated RHEL versions
             params = get_default_hosts_details_params(rule_id=rule_id, rhel_version=rhel_versions)
             result = await advisor_mcp_server.get_hosts_details_for_rule(**params)

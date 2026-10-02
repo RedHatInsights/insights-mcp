@@ -1,0 +1,122 @@
+"""Unit tests for test prompt registry helpers."""
+
+import pytest
+
+from tests.llm_prompt_catalog import TOOLSET_PROMPT_MODULES, load_registry
+from tests.mcp_llm_eval.data import (
+    PromptWithTools,
+    TestScenario,
+    TestScenarioRegistry,
+    collect_markdown_prompts,
+    format_template_for_markdown,
+)
+
+
+def test_prompt_with_tools_and_templates() -> None:
+    registry = TestScenarioRegistry(
+        simple=TestScenario(
+            turns=(
+                PromptWithTools(
+                    prompt="List hosts",
+                    expected_tools=("inventory__list_hosts",),
+                ),
+            ),
+        ),
+        multi=TestScenario(
+            turns=(
+                PromptWithTools(
+                    prompt="First turn",
+                    expected_tools=("image-builder__get_blueprints",),
+                ),
+                PromptWithTools(
+                    prompt="Second turn",
+                    expected_tools=("image-builder__get_blueprints",),
+                ),
+            ),
+        ),
+        templated=TestScenario(
+            turns=(
+                PromptWithTools(
+                    prompt="CVE {cve_id} on {system_id}",
+                    expected_tools=("vulnerability__get_cve",),
+                ),
+            ),
+        ),
+    )
+    scenarios = registry.iter_test_scenarios()
+    assert len(scenarios) == 3
+    templated = next(s for s in scenarios if s.prompt_id == "templated")
+    assert templated.required_keys == frozenset({"cve_id", "system_id"})
+    assert templated.format_prompts({"cve_id": "CVE-1", "system_id": "uuid"}) == ("CVE CVE-1 on uuid",)
+
+
+def test_collect_markdown_uses_examples() -> None:
+    registry = TestScenarioRegistry(
+        cve_systems=TestScenario(
+            turns=(
+                PromptWithTools(
+                    prompt="Affected by {cve_id}",
+                    expected_tools=("vulnerability__get_cve",),
+                ),
+            ),
+        ),
+    )
+    examples = {"cve_id": "CVE-1"}
+    prompts = collect_markdown_prompts(registry, examples)
+    assert prompts == [format_template_for_markdown("Affected by {cve_id}", examples)]
+
+
+def test_collect_markdown_prompts_deduplicates() -> None:
+    registry = TestScenarioRegistry(
+        first=TestScenario(
+            turns=(
+                PromptWithTools(
+                    prompt="Same text",
+                    expected_tools=("svc__a",),
+                ),
+            ),
+        ),
+        second=TestScenario(
+            turns=(
+                PromptWithTools(
+                    prompt="Same text",
+                    expected_tools=("svc__b",),
+                ),
+            ),
+        ),
+        third=TestScenario(
+            turns=(
+                PromptWithTools(
+                    prompt="Other",
+                    expected_tools=("svc__c",),
+                ),
+            ),
+        ),
+    )
+    assert collect_markdown_prompts(registry, {}) == ["Same text", "Other"]
+
+
+def test_registry_rejects_entry_without_tools() -> None:
+    with pytest.raises(ValueError, match="TestScenario must contain at least one expected tool"):
+        TestScenarioRegistry(
+            empty_tools=TestScenario(
+                turns=(
+                    PromptWithTools(
+                        prompt="prompt",
+                        expected_tools=(),
+                    ),
+                ),
+            ),
+        )
+
+
+def test_registry_requires_entries() -> None:
+    with pytest.raises(ValueError, match="at least one"):
+        TestScenarioRegistry()
+
+
+@pytest.mark.parametrize("module_name", [module_name for _, module_name in TOOLSET_PROMPT_MODULES])
+def test_all_scenarios_declare_expected_tools(module_name: str) -> None:
+    registry = load_registry(module_name)
+    for scenario in registry.iter_test_scenarios():
+        assert any(turn.expected_tools for turn in scenario.turns)

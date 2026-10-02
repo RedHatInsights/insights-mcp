@@ -2,7 +2,7 @@
 
 ## Run
 
-⚠️ Usually you want to just use the MCP server via a tool like VSCode, Cursor, etc.
+Usually you want to just use the MCP server via a tool like VSCode, Cursor, etc.
 so please refer to the [integrations](index.md#integrations) section unless you want to
 develop the MCP server.
 
@@ -12,6 +12,10 @@ Also checkout `make help` for the available commands.
 
 The majority of tests are automatically run by CI/CD pipelines or
 locally by running `make test`.
+
+The toolset LLM tests use the shared `mcp_llm_eval` module. Its API, scenario
+data structures, execution behavior, and consumer fixture contract are
+documented in [`tests/mcp_llm_eval/README.md`](mcp-llm-eval.md).
 
 Although there are tests to use the `main` code, to double check that
 especially handing over environment variables and credentials

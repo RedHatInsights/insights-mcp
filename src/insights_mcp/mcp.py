@@ -8,6 +8,7 @@ Insights-specific MCP tools and resources.
 import asyncio
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import NotFoundError
 
 from insights_mcp.client import InsightsClient
 from insights_mcp.config import INSIGHTS_BASE_URL, SSO_TOKEN_ENDPOINT
@@ -63,6 +64,7 @@ class InsightsMCP(FastMCP):
         headers: dict[str, str] | None = None,
         mcp_transport: str | None = None,
         token_endpoint: str = SSO_TOKEN_ENDPOINT,
+        mounted_tool_names: frozenset[str] | None = None,
     ):
         """Initialize the authenticated Insights client.
 
@@ -90,6 +92,7 @@ class InsightsMCP(FastMCP):
             headers=self.headers,
             mcp_transport=mcp_transport,
             token_endpoint=token_endpoint,
+            mounted_tool_names=mounted_tool_names,
         )
 
     def register_tools(self) -> None:
@@ -121,4 +124,7 @@ class InsightsMCP(FastMCP):
         ]
 
         for tool_name in tools_to_remove:
-            self.remove_tool(tool_name)
+            try:
+                self.local_provider.remove_tool(tool_name)
+            except KeyError as exc:
+                raise NotFoundError(f"Tool {tool_name!r} not found") from exc

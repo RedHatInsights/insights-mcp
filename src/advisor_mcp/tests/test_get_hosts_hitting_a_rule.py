@@ -4,7 +4,7 @@ import pytest
 
 from insights_mcp.errors import InsightsApiError
 
-from .conftest import TEST_RULE_ID, setup_advisor_mock
+from .conftest import TEST_RULE_ID, setup_toolset_mock
 
 
 class TestGetHostsHittingARule:
@@ -23,7 +23,7 @@ class TestGetHostsHittingARule:
         rule_id = TEST_RULE_ID
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method
             result = await advisor_mcp_server.get_hosts_hitting_a_rule(rule_id=rule_id)
 
@@ -64,7 +64,7 @@ class TestGetHostsHittingARule:
         rule_id = f"  {TEST_RULE_ID}  "
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method
             await advisor_mcp_server.get_hosts_hitting_a_rule(rule_id=rule_id)
 
@@ -77,7 +77,7 @@ class TestGetHostsHittingARule:
         rule_id = TEST_RULE_ID
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
             with pytest.raises(InsightsApiError) as exc_info:
                 await advisor_mcp_server.get_hosts_hitting_a_rule(rule_id=rule_id)
 
@@ -91,7 +91,7 @@ class TestGetHostsHittingARule:
         rule_id = TEST_RULE_ID
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, None):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, None):
             # Call the method
             result = await advisor_mcp_server.get_hosts_hitting_a_rule(rule_id=rule_id)
 
