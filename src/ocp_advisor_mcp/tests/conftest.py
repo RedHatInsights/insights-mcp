@@ -32,7 +32,7 @@ def mock_info_response() -> dict[str, Any]:
 @pytest.fixture
 def mock_metrics_response() -> str:
     """Sample Prometheus metrics response from Insights Results Smart Proxy."""
-    return "# HELP smart_proxy_build_info Build information\nsmart_proxy_build_info{version=\"test\"} 1\n"
+    return '# HELP smart_proxy_build_info Build information\nsmart_proxy_build_info{version="test"} 1\n'
 
 
 @contextmanager
