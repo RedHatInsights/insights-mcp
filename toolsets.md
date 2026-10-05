@@ -54,6 +54,9 @@ Tools marked as read-write **`(rw)`** are excluded by default. Use the `--all-to
 ## content-sources
 - `list_repositories`: List repositories with filtering and pagination options.
 
+## ocp-advisor
+- `get_info`: Get basic information about the OCP Advisor backend services.
+
 ## rbac
 - `explain_access_denied`: Diagnose a 403 access denial for a specific MCP tool call.
 - `get_caller_access`: Get RBAC access for the authenticated caller for one application.
