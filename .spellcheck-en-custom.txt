@@ -71,6 +71,8 @@ mypy
 natively
 nodejs
 OAuth
+ocp
+OCP
 OCI
 OIDC
 openapi
