@@ -141,6 +141,10 @@ spec:
     - type: tool
       name: inventory__load_inventory_dashboard
       description: "Show, list, or display fleet inventory in an interactive dashboard."
+    # ocp-advisor
+    - type: tool
+      name: ocp-advisor__get_info
+      description: "Get basic information about the OCP Advisor backend services."
     # planning
     - type: tool
       name: planning__get_appstreams_lifecycle
