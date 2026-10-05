@@ -4,7 +4,7 @@ import pytest
 
 from insights_mcp.errors import InsightsApiError
 
-from .conftest import setup_advisor_mock
+from .conftest import setup_toolset_mock
 
 
 class TestGetRecommendationsStats:
@@ -26,7 +26,7 @@ class TestGetRecommendationsStats:
         """Test get_recommendations_stats with no parameters."""
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method
             result = await advisor_mcp_server.get_recommendations_stats(groups=None, tags=None)
 
@@ -43,7 +43,7 @@ class TestGetRecommendationsStats:
         """Test get_recommendations_stats with groups parameter."""
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method with groups
             result = await advisor_mcp_server.get_recommendations_stats(groups=["workspace1", "workspace2"], tags=None)
 
@@ -61,7 +61,7 @@ class TestGetRecommendationsStats:
         """Test get_recommendations_stats with tags parameter."""
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method with tags
             result = await advisor_mcp_server.get_recommendations_stats(
                 groups=None, tags=["insights-client/group=database-servers", "satellite/env=production"]
@@ -81,7 +81,7 @@ class TestGetRecommendationsStats:
         """Test get_recommendations_stats with both groups and tags."""
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method with both parameters
             result = await advisor_mcp_server.get_recommendations_stats(
                 groups=["workspace1"], tags=["insights-client/group=database-servers"]
@@ -114,7 +114,7 @@ class TestGetRecommendationsStats:
         """Test get_recommendations_stats when API returns error."""
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
             with pytest.raises(InsightsApiError) as exc_info:
                 await advisor_mcp_server.get_recommendations_stats(groups=None, tags=None)
 
@@ -127,7 +127,7 @@ class TestGetRecommendationsStats:
         """Test get_recommendations_stats when API returns empty response."""
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, None):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, None):
             # Call the method
             result = await advisor_mcp_server.get_recommendations_stats(groups=None, tags=None)
 

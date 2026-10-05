@@ -3,16 +3,16 @@
 Tools marked as read-write **`(rw)`** are excluded by default. Use the `--all-tools` flag when starting the server to include them.
 
 ## image-builder
-- `get_blueprint_details`: Get blueprint details.
-- `get_blueprints`: Show user's image blueprints (saved image templates/configurations for
-- `get_compose_details`: Get detailed information about a specific image build.
-- `get_composes`: Get a list of all image builds (composes) with their UUIDs and basic status.
-- `get_distributions`: Get the list of distributions available to build images with.
-- `get_openapi`: Get OpenAPI spec. Use this to get details e.g for a new blueprint
-- `get_org_id`: Get the organization ID for RHEL image registration/subscription.
-- `blueprint_compose` **`(rw)`**: Compose an image from a blueprint UUID created with create_blueprint, get_blueprints.
-- `create_blueprint` **`(rw)`**: Create a custom Linux image blueprint.
-- `update_blueprint` **`(rw)`**: Update a blueprint.
+- `get_blueprint_details`: 🟢 Blueprint details by UUID, name, or reply_id from get_blueprints.
+- `get_blueprints`: 🟢 List blueprints. Use limit/offset from the user. Paging hints in response footer.
+- `get_compose_details`: 🟢 One compose/image build status & details. UUID from get_composes—not "latest" alone.
+- `get_composes`: 🟢 List image builds (composes) with status; newest first. limit/offset default 7, 0.
+- `get_distributions`: 🟢 List RHEL distributions (latest minor per major). No Fedora/CentOS Stream support.
+- `get_openapi`: 🟢 OpenAPI spec. Optional endpoints=GET:/blueprints,POST:/blueprints to shrink payload.
+- `get_org_id`: 🟢 RHEL org ID for blueprint registration. Never invent org IDs.
+- `blueprint_compose` **`(rw)`**: 🟡 Start compose for a blueprint UUID. Confirm UUID via get_blueprints first.
+- `create_blueprint` **`(rw)`**: 🔴 Create blueprint: gather name, distro, arch, image type; use get_openapi…
+- `update_blueprint` **`(rw)`**: 🟡 Update blueprint. Confirm UUID; schema via get_openapi PUT:/blueprints/{id}.
 
 ## rhsm
 - `get_activation_key`: Get a specific activation key by name.

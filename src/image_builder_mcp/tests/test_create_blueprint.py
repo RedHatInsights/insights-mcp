@@ -10,7 +10,7 @@ from tests.conftest import (
     assert_instruction_in_result,
 )
 
-from .conftest import setup_imagebuilder_mock, setup_imagebuilder_watermark_disabled
+from .conftest import setup_imagebuilder_watermark_disabled, setup_toolset_mock
 
 
 class TestCreateBlueprint:
@@ -42,7 +42,7 @@ class TestCreateBlueprint:
     ):
         """Test basic functionality of create_blueprint method."""
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call the method
             result = await imagebuilder_mcp_server.create_blueprint(data=mock_blueprint_data)
 
@@ -87,9 +87,7 @@ class TestCreateBlueprint:
     ):
         """Test create_blueprint when API returns error."""
         # Setup mocks
-        with setup_imagebuilder_mock(
-            imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")
-        ):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")):
             # Call the method
             with pytest.raises(InsightsApiError) as exc_info:
                 await imagebuilder_mcp_server.create_blueprint(data=mock_blueprint_data)
@@ -103,7 +101,7 @@ class TestCreateBlueprint:
         """Test create_blueprint when API returns unexpected list response."""
         # Setup mocks
         list_response = [{"id": "test-id"}]
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, list_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, list_response):
             # Call the method
             with pytest.raises(InsightsApiError) as exc_info:
                 await imagebuilder_mcp_server.create_blueprint(data=mock_blueprint_data)

@@ -9,7 +9,7 @@ from tests.conftest import (
     assert_instruction_in_result,
 )
 
-from .conftest import setup_imagebuilder_mock, setup_imagebuilder_watermark_disabled
+from .conftest import setup_imagebuilder_watermark_disabled, setup_toolset_mock
 
 
 class TestUpdateBlueprint:
@@ -41,7 +41,7 @@ class TestUpdateBlueprint:
     ):
         """Test basic functionality of update_blueprint method."""
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call the method
             result = await imagebuilder_mcp_server.update_blueprint(
                 blueprint_uuid=TEST_BLUEPRINT_UUID, data=mock_blueprint_data
@@ -71,7 +71,7 @@ class TestUpdateBlueprint:
         }
 
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
             # Call the method
             result = await imagebuilder_mcp_server.update_blueprint(
                 blueprint_uuid=TEST_BLUEPRINT_UUID, data=blueprint_data
@@ -92,7 +92,7 @@ class TestUpdateBlueprint:
         # Setup mocks
         with (
             setup_imagebuilder_watermark_disabled(imagebuilder_mcp_server, imagebuilder_mock_client),
-            setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response),
+            setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response),
         ):
             # Call the method
             result = await imagebuilder_mcp_server.update_blueprint(
@@ -112,9 +112,7 @@ class TestUpdateBlueprint:
     ):
         """Test update_blueprint when API returns error."""
         # Setup mocks
-        with setup_imagebuilder_mock(
-            imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")
-        ):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")):
             # Call the method
             with pytest.raises(InsightsApiError) as exc_info:
                 await imagebuilder_mcp_server.update_blueprint(

@@ -4,7 +4,7 @@ import pytest
 
 from insights_mcp.errors import InsightsApiError
 
-from .conftest import setup_advisor_mock
+from .conftest import setup_toolset_mock
 
 
 class TestGetRuleByTextSearch:
@@ -97,7 +97,7 @@ class TestGetRuleByTextSearch:
         search_text = "xfs"
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method
             result = await advisor_mcp_server.get_rule_by_text_search(text=search_text)
 
@@ -115,7 +115,7 @@ class TestGetRuleByTextSearch:
         search_text = "firewall zone drifting"
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
             # Call the method
             await advisor_mcp_server.get_rule_by_text_search(text=search_text)
 
@@ -141,7 +141,7 @@ class TestGetRuleByTextSearch:
         """Test get_rule_by_text_search when API returns error."""
         search_text = "test"
 
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
             with pytest.raises(InsightsApiError) as exc_info:
                 await advisor_mcp_server.get_rule_by_text_search(text=search_text)
 
@@ -155,7 +155,7 @@ class TestGetRuleByTextSearch:
         search_text = "nonexistent"
 
         # Setup mocks
-        with setup_advisor_mock(advisor_mcp_server, advisor_mock_client, None):
+        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, None):
             # Call the method
             result = await advisor_mcp_server.get_rule_by_text_search(text=search_text)
 

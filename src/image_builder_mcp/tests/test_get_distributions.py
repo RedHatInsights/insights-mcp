@@ -6,7 +6,7 @@ import pytest
 
 from insights_mcp.errors import InsightsApiError
 
-from .conftest import setup_imagebuilder_mock
+from .conftest import setup_toolset_mock
 
 
 class TestGetDistributions:
@@ -29,7 +29,7 @@ class TestGetDistributions:
     ):
         """Test basic functionality of get_distributions method."""
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_distributions_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_distributions_response):
             # Call the method
             result = await imagebuilder_mcp_server.get_distributions()
 
@@ -59,7 +59,7 @@ class TestGetDistributions:
     async def test_get_distributions_empty_response(self, imagebuilder_mcp_server, imagebuilder_mock_client):
         """Test get_distributions with empty API response."""
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, []):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, []):
             # Call the method
             result = await imagebuilder_mcp_server.get_distributions()
 
@@ -71,9 +71,7 @@ class TestGetDistributions:
     async def test_get_distributions_api_error(self, imagebuilder_mcp_server, imagebuilder_mock_client):
         """Test get_distributions when API returns error."""
         # Setup mocks
-        with setup_imagebuilder_mock(
-            imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")
-        ):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")):
             # Call the method
             with pytest.raises(InsightsApiError) as exc_info:
                 await imagebuilder_mcp_server.get_distributions()
@@ -97,7 +95,7 @@ class TestGetDistributions:
     ):
         """Test that get_distributions works without any parameters."""
         # Setup mocks
-        with setup_imagebuilder_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_distributions_response):
+        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_distributions_response):
             # Call the method without any parameters
             result = await imagebuilder_mcp_server.get_distributions()
 

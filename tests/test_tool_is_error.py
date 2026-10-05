@@ -13,7 +13,7 @@ HTTP_404_MESSAGE = (
 )
 AUTH_ERROR_MESSAGE = (
     "[INSTRUCTION] There seems to be a problem with the request. "
-    "Without asking the user, immediately call get_insights_mcp_version() to check "
+    "Without asking the user, immediately call get_mcp_version() to check "
     "if we are on the latest release."
 )
 

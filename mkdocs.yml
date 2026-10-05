@@ -4,6 +4,7 @@ nav:
   - Home: index.md
   - Usage: usage.md
   - Hacking: HACKING.md
+  - LLM eval harness: mcp-llm-eval.md
   - Toolsets: toolsets.md
 plugins:
   - techdocs-core

@@ -82,12 +82,21 @@ make help  # Show all available make targets
 **General pattern for toolset testing:**
 - `tests/` - Main test directory with cross-toolset auth and utility tests
 - `src/<toolset_name>_mcp/tests/` - Toolset-specific tests (when present)
-- `src/<toolset_name>_mcp/test_prompts.md` - Test prompts for LLM validation
+- `tests/mcp_llm_eval/` - Shared LLM evaluation module used by the toolset prompt tests; see [`tests/mcp_llm_eval/README.md`](tests/mcp_llm_eval/README.md) for its API, execution model, and fixtures
+- `src/<toolset_name>_mcp/test_prompts.py` - `PROMPTS = TestScenarioRegistry(...)` from `tests.mcp_llm_eval.data`; see [`tests/mcp_llm_eval/README.md`](tests/mcp_llm_eval/README.md) for the scenario API
+- `src/<toolset_name>_mcp/test_prompts.md` - Generated bullet-list examples for users (`make test-prompts-md`)
+
+The `mcp_llm_eval` README is the source of truth for scenario parameters,
+tool expectations, placeholder handling, and fixture behavior. Templates may
+use `{cve_id}`, `{host_id}`, etc.; the consumer resolves those through its
+live API context. Regenerate markdown with `make test-prompts-md`.
 
 **Example test implementations:**
+- `src/<toolset>_mcp/tests/test_<toolset>_llm_prompts.py` - One parametrized LLM test per `prompt_id`; direct assert that at least one `expected_tools` entry was called (`make test-llm`). Each file must have a unique module basename (pytest import safety).
+- `tests/mcp_llm_eval/llm_prompt_support.py` - Shared resolve/run/assert helpers; `tests/llm_api_discovery.py` for live placeholder values
 - `tests/` - Cross-toolset authentication, API, and pattern tests
-- `src/image_builder_mcp/tests/` - Full test suite with unit and LLM integration tests
-- `src/vulnerability_mcp/test_prompts.md` - LLM test prompts (pattern used by most toolsets)
+- `src/image_builder_mcp/test_prompts.py` - `TestScenarioRegistry` shared by LLM tests and generated `test_prompts.md`
+- `src/image_builder_mcp/tests/` - Additional image-builder behavioral LLM tests (easy/hard)
 
 ### Running Tests
 
@@ -98,6 +107,8 @@ make help  # Shows all available targets with descriptions
 
 **Key test commands (see `make help` for complete list):**
 - `make test` - Standard test run
+- `make test-llm` - Only `@pytest.mark.llm` tests (unified prompt smoke + toolset behavioral tests)
+- `make test-prompts-md` - Regenerate all `src/*/test_prompts.md` from `test_prompts.py`
 - `make test-verbose` - With logging output
 - `make test-coverage` - With coverage reporting
 - `make install-test-deps` - Install test dependencies
@@ -133,6 +144,10 @@ see also [usage.md](usage.md) for more details on the CLI.
      }
    }
    ```
+
+3. **Insights API credentials** for LLM integration tests that call real APIs:
+   - Set `INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET` (or `LIGHTSPEED_*` equivalents), typically via `.envrc` and [direnv](https://direnv.net/)
+   - If direnv is not hooked into your shell, run tests as `direnv exec . pytest ...` so `.envrc` is loaded
 
 ### Test Types
 
@@ -212,6 +227,8 @@ insights-mcp --toolset=image-builder,vulnerability # Multiple specific toolsets
 
 - `IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK=True` - Disable blueprint watermarks
 - `DEEPEVAL_TELEMETRY_OPT_OUT=YES` - Disable telemetry in tests
+- `INSIGHTS_MCP_DISABLE_TRACE_EXPORT=true` - Skip writing LLM ATIF traces under `tests/logs/`
+- `PHOENIX_COLLECTOR_ENDPOINT` - If set, LLM tests also upload traces to Phoenix. `make install-test-deps` then adds `--group phoenix` (`arize-phoenix-client`).
 
 ## Security Notes for Development
 
