@@ -56,6 +56,7 @@ Tools marked as read-write **`(rw)`** are excluded by default. Use the `--all-to
 
 ## ocp-advisor
 - `get_info`: Get basic information about the OCP Advisor backend services.
+- `get_metrics`: Get OCP Advisor backend service metrics.
 
 ## rbac
 - `explain_access_denied`: Diagnose a 403 access denial for a specific MCP tool call.

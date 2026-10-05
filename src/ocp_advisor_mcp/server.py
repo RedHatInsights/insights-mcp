@@ -15,8 +15,8 @@ mcp = InsightsMCP(
     instructions="""
     This server provides tools to access OCP Advisor data from $container_brand_long.
 
-    Use these tools when the user asks about OpenShift/OCP Advisor findings,
-    recommendations, clusters, risks, or the OCP Advisor service status.
+    Use these tools when the user asks about OpenShift/OCP Advisor service status,
+    backend information, or service metrics.
 
     On permission errors (HTTP 403), call rbac__explain_access_denied with the failed tool name or URL.
     """,
@@ -33,6 +33,20 @@ async def get_info() -> dict[str, Any] | str:
     commit, and status information from the /info endpoint.
     """
     response = await mcp.insights_client.get("info")
+    if isinstance(response, str):
+        return response
+    return response
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+async def get_metrics() -> dict[str, Any] | str:
+    """Get OCP Advisor backend service metrics.
+
+    🟢 CALL IMMEDIATELY - No information gathering required.
+
+    Returns Prometheus metrics from the authenticated /metrics endpoint.
+    """
+    response = await mcp.insights_client.get("metrics")
     if isinstance(response, str):
         return response
     return response

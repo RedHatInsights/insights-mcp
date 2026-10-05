@@ -391,9 +391,19 @@
         "method": "GET",
         "api_path": "api/insights-results-aggregator/v2",
         "path_template": "/info",
-        "application": "advisor",
+        "application": "ocp-advisor",
         "required_v1_permissions": [],
-        "kessel_note": "The /info endpoint exposes service metadata and currently does not require a specific RBAC permission."
+        "kessel_note": "The /info endpoint exposes service metadata and does not require a specific RBAC permission."
+      }
+    ],
+    "ocp-advisor__get_metrics": [
+      {
+        "method": "GET",
+        "api_path": "api/insights-results-aggregator/v2",
+        "path_template": "/metrics",
+        "application": "ocp-advisor",
+        "required_v1_permissions": [["ocp-advisor:recommendation-results:read"]],
+        "kessel_note": "The /metrics endpoint requires authentication; Insights Results Smart Proxy authorization accepts ocp-advisor recommendation-results read access."
       }
     ],
     "planning__get_upcoming_changes": [
