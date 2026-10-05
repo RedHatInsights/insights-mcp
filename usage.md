@@ -16,8 +16,8 @@ options:
   --debug            Enable debug logging
   --toolset TOOLSET  Comma-separated list of toolsets to use. Available
                      toolsets: all, image-builder, rhsm, vulnerability,
-                     remediations, advisor, inventory, content-sources, rbac,
-                     planning (default: all)
+                     remediations, advisor, inventory, content-sources, ocp-
+                     advisor, rbac, planning (default: all)
   --toolset-help     Show toolset details of all toolsets
   --readonly         Only register read-only tools (default)
   --all-tools        Register all tools including write tools
