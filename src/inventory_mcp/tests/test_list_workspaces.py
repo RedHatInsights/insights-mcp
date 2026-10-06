@@ -120,10 +120,9 @@ class TestListWorkspaces:
         """API failures propagate as InsightsApiError."""
         endpoint = "groups"
         query = {"group_type": "all", "per_page": 10, "page": 1}
-        inventory_mock_client.api.register(
-            HTTPMethod.GET, endpoint, query=query, error=InsightsApiError("Failed to list groups: 403 Forbidden")
-        )
-        with pytest.raises(InsightsApiError, match="Failed to list groups: 403 Forbidden"):
+        error_msg = "Failed to list groups: 403 Forbidden"
+        inventory_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, error=InsightsApiError(error_msg))
+        with pytest.raises(InsightsApiError, match=error_msg):
             await list_workspaces()
         inventory_mock_client.get.assert_called_once_with(endpoint, params=query)
 
