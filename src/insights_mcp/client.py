@@ -596,7 +596,7 @@ class InsightsHeadersBasedClient:  # pylint: disable=too-many-instance-attribute
 
     # Class-level cache shared across all instances for efficient multiuser support
     # Uses FastMCP session_id for connection-level isolation as recommended by FastMCP docs
-    _session_cache = None  # Lazy initialization
+    _session_cache: SessionCache | None = None  # Lazy initialization
 
     def __init__(
         self,
