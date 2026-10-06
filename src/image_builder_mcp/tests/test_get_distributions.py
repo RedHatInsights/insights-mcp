@@ -86,15 +86,17 @@ class TestGetDistributions:
         assert str(exc_info.value).startswith("Error getting distributions: API Error")
 
     @pytest.mark.asyncio
-    async def test_get_distributions_auth_error(self, imagebuilder_mcp_server):
+    async def test_get_distributions_auth_error(self, imagebuilder_mcp_server, imagebuilder_mock_client):
         """Test get_distributions when authentication fails."""
+        error_message = "Some auth problem"
+        auth_error = InsightsApiError(error_message)
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, "distributions", error=auth_error)
+
         # Call the method
         with pytest.raises(InsightsApiError) as exc_info:
             await imagebuilder_mcp_server.get_distributions()
 
-        error_message = str(exc_info.value)
-        assert "[INSTRUCTION] There seems to be a problem with the request." in error_message
-        assert "authentication problem" in error_message
+        assert str(exc_info.value) == error_message
 
     @pytest.mark.asyncio
     async def test_get_distributions_no_parameters(
