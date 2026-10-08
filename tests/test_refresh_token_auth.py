@@ -132,3 +132,53 @@ class TestLightspeedRefreshTokenConfig:
 
         assert reloaded.INSIGHTS_CLIENT_ID == "rhsm-api"
         assert reloaded.INSIGHTS_REFRESH_TOKEN == "lightspeed-refresh-token"
+
+
+class TestInsightsHttpTimeoutConfig:
+    """Test INSIGHTS_HTTP_TIMEOUT_SECONDS and the LIGHTSPEED fallback."""
+
+    @pytest.fixture(autouse=True)
+    def _restore_config_module(self) -> Iterator[None]:
+        """Reload config after each test so env-driven reloads do not leak state."""
+        yield
+        importlib.reload(config_module)
+
+    def test_default_timeout_is_fifteen_seconds(self, monkeypatch: pytest.MonkeyPatch):
+        """Unset timeout env vars use 15 seconds."""
+        reloaded = _reload_config(
+            monkeypatch,
+            INSIGHTS_HTTP_TIMEOUT_SECONDS=None,
+            LIGHTSPEED_HTTP_TIMEOUT_SECONDS=None,
+        )
+
+        assert reloaded.INSIGHTS_HTTP_TIMEOUT_SECONDS == 15
+
+    def test_lightspeed_timeout_used_when_insights_unset(self, monkeypatch: pytest.MonkeyPatch):
+        """LIGHTSPEED_HTTP_TIMEOUT_SECONDS applies when the Insights variable is unset."""
+        reloaded = _reload_config(
+            monkeypatch,
+            INSIGHTS_HTTP_TIMEOUT_SECONDS=None,
+            LIGHTSPEED_HTTP_TIMEOUT_SECONDS="20",
+        )
+
+        assert reloaded.INSIGHTS_HTTP_TIMEOUT_SECONDS == 20
+
+    def test_insights_timeout_takes_precedence(self, monkeypatch: pytest.MonkeyPatch):
+        """INSIGHTS_HTTP_TIMEOUT_SECONDS wins when both env vars are set."""
+        reloaded = _reload_config(
+            monkeypatch,
+            INSIGHTS_HTTP_TIMEOUT_SECONDS="25",
+            LIGHTSPEED_HTTP_TIMEOUT_SECONDS="20",
+        )
+
+        assert reloaded.INSIGHTS_HTTP_TIMEOUT_SECONDS == 25
+
+    @pytest.mark.parametrize("raw_value", ["0", "-1", "15.5", "slow"])
+    def test_timeout_rejects_non_positive_integer(self, monkeypatch: pytest.MonkeyPatch, raw_value: str):
+        """A non-positive or non-integer timeout fails and includes the bad value."""
+        with pytest.raises(ValueError, match=f"got '{raw_value}'"):
+            _reload_config(
+                monkeypatch,
+                INSIGHTS_HTTP_TIMEOUT_SECONDS=raw_value,
+                LIGHTSPEED_HTTP_TIMEOUT_SECONDS=None,
+            )
