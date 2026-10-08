@@ -194,7 +194,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             api_key=self.api_key,
             temperature=0.1,
             context_window=self.token_limit,
-            max_tokens=1024,
+            max_tokens=16384,
             is_chat_model=True,
             is_function_calling_model=True,
             # Some OpenAI-compatible gateways (e.g. Mistral) reject strict JSON-schema tool mode.
