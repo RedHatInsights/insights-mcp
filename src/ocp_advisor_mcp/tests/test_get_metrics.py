@@ -24,3 +24,16 @@ class TestGetMetrics:
 
         ocp_advisor_mock_client.get.assert_called_once_with("metrics")
         assert result == mock_metrics_response
+
+    @pytest.mark.asyncio
+    async def test_get_metrics_returns_json_response(
+        self,
+        ocp_advisor_mock_client: AsyncMock,
+    ) -> None:
+        """get_metrics returns JSON responses unchanged if the API ever returns JSON."""
+        json_response = {"status": "ok"}
+        with setup_ocp_advisor_mock(ocp_advisor_mock_client, json_response):
+            result = await get_metrics()
+
+        ocp_advisor_mock_client.get.assert_called_once_with("metrics")
+        assert result == json_response
