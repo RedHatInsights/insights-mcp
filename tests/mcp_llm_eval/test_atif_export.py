@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Literal, cast
@@ -168,7 +170,35 @@ class AgentInput:  # pylint: disable=too-few-public-methods
         self.input = messages
 
 
-def _builder() -> atif_export.AtifTrajectoryBuilder:
+class _SteppedClock:
+    """UTC clock that tests advance explicitly."""
+
+    def __init__(self) -> None:
+        self.now = datetime(2026, 10, 8, 12, 0, 0, tzinfo=timezone.utc)
+
+    def __call__(self) -> datetime:
+        return self.now
+
+    def advance(self, milliseconds: int) -> None:
+        """Move the clock forward.
+
+        Args:
+            milliseconds: How far to move ``now``.
+        """
+        self.now += timedelta(milliseconds=milliseconds)
+
+
+def _parsed_span_time(value: str) -> datetime:
+    """Parse a span or ATIF timestamp."""
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def _span_duration(span: dict[str, Any]) -> timedelta:
+    """Return a span's end minus its start."""
+    return _parsed_span_time(span["end_time"]) - _parsed_span_time(span["start_time"])
+
+
+def _builder(clock: Callable[[], datetime] | None = None) -> atif_export.AtifTrajectoryBuilder:
     return atif_export.AtifTrajectoryBuilder(
         session_id="20260922125600",
         trajectory_id="TestAdvisorLLMPrompts::test_llm_eval[top_critical_issues-Gemini 2.5 Flash]",
@@ -189,6 +219,7 @@ def _builder() -> atif_export.AtifTrajectoryBuilder:
         ],
         test_file="tests/mcp_llm_eval/generators.py",
         test_line=43,
+        clock=clock,
     )
 
 
@@ -512,6 +543,192 @@ def test_atif_builder_live_workflow_event_order_one_step_per_tool_round() -> Non
     assert agent_steps[2]["message"] == "none of your systems are affected"
     assert "tool_calls" not in agent_steps[2]
     assert trajectory["final_metrics"]["total_steps"] == 4
+
+
+def test_atif_builder_records_model_interval_before_tool_interval() -> None:
+    """A tool round stores the model call, then the tool call, on the agent step."""
+    clock = _SteppedClock()
+    builder = _builder(clock)
+    builder.begin_turn("list distributions")
+    clock.advance(10)
+    builder.consume_event(AgentInput([SimpleNamespace(role="user", content="list distributions", blocks=[])]))
+    clock.advance(5000)
+    builder.consume_event(
+        AgentOutput(
+            "",
+            tool_calls=[
+                SimpleNamespace(
+                    tool_id="c1",
+                    tool_name="image-builder__get_distributions",
+                    tool_kwargs={},
+                )
+            ],
+        )
+    )
+    clock.advance(30)
+    builder.consume_event(ToolCall("image-builder__get_distributions", {}, "c1"))
+    clock.advance(200)
+    builder.consume_event(ToolCallResult("c1", '{"distributions": []}'))
+    trajectory = builder.finish(pytest_outcome="passed")
+    agent_step = next(step for step in trajectory["steps"] if step["source"] == "agent")
+    model_started = agent_step["extra"]["llm_started_at"]
+    model_ended = agent_step["extra"]["llm_ended_at"]
+    tool_extra = agent_step["tool_calls"][0]["extra"]
+    assert model_started < model_ended < tool_extra["started_at"] < tool_extra["ended_at"]
+    assert _parsed_span_time(model_ended) - _parsed_span_time(model_started) == timedelta(milliseconds=5000)
+    assert _parsed_span_time(tool_extra["ended_at"]) - _parsed_span_time(tool_extra["started_at"]) == timedelta(
+        milliseconds=200
+    )
+
+
+def test_apply_measured_span_times_orders_model_before_tool() -> None:
+    """Rewritten spans keep the chain envelope and give the model and tool their durations."""
+    chain_start = "2026-10-08T12:00:00+00:00"
+    chain_end = "2026-10-08T12:00:07+00:00"
+    chain: dict[str, Any] = {
+        "name": "iteration 1",
+        "span_kind": "CHAIN",
+        "start_time": chain_start,
+        "end_time": chain_end,
+        "attributes": {"metadata": {"agent_name": "traj", "atif.step_id": 2, "atif.timing": "event_interval"}},
+    }
+    model: dict[str, Any] = {
+        "name": "qwen",
+        "span_kind": "LLM",
+        "start_time": chain_end,
+        "end_time": chain_end,
+        "attributes": {"metadata": {"agent_name": "traj", "atif.step_id": 2, "atif.timing": "event"}},
+    }
+    tool: dict[str, Any] = {
+        "name": "image-builder__get_distributions",
+        "span_kind": "TOOL",
+        "start_time": chain_end,
+        "end_time": chain_end,
+        "attributes": {
+            "metadata": {
+                "agent_name": "traj",
+                "atif.step_id": 2,
+                "atif.tool_call_index": 0,
+                "atif.timing": "event",
+            }
+        },
+    }
+    other_agent: dict[str, Any] = {
+        "name": "other-model",
+        "span_kind": "LLM",
+        "start_time": chain_end,
+        "end_time": chain_end,
+        "attributes": {"metadata": {"agent_name": "other", "atif.step_id": 2, "atif.timing": "event"}},
+    }
+    trajectory: dict[str, Any] = {
+        "agent": {"name": "traj"},
+        "steps": [
+            {
+                "step_id": 2,
+                "source": "agent",
+                "extra": {
+                    "llm_started_at": "2026-10-08T12:00:00.010Z",
+                    "llm_ended_at": "2026-10-08T12:00:05.010Z",
+                },
+                "tool_calls": [
+                    {
+                        "extra": {
+                            "started_at": "2026-10-08T12:00:05.030Z",
+                            "ended_at": "2026-10-08T12:00:05.230Z",
+                        }
+                    }
+                ],
+            }
+        ],
+    }
+    atif_export.apply_measured_span_times([chain, model, tool, other_agent], [trajectory])
+    assert chain["start_time"] == chain_start
+    assert chain["end_time"] == chain_end
+    assert chain["attributes"]["metadata"]["atif.timing"] == "event_interval"
+    assert _span_duration(model) == timedelta(seconds=5)
+    assert _span_duration(tool) == timedelta(milliseconds=200)
+    assert _parsed_span_time(model["start_time"]) < _parsed_span_time(tool["start_time"])
+    assert model["attributes"]["metadata"]["atif.timing"] == "measured"
+    assert tool["attributes"]["metadata"]["atif.timing"] == "measured"
+    assert other_agent["start_time"] == chain_end
+    assert other_agent["end_time"] == chain_end
+    assert other_agent["attributes"]["metadata"]["atif.timing"] == "event"
+
+
+def test_apply_measured_span_times_shifts_tool_that_ties_model_end() -> None:
+    """A tool that starts at the model end is moved 1ms later without changing its duration."""
+    model: dict[str, Any] = {
+        "span_kind": "LLM",
+        "start_time": "2026-10-08T12:00:07+00:00",
+        "end_time": "2026-10-08T12:00:07+00:00",
+        "attributes": {"metadata": {"agent_name": "traj", "atif.step_id": 2, "atif.timing": "event"}},
+    }
+    tool: dict[str, Any] = {
+        "span_kind": "TOOL",
+        "start_time": "2026-10-08T12:00:07+00:00",
+        "end_time": "2026-10-08T12:00:07+00:00",
+        "attributes": {
+            "metadata": {
+                "agent_name": "traj",
+                "atif.step_id": 2,
+                "atif.tool_call_index": 0,
+                "atif.timing": "event",
+            }
+        },
+    }
+    trajectory: dict[str, Any] = {
+        "agent": {"name": "traj"},
+        "steps": [
+            {
+                "step_id": 2,
+                "source": "agent",
+                "extra": {
+                    "llm_started_at": "2026-10-08T12:00:00.010Z",
+                    "llm_ended_at": "2026-10-08T12:00:05.010Z",
+                },
+                "tool_calls": [
+                    {
+                        "extra": {
+                            "started_at": "2026-10-08T12:00:05.010Z",
+                            "ended_at": "2026-10-08T12:00:05.210Z",
+                        }
+                    }
+                ],
+            }
+        ],
+    }
+    atif_export.apply_measured_span_times([model, tool], [trajectory])
+    assert _span_duration(tool) == timedelta(milliseconds=200)
+    assert _parsed_span_time(tool["start_time"]) == _parsed_span_time(model["end_time"]) + timedelta(milliseconds=1)
+
+
+def test_apply_measured_span_times_final_answer_has_model_duration() -> None:
+    """A tool-free answer gets a model span for the time between input and output."""
+    clock = _SteppedClock()
+    builder = _builder(clock)
+    builder.begin_turn("prompt")
+    clock.advance(15)
+    builder.consume_event(AgentInput([SimpleNamespace(role="user", content="prompt", blocks=[])]))
+    clock.advance(2500)
+    builder.consume_event(AgentOutput("done"))
+    trajectory = builder.finish(pytest_outcome="passed")
+    agent_step = next(step for step in trajectory["steps"] if step["source"] == "agent")
+    point = "2026-10-08T12:00:10+00:00"
+    span: dict[str, Any] = {
+        "span_kind": "LLM",
+        "start_time": point,
+        "end_time": point,
+        "attributes": {
+            "metadata": {
+                "agent_name": trajectory["agent"]["name"],
+                "atif.step_id": agent_step["step_id"],
+                "atif.timing": "event",
+            }
+        },
+    }
+    atif_export.apply_measured_span_times([span], [trajectory])
+    assert _span_duration(span) == timedelta(milliseconds=2500)
+    assert span["attributes"]["metadata"]["atif.timing"] == "measured"
 
 
 def test_atif_builder_empty_output_with_tools_still_flushes() -> None:

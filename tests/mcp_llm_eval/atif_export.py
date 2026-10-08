@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,8 @@ try:
 except ImportError:  # pragma: no cover - optional runtime dependency
     Client = None  # type: ignore[misc, assignment]
     _convert_atif_trajectories_to_spans = None  # type: ignore[misc, assignment]
+
+from .atif_span_timing import apply_measured_span_times, format_utc_timestamp
 
 DISABLE_TRACE_EXPORT_ENV = "INSIGHTS_MCP_DISABLE_TRACE_EXPORT"
 PHOENIX_COLLECTOR_ENDPOINT_ENV = "PHOENIX_COLLECTOR_ENDPOINT"
@@ -130,15 +133,18 @@ def node_test_id(display_id: str) -> str:
     return display_id
 
 
+def _utc_now() -> datetime:
+    """Return the current UTC time."""
+    return datetime.now(timezone.utc)
+
+
 def utc_timestamp() -> str:
     """Return the current UTC time as an ATIF timestamp.
 
     Returns:
         ISO-8601 UTC timestamp with millisecond precision and a ``Z`` suffix.
     """
-    now = datetime.now(timezone.utc)
-    millisecond = now.microsecond // 1000
-    return now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{millisecond:03d}Z"
+    return format_utc_timestamp(_utc_now())
 
 
 def session_run_id() -> str:
@@ -234,6 +240,9 @@ def upload_trajectories(
 ) -> Any:
     """Convert ATIF trajectories to Phoenix spans and upload them.
 
+    LLM and TOOL spans are rewritten from measured model and tool intervals so
+    each iteration shows the model call before its tool calls.
+
     Args:
         trajectories: ATIF trajectory dicts.
         project_name: Phoenix project identifier.
@@ -253,6 +262,7 @@ def upload_trajectories(
         raise RuntimeError(MISSING_PHOENIX_CLIENT)
     spans = convert(trajectories)
     apply_pytest_span_status(spans, trajectories)
+    apply_measured_span_times(spans, trajectories)
     return client_cls().spans.log_spans(project_identifier=project_name, spans=spans)
 
 
@@ -453,7 +463,10 @@ def _tool_call_dict(event: Any) -> dict[str, Any]:
 
 
 class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
-    """Accumulate ATIF steps from one LLM test (possibly multiple user turns)."""
+    """Accumulate ATIF steps from one LLM test (possibly multiple user turns).
+
+    ``clock`` overrides the UTC clock used for model and tool intervals.
+    """
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
@@ -466,6 +479,7 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         test_file: str,
         test_line: int,
         testrun: str | None = None,
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.session_id = session_id
         self.testrun = testrun if testrun is not None else session_id
@@ -475,6 +489,7 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         self.tool_definitions = tool_definitions
         self.test_file = test_file
         self.test_line = test_line
+        self._clock = clock if clock is not None else _utc_now
         self._steps: list[dict[str, Any]] = []
         self._turn_start_index = 0
         self._pending_tool_calls: list[dict[str, Any]] = []
@@ -482,6 +497,8 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         self._pending_thinking = ""
         self._pending_llm_input: list[dict[str, str]] = []
         self._pending_metrics: dict[str, int] = {}
+        self._llm_started_at: datetime | None = None
+        self._llm_ended_at: datetime | None = None
         self._outcome = "passed"
         self._status_message = ""
 
@@ -524,6 +541,7 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
             self._consume_agent_input(event)
             return
         if event_name == "AgentStream":
+            self._note_llm_started()
             thinking_delta = getattr(event, "thinking_delta", None)
             if isinstance(thinking_delta, str) and thinking_delta:
                 self._pending_thinking += thinking_delta
@@ -539,6 +557,7 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
                     "content": _tool_output_content(getattr(event, "tool_output", None)),
                 }
             )
+            self._stamp_tool_call(call_id, ended_at=self._format_now())
             return
         if event_name == "AgentOutput":
             self._consume_agent_output(event)
@@ -660,6 +679,77 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         self._pending_thinking = ""
         self._pending_llm_input = []
         self._pending_metrics = {}
+        self._llm_started_at = None
+        self._llm_ended_at = None
+
+    def _now(self) -> datetime:
+        """Return the current UTC time from the injected clock."""
+        moment = self._clock()
+        if moment.tzinfo is None:
+            return moment.replace(tzinfo=timezone.utc)
+        return moment.astimezone(timezone.utc)
+
+    def _format_now(self) -> str:
+        """Return the current UTC time as an ATIF timestamp."""
+        return format_utc_timestamp(self._now())
+
+    def _note_llm_started(self) -> None:
+        """Record the model-call start once per round."""
+        if self._llm_started_at is None:
+            self._llm_started_at = self._now()
+
+    def _any_tool_started(self) -> bool:
+        """Return True when a pending tool call already has a start time."""
+        for tool_call in self._pending_tool_calls:
+            extra = tool_call.get("extra")
+            if isinstance(extra, dict) and extra.get("started_at"):
+                return True
+        return False
+
+    def _pending_tool_call(self, call_id: str) -> dict[str, Any] | None:
+        """Return the pending tool call with ``call_id``, or the last call when it is empty."""
+        if call_id:
+            for tool_call in self._pending_tool_calls:
+                if tool_call.get("tool_call_id") == call_id:
+                    return tool_call
+            return None
+        if self._pending_tool_calls:
+            return self._pending_tool_calls[-1]
+        return None
+
+    def _stamp_tool_call(
+        self,
+        call_id: str,
+        *,
+        started_at: str | None = None,
+        ended_at: str | None = None,
+    ) -> None:
+        """Record a tool interval on the matching pending call.
+
+        Args:
+            call_id: Tool call id. An empty id selects the latest pending call.
+            started_at: ATIF timestamp. Kept when the call already has one.
+            ended_at: ATIF timestamp for the tool result.
+        """
+        tool_call = self._pending_tool_call(call_id)
+        if tool_call is None:
+            return
+        extra = dict(tool_call.get("extra") or {})
+        if started_at is not None:
+            extra.setdefault("started_at", started_at)
+        if ended_at is not None:
+            extra["ended_at"] = ended_at
+        tool_call["extra"] = extra
+
+    def _attach_llm_interval(self, step: dict[str, Any]) -> None:
+        """Copy the current model interval onto an agent step."""
+        if self._llm_started_at is None and self._llm_ended_at is None:
+            return
+        extra = step["extra"]
+        if self._llm_started_at is not None:
+            extra["llm_started_at"] = format_utc_timestamp(self._llm_started_at)
+        if self._llm_ended_at is not None:
+            extra["llm_ended_at"] = format_utc_timestamp(self._llm_ended_at)
 
     def _record_tool_call(self, tool_call: dict[str, Any]) -> None:
         call_id = tool_call.get("tool_call_id", "")
@@ -677,13 +767,19 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         elif self._pending_metrics and not self._pending_tool_calls:
             self._flush_pending_agent_step("")
         self._pending_llm_input = _serialize_llm_input(getattr(event, "input", None))
+        self._note_llm_started()
 
     def _consume_tool_call(self, event: Any) -> None:
         if self._pending_round_complete():
             self._flush_pending_agent_step("")
-        self._record_tool_call(_tool_call_dict(event))
+        tool_call = _tool_call_dict(event)
+        self._record_tool_call(tool_call)
+        self._stamp_tool_call(str(tool_call.get("tool_call_id", "")), started_at=self._format_now())
 
     def _consume_agent_output(self, event: Any) -> None:
+        self._note_llm_started()
+        if not self._any_tool_started():
+            self._llm_ended_at = self._now()
         usage = _usage_from_event(event)
         if usage:
             self._pending_metrics.update(usage)
@@ -703,15 +799,15 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         has_metrics = bool(self._pending_metrics)
         if not (has_message or has_tools or has_thinking or has_metrics):
             return
-        self._steps.append(
-            self._make_step(
-                source="agent",
-                message=message,
-                tool_calls=self._pending_tool_calls or None,
-                observation_results=self._pending_observations or None,
-                reasoning_content=self._pending_thinking,
-                metrics=self._pending_metrics or None,
-                llm_input=self._pending_llm_input or None,
-            )
+        step = self._make_step(
+            source="agent",
+            message=message,
+            tool_calls=self._pending_tool_calls or None,
+            observation_results=self._pending_observations or None,
+            reasoning_content=self._pending_thinking,
+            metrics=self._pending_metrics or None,
+            llm_input=self._pending_llm_input or None,
         )
+        self._attach_llm_interval(step)
+        self._steps.append(step)
         self._clear_pending_agent_state()
