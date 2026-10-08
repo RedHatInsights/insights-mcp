@@ -203,6 +203,8 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             is_function_calling_model=True,
             # Some OpenAI-compatible gateways (e.g. Mistral) reject strict JSON-schema tool mode.
             strict=False,
+            # OpenAILike's own timeout is sent on every request and overrides the httpx client.
+            timeout=MATRIX_LLM_HTTP_TIMEOUT_SECONDS,
             async_http_client=self._llm_http_client,
         )
         self._memory = Memory.from_defaults(
