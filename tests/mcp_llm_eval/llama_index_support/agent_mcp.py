@@ -27,6 +27,8 @@ from tests.mcp_llm_eval.utils import abbreviate_middle
 
 _MCP_INSTRUCTIONS_HEADER = "## MCP server instructions"
 _USER_REQUEST_HEADER = "## User request"
+# Per-request HTTP timeout for the matrix model (MODEL_API), including slow local Ollama runs.
+MATRIX_LLM_HTTP_TIMEOUT_SECONDS = 1800.0
 
 
 def format_user_message_with_mcp_instructions(user_msg: str, mcp_instructions: str) -> str:
@@ -185,7 +187,9 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         """Initialize MCP session and agent on the caller's event loop."""
         if self._initialized:
             return
-        self._llm_http_client = httpx.AsyncClient(timeout=httpx.Timeout(60.0))
+        self._llm_http_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(MATRIX_LLM_HTTP_TIMEOUT_SECONDS),
+        )
         # parallel_tool_calls is enforced via FunctionAgent.allow_parallel_tool_calls;
         # omit it here because some OpenAI-compatible gateways (e.g. Gemini Flash) reject the field.
         self.llama_llm = OpenAILike(
