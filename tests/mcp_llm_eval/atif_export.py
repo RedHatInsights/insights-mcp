@@ -18,8 +18,13 @@ except ImportError:  # pragma: no cover - optional runtime dependency
     Client = None  # type: ignore[misc, assignment]
     _convert_atif_trajectories_to_spans = None  # type: ignore[misc, assignment]
 
-from .atif_span_timing import apply_measured_span_times, format_utc_timestamp
 from .model_output import merge_thinking, message_text, model_output_dump, render_model_output, thinking_text
+
+# Phoenix's ATIF converter reads these step fields and clamps the LLM bar inside the chain.
+# Names match phoenix.client.helpers.atif._convert.
+_PHOENIX_LLM_LATENCY_MS = "_phoenix_llm_latency_ms"
+_PHOENIX_LLM_LATENCY_SOURCE = "_phoenix_llm_latency_source"
+_PHOENIX_LLM_LATENCY_SOURCE_MEASURED = "measured"
 
 DISABLE_TRACE_EXPORT_ENV = "INSIGHTS_MCP_DISABLE_TRACE_EXPORT"
 PHOENIX_COLLECTOR_ENDPOINT_ENV = "PHOENIX_COLLECTOR_ENDPOINT"
@@ -118,25 +123,26 @@ def node_display_id(node_id: str) -> str:
     return node_id.rsplit("/", 1)[-1]
 
 
-def node_test_id(display_id: str) -> str:
-    """Return ``Class::test`` without a trailing pytest param block.
-
-    Args:
-        display_id: ``Class::test[params]`` from ``node_display_id``.
-
-    Returns:
-        Unparametrized test id. Unchanged when there is no ``[...]`` suffix.
-    """
-    if display_id.endswith("]"):
-        bracket = display_id.rfind("[")
-        if bracket > 0:
-            return display_id[:bracket]
-    return display_id
-
-
 def _utc_now() -> datetime:
     """Return the current UTC time."""
     return datetime.now(timezone.utc)
+
+
+def format_utc_timestamp(moment: datetime) -> str:
+    """Return ``moment`` as an ATIF UTC timestamp with millisecond precision.
+
+    Args:
+        moment: Time to format. Naive values are treated as UTC.
+
+    Returns:
+        ISO-8601 UTC timestamp with millisecond precision and a ``Z`` suffix.
+    """
+    if moment.tzinfo is None:
+        utc_moment = moment.replace(tzinfo=timezone.utc)
+    else:
+        utc_moment = moment.astimezone(timezone.utc)
+    millisecond = utc_moment.microsecond // 1000
+    return utc_moment.strftime("%Y-%m-%dT%H:%M:%S.") + f"{millisecond:03d}Z"
 
 
 def utc_timestamp() -> str:
@@ -158,19 +164,20 @@ def session_run_id() -> str:
 
 
 def atif_session_id(run_id: str, display_id: str) -> str:
-    """Return an ATIF session id shared by all params of one pytest test function.
+    """Return an ATIF session id unique to one pytest node.
 
-    Phoenix derives trace_id from session_id. Parametrized nodes of the same
-    ``Class::test`` share a trace; AGENT roots stay distinct via trajectory_id.
+    Phoenix derives trace_id from session_id. Each parametrized case needs its own
+    trace so the waterfall has a single AGENT root. The shared run folder stays in
+    ``extra.testrun``.
 
     Args:
         run_id: Fourteen-digit testrun id (YYYYMMDDhhmmss).
         display_id: ``Class::test[params]`` from ``node_display_id``.
 
     Returns:
-        ``{run_id}::{Class::test}``.
+        ``{run_id}::{display_id}``.
     """
-    return f"{run_id}::{node_test_id(display_id)}"
+    return f"{run_id}::{display_id}"
 
 
 def _trajectory_extra(trajectory: dict[str, Any]) -> dict[str, Any]:
@@ -241,8 +248,9 @@ def upload_trajectories(
 ) -> Any:
     """Convert ATIF trajectories to Phoenix spans and upload them.
 
-    LLM and TOOL spans are rewritten from measured model and tool intervals so
-    each iteration shows the model call before its tool calls.
+    The Phoenix ATIF converter places each model bar inside its iteration chain
+    from ``_phoenix_llm_latency_ms`` on the agent step. Tool spans stay a mark
+    at the chain end.
 
     Args:
         trajectories: ATIF trajectory dicts.
@@ -263,7 +271,6 @@ def upload_trajectories(
         raise RuntimeError(MISSING_PHOENIX_CLIENT)
     spans = convert(trajectories)
     apply_pytest_span_status(spans, trajectories)
-    apply_measured_span_times(spans, trajectories)
     return client_cls().spans.log_spans(project_identifier=project_name, spans=spans)
 
 
@@ -628,7 +635,7 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
             extra["model_output"] = model_output
         step: dict[str, Any] = {
             "step_id": len(self._steps) + 1,
-            "timestamp": utc_timestamp(),
+            "timestamp": self._format_now(),
             "source": source,
             "message": message,
             "extra": extra,
@@ -722,7 +729,11 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         tool_call["extra"] = extra
 
     def _attach_llm_interval(self, step: dict[str, Any]) -> None:
-        """Copy the current model interval onto an agent step."""
+        """Copy the model interval onto an agent step and tell the ATIF converter its duration.
+
+        The converter reads ``_phoenix_llm_latency_ms`` and draws the LLM span inside
+        the iteration chain. It does not read the extra timestamps.
+        """
         if self._llm_started_at is None and self._llm_ended_at is None:
             return
         extra = step["extra"]
@@ -730,6 +741,13 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
             extra["llm_started_at"] = format_utc_timestamp(self._llm_started_at)
         if self._llm_ended_at is not None:
             extra["llm_ended_at"] = format_utc_timestamp(self._llm_ended_at)
+        if self._llm_started_at is None or self._llm_ended_at is None:
+            return
+        latency_ms = (self._llm_ended_at - self._llm_started_at).total_seconds() * 1000
+        if latency_ms < 0:
+            return
+        step[_PHOENIX_LLM_LATENCY_MS] = latency_ms
+        step[_PHOENIX_LLM_LATENCY_SOURCE] = _PHOENIX_LLM_LATENCY_SOURCE_MEASURED
 
     def _record_tool_call(self, tool_call: dict[str, Any]) -> None:
         call_id = tool_call.get("tool_call_id", "")
