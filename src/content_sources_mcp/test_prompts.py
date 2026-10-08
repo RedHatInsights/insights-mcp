@@ -125,4 +125,15 @@ PROMPTS = TestScenarioRegistry(
             ),
         ),
     ),
+    repository_details=TestScenario(
+        turns=(
+            PromptWithTools(
+                prompt=(
+                    "Show the full details, including the GPG key, for content sources repository "
+                    "`3fa85f64-5717-4562-b3fc-2c963f66afa6`"
+                ),
+                expected_tools=("content-sources__get_repository",),
+            ),
+        ),
+    ),
 )
