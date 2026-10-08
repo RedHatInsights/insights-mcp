@@ -40,6 +40,7 @@ env
 EPEL
 FastMCP's
 GDPR
+GPG
 gzip
 gzipped
 Gzipped

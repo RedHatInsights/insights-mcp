@@ -82,16 +82,25 @@ from tests.test_patterns import (
                     "type": "string",
                     "anyOf": None,
                 },
-                "include_gpg_key": {
-                    "description": "Include GPG key content in the response (default: False).",
-                    "default": False,
-                    "type": "boolean",
+            },
+        ),
+        (
+            "content-sources__get_repository",
+            "Get full details for one repository by UUID.",
+            {
+                "repository_uuid": {
+                    "description": (
+                        "UUID of a single repository. Take it from list_repositories or from the user. "
+                        "Call this for one repository only."
+                    ),
+                    "default": None,
+                    "type": "string",
                     "anyOf": None,
                 },
             },
         ),
     ],
-    ids=["content-sources__list_repositories"],
+    ids=["content-sources__list_repositories", "content-sources__get_repository"],
 )
 def test_mcp_tools_include_descriptions_and_annotations(
     mcp_tools,
@@ -102,15 +111,27 @@ def test_mcp_tools_include_descriptions_and_annotations(
 ):  # pylint: disable=redefined-outer-name
     """Test that the content-sources MCP tools include descriptions and annotations."""
     assert_mcp_tool_descriptions_and_annotations(mcp_tools, subtests, tool_name, expected_desc, params)
+    if tool_name == "content-sources__list_repositories":
+        list_tool = next(tool for tool in mcp_tools if getattr(tool.metadata, "name", "") == tool_name)
+        list_schema = list_tool.metadata.fn_schema.model_json_schema()
+        assert "include_gpg_key" not in list_schema.get("properties", {})
 
 
+@pytest.mark.parametrize(
+    "tool_name",
+    ["content-sources__list_repositories", "content-sources__get_repository"],
+)
 @pytest.mark.parametrize("mcp_server_url", ["http", "sse"], indirect=True)
-def test_transport_types_with_list_repositories(mcp_tools, request):
-    """Test that http and sse transport types can start and expose list_repositories tool."""
-    assert_transport_types_expose_tool(mcp_tools, request, "content-sources__list_repositories")
+def test_transport_types_with_content_sources_tools(mcp_tools, request, tool_name: str):
+    """Test that http and sse transport types expose content-sources tools."""
+    assert_transport_types_expose_tool(mcp_tools, request, tool_name)
 
 
+@pytest.mark.parametrize(
+    "tool_name",
+    ["content-sources__list_repositories", "content-sources__get_repository"],
+)
 @pytest.mark.parametrize("mcp_server_url", ["stdio"], indirect=True)
-def test_stdio_transport_with_list_repositories(mcp_tools):
-    """Test stdio transport with list_repositories tool using BasicMCPClient subprocess."""
-    assert_stdio_transport_exposes_tool(mcp_tools, "content-sources__list_repositories")
+def test_stdio_transport_with_content_sources_tools(mcp_tools, tool_name: str):
+    """Test stdio transport exposes content-sources tools using BasicMCPClient subprocess."""
+    assert_stdio_transport_exposes_tool(mcp_tools, tool_name)

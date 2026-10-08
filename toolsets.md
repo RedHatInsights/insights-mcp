@@ -52,6 +52,7 @@ Tools marked as read-write **`(rw)`** are excluded by default. Use the `--all-to
 - `load_inventory_dashboard`: Show, list, or display fleet inventory in an interactive dashboard.
 
 ## content-sources
+- `get_repository`: Get full details for one repository by UUID.
 - `list_repositories`: List repositories with filtering and pagination options.
 
 ## rbac
