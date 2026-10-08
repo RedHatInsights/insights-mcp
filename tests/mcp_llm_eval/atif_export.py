@@ -19,6 +19,7 @@ except ImportError:  # pragma: no cover - optional runtime dependency
     _convert_atif_trajectories_to_spans = None  # type: ignore[misc, assignment]
 
 from .atif_span_timing import apply_measured_span_times, format_utc_timestamp
+from .model_output import merge_thinking, message_text, model_output_dump, render_model_output, thinking_text
 
 DISABLE_TRACE_EXPORT_ENV = "INSIGHTS_MCP_DISABLE_TRACE_EXPORT"
 PHOENIX_COLLECTOR_ENDPOINT_ENV = "PHOENIX_COLLECTOR_ENDPOINT"
@@ -317,16 +318,9 @@ def _tool_output_content(tool_output: Any) -> str:
     """Stringify a LlamaIndex ``ToolOutput`` (or test double) for ATIF observations."""
     if tool_output is None:
         return ""
-    content = getattr(tool_output, "content", None)
-    if isinstance(content, str) and content:
-        return content
-    texts: list[str] = []
-    for block in getattr(tool_output, "blocks", None) or []:
-        text = getattr(block, "text", None)
-        if text:
-            texts.append(str(text))
-    if texts:
-        return "\n".join(texts)
+    text = message_text(tool_output)
+    if text:
+        return text
     raw_output = getattr(tool_output, "raw_output", None)
     if raw_output is None or isinstance(raw_output, (bytes, bytearray)):
         return str(tool_output)
@@ -339,28 +333,9 @@ def _tool_output_content(tool_output: Any) -> str:
     return dumped
 
 
-def _message_text(message: Any) -> str:
-    """Extract display text from a chat message or similar object."""
-    if message is None:
-        return ""
-    content = getattr(message, "content", None)
-    if isinstance(content, str) and content:
-        return content
-    texts: list[str] = []
-    for block in getattr(message, "blocks", None) or []:
-        text = getattr(block, "text", None)
-        if text:
-            texts.append(str(text))
-    if texts:
-        return "\n".join(texts)
-    if isinstance(message, str):
-        return message
-    return ""
-
-
 def _response_message_text(event: Any) -> str:
     """Extract assistant text from an ``AgentOutput``-like event."""
-    return _message_text(getattr(event, "response", None))
+    return message_text(getattr(event, "response", None))
 
 
 def _role_name(role: Any) -> str:
@@ -378,7 +353,7 @@ def _serialize_llm_input(messages: Any) -> list[dict[str, str]]:
         serialized.append(
             {
                 "role": _role_name(getattr(message, "role", "")),
-                "content": _message_text(message),
+                "content": message_text(message),
             }
         )
     return serialized
@@ -495,6 +470,7 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         self._pending_tool_calls: list[dict[str, Any]] = []
         self._pending_observations: list[dict[str, Any]] = []
         self._pending_thinking = ""
+        self._pending_model_output: dict[str, Any] = {}
         self._pending_llm_input: list[dict[str, str]] = []
         self._pending_metrics: dict[str, int] = {}
         self._llm_started_at: datetime | None = None
@@ -643,10 +619,13 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         reasoning_content: str = "",
         metrics: dict[str, int] | None = None,
         llm_input: list[dict[str, str]] | None = None,
+        model_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         extra = self._location_extra()
         if llm_input:
             extra["llm_input"] = llm_input
+        if model_output:
+            extra["model_output"] = model_output
         step: dict[str, Any] = {
             "step_id": len(self._steps) + 1,
             "timestamp": utc_timestamp(),
@@ -677,6 +656,7 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         self._pending_tool_calls = []
         self._pending_observations = []
         self._pending_thinking = ""
+        self._pending_model_output = {}
         self._pending_llm_input = []
         self._pending_metrics = {}
         self._llm_started_at = None
@@ -785,28 +765,53 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
             self._pending_metrics.update(usage)
         for selection in getattr(event, "tool_calls", None) or []:
             self._record_tool_call(_tool_call_dict(selection))
+        self._capture_model_output(event)
         message = _response_message_text(event)
         if self._has_incomplete_tool_round():
             return
         has_thinking = bool(self._pending_thinking.strip())
-        if message.strip() or self._pending_tool_calls or has_thinking or self._pending_metrics:
+        has_model_output = bool(self._pending_model_output)
+        if message.strip() or self._pending_tool_calls or has_thinking or self._pending_metrics or has_model_output:
             self._flush_pending_agent_step(message)
 
+    def _capture_model_output(self, event: Any) -> None:
+        """Keep thinking blocks and the provider payload until the agent step is flushed."""
+        response = getattr(event, "response", None)
+        self._pending_thinking = merge_thinking(self._pending_thinking, thinking_text(response))
+        self._pending_model_output = model_output_dump(
+            response,
+            raw=getattr(event, "raw", None),
+            thinking=self._pending_thinking,
+        )
+
+    def _agent_step_message(self, visible: str) -> str:
+        """Use visible text when present. Otherwise put the raw dump in the message Phoenix reads.
+
+        Tool-call steps keep an empty message so the span stays a tool call. A thinking-only
+        or corrupt payload has no visible text and no tool call, so the dump is the message.
+        """
+        if visible.strip() or self._pending_tool_calls:
+            return visible
+        return render_model_output(self._pending_model_output) or visible
+
     def _flush_pending_agent_step(self, message: str) -> None:
-        has_message = bool(message.strip())
+        displayed = self._agent_step_message(message)
+        has_message = bool(displayed.strip())
         has_tools = bool(self._pending_tool_calls)
         has_thinking = bool(self._pending_thinking.strip())
         has_metrics = bool(self._pending_metrics)
-        if not (has_message or has_tools or has_thinking or has_metrics):
+        has_model_output = bool(self._pending_model_output)
+        if not (has_message or has_tools or has_thinking or has_metrics or has_model_output):
             return
         step = self._make_step(
             source="agent",
-            message=message,
+            message=displayed,
             tool_calls=self._pending_tool_calls or None,
             observation_results=self._pending_observations or None,
             reasoning_content=self._pending_thinking,
             metrics=self._pending_metrics or None,
             llm_input=self._pending_llm_input or None,
+            model_output=self._pending_model_output or None,
         )
         self._attach_llm_interval(step)
         self._steps.append(step)
