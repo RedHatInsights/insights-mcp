@@ -1,7 +1,7 @@
 """Test suite for the get_rhel_lifecycle() method."""
 
 import json
-from unittest.mock import patch
+from http import HTTPMethod
 
 import pytest
 
@@ -62,49 +62,54 @@ class TestPlanningGetRhelLifecycle:
     async def test_get_rhel_lifecycle_basic_functionality(
         self,
         planning_mcp_server,
+        planning_mock_client,
         mock_lifecycle_response,
     ):
         """Test basic functionality of get_rhel_lifecycle method."""
-        # Patch underlying Insights client used by Planning MCP
-        with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.return_value = mock_lifecycle_response
+        # Register the expected API route.
+        endpoint = "lifecycle/rhel"
+        query = None
+        planning_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_lifecycle_response)
 
-            # Call the MCP method (no parameters by design)
-            result = await planning_mcp_server.get_rhel_lifecycle()
+        # Call the MCP method (no parameters by design)
+        result = await planning_mcp_server.get_rhel_lifecycle()
 
-            # Backend endpoint should be invoked exactly once, with the correct path suffix
-            mock_get.assert_called_once_with("lifecycle/rhel")
+        # Backend endpoint should be invoked exactly once, with the correct path suffix
+        planning_mock_client.get.assert_called_once_with(endpoint)
 
-            # Tool returns a JSON-encoded string; parse and validate structure
-            parsed = json.loads(result)
+        # Tool returns a JSON-encoded string; parse and validate structure
+        parsed = json.loads(result)
 
-            assert parsed == mock_lifecycle_response
+        assert parsed == mock_lifecycle_response
 
-            # Minimal but realistic structure checks
-            assert "data" in parsed
-            assert isinstance(parsed["data"], list)
-            assert len(parsed["data"]) == 3
+        # Minimal but realistic structure checks
+        assert "data" in parsed
+        assert isinstance(parsed["data"], list)
+        assert len(parsed["data"]) == 3
 
-            for item in parsed["data"]:
-                # Top-level fields
-                assert "name" in item
-                assert "start_date" in item
-                assert "end_date" in item
-                assert "support_status" in item
-                assert "display_name" in item
-                assert "major" in item
-                assert "minor" in item
-                assert "end_date_e4s" in item
-                assert "end_date_els" in item
-                assert "end_date_eus" in item
+        for item in parsed["data"]:
+            # Top-level fields
+            assert "name" in item
+            assert "start_date" in item
+            assert "end_date" in item
+            assert "support_status" in item
+            assert "display_name" in item
+            assert "major" in item
+            assert "minor" in item
+            assert "end_date_e4s" in item
+            assert "end_date_els" in item
+            assert "end_date_eus" in item
 
     @pytest.mark.asyncio
-    async def test_get_rhel_lifecycle_api_error(self, planning_mcp_server):
+    async def test_get_rhel_lifecycle_api_error(self, planning_mcp_server, planning_mock_client):
         """Test get_rhel_lifecycle when backend raises an API error."""
-        with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.side_effect = RuntimeError("Backend unavailable")
+        endpoint = "lifecycle/rhel"
+        query = None
+        planning_mock_client.api.register(
+            HTTPMethod.GET, endpoint, query=query, error=RuntimeError("Backend unavailable")
+        )
 
-            with pytest.raises(InsightsApiError) as exc_info:
-                await planning_mcp_server.get_rhel_lifecycle()
+        with pytest.raises(InsightsApiError) as exc_info:
+            await planning_mcp_server.get_rhel_lifecycle()
 
-            assert_api_error_message(exc_info.value)
+        assert_api_error_message(exc_info.value)

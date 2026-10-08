@@ -2,7 +2,7 @@
 # pylint: disable=duplicate-code
 
 import json
-from unittest.mock import patch
+from http import HTTPMethod
 
 import pytest
 
@@ -67,170 +67,180 @@ class TestPlanningGetRelevantAppstreams:
     async def test_get_relevant_appstreams_basic_functionality(
         self,
         planning_mcp_server,
+        planning_mock_client,
         mock_appstreams_response,
     ):
         """Test basic functionality of get_relevant_appstreams method."""
-        # Patch underlying Insights client used by Planning MCP
-        with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.return_value = mock_appstreams_response
+        # Register the expected API route.
+        endpoint = "relevant/lifecycle/app-streams"
+        query = {"related": True}
+        planning_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_appstreams_response)
 
-            # Call the method with include_related=True (default)
-            result = await planning_mcp_server.get_relevant_appstreams()
+        # Call the method with include_related=True (default)
+        result = await planning_mcp_server.get_relevant_appstreams()
 
-            # Backend endpoint should be invoked with related=true
-            mock_get.assert_called_once_with(
-                "relevant/lifecycle/app-streams",
-                params={"related": True},
-                timeout=30,
-            )
+        # Backend endpoint should be invoked with related=true
+        planning_mock_client.get.assert_called_once_with(
+            endpoint,
+            params=query,
+            timeout=30,
+        )
 
-            # Tool returns a JSON-encoded string; parse and validate structure
-            parsed = json.loads(result)
+        # Tool returns a JSON-encoded string; parse and validate structure
+        parsed = json.loads(result)
 
-            # Minimal but realistic structure checks
-            assert "meta" in parsed
-            assert "data" in parsed
-            assert isinstance(parsed["data"], list)
-            assert parsed["meta"]["count"] == 3
-            assert parsed["meta"]["total"] == 3
-            assert len(parsed["data"]) == 3
+        # Minimal but realistic structure checks
+        assert "meta" in parsed
+        assert "data" in parsed
+        assert isinstance(parsed["data"], list)
+        assert parsed["meta"]["count"] == 3
+        assert parsed["meta"]["total"] == 3
+        assert len(parsed["data"]) == 3
 
-            # Verify structure of first item (nodejs:18)
-            item = parsed["data"][0]
+        # Verify structure of first item (nodejs:18)
+        item = parsed["data"][0]
 
-            # Top-level fields
-            assert "name" in item
-            assert "display_name" in item
-            assert "application_stream_name" in item
-            assert "stream" in item
-            assert "start_date" in item
-            assert "end_date" in item
-            assert "support_status" in item
-            assert "os_major" in item
-            assert "os_minor" in item
-            assert "related" in item
+        # Top-level fields
+        assert "name" in item
+        assert "display_name" in item
+        assert "application_stream_name" in item
+        assert "stream" in item
+        assert "start_date" in item
+        assert "end_date" in item
+        assert "support_status" in item
+        assert "os_major" in item
+        assert "os_minor" in item
+        assert "related" in item
 
-            # Verify it's the nodejs:18 item
-            assert item["name"] == "nodejs:18"
-            assert item["display_name"] == "Node.js 18"
-            assert item["stream"] == "18"
-            assert item["support_status"] == "Supported"
-            assert item["related"] is False
+        # Verify it's the nodejs:18 item
+        assert item["name"] == "nodejs:18"
+        assert item["display_name"] == "Node.js 18"
+        assert item["stream"] == "18"
+        assert item["support_status"] == "Supported"
+        assert item["related"] is False
 
     @pytest.mark.asyncio
     async def test_get_relevant_appstreams_with_major_version(
         self,
         planning_mcp_server,
+        planning_mock_client,
         mock_appstreams_response,
     ):
         """Test get_relevant_appstreams with major version filter."""
-        with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.return_value = mock_appstreams_response
+        endpoint = "relevant/lifecycle/app-streams"
+        query = {"major": 9, "related": True}
+        planning_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_appstreams_response)
 
-            # Call with major version
-            result = await planning_mcp_server.get_relevant_appstreams(major="9")
+        # Call with major version
+        result = await planning_mcp_server.get_relevant_appstreams(major="9")
 
-            # Backend should receive the major parameter and related=true
-            mock_get.assert_called_once_with(
-                "relevant/lifecycle/app-streams",
-                params={"major": 9, "related": True},
-                timeout=30,
-            )
+        # Backend should receive the major parameter and related=true
+        planning_mock_client.get.assert_called_once_with(
+            endpoint,
+            params=query,
+            timeout=30,
+        )
 
-            # Validate response structure
-            parsed = json.loads(result)
-            assert "meta" in parsed
-            assert "data" in parsed
+        # Validate response structure
+        parsed = json.loads(result)
+        assert "meta" in parsed
+        assert "data" in parsed
 
     @pytest.mark.asyncio
     async def test_get_relevant_appstreams_with_major_and_minor(
         self,
         planning_mcp_server,
+        planning_mock_client,
         mock_appstreams_response,
     ):
         """Test get_relevant_appstreams with major and minor version filters."""
-        with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.return_value = mock_appstreams_response
+        endpoint = "relevant/lifecycle/app-streams"
+        query = {"major": 9, "minor": 2, "related": True}
+        planning_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_appstreams_response)
 
-            # Call with both major and minor versions
-            result = await planning_mcp_server.get_relevant_appstreams(major="9", minor="2")
+        # Call with both major and minor versions
+        result = await planning_mcp_server.get_relevant_appstreams(major="9", minor="2")
 
-            # Backend should receive both parameters and related=true
-            mock_get.assert_called_once_with(
-                "relevant/lifecycle/app-streams",
-                params={"major": 9, "minor": 2, "related": True},
-                timeout=30,
-            )
+        # Backend should receive both parameters and related=true
+        planning_mock_client.get.assert_called_once_with(
+            endpoint,
+            params=query,
+            timeout=30,
+        )
 
-            # Validate response structure
-            parsed = json.loads(result)
-            assert "meta" in parsed
-            assert "data" in parsed
+        # Validate response structure
+        parsed = json.loads(result)
+        assert "meta" in parsed
+        assert "data" in parsed
 
     @pytest.mark.asyncio
     async def test_get_relevant_appstreams_include_related_false(
         self,
         planning_mcp_server,
+        planning_mock_client,
         mock_appstreams_response,
     ):
         """Test get_relevant_appstreams with include_related=False."""
-        with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            # Return only non-related streams
-            filtered_response = {
-                "meta": {"count": 2, "total": 2},
-                "data": [item for item in mock_appstreams_response["data"] if not item["related"]],
-            }
-            mock_get.return_value = filtered_response
+        # Return only non-related streams
+        filtered_response = {
+            "meta": {"count": 2, "total": 2},
+            "data": [item for item in mock_appstreams_response["data"] if not item["related"]],
+        }
+        endpoint = "relevant/lifecycle/app-streams"
+        query = {"related": False}
+        planning_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=filtered_response)
 
-            # Call with include_related=False
-            result = await planning_mcp_server.get_relevant_appstreams(include_related=False)
+        # Call with include_related=False
+        result = await planning_mcp_server.get_relevant_appstreams(include_related=False)
 
-            # Backend should receive related=false
-            mock_get.assert_called_once_with(
-                "relevant/lifecycle/app-streams",
-                params={"related": False},
-                timeout=30,
-            )
+        # Backend should receive related=false
+        planning_mock_client.get.assert_called_once_with(
+            endpoint,
+            params=query,
+            timeout=30,
+        )
 
-            # Validate response structure
-            parsed = json.loads(result)
-            assert "meta" in parsed
-            assert "data" in parsed
-            assert parsed["meta"]["count"] == 2
-            # All returned items should have related=False
-            for item in parsed["data"]:
-                assert item["related"] is False
+        # Validate response structure
+        parsed = json.loads(result)
+        assert "meta" in parsed
+        assert "data" in parsed
+        assert parsed["meta"]["count"] == 2
+        # All returned items should have related=False
+        for item in parsed["data"]:
+            assert item["related"] is False
 
     @pytest.mark.asyncio
     async def test_get_relevant_appstreams_include_related_true(
         self,
         planning_mcp_server,
+        planning_mock_client,
         mock_appstreams_response,
     ):
         """Test get_relevant_appstreams with include_related=True."""
-        with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.return_value = mock_appstreams_response
+        endpoint = "relevant/lifecycle/app-streams"
+        query = {"related": True}
+        planning_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_appstreams_response)
 
-            # Call with include_related=True (explicit)
-            result = await planning_mcp_server.get_relevant_appstreams(include_related=True)
+        # Call with include_related=True (explicit)
+        result = await planning_mcp_server.get_relevant_appstreams(include_related=True)
 
-            # Backend should receive related=true
-            mock_get.assert_called_once_with(
-                "relevant/lifecycle/app-streams",
-                params={"related": True},
-                timeout=30,
-            )
+        # Backend should receive related=true
+        planning_mock_client.get.assert_called_once_with(
+            endpoint,
+            params=query,
+            timeout=30,
+        )
 
-            # Validate response structure
-            parsed = json.loads(result)
-            assert "meta" in parsed
-            assert "data" in parsed
-            assert parsed["meta"]["count"] == 3
-            # Response should include both related and non-related items
-            related_items = [item for item in parsed["data"] if item["related"]]
-            non_related_items = [item for item in parsed["data"] if not item["related"]]
-            assert len(related_items) > 0
-            assert len(non_related_items) > 0
+        # Validate response structure
+        parsed = json.loads(result)
+        assert "meta" in parsed
+        assert "data" in parsed
+        assert parsed["meta"]["count"] == 3
+        # Response should include both related and non-related items
+        related_items = [item for item in parsed["data"] if item["related"]]
+        non_related_items = [item for item in parsed["data"] if not item["related"]]
+        assert len(related_items) > 0
+        assert len(non_related_items) > 0
 
     @pytest.mark.asyncio
     async def test_get_relevant_appstreams_minor_without_major_raises_error(
@@ -246,12 +256,15 @@ class TestPlanningGetRelevantAppstreams:
         assert "The 'minor' parameter requires 'major' to be specified" in error_message
 
     @pytest.mark.asyncio
-    async def test_get_relevant_appstreams_api_error(self, planning_mcp_server):
+    async def test_get_relevant_appstreams_api_error(self, planning_mcp_server, planning_mock_client):
         """Test get_relevant_appstreams when backend raises an API error."""
-        with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.side_effect = RuntimeError("Backend unavailable")
+        endpoint = "relevant/lifecycle/app-streams"
+        query = {"related": True}
+        planning_mock_client.api.register(
+            HTTPMethod.GET, endpoint, query=query, error=RuntimeError("Backend unavailable")
+        )
 
-            with pytest.raises(InsightsApiError) as exc_info:
-                await planning_mcp_server.get_relevant_appstreams()
+        with pytest.raises(InsightsApiError) as exc_info:
+            await planning_mcp_server.get_relevant_appstreams()
 
-            assert_api_error_message(exc_info.value)
+        assert_api_error_message(exc_info.value)

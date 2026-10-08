@@ -1,5 +1,7 @@
 """Test suite for the get_active_rules() method."""
 
+from http import HTTPMethod
+
 import pytest
 
 from insights_mcp.errors import InsightsApiError
@@ -7,7 +9,7 @@ from tests.conftest import (  # pylint: disable=import-error
     assert_api_error_message,
 )
 
-from .conftest import get_default_active_rules_params, setup_toolset_mock
+from .conftest import get_default_active_rules_params
 
 
 class TestGetActiveRules:
@@ -133,80 +135,81 @@ class TestGetActiveRules:
     @pytest.mark.asyncio
     async def test_get_active_rules_default_params(self, advisor_mcp_server, advisor_mock_client, mock_api_response):
         """Test get_active_rules with default parameters."""
+        endpoint = "rule/"
+        query = {"offset": 0, "limit": 10, "impacting": True, "sort": "-total_risk"}
 
         # Setup mocks
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
-            # Get default parameters and call the method
-            params = get_default_active_rules_params()
-            result = await advisor_mcp_server.get_active_rules(**params)
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_api_response)
+        # Get default parameters and call the method
+        params = get_default_active_rules_params()
+        result = await advisor_mcp_server.get_active_rules(**params)
 
-            # Verify API was called correctly
-            advisor_mock_client.get.assert_called_once_with(
-                "rule/", params={"offset": 0, "limit": 10, "impacting": True, "sort": "-total_risk"}
-            )
+        # Verify API was called correctly
+        advisor_mock_client.get.assert_called_once_with(endpoint, params=query)
 
-            # Verify the result
-            assert result == mock_api_response
+        # Verify the result
+        assert result == mock_api_response
 
-            # Verify response structure matches real API
-            assert "meta" in result
-            assert "links" in result
-            assert "data" in result
-            assert len(result["data"]) == 2
+        # Verify response structure matches real API
+        assert "meta" in result
+        assert "links" in result
+        assert "data" in result
+        assert len(result["data"]) == 2
 
-            # Verify real API structure for recommendations
-            for rule in result["data"]:
-                assert "rule_id" in rule
-                assert "description" in rule
-                assert "category" in rule
-                assert "impact" in rule
-                assert "likelihood" in rule
-                assert "total_risk" in rule
-                assert "impacted_systems_count" in rule
-                assert "playbook_count" in rule
-                assert "reboot_required" in rule
+        # Verify real API structure for recommendations
+        for rule in result["data"]:
+            assert "rule_id" in rule
+            assert "description" in rule
+            assert "category" in rule
+            assert "impact" in rule
+            assert "likelihood" in rule
+            assert "total_risk" in rule
+            assert "impacted_systems_count" in rule
+            assert "playbook_count" in rule
+            assert "reboot_required" in rule
 
     @pytest.mark.asyncio
     async def test_get_active_rules_all_parameters(self, advisor_mcp_server, advisor_mock_client, mock_api_response):
         """Test get_active_rules with all available parameters."""
+        endpoint = "rule/"
+        query = {
+            "offset": 5,
+            "limit": 10,
+            "impacting": True,
+            "incident": False,
+            "has_playbook": True,
+            "impact": "3,4",
+            "likelihood": "3,4",
+            "category": "2,4",
+            "reboot": True,
+            "sort": "-impact,rule_id",
+            "groups": "workspace1,workspace2",
+            "tags": "insights-client/group=database-servers,satellite/env=production",
+        }
 
         # Setup mocks
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
-            # Call the method with comprehensive filters
-            params = get_default_active_rules_params(
-                incident=False,
-                has_automatic_remediation=True,
-                impact="3,4",
-                likelihood="3,4",
-                category="2,4",
-                reboot=True,
-                sort="-impact,rule_id",
-                limit=10,
-                offset=5,
-                groups=["workspace1", "workspace2"],
-                tags=["insights-client/group=database-servers", "satellite/env=production"],
-            )
-            result = await advisor_mcp_server.get_active_rules(**params)
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_api_response)
+        # Call the method with comprehensive filters
+        params = get_default_active_rules_params(
+            incident=False,
+            has_automatic_remediation=True,
+            impact="3,4",
+            likelihood="3,4",
+            category="2,4",
+            reboot=True,
+            sort="-impact,rule_id",
+            limit=10,
+            offset=5,
+            groups=["workspace1", "workspace2"],
+            tags=["insights-client/group=database-servers", "satellite/env=production"],
+        )
+        result = await advisor_mcp_server.get_active_rules(**params)
 
-            # Verify API was called with correct parameters
-            expected_params = {
-                "offset": 5,
-                "limit": 10,
-                "impacting": True,
-                "incident": False,
-                "has_playbook": True,
-                "impact": "3,4",
-                "likelihood": "3,4",
-                "category": "2,4",
-                "reboot": True,
-                "sort": "-impact,rule_id",
-                "groups": "workspace1,workspace2",
-                "tags": "insights-client/group=database-servers,satellite/env=production",
-            }
-            advisor_mock_client.get.assert_called_once_with("rule/", params=expected_params)
+        # Verify API was called with correct parameters
+        advisor_mock_client.get.assert_called_once_with(endpoint, params=query)
 
-            # Verify response
-            assert result == mock_api_response
+        # Verify response
+        assert result == mock_api_response
 
     @pytest.mark.asyncio
     async def test_get_active_rules_invalid_tags_filtering(self, advisor_mcp_server):
@@ -226,53 +229,53 @@ class TestGetActiveRules:
     @pytest.mark.asyncio
     async def test_get_active_rules_pagination(self, advisor_mcp_server, advisor_mock_client, large_api_response):
         """Test get_active_rules with pagination parameters."""
+        endpoint = "rule/"
+        query = {"offset": 10, "limit": 20, "impacting": True, "sort": "-total_risk"}
 
         # Setup mocks
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, large_api_response):
-            # Call the method with pagination
-            params = get_default_active_rules_params(limit=20, offset=10)
-            result = await advisor_mcp_server.get_active_rules(**params)
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=large_api_response)
+        # Call the method with pagination
+        params = get_default_active_rules_params(limit=20, offset=10)
+        result = await advisor_mcp_server.get_active_rules(**params)
 
-            # Verify API was called with correct parameters
-            expected_params = {
-                "offset": 10,
-                "limit": 20,
-                "impacting": True,
-                "sort": "-total_risk",
-            }
-            advisor_mock_client.get.assert_called_once_with("rule/", params=expected_params)
+        # Verify API was called with correct parameters
+        advisor_mock_client.get.assert_called_once_with(endpoint, params=query)
 
-            # Verify response
-            assert result == large_api_response
-            assert len(result["data"]) == 50
+        # Verify response
+        assert result == large_api_response
+        assert len(result["data"]) == 50
 
     # Edge case tests
     @pytest.mark.asyncio
     async def test_get_active_rules_empty_response(self, advisor_mcp_server, advisor_mock_client, empty_api_response):
         """Test get_active_rules when API returns empty response."""
+        endpoint = "rule/"
+        query = {"offset": 0, "limit": 10, "impacting": True, "sort": "-total_risk"}
 
         # Setup mocks with empty response
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, empty_api_response):
-            # Call the method
-            params = get_default_active_rules_params()
-            result = await advisor_mcp_server.get_active_rules(**params)
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=empty_api_response)
+        # Call the method
+        params = get_default_active_rules_params()
+        result = await advisor_mcp_server.get_active_rules(**params)
 
-            # Verify response
-            assert result == empty_api_response
-            assert len(result["data"]) == 0
+        # Verify response
+        assert result == empty_api_response
+        assert len(result["data"]) == 0
 
     @pytest.mark.asyncio
     async def test_get_active_rules_null_response(self, advisor_mcp_server, advisor_mock_client):
         """Test get_active_rules when API returns None."""
+        endpoint = "rule/"
+        query = {"offset": 0, "limit": 10, "impacting": True, "sort": "-total_risk"}
 
         # Setup mocks with None response
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, None):
-            # Call the method
-            params = get_default_active_rules_params()
-            result = await advisor_mcp_server.get_active_rules(**params)
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=None)
+        # Call the method
+        params = get_default_active_rules_params()
+        result = await advisor_mcp_server.get_active_rules(**params)
 
-            # Should return None when API returns None
-            assert result is None
+        # Should return None when API returns None
+        assert result is None
 
     # Error handling tests
     @pytest.mark.parametrize(
@@ -288,15 +291,17 @@ class TestGetActiveRules:
         self, advisor_mcp_server, advisor_mock_client, exception, error_message
     ):
         """Test get_active_rules error handling for various exception types."""
+        endpoint = "rule/"
+        query = {"offset": 0, "limit": 10, "impacting": True, "sort": "-total_risk"}
 
         # Setup mocks with exception
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, side_effect=exception):
-            params = get_default_active_rules_params()
-            with pytest.raises(InsightsApiError) as exc_info:
-                await advisor_mcp_server.get_active_rules(**params)
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, error=exception)
+        params = get_default_active_rules_params()
+        with pytest.raises(InsightsApiError) as exc_info:
+            await advisor_mcp_server.get_active_rules(**params)
 
-            assert_api_error_message(exc_info.value, error_message)
-            assert f"Failed to retrieve recommendations: {error_message}" in str(exc_info.value)
+        assert_api_error_message(exc_info.value, error_message)
+        assert f"Failed to retrieve recommendations: {error_message}" in str(exc_info.value)
 
     # Parameter combination tests
     @pytest.mark.parametrize(
@@ -340,21 +345,22 @@ class TestGetActiveRules:
     ):
         """Test get_active_rules with specific filtering criteria."""
 
-        # Setup mocks
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
-            # Call the method with filter parameters
-            params = get_default_active_rules_params(**filter_params)
-            result = await advisor_mcp_server.get_active_rules(**params)
+        # Build expected API parameters and register the exact route.
+        expected_params = {"offset": 0, "limit": 10, "impacting": True, "sort": "-total_risk"}
+        expected_params.update(expected_params_update)
+        endpoint = "rule/"
+        advisor_mock_client.api.register(
+            HTTPMethod.GET, endpoint, query=expected_params, response_body=mock_api_response
+        )
+        # Call the method with filter parameters
+        params = get_default_active_rules_params(**filter_params)
+        result = await advisor_mcp_server.get_active_rules(**params)
 
-            # Build expected API parameters
-            expected_params = {"offset": 0, "limit": 10, "impacting": True, "sort": "-total_risk"}
-            expected_params.update(expected_params_update)
+        # Verify API was called with correct parameters
+        advisor_mock_client.get.assert_called_once_with(endpoint, params=expected_params)
 
-            # Verify API was called with correct parameters
-            advisor_mock_client.get.assert_called_once_with("rule/", params=expected_params)
-
-            # Verify response
-            assert result == mock_api_response
+        # Verify response
+        assert result == mock_api_response
 
     # Test string parameter parsing edge cases
     @pytest.mark.parametrize(
@@ -393,18 +399,19 @@ class TestGetActiveRules:
     ):
         """Test get_active_rules with string boolean parameter parsing."""
 
-        # Setup mocks
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
-            # Call the method with string boolean parameters
-            full_params = get_default_active_rules_params(**params)
-            result = await advisor_mcp_server.get_active_rules(**full_params)
+        # Build expected API parameters and register the exact route.
+        expected_api_params = {"offset": 0, "limit": 10, "impacting": True, "sort": "-total_risk"}
+        expected_api_params.update(expected_params)
+        endpoint = "rule/"
+        advisor_mock_client.api.register(
+            HTTPMethod.GET, endpoint, query=expected_api_params, response_body=mock_api_response
+        )
+        # Call the method with string boolean parameters
+        full_params = get_default_active_rules_params(**params)
+        result = await advisor_mcp_server.get_active_rules(**full_params)
 
-            # Build expected API parameters
-            expected_api_params = {"offset": 0, "limit": 10, "impacting": True, "sort": "-total_risk"}
-            expected_api_params.update(expected_params)
+        # Verify API was called with correct parameters
+        advisor_mock_client.get.assert_called_once_with(endpoint, params=expected_api_params)
 
-            # Verify API was called with correct parameters
-            advisor_mock_client.get.assert_called_once_with("rule/", params=expected_api_params)
-
-            # Verify response
-            assert result == mock_api_response
+        # Verify response
+        assert result == mock_api_response

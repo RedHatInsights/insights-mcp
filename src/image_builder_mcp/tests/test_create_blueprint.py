@@ -1,16 +1,17 @@
 """Test suite for the create_blueprint() method."""
 
+from http import HTTPMethod
+
 import pytest
 
 from insights_mcp.errors import InsightsApiError
 from tests.conftest import (
     TEST_BLUEPRINT_UUID,
-    TEST_CLIENT_ID,
     assert_api_error_message,
     assert_instruction_in_result,
 )
 
-from .conftest import setup_imagebuilder_watermark_disabled, setup_toolset_mock
+from .conftest import setup_imagebuilder_watermark_disabled
 
 
 class TestCreateBlueprint:
@@ -41,36 +42,38 @@ class TestCreateBlueprint:
         self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_blueprint_data, mock_api_response
     ):
         """Test basic functionality of create_blueprint method."""
+        endpoint = "blueprints"
+        query = {}
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
-            # Call the method
-            result = await imagebuilder_mcp_server.create_blueprint(data=mock_blueprint_data)
+        imagebuilder_mock_client.api.register(HTTPMethod.POST, endpoint, response_body=mock_api_response, query=query)
+        # Call the method
+        result = await imagebuilder_mcp_server.create_blueprint(data=mock_blueprint_data)
 
-            # Verify API was called correctly
-            imagebuilder_mock_client.post.assert_called_once()
-            call_args = imagebuilder_mock_client.post.call_args
-            assert call_args[0][0] == "blueprints"
+        # Verify API was called correctly
+        imagebuilder_mock_client.post.assert_called_once()
+        call_args = imagebuilder_mock_client.post.call_args
+        assert call_args[0][0] == endpoint
 
-            # Check that watermark was added to description
-            posted_data = call_args.kwargs["json"]
-            assert "Blueprint created via insights-mcp" in posted_data["description"]
+        # Check that watermark was added to description
+        posted_data = call_args.kwargs["json"]
+        assert "Blueprint created via insights-mcp" in posted_data["description"]
 
-            # Parse the result
-            assert_instruction_in_result(result)
-            assert "Blueprint created successfully" in result
-            assert mock_api_response["id"] in result
-            assert "get_blueprint_details" in result
+        # Parse the result
+        assert_instruction_in_result(result)
+        assert "Blueprint created successfully" in result
+        assert mock_api_response["id"] in result
+        assert "get_blueprint_details" in result
 
     @pytest.mark.asyncio
     async def test_create_blueprint_with_watermark_disabled(
         self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_blueprint_data, mock_api_response
     ):
         """Test create_blueprint with watermark disabled via environment variable."""
+        endpoint = "blueprints"
+        query = {}
         # Setup mocks
-        with setup_imagebuilder_watermark_disabled(imagebuilder_mcp_server, imagebuilder_mock_client):
-            imagebuilder_mock_client.post.return_value = mock_api_response
-            imagebuilder_mcp_server.clients[TEST_CLIENT_ID] = imagebuilder_mock_client
-
+        imagebuilder_mock_client.api.register(HTTPMethod.POST, endpoint, response_body=mock_api_response, query=query)
+        with setup_imagebuilder_watermark_disabled():
             # Call the method
             result = await imagebuilder_mcp_server.create_blueprint(data=mock_blueprint_data)
 
@@ -86,13 +89,15 @@ class TestCreateBlueprint:
         self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_blueprint_data
     ):
         """Test create_blueprint when API returns error."""
+        endpoint = "blueprints"
+        query = {}
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")):
-            # Call the method
-            with pytest.raises(InsightsApiError) as exc_info:
-                await imagebuilder_mcp_server.create_blueprint(data=mock_blueprint_data)
+        imagebuilder_mock_client.api.register(HTTPMethod.POST, endpoint, query=query, error=Exception("API Error"))
+        # Call the method
+        with pytest.raises(InsightsApiError) as exc_info:
+            await imagebuilder_mcp_server.create_blueprint(data=mock_blueprint_data)
 
-            assert_api_error_message(exc_info.value)
+        assert_api_error_message(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_create_blueprint_unexpected_list_response(
@@ -101,9 +106,11 @@ class TestCreateBlueprint:
         """Test create_blueprint when API returns unexpected list response."""
         # Setup mocks
         list_response = [{"id": "test-id"}]
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, list_response):
-            # Call the method
-            with pytest.raises(InsightsApiError) as exc_info:
-                await imagebuilder_mcp_server.create_blueprint(data=mock_blueprint_data)
+        endpoint = "blueprints"
+        query = {}
+        imagebuilder_mock_client.api.register(HTTPMethod.POST, endpoint, response_body=list_response, query=query)
+        # Call the method
+        with pytest.raises(InsightsApiError) as exc_info:
+            await imagebuilder_mcp_server.create_blueprint(data=mock_blueprint_data)
 
-            assert "Error: the response of blueprint creation is a list" in str(exc_info.value)
+        assert "Error: the response of blueprint creation is a list" in str(exc_info.value)

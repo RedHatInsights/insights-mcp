@@ -1,14 +1,13 @@
 """Fixtures for inventory MCP unit tests and LLM integration tests."""
 
-from contextlib import contextmanager
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import Mock
 
 import pytest
 
 from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 from inventory_mcp.server import mcp
-from tests.conftest import llm_api_context
+from tests.conftest import create_mock_client, llm_api_context
 from tests.mcp_llm_eval.fixtures import test_agent, verbose_logger
 
 __all__ = ["llm_api_context", "mcp_server_url", "test_agent", "verbose_logger"]
@@ -30,9 +29,11 @@ def mcp_server_url(request):
 
 
 @pytest.fixture
-def inventory_mock_client() -> AsyncMock:
-    """Create an async mock InsightsClient for Inventory tests."""
-    return AsyncMock()
+def inventory_mock_client(monkeypatch: pytest.MonkeyPatch) -> Mock:
+    """Create a registry-backed mock InsightsClient for Inventory tests."""
+    client = create_mock_client(api_path="api/inventory/v1")
+    monkeypatch.setattr(mcp, "insights_client", client)
+    return client
 
 
 @pytest.fixture
@@ -91,21 +92,6 @@ def mock_host_list_response() -> dict[str, Any]:
             }
         ],
     }
-
-
-@contextmanager
-def setup_inventory_mock(
-    mock_client: AsyncMock,
-    mock_response: dict[str, Any] | str | None = None,
-    side_effect: BaseException | None = None,
-):
-    """Patch the inventory MCP client's GET method."""
-    if side_effect is not None:
-        mock_client.get.side_effect = side_effect
-    else:
-        mock_client.get.return_value = mock_response
-    with patch.object(mcp, "insights_client", mock_client):
-        yield
 
 
 def inventory_host_filter_kwargs(**overrides: Any) -> dict[str, Any]:

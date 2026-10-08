@@ -20,7 +20,6 @@ from tests.conftest import (
     llm_api_context,
     mcp_tools,
     mock_http_headers,
-    setup_toolset_mock,
     test_client_credentials,
 )
 from tests.mcp_llm_eval.fixtures import guardian_agent, test_agent, verbose_logger
@@ -81,14 +80,16 @@ def get_default_hosts_details_params(rule_id=TEST_RULE_ID, **overrides):
 
 
 @pytest.fixture
-def advisor_mcp_server():
+def advisor_mcp_server(advisor_mock_client):  # pylint: disable=redefined-outer-name
     """Create Advisor MCP server for tests."""
-    return create_mcp_server(AdvisorMCP)
+    server = create_mcp_server(AdvisorMCP)
+    server.insights_client = advisor_mock_client
+    return server
 
 
 @pytest.fixture
 def advisor_mock_client():
-    """Create a mock InsightsClient for Advisor tests."""
+    """Create a registry-backed mock InsightsClient for Advisor tests."""
     return create_mock_client(api_path="api/insights/v1")
 
 
@@ -108,7 +109,6 @@ __all__ = [
     "mcp_server_url",
     "mcp_tools",
     "mock_http_headers",
-    "setup_toolset_mock",
     "test_agent",
     "test_client_credentials",
     "TEST_CLIENT_ID",

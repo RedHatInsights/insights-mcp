@@ -2,7 +2,7 @@
 # pylint: disable=duplicate-code
 
 import json
-from unittest.mock import patch
+from http import HTTPMethod
 
 import pytest
 
@@ -120,98 +120,104 @@ class TestPlanningGetRelevantUpcoming:
     async def test_get_relevant_upcoming_basic_functionality(
         self,
         planning_mcp_server,
+        planning_mock_client,
         mock_upcoming_response,
     ):
         """Test basic functionality of get_relevant_upcoming method."""
-        # Patch underlying Insights client used by Planning MCP
-        with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.return_value = mock_upcoming_response
+        # Register the expected API route.
+        endpoint = "relevant/upcoming-changes"
+        query = None
+        planning_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_upcoming_response)
 
-            # Call the method
-            result = await planning_mcp_server.get_relevant_upcoming()
+        # Call the method
+        result = await planning_mcp_server.get_relevant_upcoming()
 
-            # Backend endpoint should be invoked exactly once with no parameters
-            mock_get.assert_called_once_with("relevant/upcoming-changes", params=None, timeout=30)
+        # Backend endpoint should be invoked exactly once with no parameters
+        planning_mock_client.get.assert_called_once_with(endpoint, params=query, timeout=30)
 
-            # Tool returns a JSON-encoded string; parse and validate structure
-            parsed = json.loads(result)
+        # Tool returns a JSON-encoded string; parse and validate structure
+        parsed = json.loads(result)
 
-            # Minimal but realistic structure checks
-            assert "meta" in parsed
-            assert "data" in parsed
-            assert isinstance(parsed["data"], list)
-            # The mock returns all 5 items; in production the API filters server-side
-            assert parsed["meta"]["count"] == 5
-            assert parsed["meta"]["total"] == 5
-            assert len(parsed["data"]) == 5
+        # Minimal but realistic structure checks
+        assert "meta" in parsed
+        assert "data" in parsed
+        assert isinstance(parsed["data"], list)
+        # The mock returns all 5 items; in production the API filters server-side
+        assert parsed["meta"]["count"] == 5
+        assert parsed["meta"]["total"] == 5
+        assert len(parsed["data"]) == 5
 
-            # Verify structure of first item (nodejs)
-            item = parsed["data"][0]
+        # Verify structure of first item (nodejs)
+        item = parsed["data"][0]
 
-            # Top-level fields
-            assert "name" in item
-            assert "type" in item
-            assert "packages" in item
-            assert "release" in item
-            assert "date" in item
-            assert "details" in item
-            assert "package" in item
+        # Top-level fields
+        assert "name" in item
+        assert "type" in item
+        assert "packages" in item
+        assert "release" in item
+        assert "date" in item
+        assert "details" in item
+        assert "package" in item
 
-            # Verify it's the nodejs item
-            assert item["package"] == "nodejs"
-            assert item["name"] == "Add Node.js to RHEL8 AppStream"
-            assert item["type"] == "addition"
-            assert item["release"] == "8.1"
+        # Verify it's the nodejs item
+        assert item["package"] == "nodejs"
+        assert item["name"] == "Add Node.js to RHEL8 AppStream"
+        assert item["type"] == "addition"
+        assert item["release"] == "8.1"
 
-            # details sub-object
-            details = item["details"]
-            assert isinstance(details, dict)
-            assert "summary" in details
-            assert "dateAdded" in details
-            assert "lastModified" in details
-            assert "trainingTicket" in details
+        # details sub-object
+        details = item["details"]
+        assert isinstance(details, dict)
+        assert "summary" in details
+        assert "dateAdded" in details
+        assert "lastModified" in details
+        assert "trainingTicket" in details
 
     @pytest.mark.asyncio
     async def test_get_relevant_upcoming_with_major_version(
         self,
         planning_mcp_server,
+        planning_mock_client,
         mock_upcoming_response,
     ):
         """Test get_relevant_upcoming with major version filter."""
-        with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.return_value = mock_upcoming_response
+        endpoint = "relevant/upcoming-changes"
+        query = {"major": 9}
+        planning_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_upcoming_response)
 
-            # Call with major version
-            result = await planning_mcp_server.get_relevant_upcoming(major=9)
+        # Call with major version
+        result = await planning_mcp_server.get_relevant_upcoming(major=9)
 
-            # Backend should receive the major parameter
-            mock_get.assert_called_once_with("relevant/upcoming-changes", params={"major": 9}, timeout=30)
+        # Backend should receive the major parameter
+        planning_mock_client.get.assert_called_once_with(endpoint, params=query, timeout=30)
 
-            # Validate response structure
-            parsed = json.loads(result)
-            assert "meta" in parsed
-            assert "data" in parsed
+        # Validate response structure
+        parsed = json.loads(result)
+        assert "meta" in parsed
+        assert "data" in parsed
 
     @pytest.mark.asyncio
     async def test_get_relevant_upcoming_with_major_and_minor(
         self,
         planning_mcp_server,
+        planning_mock_client,
         mock_upcoming_response,
     ):
         """Test get_relevant_upcoming with major and minor version filters."""
-        with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.return_value = mock_upcoming_response
+        endpoint = "relevant/upcoming-changes"
+        query = {"major": 9, "minor": 2}
+        planning_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_upcoming_response)
 
-            # Call with both major and minor versions
-            result = await planning_mcp_server.get_relevant_upcoming(major=9, minor=2)
+        # Call with both major and minor versions
+        result = await planning_mcp_server.get_relevant_upcoming(major=9, minor=2)
 
-            # Backend should receive both parameters
-            mock_get.assert_called_once_with("relevant/upcoming-changes", params={"major": 9, "minor": 2}, timeout=30)
+        # Backend should receive both parameters
+        planning_mock_client.get.assert_called_once_with(endpoint, params=query, timeout=30)
 
-            # Validate response structure
-            parsed = json.loads(result)
-            assert "meta" in parsed
-            assert "data" in parsed
+        # Validate response structure
+        parsed = json.loads(result)
+        assert "meta" in parsed
+        assert "data" in parsed
 
     @pytest.mark.asyncio
     async def test_get_relevant_upcoming_minor_without_major_raises_error(
@@ -227,12 +233,15 @@ class TestPlanningGetRelevantUpcoming:
         assert "The 'minor' parameter requires 'major' to be specified" in error_message
 
     @pytest.mark.asyncio
-    async def test_get_relevant_upcoming_api_error(self, planning_mcp_server):
+    async def test_get_relevant_upcoming_api_error(self, planning_mcp_server, planning_mock_client):
         """Test get_relevant_upcoming when backend raises an API error."""
-        with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.side_effect = RuntimeError("Backend unavailable")
+        endpoint = "relevant/upcoming-changes"
+        query = None
+        planning_mock_client.api.register(
+            HTTPMethod.GET, endpoint, query=query, error=RuntimeError("Backend unavailable")
+        )
 
-            with pytest.raises(InsightsApiError) as exc_info:
-                await planning_mcp_server.get_relevant_upcoming()
+        with pytest.raises(InsightsApiError) as exc_info:
+            await planning_mcp_server.get_relevant_upcoming()
 
-            assert_api_error_message(exc_info.value)
+        assert_api_error_message(exc_info.value)

@@ -1,6 +1,7 @@
 """Test suite for the get_blueprint_details() method."""
 
 import json
+from http import HTTPMethod
 
 import pytest
 
@@ -9,8 +10,6 @@ from tests.conftest import (
     TEST_BLUEPRINT_UUID,
     assert_api_error_message,
 )
-
-from .conftest import setup_toolset_mock
 
 
 class TestGetBlueprintDetails:
@@ -35,36 +34,40 @@ class TestGetBlueprintDetails:
     ):
         """Test get_blueprint_details with valid UUID."""
         blueprint_uuid = TEST_BLUEPRINT_UUID
+        endpoint = f"blueprints/{blueprint_uuid}"
+        query = {}
 
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
-            # Call the method
-            result = await imagebuilder_mcp_server.get_blueprint_details(blueprint_identifier=blueprint_uuid)
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, endpoint, response_body=mock_api_response, query=query)
+        # Call the method
+        result = await imagebuilder_mcp_server.get_blueprint_details(blueprint_identifier=blueprint_uuid)
 
-            # Verify API was called correctly
-            imagebuilder_mock_client.get.assert_called_once_with(f"blueprints/{blueprint_uuid}")
+        # Verify API was called correctly
+        imagebuilder_mock_client.get.assert_called_once_with(endpoint)
 
-            # Parse the result - should be wrapped in a list
-            parsed_result = json.loads(result)
-            assert isinstance(parsed_result, list)
-            assert len(parsed_result) == 1
-            assert parsed_result[0] == mock_api_response
+        # Parse the result - should be wrapped in a list
+        parsed_result = json.loads(result)
+        assert isinstance(parsed_result, list)
+        assert len(parsed_result) == 1
+        assert parsed_result[0] == mock_api_response
 
     @pytest.mark.asyncio
     async def test_get_blueprint_details_invalid_uuid(self, imagebuilder_mcp_server, imagebuilder_mock_client):
         """Test get_blueprint_details with invalid UUID format."""
         invalid_uuid = "invalid-uuid-format"
+        endpoint = f"blueprints/{invalid_uuid}"
+        query = {}
 
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, [{"id": "test-id"}]):
-            # Call the method
-            with pytest.raises(InsightsApiError) as exc_info:
-                await imagebuilder_mcp_server.get_blueprint_details(blueprint_identifier=invalid_uuid)
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, endpoint, response_body=[{"id": "test-id"}], query=query)
+        # Call the method
+        with pytest.raises(InsightsApiError) as exc_info:
+            await imagebuilder_mcp_server.get_blueprint_details(blueprint_identifier=invalid_uuid)
 
-            error_message = str(exc_info.value)
-            assert "[INSTRUCTION] Error:" in error_message
-            assert "is not a valid blueprint identifier" in error_message
-            assert "please use the UUID from get_blueprints" in error_message
+        error_message = str(exc_info.value)
+        assert "[INSTRUCTION] Error:" in error_message
+        assert "is not a valid blueprint identifier" in error_message
+        assert "please use the UUID from get_blueprints" in error_message
 
     @pytest.mark.asyncio
     async def test_get_blueprint_details_empty_identifier(self, imagebuilder_mcp_server):
@@ -79,14 +82,16 @@ class TestGetBlueprintDetails:
     async def test_get_blueprint_details_api_error(self, imagebuilder_mcp_server, imagebuilder_mock_client):
         """Test get_blueprint_details when API returns error."""
         blueprint_uuid = TEST_BLUEPRINT_UUID
+        endpoint = f"blueprints/{blueprint_uuid}"
+        query = {}
 
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")):
-            # Call the method
-            with pytest.raises(InsightsApiError) as exc_info:
-                await imagebuilder_mcp_server.get_blueprint_details(blueprint_identifier=blueprint_uuid)
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, error=Exception("API Error"))
+        # Call the method
+        with pytest.raises(InsightsApiError) as exc_info:
+            await imagebuilder_mcp_server.get_blueprint_details(blueprint_identifier=blueprint_uuid)
 
-            assert_api_error_message(exc_info.value)
+        assert_api_error_message(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_blueprint_details_unexpected_list_response(
@@ -94,14 +99,16 @@ class TestGetBlueprintDetails:
     ):
         """Test get_blueprint_details when API returns unexpected list response."""
         blueprint_uuid = TEST_BLUEPRINT_UUID
+        endpoint = f"blueprints/{blueprint_uuid}"
+        query = {}
 
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, [{"id": "test-id"}]):
-            # Call the method
-            result = await imagebuilder_mcp_server.get_blueprint_details(blueprint_identifier=blueprint_uuid)
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, endpoint, response_body=[{"id": "test-id"}], query=query)
+        # Call the method
+        result = await imagebuilder_mcp_server.get_blueprint_details(blueprint_identifier=blueprint_uuid)
 
-            # Should handle unexpected list response gracefully
-            parsed_result = json.loads(result)
-            assert isinstance(parsed_result, list)
-            assert "error" in parsed_result[0]
-            assert "Unexpected list response" in parsed_result[0]["error"]
+        # Should handle unexpected list response gracefully
+        parsed_result = json.loads(result)
+        assert isinstance(parsed_result, list)
+        assert "error" in parsed_result[0]
+        assert "Unexpected list response" in parsed_result[0]["error"]
