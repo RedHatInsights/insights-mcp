@@ -266,6 +266,7 @@ The harness supplies defaults, but the consumer may override them:
   stdio connections when `mcp_server_url` is `"stdio"`. The default is
   `("python", ["-m", "mcp_server", "stdio"])`.
 - `mcp_memory_token_limit: int` — agent memory limit. The default is `16384`.
+- Matrix model HTTP timeout — `MCPAgentWrapper` uses `MATRIX_LLM_HTTP_TIMEOUT_SECONDS` (1800s) for `MODEL_API` chat requests.
 - `verbose_logger` — logging fixture if the consumer needs custom formatting
   or verbosity behavior.
 
