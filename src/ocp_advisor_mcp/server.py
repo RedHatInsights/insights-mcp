@@ -32,7 +32,7 @@ async def get_info() -> dict[str, Any] | str:
     Returns Smart Proxy, Insights Results Aggregator, and Content Service version,
     commit, and status information from the /info endpoint.
     """
-    response = await mcp.insights_client.get("info")
+    response = await mcp.insights_client.get("info", noauth=True)
     if isinstance(response, str):
         return response
     return response

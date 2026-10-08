@@ -23,5 +23,18 @@ class TestGetInfo:
         with setup_ocp_advisor_mock(ocp_advisor_mock_client, mock_info_response):
             result = await get_info()
 
-        ocp_advisor_mock_client.get.assert_called_once_with("info")
+        ocp_advisor_mock_client.get.assert_called_once_with("info", noauth=True)
         assert result == mock_info_response
+
+    @pytest.mark.asyncio
+    async def test_get_info_returns_plain_text_response(
+        self,
+        ocp_advisor_mock_client: AsyncMock,
+    ) -> None:
+        """get_info returns plain-text responses unchanged."""
+        plain_text_response = "ok"
+        with setup_ocp_advisor_mock(ocp_advisor_mock_client, plain_text_response):
+            result = await get_info()
+
+        ocp_advisor_mock_client.get.assert_called_once_with("info", noauth=True)
+        assert result == plain_text_response
