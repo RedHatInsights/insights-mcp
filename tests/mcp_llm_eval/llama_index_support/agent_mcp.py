@@ -22,6 +22,7 @@ from mcp.shared._httpx_utils import create_mcp_http_client
 from tests.mcp_llm_eval.atif_export import AtifTrajectoryBuilder
 from tests.mcp_llm_eval.deepeval_support.tracing import WorkflowToolCallCollector, tools_called_from_agent_run
 from tests.mcp_llm_eval.mcp_jsonrpc import fetch_mcp_instructions_http, fetch_mcp_instructions_stdio
+from tests.mcp_llm_eval.model_output import model_output_dump, render_model_output
 from tests.mcp_llm_eval.utils import abbreviate_middle
 
 _MCP_INSTRUCTIONS_HEADER = "## MCP server instructions"
@@ -46,6 +47,23 @@ def _chat_message_text(message: ChatMessage) -> str:
         if text:
             block_texts.append(text)
     return "\n".join(block_texts)
+
+
+def _rendered_model_output(response: Any) -> str:
+    """JSON dump of a workflow response, including thinking blocks and provider extras.
+
+    Args:
+        response: Workflow handler result. The assistant message is ``response.response`` when present.
+
+    Returns:
+        JSON text for logs. Empty when the response has no captured payload.
+    """
+    return render_model_output(
+        model_output_dump(
+            getattr(response, "response", response),
+            raw=getattr(response, "raw", None),
+        )
+    )
 
 
 def _assistant_text_from_handler_response(response: Any) -> str:
@@ -356,12 +374,19 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
                 break
             if attempt == 0:
                 self.logger.warning(
-                    "Empty agent's final response for model %s; retrying once",
+                    "Empty agent's final response for model %s; retrying once. model_output=%s",
                     self.model_id,
+                    _rendered_model_output(response),
                 )
                 # Wipe the potentially polluted memory so the retry runs cleanly from prior history.
                 await self._memory.aset(prior_history)
                 self.context = Context(self.agent)
+                continue
+            self.logger.warning(
+                "Empty agent's final response for model %s. model_output=%s",
+                self.model_id,
+                _rendered_model_output(response),
+            )
 
         reasoning_steps: list[dict[str, Any]] = [
             {"step_number": idx + 1, "step_type": "event", "content": name} for idx, name in enumerate(self._step_names)

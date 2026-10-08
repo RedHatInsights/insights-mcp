@@ -146,11 +146,12 @@ class AgentOutput:  # pylint: disable=too-few-public-methods
 
     def __init__(
         self,
-        content: str,
+        content: Any = "",
         tool_calls: list[Any] | None = None,
         raw: Any = None,
+        blocks: list[Any] | None = None,
     ) -> None:
-        self.response = SimpleNamespace(content=content, blocks=[], additional_kwargs={})
+        self.response = SimpleNamespace(content=content, blocks=blocks or [], additional_kwargs={})
         self.tool_calls = tool_calls or []
         self.raw = raw
 
@@ -381,6 +382,101 @@ def test_atif_builder_thinking_delta_becomes_reasoning_content() -> None:
     assert agent_step["message"] == "Here is the recommendation."
 
 
+def test_model_output_dump_keeps_thinking_raw_extras_and_non_string_content() -> None:
+    """Thinking blocks, provider extras, and non-string content survive JSON encoding."""
+
+    class _RawResponse:  # pylint: disable=too-few-public-methods
+        """Stand-in for an OpenAI SDK model that only exposes extras via model_dump."""
+
+        def model_dump(self, mode: str = "json") -> dict[str, Any]:
+            """Return the provider payload, including a non-standard thinking field."""
+            _ = mode
+            return {
+                "choices": [
+                    {
+                        "finish_reason": "length",
+                        "message": {"content": "", "thinking": b"hidden-bytes"},
+                    }
+                ],
+                "usage": {"completion_tokens": 1024},
+            }
+
+    message = SimpleNamespace(
+        content=[{"type": "text", "text": "corrupt-token"}],
+        blocks=[SimpleNamespace(block_type="thinking", content="spent the budget")],
+        additional_kwargs={},
+    )
+    dump = atif_export.model_output_dump(message, raw=_RawResponse(), thinking="stream ")
+    assert dump["thinking"] == "stream \nspent the budget"
+    assert dump["content"] == [{"type": "text", "text": "corrupt-token"}]
+    assert dump["raw"]["choices"][0]["finish_reason"] == "length"
+    assert dump["raw"]["choices"][0]["message"]["thinking"] == repr(b"hidden-bytes")
+    assert dump["raw"]["usage"]["completion_tokens"] == 1024
+    assert "visible_text" not in dump
+    assert json.loads(atif_export.render_model_output(dump)) == dump
+
+
+def test_atif_builder_thinking_only_output_is_visible_in_message() -> None:
+    """Empty content with a thinking block and 1024 raw tokens is stored for Phoenix and JSON."""
+    thinking = "spent the budget on host tags"
+    raw = {
+        "choices": [
+            {
+                "finish_reason": "length",
+                "message": {"role": "assistant", "content": "", "thinking": thinking},
+            }
+        ],
+        "usage": {"prompt_tokens": 3592, "completion_tokens": 1024},
+    }
+    builder = _builder()
+    builder.begin_turn("Get all tags for hosts that were updated in the last 24 hours")
+    builder.consume_event(
+        AgentOutput(
+            "",
+            raw=raw,
+            blocks=[SimpleNamespace(block_type="thinking", content=thinking)],
+        )
+    )
+    trajectory = builder.finish(pytest_outcome="failed")
+    agent_step = trajectory["steps"][1]
+    model_output = agent_step["extra"]["model_output"]
+    assert agent_step["reasoning_content"] == thinking
+    assert model_output["thinking"] == thinking
+    assert model_output["raw"]["usage"]["completion_tokens"] == 1024
+    assert model_output["raw"]["choices"][0]["message"]["thinking"] == thinking
+    assert agent_step["message"] == atif_export.render_model_output(model_output)
+    assert thinking in agent_step["message"]
+    assert agent_step["metrics"]["completion_tokens"] == 1024
+
+
+def test_atif_builder_non_string_content_is_dumped() -> None:
+    """A list content payload is recorded instead of becoming an empty assistant message."""
+    parts = [{"type": "text", "text": "corrupt-token"}]
+    builder = _builder()
+    builder.begin_turn("prompt")
+    builder.consume_event(AgentOutput(parts))
+    agent_step = builder.finish(pytest_outcome="failed")["steps"][1]
+    assert agent_step["extra"]["model_output"]["content"] == parts
+    assert "corrupt-token" in agent_step["message"]
+
+
+def test_atif_builder_normal_text_reply_keeps_message() -> None:
+    """Visible assistant text stays the step message; the raw dump is only extra data."""
+    reply = "Here is the recommendation."
+    builder = _builder()
+    builder.begin_turn("prompt")
+    builder.consume_event(
+        AgentOutput(
+            reply,
+            raw={"choices": [{"message": {"content": reply, "thinking": "brief"}}]},
+        )
+    )
+    agent_step = builder.finish(pytest_outcome="passed")["steps"][1]
+    assert agent_step["message"] == reply
+    assert agent_step["extra"]["model_output"]["visible_text"] == reply
+    assert agent_step["extra"]["model_output"]["raw"]["choices"][0]["message"]["thinking"] == "brief"
+
+
 def test_atif_builder_agent_input_recorded_as_llm_input() -> None:
     """AgentInput messages are stored on the agent step extra.llm_input."""
     builder = _builder()
@@ -536,6 +632,7 @@ def test_atif_builder_live_workflow_event_order_one_step_per_tool_round() -> Non
     trajectory = builder.finish(pytest_outcome="passed")
     agent_steps = [step for step in trajectory["steps"] if step["source"] == "agent"]
     assert len(agent_steps) == 3
+    assert agent_steps[0]["message"] == ""
     assert agent_steps[0]["tool_calls"][0]["function_name"] == "advisor__get_rule_from_node_id"
     assert agent_steps[0]["observation"]["results"][0]["content"] == '["rule-a"]'
     assert agent_steps[1]["tool_calls"][0]["function_name"] == "advisor__get_hosts_hitting_a_rule"
