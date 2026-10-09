@@ -31,7 +31,7 @@ mcp = InsightsMCP(
 
 @mcp.tool(annotations={"readOnlyHint": True})
 async def get_info() -> dict[str, Any] | str:
-    """Get OCP Advisor service metadata and backend health information.
+    """Get OCP Advisor backend health, deployed OCP rules version, and release metadata.
 
     🟢 CALL IMMEDIATELY - No information gathering required.
 
