@@ -12,7 +12,7 @@ Every row uses `--all-tools` (maximum tools per mode).
 | content-sources | 7 | 1241 |
 | image-builder | 15 | 1674 |
 | inventory | 14 | 3011 |
-| ocp-advisor | 7 | 861 |
+| ocp-advisor | 6 | 821 |
 | planning | 11 | 4128 |
 | rbac | 5 | 704 |
 | remediations | 6 | 902 |

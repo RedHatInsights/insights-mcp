@@ -28,12 +28,6 @@ def mock_info_response() -> dict[str, Any]:
     }
 
 
-@pytest.fixture
-def mock_metrics_response() -> str:
-    """Sample Prometheus metrics response from Insights Results Smart Proxy."""
-    return '# HELP smart_proxy_build_info Build information\nsmart_proxy_build_info{version="test"} 1\n'
-
-
 def setup_ocp_advisor_mock(
     mock_client: AsyncMock,
     mock_response: dict[str, Any] | str | None = None,
@@ -47,7 +41,6 @@ __all__ = [
     "mcp_server_url",
     "mcp_tools",
     "mock_info_response",
-    "mock_metrics_response",
     "ocp_advisor_mock_client",
     "setup_ocp_advisor_mock",
 ]
