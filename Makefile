@@ -3,6 +3,7 @@
 # see src/insights_mcp/server.py for accepted environment variables
 VALID_CONTAINER_BRANDS := insights red-hat-lightspeed
 CONTAINER_BRAND ?= insights
+PARALLEL_TESTS ?= 1
 
 ifeq ($(filter $(CONTAINER_BRAND),$(VALID_CONTAINER_BRANDS)),)
   $(error invalid CONTAINER_BRAND: $(CONTAINER_BRAND). \
@@ -80,7 +81,7 @@ lint: install-test-deps ## Run linting with pre-commit (same hooks as CI lint wo
 .PHONY: test
 test: install-test-deps test-instrumentation ## Run tests with pytest (hides logging output)
 	@echo "Running pytest tests..."
-	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v
+	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v --numprocesses=$(PARALLEL_TESTS)
 
 .PHONY: test-instrumentation
 test-instrumentation: ## Non-behavioral instrumentation checks (MCP catalogs, wiring)
@@ -90,32 +91,32 @@ test-instrumentation: ## Non-behavioral instrumentation checks (MCP catalogs, wi
 .PHONY: test-verbose
 test-verbose: install-test-deps ## Run tests with pytest with verbose output (shows logging output)
 	@echo "Running pytest tests with verbose output..."
-	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -vv -o log_cli=true
+	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -vv -o log_cli=true --numprocesses=$(PARALLEL_TESTS)
 
 .PHONY: test-very-verbose
 test-very-verbose: install-test-deps ## Run tests with pytest showing all intermediate agent steps (shows logging output)
 	@echo "Running pytest tests with debug output..."
-	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -vvv -o log_cli=true
+	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -vvv -o log_cli=true --numprocesses=$(PARALLEL_TESTS)
 
 .PHONY: test-coverage
 test-coverage: install-test-deps ## Run tests with coverage reporting
 	@echo "Running pytest tests with coverage..."
-	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v --cov=. --cov-report=html --cov-report=term-missing
+	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v --cov=. --cov-report=html --cov-report=term-missing --numprocesses=$(PARALLEL_TESTS)
 
 .PHONY: test-llm
 test-llm: ## Run only @pytest.mark.llm behavioral tests (needs test_config.json + INSIGHTS_* creds)
 	@echo "Running LLM tests (pytest -m llm)..."
-	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -v
+	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -v --numprocesses=$(PARALLEL_TESTS)
 
 .PHONY: test-llm-verbose
 test-llm-verbose: ## Run only @pytest.mark.llm behavioral tests (needs test_config.json + INSIGHTS_* creds)
 	@echo "Running LLM tests (pytest -m llm)..."
-	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -vv -o log_cli=true
+	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -vv -o log_cli=true --numprocesses=$(PARALLEL_TESTS)
 
 .PHONY: test-llm-very-verbose
 test-llm-very-verbose: ## Run only @pytest.mark.llm behavioral tests showing all intermediate agent steps
 	@echo "Running LLM tests with debug output (pytest -m llm)..."
-	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -vvv -o log_cli=true
+	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -vvv -o log_cli=true --numprocesses=$(PARALLEL_TESTS)
 
 # Define a reusable check function for container sanity tests
 # $(1) = image URL, $(2) = expected CONTAINER_BRAND value
