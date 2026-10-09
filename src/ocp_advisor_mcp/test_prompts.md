@@ -1,8 +1,10 @@
 # OCP Advisor MCP Test Prompts
 
-- Check whether the OCP Advisor backend services are healthy.
-- Show me the OCP Advisor service build and version metadata.
-- Is the OCP Advisor Smart Proxy reporting healthy status?
-- What Insights Results Aggregator version is the OCP Advisor backend running?
-- Check the OCP Advisor Content Service status and build metadata.
-- Verify the deployed OCP Advisor backend commit hashes and service versions.
+- Get the deployed ccx-ocp-rules version for OCP Advisor in production.
+- Verify the released OCP Advisor rules were deployed successfully to production.
+- Show the OCP Advisor Content Service build commit and OCP rules version.
+- Confirm the OCP Advisor Content Service is healthy after the rules release.
+- What OCP_DB_version and DVO_DB_version is the OCP Advisor Aggregator using?
+- List the deployed OCP Advisor backend build times, commits, versions, and statuses.
+- Is the OCP Advisor Smart Proxy healthy, and which utility version is it running?
+- Check that Smart Proxy, Aggregator, and Content Service are all healthy in OCP Advisor production.
