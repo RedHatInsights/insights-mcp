@@ -1,13 +1,12 @@
 """Fixtures for OCP Advisor MCP tests."""
 
-from contextlib import contextmanager
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
 from ocp_advisor_mcp.server import mcp
-from tests.conftest import mcp_server_url, mcp_tools
+from tests.conftest import mcp_server_url, mcp_tools, setup_toolset_mock
 
 
 @pytest.fixture
@@ -35,19 +34,13 @@ def mock_metrics_response() -> str:
     return '# HELP smart_proxy_build_info Build information\nsmart_proxy_build_info{version="test"} 1\n'
 
 
-@contextmanager
 def setup_ocp_advisor_mock(
     mock_client: AsyncMock,
     mock_response: dict[str, Any] | str | None = None,
     side_effect: BaseException | None = None,
 ):
-    """Patch the OCP Advisor MCP client's GET method."""
-    if side_effect is not None:
-        mock_client.get.side_effect = side_effect
-    else:
-        mock_client.get.return_value = mock_response
-    with patch.object(mcp, "insights_client", mock_client):
-        yield
+    """Patch the OCP Advisor MCP client for tool tests."""
+    return setup_toolset_mock(mcp, mock_client, mock_response, side_effect)
 
 
 __all__ = [
