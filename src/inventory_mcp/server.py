@@ -266,6 +266,10 @@ async def get_host_details(host_ids: str) -> dict[str, Any] | str:
     return response
 
 
+# TODO: reduce the size of the response!
+# evaluate sub-calls for details like repositories, packages, services, etc.
+
+
 @mcp.tool(annotations={"readOnlyHint": True})
 async def get_host_system_profile(
     host_ids: Annotated[

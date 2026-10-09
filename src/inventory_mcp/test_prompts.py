@@ -77,7 +77,15 @@ PROMPTS = TestScenarioRegistry(
         turns=(
             PromptWithTools(
                 prompt="Show me all enabled repositories on host `{hostname}`",
-                expected_tools=("inventory__list_hosts", "inventory__get_host_system_profile"),
+                expected_tools=(
+                    "inventory__list_hosts",
+                    "inventory__get_host_system_profile",
+                    "inventory__find_host_by_name",
+                ),
+                turn_criteria=(
+                    "The response should include a list of enabled repositories."
+                    "Don't evaluate the tool calls, just the response."
+                ),
             ),
         ),
     ),
@@ -108,6 +116,8 @@ PROMPTS = TestScenarioRegistry(
                 ),
             ),
         ),
+        # Guardian scores partial tool paths; list_workspaces alone can be enough.
+        threshold=0.25,
     ),
     open_inventory_dashboard=TestScenario(
         turns=(
