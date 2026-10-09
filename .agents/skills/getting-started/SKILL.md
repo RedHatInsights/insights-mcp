@@ -154,9 +154,6 @@ server is up-to-date, and revisit the permissions table above.
 - **Version checking.** If something seems broken, call `get_mcp_version`. It
   compares the running version against the latest GitHub release and shows
   what changed between them.
-- **Podman on macOS with HTTP/SSE.** When using podman machine on macOS, set
-  the host explicitly and expose the port:
-  `podman run -p 8000:8000 --rm ghcr.io/redhatinsights/red-hat-lightspeed-mcp:latest http --host 0.0.0.0`
 
 ## Security
 
