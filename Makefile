@@ -239,6 +239,7 @@ TEST_PROMPTS_MD := \
 	src/rbac_mcp/test_prompts.md \
 	src/rhsm_mcp/test_prompts.md \
 	src/content_sources_mcp/test_prompts.md \
+	src/ocp_advisor_mcp/test_prompts.md \
 	src/planning_mcp/test_prompts.md
 
 test-prompts-md: $(TEST_PROMPTS_MD) ## Generate all toolset test_prompts.md files
@@ -269,6 +270,9 @@ src/rhsm_mcp/test_prompts.md: src/rhsm_mcp/test_prompts.py $(PROMPTS_GENERATOR_D
 
 src/content_sources_mcp/test_prompts.md: src/content_sources_mcp/test_prompts.py $(PROMPTS_GENERATOR_DEPS)
 	uv run python scripts/generate_test_prompts.py --module content_sources_mcp.test_prompts -o $@
+
+src/ocp_advisor_mcp/test_prompts.md: src/ocp_advisor_mcp/test_prompts.py $(PROMPTS_GENERATOR_DEPS)
+	uv run python scripts/generate_test_prompts.py --module ocp_advisor_mcp.test_prompts -o $@
 
 src/planning_mcp/test_prompts.md: src/planning_mcp/test_prompts.py $(PROMPTS_GENERATOR_DEPS)
 	uv run python scripts/generate_test_prompts.py --module planning_mcp.test_prompts -o $@

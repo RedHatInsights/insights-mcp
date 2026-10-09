@@ -144,10 +144,7 @@ spec:
     # ocp-advisor
     - type: tool
       name: ocp-advisor__get_info
-      description: "Get basic information about the OCP Advisor backend services."
-    - type: tool
-      name: ocp-advisor__get_metrics
-      description: "Get OCP Advisor backend service metrics."
+      description: "Get OCP Advisor service metadata and backend health information."
     # planning
     - type: tool
       name: planning__get_appstreams_lifecycle
