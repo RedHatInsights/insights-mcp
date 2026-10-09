@@ -15,6 +15,8 @@ baseos
 bool
 booleans
 CDN
+ccx
+CCX
 Claude
 CLI
 codebase
@@ -27,6 +29,7 @@ CVE
 cves
 DCR
 deduplicated
+DVO
 deepeval
 DeepEval
 deeplink
