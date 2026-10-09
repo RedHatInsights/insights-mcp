@@ -16,47 +16,10 @@ PROMPTS = TestScenarioRegistry(
     verify_rules_release=TestScenario(
         turns=(
             PromptWithTools(
-                prompt="Verify the released OCP Advisor rules were deployed successfully to production.",
-                expected_tools=("ocp-advisor__get_info",),
-            ),
-        ),
-    ),
-    content_service_release_details=TestScenario(
-        turns=(
-            PromptWithTools(
-                prompt="Show the OCP Advisor Content Service build commit and OCP rules version.",
-                expected_tools=("ocp-advisor__get_info",),
-            ),
-        ),
-    ),
-    confirm_content_service_health=TestScenario(
-        turns=(
-            PromptWithTools(
-                prompt="Confirm the OCP Advisor Content Service is healthy after the rules release.",
-                expected_tools=("ocp-advisor__get_info",),
-            ),
-        ),
-    ),
-    aggregator_database_versions=TestScenario(
-        turns=(
-            PromptWithTools(
-                prompt="What OCP_DB_version and DVO_DB_version is the OCP Advisor Aggregator using?",
-                expected_tools=("ocp-advisor__get_info",),
-            ),
-        ),
-    ),
-    backend_deployment_metadata=TestScenario(
-        turns=(
-            PromptWithTools(
-                prompt="List the deployed OCP Advisor backend build times, commits, versions, and statuses.",
-                expected_tools=("ocp-advisor__get_info",),
-            ),
-        ),
-    ),
-    smart_proxy_health=TestScenario(
-        turns=(
-            PromptWithTools(
-                prompt="Is the OCP Advisor Smart Proxy healthy, and which utility version is it running?",
+                prompt=(
+                    "Verify the latest OCP Advisor rules release was deployed to production "
+                    "and show the Content Service commit and build metadata."
+                ),
                 expected_tools=("ocp-advisor__get_info",),
             ),
         ),
@@ -65,7 +28,8 @@ PROMPTS = TestScenarioRegistry(
         turns=(
             PromptWithTools(
                 prompt=(
-                    "Check that Smart Proxy, Aggregator, and Content Service are all healthy in OCP Advisor production."
+                    "Check that the OCP Advisor production backend is healthy across Smart Proxy, "
+                    "Aggregator, and Content Service."
                 ),
                 expected_tools=("ocp-advisor__get_info",),
             ),

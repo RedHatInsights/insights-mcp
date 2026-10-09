@@ -16,7 +16,7 @@ from tests.test_patterns import (
     [
         (
             "ocp-advisor__get_info",
-            "Get OCP Advisor service metadata and backend health information.",
+            "Get OCP Advisor backend health, deployed OCP rules version, and release metadata.",
             {},
         ),
     ],

@@ -55,7 +55,7 @@ Tools marked as read-write **`(rw)`** are excluded by default. Use the `--all-to
 - `list_repositories`: List repositories with filtering and pagination options.
 
 ## ocp-advisor
-- `get_info`: Get OCP Advisor service metadata and backend health information.
+- `get_info`: Get OCP Advisor backend health, deployed OCP rules version, and release metadata.
 
 ## rbac
 - `explain_access_denied`: Diagnose a 403 access denial for a specific MCP tool call.

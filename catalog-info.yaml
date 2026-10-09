@@ -144,7 +144,7 @@ spec:
     # ocp-advisor
     - type: tool
       name: ocp-advisor__get_info
-      description: "Get OCP Advisor service metadata and backend health information."
+      description: "Get OCP Advisor backend health, deployed OCP rules version, and release metadata."
     # planning
     - type: tool
       name: planning__get_appstreams_lifecycle
