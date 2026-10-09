@@ -112,7 +112,11 @@ PROMPTS = TestScenarioRegistry(
             PromptWithTools(
                 prompt="Explain the risk associated with the 'Disable Transparent Huge Pages' recommendation.",
                 required_tools=("advisor__get_rule_by_text_search",),
-                expected_tools=("advisor__get_active_rules", "advisor__get_rule_details"),
+                expected_tools=(
+                    "advisor__get_active_rules",
+                    "advisor__get_rule_details",
+                    "advisor__get_rule_by_text_search",
+                ),
             ),
         ),
         threshold=0,
