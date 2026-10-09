@@ -20,9 +20,11 @@ PROMPTS = TestScenarioRegistry(
                     "I saw a Knowledge Base Article https://access.redhat.com/articles/6464541; "
                     "does any of my systems are affected by the issue it describes?"
                 ),
-                expected_tools=("advisor__get_rule_from_node_id", "advisor__get_active_rules"),
+                required_tools=("advisor__get_rule_from_node_id",),
+                expected_tools=("advisor__get_hosts_hitting_a_rule", "advisor__get_active_rules"),
             ),
         ),
+        threshold=0,
     ),
     auto_remediation_rules=TestScenario(
         turns=(
@@ -43,7 +45,7 @@ PROMPTS = TestScenarioRegistry(
     rule_affected_systems=TestScenario(
         turns=(
             PromptWithTools(
-                prompt='List all the systems affected by the advisor recommendation "{rule_id}"',
+                prompt='List all the systems affected by the advisor recommendation "{rule_id}" and show the details',
                 expected_tools=(
                     "advisor__get_hosts_hitting_a_rule",
                     "advisor__get_hosts_details_for_rule",
@@ -51,6 +53,7 @@ PROMPTS = TestScenarioRegistry(
                 ),
             ),
         ),
+        threshold=0,
     ),
     recommendations_by_tag=TestScenario(
         turns=(
@@ -94,6 +97,7 @@ PROMPTS = TestScenarioRegistry(
                 expected_tools=("advisor__get_hosts_details_for_rule", "advisor__get_hosts_hitting_a_rule"),
             ),
         ),
+        threshold=0,
     ),
     reboot_recommendations=TestScenario(
         turns=(
@@ -107,8 +111,14 @@ PROMPTS = TestScenarioRegistry(
         turns=(
             PromptWithTools(
                 prompt="Explain the risk associated with the 'Disable Transparent Huge Pages' recommendation.",
-                expected_tools=("advisor__get_rule_by_text_search", "advisor__get_active_rules"),
+                required_tools=("advisor__get_rule_by_text_search",),
+                expected_tools=(
+                    "advisor__get_active_rules",
+                    "advisor__get_rule_details",
+                    "advisor__get_rule_by_text_search",
+                ),
             ),
         ),
+        threshold=0,
     ),
 )

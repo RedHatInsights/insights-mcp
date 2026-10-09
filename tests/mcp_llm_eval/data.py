@@ -15,19 +15,21 @@ class PromptWithTools:
     """Single conversation turn with expected MCP tool calls."""
 
     prompt: str  # Just a template with unresolved keys
+    required_tools: tuple[str, ...] = ()
     expected_tools: tuple[str, ...] = ()
     forbidden_tools: tuple[str, ...] = ()
     expected_args: dict[str, list[dict[str, Any]]] | None = None
     turn_criteria: str | None = None
 
     def __post_init__(self) -> None:
-        """Validate that argument expectations refer to expected tools."""
+        """Validate that argument expectations refer to declared tool expectations."""
         if self.expected_args:
-            unexpected_tools = set(self.expected_args) - set(self.expected_tools)
+            declared_tools = set(self.required_tools) | set(self.expected_tools)
+            unexpected_tools = set(self.expected_args) - declared_tools
             if unexpected_tools:
                 raise ValueError(
-                    "PromptWithTools.expected_args contains tools not listed in expected_tools: "
-                    f"{sorted(unexpected_tools)}"
+                    "PromptWithTools.expected_args contains tools not listed in required_tools or "
+                    f"expected_tools: {sorted(unexpected_tools)}"
                 )
 
 
@@ -45,8 +47,8 @@ class TestScenario:
     def __post_init__(self) -> None:
         if len(self.turns) < 1:
             raise ValueError("TestScenario.turns must contain at least one turn")
-        if not any(turn.expected_tools for turn in self.turns):
-            raise ValueError("TestScenario must contain at least one expected tool")
+        if not any(turn.required_tools or turn.expected_tools for turn in self.turns):
+            raise ValueError("TestScenario must contain at least one required or expected tool")
         if not 0 <= self.threshold <= 1:
             raise ValueError("TestScenario.threshold must be between 0 and 1")
 

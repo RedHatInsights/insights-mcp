@@ -386,6 +386,19 @@
         ]
       }
     ],
+    "content-sources__get_repository": [
+      {
+        "method": "GET",
+        "api_path": "api/content-sources/v1.0",
+        "path_template": "/repositories/{repository_uuid}",
+        "application": "content-sources",
+        "required_v1_permissions": [
+          [
+            "content-sources:repositories:read"
+          ]
+        ]
+      }
+    ],
     "planning__get_upcoming_changes": [
       {
         "method": "GET",

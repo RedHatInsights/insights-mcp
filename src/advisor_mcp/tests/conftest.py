@@ -46,6 +46,14 @@ TEST_RULE_ID = "xfs_with_md_raid_hang|XFS_WITH_MD_RAID_HANG_ISSUE_DEFAULT_KERNEL
 TEST_NODE_ID = "6464541"
 TEST_RHEL_VERSION = "9.4"
 TEST_TAG = "insights-client/group=database-servers"
+RULE_LIST_DETAIL_FIELDS = ("resolution_set", "reason", "more_info", "generic")
+
+
+def assert_rule_list_slimmed(result: dict) -> None:
+    """Assert list responses omit detail-only Advisor rule fields."""
+    for rule in result.get("data", []):
+        for field in RULE_LIST_DETAIL_FIELDS:
+            assert field not in rule
 
 
 def get_default_active_rules_params(**overrides):
@@ -117,5 +125,7 @@ __all__ = [
     "TEST_RHEL_VERSION",
     "TEST_RULE_ID",
     "TEST_TAG",
+    "RULE_LIST_DETAIL_FIELDS",
+    "assert_rule_list_slimmed",
     "verbose_logger",
 ]

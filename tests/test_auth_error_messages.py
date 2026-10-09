@@ -4,11 +4,27 @@ import httpx
 import pytest
 
 from insights_mcp.client import (
+    INSIGHTS_HTTP_TIMEOUT,
     RBAC_DIAGNOSTIC_TOOL,
     RBAC_EXPLAIN_DENIED_TOOL,
+    InsightsNoauthClient,
     InsightsOAuth2Client,
     build_mounted_tool_names,
 )
+
+
+def test_insights_clients_use_fifteen_second_timeout():
+    """Authenticated and unauthenticated clients wait 15s, not the httpx 5s default."""
+    oauth_client = InsightsOAuth2Client(
+        client_id=None,
+        client_secret=None,
+        token_endpoint="https://test.example.com/token",
+    )
+    noauth_client = InsightsNoauthClient(base_url="https://console.redhat.com")
+
+    assert oauth_client.timeout == INSIGHTS_HTTP_TIMEOUT
+    assert noauth_client.timeout == INSIGHTS_HTTP_TIMEOUT
+    assert oauth_client.timeout == httpx.Timeout(15.0)
 
 
 @pytest.mark.parametrize(

@@ -34,6 +34,10 @@ especially handing over environment variables and credentials
 - Default configuration with service account credentials in header or JWT Bearer token
 - Custom environment: `INSIGHTS_BASE_URL` and `INSIGHTS_SSO_BASE_URL` set with credentials in header
 
+### Insights API HTTP timeout
+
+To change the API HTTP timeout, set `INSIGHTS_HTTP_TIMEOUT_SECONDS` or `LIGHTSPEED_HTTP_TIMEOUT_SECONDS` to a positive integer number of seconds. `INSIGHTS_HTTP_TIMEOUT_SECONDS` takes precedence when both are set.
+
 ### Refresh-token authentication (exception / not recommended)
 
 Use this path only when [service account](README.md#service-account-setup) credentials,

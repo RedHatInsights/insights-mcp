@@ -24,6 +24,43 @@ SSO_TOKEN_ENDPOINT = (
 )
 SSO_OAUTH_TIMEOUT_SECONDS = int(os.getenv("SSO_OAUTH_TIMEOUT_SECONDS", "30"))
 
+
+def _env_timeout_seconds(insights_name: str, lightspeed_name: str, default: int) -> int:
+    """Read a positive integer timeout, preferring the Insights env var over Lightspeed.
+
+    Args:
+        insights_name: Environment variable checked first.
+        lightspeed_name: Environment variable used when the Insights variable is unset or empty.
+        default: Value used when both variables are unset or empty.
+
+    Returns:
+        Timeout in seconds.
+
+    Raises:
+        ValueError: When the selected value is not a positive integer. The message includes
+            the invalid value.
+    """
+    raw_value = os.getenv(insights_name) or os.getenv(lightspeed_name) or str(default)
+    try:
+        timeout_seconds = int(raw_value)
+    except ValueError as exc:
+        raise ValueError(
+            f"{insights_name} or {lightspeed_name} must be a positive integer number of seconds; got '{raw_value}'."
+        ) from exc
+    if timeout_seconds <= 0:
+        raise ValueError(
+            f"{insights_name} or {lightspeed_name} must be a positive integer number of seconds; got '{raw_value}'."
+        )
+    return timeout_seconds
+
+
+# Insights list queries can exceed httpx's 5s default (for example the vulnerability CVE search).
+INSIGHTS_HTTP_TIMEOUT_SECONDS = _env_timeout_seconds(
+    "INSIGHTS_HTTP_TIMEOUT_SECONDS",
+    "LIGHTSPEED_HTTP_TIMEOUT_SECONDS",
+    15,
+)
+
 # HTTP transport auth provider (rh_fastmcp_server_commons.auth.build_auth_provider).
 # rh_fastmcp_server_commons reads these directly from os.getenv() at import time
 # (see insights_mcp.server.configure_auth_env_defaults()); exposed here for validation
