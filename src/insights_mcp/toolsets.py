@@ -5,6 +5,7 @@ from content_sources_mcp.server import mcp as ContentSourcesMCP
 from image_builder_mcp.server import mcp_server as ImageBuilderMCP
 from insights_mcp.mcp import InsightsMCP
 from inventory_mcp.server import mcp as InventoryMCP
+from ocp_advisor_mcp.server import mcp as OcpAdvisorMCP
 from planning_mcp.server import mcp as PlanningMCP
 from rbac_mcp.server import mcp as RbacMCP
 from remediations_mcp.server import mcp as RemediationsMCP
@@ -19,6 +20,7 @@ MCPS: list[InsightsMCP] = [
     AdvisorMCP,
     InventoryMCP,
     ContentSourcesMCP,
+    OcpAdvisorMCP,
     RbacMCP,
     PlanningMCP,
 ]

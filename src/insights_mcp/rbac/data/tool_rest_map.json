@@ -386,6 +386,16 @@
         ]
       }
     ],
+    "ocp-advisor__get_info": [
+      {
+        "method": "GET",
+        "api_path": "api/insights-results-aggregator/v2",
+        "path_template": "/info",
+        "application": "ocp-advisor",
+        "required_v1_permissions": [],
+        "kessel_note": "The /info endpoint returns basic information about Smart Proxy, Insights Results Aggregator, and Content Service versions, utility repository version, commit hash, and related service metadata. It is unauthenticated and does not require a specific RBAC permission."
+      }
+    ],
     "planning__get_upcoming_changes": [
       {
         "method": "GET",
