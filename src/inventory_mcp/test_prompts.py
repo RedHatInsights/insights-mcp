@@ -29,9 +29,11 @@ PROMPTS = TestScenarioRegistry(
                     "inventory__list_hosts",
                     "inventory__find_host_by_name",
                     "inventory__get_host_system_profile",
+                    "inventory__get_host_details",
                 ),
             ),
         ),
+        threshold=0.50,
     ),
     stale_host_count=TestScenario(
         turns=(
