@@ -13,10 +13,16 @@ mcp = InsightsMCP(
     toolset_name="ocp-advisor",
     api_path="api/insights-results-aggregator/v2",
     instructions="""
-    This server provides tools to access OCP Advisor data from $container_brand_long.
+    This server provides tools for OpenShift/OCP Advisor, the $container_brand_long advisor service for
+    assessing and monitoring Red Hat OpenShift cluster health. OCP Advisor analyzes data collected by Insights
+    Operator against recommendation content to identify conditions that can affect cluster availability, fault
+    tolerance, performance, or security.
 
-    Use these tools when the user asks about OpenShift/OCP Advisor backend status,
-    service metadata, or release/build information.
+    Advisor recommendations can describe impacted clusters, risk/category, publication details, related Red Hat
+    guidance, and tailored resolution information. The current tools expose service metadata from the Insights
+    Results Smart Proxy /info endpoint, including Smart Proxy, Insights Results Aggregator, and Content Service
+    health/status, build times, versions, commit hashes, utility version, database versions, and deployed OCP rules
+    version. Use them for release verification, deployed ccx-ocp-rules checks, and backend health diagnostics.
 
     On permission errors (HTTP 403), call rbac__explain_access_denied with the failed tool name or URL.
     """,
