@@ -191,6 +191,15 @@
         "template": "vuln_results_read"
       }
     ],
+    "vulnerability__get_lightwell_remediable_systems": [
+      {
+        "method": "GET",
+        "api_path": "api/vulnerability/v1",
+        "path_template": "/cves/{cve}/affected_systems",
+        "template": "vuln_results_read"
+      }
+    ],
+    "vulnerability__get_lightwell_adopt_guidance": [],
     "vulnerability__get_system_cves": [
       {
         "method": "GET",
