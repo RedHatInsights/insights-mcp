@@ -201,6 +201,12 @@ spec:
       name: vulnerability__get_cves
       description: "Get list of CVEs affecting the account."
     - type: tool
+      name: vulnerability__get_lightwell_adopt
+      description: "Explain how to adopt a Red Hat Lightwell fix for an in-scope third-party library (Java/Maven or"
+    - type: tool
+      name: vulnerability__get_lightwell_systems
+      description: "List systems affected by a CVE that have a Red Hat Lightwell reproducer-verified fix available."
+    - type: tool
       name: vulnerability__get_openapi
       description: "Get Red Hat Lightspeed Vulnerability OpenAPI specification in JSON format."
     - type: tool

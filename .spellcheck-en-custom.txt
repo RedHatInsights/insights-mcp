@@ -10,6 +10,7 @@ ATIF
 auth
 autopep
 backend
+backport
 basename
 baseos
 bool
@@ -57,9 +58,11 @@ JWT
 lifecycle
 Lifecycle
 Lightspeed
+Lightwell
 LLM
 LLM's
 Makefile
+Maven
 mcp
 MCP
 MCPS
@@ -98,11 +101,13 @@ recurse
 remediatable
 remediations
 repo
+reproducer
 requester's
 RESTful
 rh
 rhel
 RHEL
+rhlw
 rhsm
 RHSM
 roadmap
