@@ -2,8 +2,8 @@
 
 import asyncio
 import functools
-from contextlib import contextmanager
-from unittest.mock import Mock, patch
+from http import HTTPMethod
+from unittest.mock import Mock
 
 import pytest
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
@@ -13,6 +13,8 @@ from insights_mcp.config import INSIGHTS_BASE_URL
 from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 from tests import oauth_utils as oauth_utils_module
 from tests.llm_api_discovery import build_llm_api_context
+from tests.mock_insights_api.registry import MockInsightsAPI
+from tests.mock_insights_api.types import MockRequest
 
 
 @pytest.fixture
@@ -98,35 +100,74 @@ def create_mcp_server(server_class, client_id=TEST_CLIENT_ID, client_secret=TEST
     return server
 
 
-def create_mock_client(client_id=TEST_CLIENT_ID, client_secret=TEST_CLIENT_SECRET, api_path=None):
+def create_mock_client(  # pylint: disable=too-many-arguments
+    client_id=TEST_CLIENT_ID,
+    client_secret=TEST_CLIENT_SECRET,
+    api_path=None,
+    *,
+    api: MockInsightsAPI | None = None,
+    org_id=None,
+    proxy_url=None,
+    headers=None,
+):
     """Create a mock InsightsClient instance for any test."""
+    if api is None and api_path:
+        api = MockInsightsAPI(path_prefix=api_path)
+
     client = Mock(spec=InsightsClient)
     client.client_id = client_id
     client.client_secret = client_secret
     client.insights_base_url = INSIGHTS_BASE_URL
-    if api_path:
-        client.api_path = api_path
+    client.api_path = api_path or getattr(api, "path_prefix", "")
+    client.org_id = org_id
+    client.proxy_url = proxy_url
+    client.headers = dict(headers or {})
+    client.get_org_id.return_value = org_id
+
+    if api is None:
+        return client
+
+    client.api = api
+
+    def dispatch(
+        method,
+        endpoint,
+        *,
+        params=None,
+        json=None,
+        headers=None,
+        **kwargs,
+    ):
+        del kwargs
+
+        request_headers = dict(client.headers)
+        if headers is not None:
+            request_headers.update(headers)
+
+        response = api.resolve(
+            MockRequest(
+                method=method,
+                path=f"{client.api_path}/{endpoint}",
+                query=params or {},
+                body=json,
+                headers=request_headers,
+            )
+        )
+        if response.error is not None:
+            raise response.error
+        return response.body
+
+    client.get.side_effect = lambda endpoint, params=None, **kwargs: dispatch(
+        HTTPMethod.GET, endpoint, params=params, **kwargs
+    )
+    client.post.side_effect = lambda endpoint, json=None, **kwargs: dispatch(
+        HTTPMethod.POST, endpoint, json=json, **kwargs
+    )
+    client.put.side_effect = lambda endpoint, json=None, **kwargs: dispatch(
+        HTTPMethod.PUT, endpoint, json=json, **kwargs
+    )
+
     return client
-
-
-@contextmanager
-def setup_toolset_mock(mcp_server, mock_client, mock_response=None, side_effect=None):
-    """Context manager for setting up MCP server mock patterns.
-
-    Replaces the server's insights_client with a mock and configures
-    its HTTP methods to return mock_response or raise side_effect.
-    """
-    if side_effect:
-        mock_client.get.side_effect = side_effect
-        mock_client.post.side_effect = side_effect
-        mock_client.put.side_effect = side_effect
-    else:
-        mock_client.get.return_value = mock_response
-        mock_client.post.return_value = mock_response
-        mock_client.put.return_value = mock_response
-
-    with patch.object(mcp_server, "insights_client", mock_client):
-        yield
 
 
 def assert_api_error_message(exception: BaseException, error_message: str = "API Error") -> None:

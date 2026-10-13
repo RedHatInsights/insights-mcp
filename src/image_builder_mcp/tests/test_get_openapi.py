@@ -1,7 +1,7 @@
 """Test suite for the get_openapi() method."""
 
 import json
-from unittest.mock import patch
+from http import HTTPMethod
 
 import pytest
 
@@ -43,64 +43,68 @@ class TestGetOpenAPI:
         }
 
     @pytest.mark.asyncio
-    async def test_get_openapi_basic_functionality(self, imagebuilder_mcp_server, mock_openapi_response):
+    async def test_get_openapi_basic_functionality(
+        self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_openapi_response
+    ):
         """Test basic functionality of get_openapi method."""
-        # Setup mocks
+        endpoint = "openapi.json"
+        query = {}
+        imagebuilder_mock_client.api.register(
+            HTTPMethod.GET, endpoint, response_body=mock_openapi_response, query=query
+        )
+        # Call the method
+        result = await imagebuilder_mcp_server.get_openapi(endpoints="")
 
-        with patch.object(imagebuilder_mcp_server.insights_client, "get") as mock_get:
-            mock_get.return_value = mock_openapi_response
+        # Verify API was called correctly
+        imagebuilder_mock_client.get.assert_called_once_with(endpoint, noauth=True)
 
-            # Call the method
-            result = await imagebuilder_mcp_server.get_openapi(endpoints="")
-
-            # Verify API was called correctly
-            mock_get.assert_called_once_with("openapi.json", noauth=True)
-
-            # Parse the result
-            parsed_result = json.loads(result)
-            assert parsed_result == mock_openapi_response
-            assert "openapi" in parsed_result
-            assert "components" in parsed_result
+        # Parse the result
+        parsed_result = json.loads(result)
+        assert parsed_result == mock_openapi_response
+        assert "openapi" in parsed_result
+        assert "components" in parsed_result
 
     @pytest.mark.asyncio
-    async def test_get_openapi_api_error(self, imagebuilder_mcp_server):
+    async def test_get_openapi_api_error(self, imagebuilder_mcp_server, imagebuilder_mock_client):
         """Test get_openapi when API returns error."""
-        # Setup mocks
-        with patch.object(imagebuilder_mcp_server.insights_client, "get") as mock_get:
-            mock_get.side_effect = Exception("API Error")
+        endpoint = "openapi.json"
+        query = {}
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, error=Exception("API Error"))
+        # Call the method
+        with pytest.raises(InsightsApiError) as exc_info:
+            await imagebuilder_mcp_server.get_openapi(endpoints="GET:/blueprints")
 
-            # Call the method
-            with pytest.raises(InsightsApiError) as exc_info:
-                await imagebuilder_mcp_server.get_openapi(endpoints="GET:/blueprints")
-
-            assert_api_error_message(exc_info.value)
+        assert_api_error_message(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_get_openapi_reduces_by_endpoints(self, imagebuilder_mcp_server, mock_openapi_response):
+    async def test_get_openapi_reduces_by_endpoints(
+        self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_openapi_response
+    ):
         """Test that get_openapi reduces the spec based on the endpoints parameter."""
-        # Setup mocks
-        with patch.object(imagebuilder_mcp_server.insights_client, "get") as mock_get:
-            mock_get.return_value = mock_openapi_response
+        endpoint = "openapi.json"
+        query = {}
+        imagebuilder_mock_client.api.register(
+            HTTPMethod.GET, endpoint, response_body=mock_openapi_response, query=query
+        )
+        # Call with different endpoint filters
+        result_small = await imagebuilder_mcp_server.get_openapi(endpoints="GET:/distributions")
+        result_large = await imagebuilder_mcp_server.get_openapi(endpoints="POST:/blueprints")
 
-            # Call with different endpoint filters
-            result_small = await imagebuilder_mcp_server.get_openapi(endpoints="GET:/distributions")
-            result_large = await imagebuilder_mcp_server.get_openapi(endpoints="POST:/blueprints")
+        # Should return different results depending on endpoints
+        assert result_small != result_large
+        assert len(result_small) < len(result_large)
 
-            # Should return different results depending on endpoints
-            assert result_small != result_large
-            assert len(result_small) < len(result_large)
+        assert "/distributions" in result_small
+        assert "/blueprints" not in result_small
 
-            assert "/distributions" in result_small
-            assert "/blueprints" not in result_small
+        assert "/blueprints" in result_large
+        assert "/distributions" not in result_large
 
-            assert "/blueprints" in result_large
-            assert "/distributions" not in result_large
-
-            assert "ImageTypes" not in result_small
-            assert "ImageTypes" not in result_large
+        assert "ImageTypes" not in result_small
+        assert "ImageTypes" not in result_large
 
     @pytest.mark.asyncio
-    async def test_get_openapi_omits_deprecated_image_types(self, imagebuilder_mcp_server):
+    async def test_get_openapi_omits_deprecated_image_types(self, imagebuilder_mcp_server, imagebuilder_mock_client):
         """get_openapi must not expose deprecated edge image types from the upstream enum."""
         mock_openapi_response = {
             "openapi": "3.0.0",
@@ -119,9 +123,12 @@ class TestGetOpenAPI:
                 }
             },
         }
-        with patch.object(imagebuilder_mcp_server.insights_client, "get") as mock_get:
-            mock_get.return_value = mock_openapi_response
-            result = await imagebuilder_mcp_server.get_openapi(endpoints="")
+        endpoint = "openapi.json"
+        query = {}
+        imagebuilder_mock_client.api.register(
+            HTTPMethod.GET, endpoint, response_body=mock_openapi_response, query=query
+        )
+        result = await imagebuilder_mcp_server.get_openapi(endpoints="")
 
         parsed = json.loads(result)
         image_type_enum = parsed["components"]["schemas"]["ImageTypes"]["enum"]

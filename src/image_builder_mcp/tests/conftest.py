@@ -2,6 +2,7 @@
 Conftest for image_builder_mcp tests - re-exports fixtures from top-level tests.
 """
 
+import json
 import os
 from contextlib import contextmanager
 from unittest.mock import patch
@@ -23,7 +24,6 @@ from tests.conftest import (
     llm_api_context,
     mcp_tools,
     mock_http_headers,
-    setup_toolset_mock,
     test_client_credentials,
 )
 from tests.mcp_llm_eval.fixtures import guardian_agent, test_agent, verbose_logger
@@ -45,24 +45,32 @@ def mcp_server_url(request):
 
 
 @pytest.fixture
-def imagebuilder_mcp_server():
+def imagebuilder_mcp_server(imagebuilder_mock_client):  # pylint: disable=redefined-outer-name
     """Create ImageBuilder MCP server for tests."""
-    return create_mcp_server(ImageBuilderMCP)
+    openapi = {
+        "components": {
+            "schemas": {
+                "ImageTypes": {"enum": ["ami", "guest-image"]},
+                "ImageRequest": {"properties": {"architecture": {"enum": ["x86_64", "aarch64"]}}},
+            }
+        }
+    }
+    with patch.object(ImageBuilderMCP, "get_openapi_synchronous", return_value=json.dumps(openapi)):
+        server = create_mcp_server(ImageBuilderMCP)
+    server.insights_client = imagebuilder_mock_client
+    return server
 
 
 @pytest.fixture
 def imagebuilder_mock_client():
-    """Create a mock InsightsClient for ImageBuilder tests."""
-    return create_mock_client(api_path="api/v1/image-builder")
+    """Create a registry-backed mock InsightsClient for ImageBuilder tests."""
+    return create_mock_client(api_path="api/image-builder/v1")
 
 
 @contextmanager
-def setup_imagebuilder_watermark_disabled(mcp_server, mock_client):
+def setup_imagebuilder_watermark_disabled():
     """Context manager for disabling watermarks in ImageBuilder tests."""
-    with (
-        patch.object(mcp_server, "insights_client", mock_client),
-        patch.dict(os.environ, {"IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK": "true"}),
-    ):
+    with patch.dict(os.environ, {"IMAGE_BUILDER_MCP_DISABLE_DESCRIPTION_WATERMARK": "true"}):
         yield None  # No headers needed for image builder architecture
 
 
@@ -82,7 +90,6 @@ __all__ = [
     "mcp_server_url",
     "mcp_tools",
     "mock_http_headers",
-    "setup_toolset_mock",
     "setup_imagebuilder_watermark_disabled",
     "test_agent",
     "test_client_credentials",

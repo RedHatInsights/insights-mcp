@@ -1,12 +1,11 @@
 """Test suite for the get_blueprints() method."""
 
 import json
+from http import HTTPMethod
 
 import pytest
 
 from insights_mcp.errors import InsightsApiError
-
-from .conftest import setup_toolset_mock
 
 
 class TestGetBlueprints:
@@ -53,190 +52,206 @@ class TestGetBlueprints:
         self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response
     ):  # pylint: disable=too-many-locals
         """Test basic functionality of get_blueprints method."""
+        endpoint = "blueprints"
+        query = {"limit": 7, "offset": 0}
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
-            # Call the method with new interface
-            result = await imagebuilder_mcp_server.get_blueprints(limit=7, offset=0, search_string="")
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, endpoint, response_body=mock_api_response, query=query)
+        # Call the method with new interface
+        result = await imagebuilder_mcp_server.get_blueprints(limit=7, offset=0, search_string="")
 
-            # Verify API was called correctly with limit and offset parameters
-            imagebuilder_mock_client.get.assert_called_once_with("blueprints", params={"limit": 7, "offset": 0})
+        # Verify API was called correctly with limit and offset parameters
+        imagebuilder_mock_client.get.assert_called_once_with(endpoint, params=query)
 
-            # Parse the result
-            assert result.startswith("[INSTRUCTION]")
-            assert "Link each row using UI_URL" in result
-            assert "[PAGE] Returned 4 row(s) at offset=0" in result
-            assert "offset=4" in result
-            assert "Do not invent rows" in result
+        # Parse the result
+        assert result.startswith("[INSTRUCTION]")
+        assert "Link each row using UI_URL" in result
+        assert "[PAGE] Returned 4 row(s) at offset=0" in result
+        assert "offset=4" in result
+        assert "Do not invent rows" in result
 
-            # Extract JSON data from result
-            json_start = result.find('[{"reply_id"')
-            json_end = result.rfind("}]") + 2
-            json_data = result[json_start:json_end]
-            blueprints = json.loads(json_data)
+        # Extract JSON data from result
+        json_start = result.find('[{"reply_id"')
+        json_end = result.rfind("}]") + 2
+        json_data = result[json_start:json_end]
+        blueprints = json.loads(json_data)
 
-            # Verify structure and content
-            assert len(blueprints) == 4
-            assert all(isinstance(bp, dict) for bp in blueprints)
+        # Verify structure and content
+        assert len(blueprints) == 4
+        assert all(isinstance(bp, dict) for bp in blueprints)
 
-            # Check required fields exist
-            required_fields = ["reply_id", "blueprint_uuid", "UI_URL", "name"]
-            for blueprint in blueprints:
-                for field in required_fields:
-                    assert field in blueprint
+        # Check required fields exist
+        required_fields = ["reply_id", "blueprint_uuid", "UI_URL", "name"]
+        for blueprint in blueprints:
+            for field in required_fields:
+                assert field in blueprint
 
-            # Verify sorting by last_modified_at (descending)
-            expected_order = [
-                "rhel-10-x86_64-07022025-1708",  # 2025-07-02T21:12:12Z
-                "test-rhel-9-x86_64-07022025-1708",  # 2025-07-02T18:14:17Z
-                "test-rhel-10-x86_64-07012025-1726",  # 2025-07-01T15:27:11Z
-                "rhel-9-x86_64-06302025-1310",  # 2025-06-30T11:12:15Z
-            ]
-            actual_order = [bp["name"] for bp in blueprints]
-            assert actual_order == expected_order
+        # Verify sorting by last_modified_at (descending)
+        expected_order = [
+            "rhel-10-x86_64-07022025-1708",  # 2025-07-02T21:12:12Z
+            "test-rhel-9-x86_64-07022025-1708",  # 2025-07-02T18:14:17Z
+            "test-rhel-10-x86_64-07012025-1726",  # 2025-07-01T15:27:11Z
+            "rhel-9-x86_64-06302025-1310",  # 2025-06-30T11:12:15Z
+        ]
+        actual_order = [bp["name"] for bp in blueprints]
+        assert actual_order == expected_order
 
-            # Verify reply_id sequence (starts from offset + 1)
-            reply_ids = [bp["reply_id"] for bp in blueprints]
-            assert reply_ids == [1, 2, 3, 4]
+        # Verify reply_id sequence (starts from offset + 1)
+        reply_ids = [bp["reply_id"] for bp in blueprints]
+        assert reply_ids == [1, 2, 3, 4]
 
-            # Verify UI_URL format
-            for blueprint in blueprints:
-                expected_url = (
-                    f"https://console.redhat.com/insights/image-builder/imagewizard/{blueprint['blueprint_uuid']}"
-                )
-                assert blueprint["UI_URL"] == expected_url
+        # Verify UI_URL format
+        for blueprint in blueprints:
+            expected_url = (
+                f"https://console.redhat.com/insights/image-builder/imagewizard/{blueprint['blueprint_uuid']}"
+            )
+            assert blueprint["UI_URL"] == expected_url
 
     @pytest.mark.asyncio
     async def test_get_blueprints_with_limit_and_offset(
         self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response
     ):
         """Test get_blueprints with limit and offset parameters."""
+        endpoint = "blueprints"
+        query = {"limit": 2, "offset": 1}
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
-            # Call with limit=2, offset=1
-            result = await imagebuilder_mcp_server.get_blueprints(limit=2, offset=1, search_string="")
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, endpoint, response_body=mock_api_response, query=query)
+        # Call with limit=2, offset=1
+        result = await imagebuilder_mcp_server.get_blueprints(limit=2, offset=1, search_string="")
 
-            # Verify API was called with correct parameters
-            # Note: search_string is not passed to the Image Builder API
-            imagebuilder_mock_client.get.assert_called_once_with("blueprints", params={"limit": 2, "offset": 1})
+        # Verify API was called with correct parameters
+        # Note: search_string is not passed to the Image Builder API
+        imagebuilder_mock_client.get.assert_called_once_with(endpoint, params=query)
 
-            # Extract JSON data from result
-            json_start = result.find('[{"reply_id"')
-            json_end = result.rfind("}]") + 2
-            json_data = result[json_start:json_end]
-            blueprints = json.loads(json_data)
+        # Extract JSON data from result
+        json_start = result.find('[{"reply_id"')
+        json_end = result.rfind("}]") + 2
+        json_data = result[json_start:json_end]
+        blueprints = json.loads(json_data)
 
-            # Should return all 4 blueprints since we're filtering client-side
-            assert len(blueprints) == 4
+        # Should return all 4 blueprints since we're filtering client-side
+        assert len(blueprints) == 4
 
-            # Verify reply_id sequence starts from offset + 1
-            reply_ids = [bp["reply_id"] for bp in blueprints]
-            assert reply_ids == [2, 3, 4, 5]  # offset=1, so starts from 2
+        # Verify reply_id sequence starts from offset + 1
+        reply_ids = [bp["reply_id"] for bp in blueprints]
+        assert reply_ids == [2, 3, 4, 5]  # offset=1, so starts from 2
 
     @pytest.mark.asyncio
     async def test_get_blueprints_with_search_string(
         self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response
     ):
         """Test get_blueprints with search string filtering."""
+        endpoint = "blueprints"
+        query = {"limit": 10, "offset": 0}
         # Setup mocks
 
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
-            # Call with search string
-            result = await imagebuilder_mcp_server.get_blueprints(limit=10, offset=0, search_string="rhel-10")
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, endpoint, response_body=mock_api_response, query=query)
+        # Call with search string
+        result = await imagebuilder_mcp_server.get_blueprints(limit=10, offset=0, search_string="rhel-10")
 
-            # Note: search_string is not passed to the Image Builder API
-            imagebuilder_mock_client.get.assert_called_once_with("blueprints", params={"limit": 10, "offset": 0})
+        # Note: search_string is not passed to the Image Builder API
+        imagebuilder_mock_client.get.assert_called_once_with(endpoint, params=query)
 
-            # Extract JSON data from result
-            json_start = result.find('[{"reply_id"')
-            json_end = result.rfind("}]") + 2
-            json_data = result[json_start:json_end]
-            blueprints = json.loads(json_data)
+        # Extract JSON data from result
+        json_start = result.find('[{"reply_id"')
+        json_end = result.rfind("}]") + 2
+        json_data = result[json_start:json_end]
+        blueprints = json.loads(json_data)
 
-            # Should return only blueprints containing "rhel-10"
-            assert len(blueprints) == 2
-            for blueprint in blueprints:
-                assert "rhel-10" in blueprint["name"].lower()
+        # Should return only blueprints containing "rhel-10"
+        assert len(blueprints) == 2
+        for blueprint in blueprints:
+            assert "rhel-10" in blueprint["name"].lower()
 
     @pytest.mark.asyncio
     async def test_get_blueprints_case_insensitive_search(
         self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response
     ):
         """Test get_blueprints search is case insensitive."""
+        endpoint = "blueprints"
+        query = {"limit": 10, "offset": 0}
         # Setup mocks
 
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
-            # Call with uppercase search string
-            result = await imagebuilder_mcp_server.get_blueprints(limit=10, offset=0, search_string="TEST")
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, endpoint, response_body=mock_api_response, query=query)
+        # Call with uppercase search string
+        result = await imagebuilder_mcp_server.get_blueprints(limit=10, offset=0, search_string="TEST")
 
-            # Extract JSON data from result
-            json_start = result.find('[{"reply_id"')
-            json_end = result.rfind("}]") + 2
-            json_data = result[json_start:json_end]
-            blueprints = json.loads(json_data)
+        # Extract JSON data from result
+        json_start = result.find('[{"reply_id"')
+        json_end = result.rfind("}]") + 2
+        json_data = result[json_start:json_end]
+        blueprints = json.loads(json_data)
 
-            # Should find the blueprint with "TEST" in name (case insensitive search)
-            assert len(blueprints) == 2
-            blueprint_names = [bp["name"] for bp in blueprints]
-            assert "test-rhel-9-x86_64-07022025-1708" in blueprint_names
-            assert "test-rhel-10-x86_64-07012025-1726" in blueprint_names
+        # Should find the blueprint with "TEST" in name (case insensitive search)
+        assert len(blueprints) == 2
+        blueprint_names = [bp["name"] for bp in blueprints]
+        assert "test-rhel-9-x86_64-07022025-1708" in blueprint_names
+        assert "test-rhel-10-x86_64-07012025-1726" in blueprint_names
 
     @pytest.mark.asyncio
     async def test_get_blueprints_empty_response(self, imagebuilder_mcp_server, imagebuilder_mock_client):
         """Test get_blueprints with empty API response."""
         # Setup mocks
 
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, {"data": []}):
-            # Call the method
-            result = await imagebuilder_mcp_server.get_blueprints(limit=7, offset=0, search_string="")
+        endpoint = "blueprints"
+        query = {"limit": 7, "offset": 0}
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, endpoint, response_body={"data": []}, query=query)
+        # Call the method
+        result = await imagebuilder_mcp_server.get_blueprints(limit=7, offset=0, search_string="")
 
-            # Should return empty list
-            assert "[]" in result
+        # Should return empty list
+        assert "[]" in result
 
     @pytest.mark.asyncio
     async def test_get_blueprints_api_error(self, imagebuilder_mcp_server, imagebuilder_mock_client):
         """Test get_blueprints when API returns error."""
         # Setup mocks
 
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")):
-            # Call the method
-            with pytest.raises(InsightsApiError) as exc_info:
-                await imagebuilder_mcp_server.get_blueprints(limit=7, offset=0, search_string="")
+        endpoint = "blueprints"
+        query = {"limit": 7, "offset": 0}
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, error=Exception("API Error"))
+        # Call the method
+        with pytest.raises(InsightsApiError) as exc_info:
+            await imagebuilder_mcp_server.get_blueprints(limit=7, offset=0, search_string="")
 
-            assert str(exc_info.value).startswith("Error: API Error") or "API Error" in str(exc_info.value)
+        assert str(exc_info.value).startswith("Error: API Error") or "API Error" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_blueprints_null_search_string_handling(
         self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response
     ):
         """Test handling of 'null' string as search parameter."""
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
-            # Call with "null" string (workaround for LLama 3.3 70B Instruct)
-            result = await imagebuilder_mcp_server.get_blueprints(limit=10, offset=0, search_string="null")
+        endpoint = "blueprints"
+        query = {"limit": 10, "offset": 0}
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, endpoint, response_body=mock_api_response, query=query)
+        # Call with "null" string (workaround for LLama 3.3 70B Instruct)
+        result = await imagebuilder_mcp_server.get_blueprints(limit=10, offset=0, search_string="null")
 
-            # Should treat "null" string as None and return all blueprints
-            json_start = result.find('[{"reply_id"')
-            json_end = result.rfind("}]") + 2
-            json_data = result[json_start:json_end]
-            blueprints = json.loads(json_data)
+        # Should treat "null" string as None and return all blueprints
+        json_start = result.find('[{"reply_id"')
+        json_end = result.rfind("}]") + 2
+        json_data = result[json_start:json_end]
+        blueprints = json.loads(json_data)
 
-            assert len(blueprints) == 4  # All blueprints should be returned
+        assert len(blueprints) == 4  # All blueprints should be returned
 
     @pytest.mark.asyncio
     async def test_get_blueprints_zero_limit_uses_default(
         self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response
     ):
         """Test that zero or negative limit uses default response size."""
+        endpoint = "blueprints"
+        query = {"limit": 10, "offset": 0}
         # Setup mocks
 
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
-            # Call with zero limit
-            result = await imagebuilder_mcp_server.get_blueprints(limit=0, offset=0, search_string="")
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, endpoint, response_body=mock_api_response, query=query)
+        # Call with zero limit
+        result = await imagebuilder_mcp_server.get_blueprints(limit=0, offset=0, search_string="")
 
-            # Should use default response size (10)
-            imagebuilder_mock_client.get.assert_called_once_with("blueprints", params={"limit": 10, "offset": 0})
+        # Should use default response size (10)
+        imagebuilder_mock_client.get.assert_called_once_with(endpoint, params=query)
 
-            # Should return result
-            assert "[INSTRUCTION]" in result
-            assert "[PAGE] Returned" in result
-            assert "get_blueprints" in result
-            assert "Do not invent rows" in result
+        # Should return result
+        assert "[INSTRUCTION]" in result
+        assert "[PAGE] Returned" in result
+        assert "get_blueprints" in result
+        assert "Do not invent rows" in result

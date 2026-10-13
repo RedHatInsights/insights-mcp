@@ -1,10 +1,10 @@
 """Test suite for the get_rule_by_text_search() method."""
 
+from http import HTTPMethod
+
 import pytest
 
 from insights_mcp.errors import InsightsApiError
-
-from .conftest import setup_toolset_mock
 
 
 class TestGetRuleByTextSearch:
@@ -95,17 +95,19 @@ class TestGetRuleByTextSearch:
     async def test_get_rule_by_text_search_valid_text(self, advisor_mcp_server, advisor_mock_client, mock_api_response):
         """Test get_rule_by_text_search with valid search text."""
         search_text = "xfs"
+        endpoint = "rule/"
+        query = {"text": search_text}
 
         # Setup mocks
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
-            # Call the method
-            result = await advisor_mcp_server.get_rule_by_text_search(text=search_text)
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_api_response)
+        # Call the method
+        result = await advisor_mcp_server.get_rule_by_text_search(text=search_text)
 
-            # Verify API was called correctly
-            advisor_mock_client.get.assert_called_once_with("rule/", params={"text": search_text})
+        # Verify API was called correctly
+        advisor_mock_client.get.assert_called_once_with(endpoint, params=query)
 
-            # Verify the result
-            assert result == mock_api_response
+        # Verify the result
+        assert result == mock_api_response
 
     @pytest.mark.asyncio
     async def test_get_rule_by_text_search_multiword_search(
@@ -113,14 +115,16 @@ class TestGetRuleByTextSearch:
     ):
         """Test get_rule_by_text_search with multi-word search text."""
         search_text = "firewall zone drifting"
+        endpoint = "rule/"
+        query = {"text": search_text}
 
         # Setup mocks
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
-            # Call the method
-            await advisor_mcp_server.get_rule_by_text_search(text=search_text)
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_api_response)
+        # Call the method
+        await advisor_mcp_server.get_rule_by_text_search(text=search_text)
 
-            # Verify API was called correctly
-            advisor_mock_client.get.assert_called_once_with("rule/", params={"text": search_text})
+        # Verify API was called correctly
+        advisor_mock_client.get.assert_called_once_with(endpoint, params=query)
 
     @pytest.mark.parametrize(
         "text, expected_error",
@@ -140,24 +144,28 @@ class TestGetRuleByTextSearch:
     async def test_get_rule_by_text_search_api_error(self, advisor_mcp_server, advisor_mock_client):
         """Test get_rule_by_text_search when API returns error."""
         search_text = "test"
+        endpoint = "rule/"
+        query = {"text": search_text}
 
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
-            with pytest.raises(InsightsApiError) as exc_info:
-                await advisor_mcp_server.get_rule_by_text_search(text=search_text)
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, error=Exception("API Error"))
+        with pytest.raises(InsightsApiError) as exc_info:
+            await advisor_mcp_server.get_rule_by_text_search(text=search_text)
 
-            error_message = str(exc_info.value)
-            assert f"Failed to retrieve recommendations for text search {search_text}:" in error_message
-            assert "API Error" in error_message
+        error_message = str(exc_info.value)
+        assert f"Failed to retrieve recommendations for text search {search_text}:" in error_message
+        assert "API Error" in error_message
 
     @pytest.mark.asyncio
     async def test_get_rule_by_text_search_empty_response(self, advisor_mcp_server, advisor_mock_client):
         """Test get_rule_by_text_search when API returns empty response."""
         search_text = "nonexistent"
+        endpoint = "rule/"
+        query = {"text": search_text}
 
         # Setup mocks
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, None):
-            # Call the method
-            result = await advisor_mcp_server.get_rule_by_text_search(text=search_text)
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=None)
+        # Call the method
+        result = await advisor_mcp_server.get_rule_by_text_search(text=search_text)
 
-            # Should return None when API returns None
-            assert result is None
+        # Should return None when API returns None
+        assert result is None

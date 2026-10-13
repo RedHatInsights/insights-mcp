@@ -1,5 +1,7 @@
 """Test suite for the update_blueprint() method."""
 
+from http import HTTPMethod
+
 import pytest
 
 from insights_mcp.errors import InsightsApiError
@@ -9,7 +11,7 @@ from tests.conftest import (
     assert_instruction_in_result,
 )
 
-from .conftest import setup_imagebuilder_watermark_disabled, setup_toolset_mock
+from .conftest import setup_imagebuilder_watermark_disabled
 
 
 class TestUpdateBlueprint:
@@ -40,24 +42,26 @@ class TestUpdateBlueprint:
         self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_blueprint_data, mock_api_response
     ):
         """Test basic functionality of update_blueprint method."""
+        endpoint = f"blueprints/{TEST_BLUEPRINT_UUID}"
+        query = {}
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
-            # Call the method
-            result = await imagebuilder_mcp_server.update_blueprint(
-                blueprint_uuid=TEST_BLUEPRINT_UUID, data=mock_blueprint_data
-            )
+        imagebuilder_mock_client.api.register(HTTPMethod.PUT, endpoint, response_body=mock_api_response, query=query)
+        # Call the method
+        result = await imagebuilder_mcp_server.update_blueprint(
+            blueprint_uuid=TEST_BLUEPRINT_UUID, data=mock_blueprint_data
+        )
 
-            # Verify API was called correctly
-            imagebuilder_mock_client.put.assert_called_once()
-            call_args = imagebuilder_mock_client.put.call_args
-            assert call_args[0][0] == f"blueprints/{TEST_BLUEPRINT_UUID}"
+        # Verify API was called correctly
+        imagebuilder_mock_client.put.assert_called_once()
+        call_args = imagebuilder_mock_client.put.call_args
+        assert call_args[0][0] == endpoint
 
-            # Check that watermark was added to description
-            posted_data = call_args.kwargs["json"]
-            assert "Blueprint updated via insights-mcp" in posted_data["description"]
+        # Check that watermark was added to description
+        posted_data = call_args.kwargs["json"]
+        assert "Blueprint updated via insights-mcp" in posted_data["description"]
 
-            # Parse the result
-            assert "Blueprint updated successfully" in result
+        # Parse the result
+        assert "Blueprint updated successfully" in result
 
     @pytest.mark.asyncio
     async def test_update_blueprint_with_existing_watermark(
@@ -69,31 +73,31 @@ class TestUpdateBlueprint:
             "description": "Updated description\nBlueprint created via insights-mcp",
             "distribution": "rhel-9",
         }
+        endpoint = f"blueprints/{TEST_BLUEPRINT_UUID}"
+        query = {}
 
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response):
-            # Call the method
-            result = await imagebuilder_mcp_server.update_blueprint(
-                blueprint_uuid=TEST_BLUEPRINT_UUID, data=blueprint_data
-            )
+        imagebuilder_mock_client.api.register(HTTPMethod.PUT, endpoint, response_body=mock_api_response, query=query)
+        # Call the method
+        result = await imagebuilder_mcp_server.update_blueprint(blueprint_uuid=TEST_BLUEPRINT_UUID, data=blueprint_data)
 
-            # Verify watermark was NOT duplicated
-            call_args = imagebuilder_mock_client.put.call_args
-            posted_data = call_args.kwargs["json"]
-            # Should keep existing description without adding another watermark
-            assert posted_data["description"] == blueprint_data["description"]
-            assert "Blueprint updated successfully" in result  # Verify result is used
+        # Verify watermark was NOT duplicated
+        call_args = imagebuilder_mock_client.put.call_args
+        posted_data = call_args.kwargs["json"]
+        # Should keep existing description without adding another watermark
+        assert posted_data["description"] == blueprint_data["description"]
+        assert "Blueprint updated successfully" in result  # Verify result is used
 
     @pytest.mark.asyncio
     async def test_update_blueprint_with_watermark_disabled(
         self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_blueprint_data, mock_api_response
     ):
         """Test update_blueprint with watermark disabled via environment variable."""
+        endpoint = f"blueprints/{TEST_BLUEPRINT_UUID}"
+        query = {}
         # Setup mocks
-        with (
-            setup_imagebuilder_watermark_disabled(imagebuilder_mcp_server, imagebuilder_mock_client),
-            setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_api_response),
-        ):
+        imagebuilder_mock_client.api.register(HTTPMethod.PUT, endpoint, response_body=mock_api_response, query=query)
+        with setup_imagebuilder_watermark_disabled():
             # Call the method
             result = await imagebuilder_mcp_server.update_blueprint(
                 blueprint_uuid=TEST_BLUEPRINT_UUID, data=mock_blueprint_data
@@ -111,12 +115,12 @@ class TestUpdateBlueprint:
         self, imagebuilder_mcp_server, imagebuilder_mock_client, mock_blueprint_data
     ):
         """Test update_blueprint when API returns error."""
+        endpoint = f"blueprints/{TEST_BLUEPRINT_UUID}"
+        query = {}
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")):
-            # Call the method
-            with pytest.raises(InsightsApiError) as exc_info:
-                await imagebuilder_mcp_server.update_blueprint(
-                    blueprint_uuid=TEST_BLUEPRINT_UUID, data=mock_blueprint_data
-                )
+        imagebuilder_mock_client.api.register(HTTPMethod.PUT, endpoint, query=query, error=Exception("API Error"))
+        # Call the method
+        with pytest.raises(InsightsApiError) as exc_info:
+            await imagebuilder_mcp_server.update_blueprint(blueprint_uuid=TEST_BLUEPRINT_UUID, data=mock_blueprint_data)
 
-            assert_api_error_message(exc_info.value)
+        assert_api_error_message(exc_info.value)

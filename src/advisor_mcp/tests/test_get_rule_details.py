@@ -1,10 +1,12 @@
 """Test suite for the get_rule_details() method."""
 
+from http import HTTPMethod
+
 import pytest
 
 from insights_mcp.errors import InsightsApiError
 
-from .conftest import TEST_RULE_ID, setup_toolset_mock
+from .conftest import TEST_RULE_ID
 
 
 class TestGetRuleDetails:
@@ -53,17 +55,19 @@ class TestGetRuleDetails:
     async def test_get_rule_details_valid_rule_id(self, advisor_mcp_server, advisor_mock_client, mock_api_response):
         """Test get_rule_details with valid rule ID."""
         rule_id = TEST_RULE_ID
+        endpoint = f"rule/{rule_id}/"
+        query = {}
 
         # Setup mocks
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
-            # Call the method
-            result = await advisor_mcp_server.get_rule_details(rule_id=rule_id)
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_api_response)
+        # Call the method
+        result = await advisor_mcp_server.get_rule_details(rule_id=rule_id)
 
-            # Verify API was called correctly
-            advisor_mock_client.get.assert_called_once_with(f"rule/{rule_id}/")
+        # Verify API was called correctly
+        advisor_mock_client.get.assert_called_once_with(endpoint)
 
-            # Verify the result
-            assert result == mock_api_response
+        # Verify the result
+        assert result == mock_api_response
 
     @pytest.mark.parametrize(
         "rule_id, expected_error",
@@ -93,27 +97,31 @@ class TestGetRuleDetails:
     async def test_get_rule_details_api_error(self, advisor_mcp_server, advisor_mock_client):
         """Test get_rule_details when API returns error."""
         rule_id = TEST_RULE_ID
+        endpoint = f"rule/{rule_id}/"
+        query = {}
 
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, side_effect=Exception("API Error")):
-            with pytest.raises(InsightsApiError) as exc_info:
-                await advisor_mcp_server.get_rule_details(rule_id=rule_id)
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, error=Exception("API Error"))
+        with pytest.raises(InsightsApiError) as exc_info:
+            await advisor_mcp_server.get_rule_details(rule_id=rule_id)
 
-            error_message = str(exc_info.value)
-            assert f"Failed to retrieve recommendation details for {rule_id}:" in error_message
-            assert "API Error" in error_message
+        error_message = str(exc_info.value)
+        assert f"Failed to retrieve recommendation details for {rule_id}:" in error_message
+        assert "API Error" in error_message
 
     @pytest.mark.asyncio
     async def test_get_rule_details_empty_response(self, advisor_mcp_server, advisor_mock_client):
         """Test get_rule_details when API returns empty response."""
         rule_id = TEST_RULE_ID
+        endpoint = f"rule/{rule_id}/"
+        query = {}
 
         # Setup mocks
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, None):
-            # Call the method
-            result = await advisor_mcp_server.get_rule_details(rule_id=rule_id)
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=None)
+        # Call the method
+        result = await advisor_mcp_server.get_rule_details(rule_id=rule_id)
 
-            # Should return None when API returns None
-            assert result is None
+        # Should return None when API returns None
+        assert result is None
 
     @pytest.mark.asyncio
     async def test_get_rule_details_with_special_characters(
@@ -121,14 +129,16 @@ class TestGetRuleDetails:
     ):
         """Test get_rule_details with rule ID containing special characters."""
         rule_id = "special_rule|WITH_SPECIAL_CHARS_123"
+        endpoint = f"rule/{rule_id}/"
+        query = {}
 
         # Setup mocks
-        with setup_toolset_mock(advisor_mcp_server, advisor_mock_client, mock_api_response):
-            # Call the method
-            result = await advisor_mcp_server.get_rule_details(rule_id=rule_id)
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_api_response)
+        # Call the method
+        result = await advisor_mcp_server.get_rule_details(rule_id=rule_id)
 
-            # Verify API was called correctly with sanitized rule_id
-            advisor_mock_client.get.assert_called_once_with(f"rule/{rule_id}/")
+        # Verify API was called correctly with sanitized rule_id
+        advisor_mock_client.get.assert_called_once_with(endpoint)
 
-            # Verify the result
-            assert result == mock_api_response
+        # Verify the result
+        assert result == mock_api_response

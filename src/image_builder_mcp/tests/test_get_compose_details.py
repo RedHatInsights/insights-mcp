@@ -1,6 +1,7 @@
 """Test suite for the get_compose_details() method."""
 
 import json
+from http import HTTPMethod
 
 import pytest
 
@@ -9,8 +10,6 @@ from tests.conftest import (
     TEST_BLUEPRINT_UUID,
     assert_api_error_message,
 )
-
-from .conftest import setup_toolset_mock
 
 
 class TestGetComposeDetails:
@@ -64,24 +63,28 @@ class TestGetComposeDetails:
     ):
         """Test get_compose_details with valid UUID."""
         compose_uuid = "abcd1234-5678-9012-3456-789012345678"
+        endpoint = f"composes/{compose_uuid}"
+        query = {}
 
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_compose_details_success):
-            # Call the method
-            result = await imagebuilder_mcp_server.get_compose_details(compose_identifier=compose_uuid)
+        imagebuilder_mock_client.api.register(
+            HTTPMethod.GET, endpoint, response_body=mock_compose_details_success, query=query
+        )
+        # Call the method
+        result = await imagebuilder_mcp_server.get_compose_details(compose_identifier=compose_uuid)
 
-            # Verify API was called correctly
-            imagebuilder_mock_client.get.assert_called_once_with(f"composes/{compose_uuid}")
+        # Verify API was called correctly
+        imagebuilder_mock_client.get.assert_called_once_with(endpoint)
 
-            # Parse the result
-            assert "https://example.com/download/image.tar.gz" in result
-            assert "Always present this link to the user" in result
+        # Parse the result
+        assert "https://example.com/download/image.tar.gz" in result
+        assert "Always present this link to the user" in result
 
-            # Extract JSON data
-            json_start = result.find('{"id"')
-            parsed_result = json.loads(result[json_start:])
-            assert parsed_result["compose_uuid"] == compose_uuid
-            assert parsed_result["id"] == compose_uuid
+        # Extract JSON data
+        json_start = result.find('{"id"')
+        parsed_result = json.loads(result[json_start:])
+        assert parsed_result["compose_uuid"] == compose_uuid
+        assert parsed_result["id"] == compose_uuid
 
     @pytest.mark.asyncio
     async def test_get_compose_details_gcp_image(
@@ -89,32 +92,38 @@ class TestGetComposeDetails:
     ):
         """Test get_compose_details with GCP image type."""
         compose_uuid = "abcd1234-5678-9012-3456-789012345678"
+        endpoint = f"composes/{compose_uuid}"
+        query = {}
 
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, mock_compose_details_gcp):
-            # Call the method
-            result = await imagebuilder_mcp_server.get_compose_details(compose_identifier=compose_uuid)
+        imagebuilder_mock_client.api.register(
+            HTTPMethod.GET, endpoint, response_body=mock_compose_details_gcp, query=query
+        )
+        # Call the method
+        result = await imagebuilder_mcp_server.get_compose_details(compose_identifier=compose_uuid)
 
-            # Should contain GCP-specific instructions
-            assert "gcloud compute instances create" in result
-            assert "gcloud compute images create" in result
-            assert "my-gcp-image" in result
+        # Should contain GCP-specific instructions
+        assert "gcloud compute instances create" in result
+        assert "gcloud compute images create" in result
+        assert "my-gcp-image" in result
 
     @pytest.mark.asyncio
     async def test_get_compose_details_invalid_uuid(self, imagebuilder_mcp_server, imagebuilder_mock_client):
         """Test get_compose_details with invalid UUID format."""
         invalid_uuid = "invalid-uuid-format"
+        endpoint = f"composes/{invalid_uuid}"
+        query = {}
 
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, [{"id": "test-id"}]):
-            # Call the method
-            with pytest.raises(InsightsApiError) as exc_info:
-                await imagebuilder_mcp_server.get_compose_details(compose_identifier=invalid_uuid)
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, endpoint, response_body=[{"id": "test-id"}], query=query)
+        # Call the method
+        with pytest.raises(InsightsApiError) as exc_info:
+            await imagebuilder_mcp_server.get_compose_details(compose_identifier=invalid_uuid)
 
-            error_message = str(exc_info.value)
-            assert "[INSTRUCTION] Error:" in error_message
-            assert "is not a valid compose identifier" in error_message
-            assert "please use the UUID from get_composes" in error_message
+        error_message = str(exc_info.value)
+        assert "[INSTRUCTION] Error:" in error_message
+        assert "is not a valid compose identifier" in error_message
+        assert "please use the UUID from get_composes" in error_message
 
     @pytest.mark.asyncio
     async def test_get_compose_details_empty_identifier(self, imagebuilder_mcp_server):
@@ -129,14 +138,16 @@ class TestGetComposeDetails:
     async def test_get_compose_details_api_error(self, imagebuilder_mcp_server, imagebuilder_mock_client):
         """Test get_compose_details when API returns error."""
         compose_uuid = "abcd1234-5678-9012-3456-789012345678"
+        endpoint = f"composes/{compose_uuid}"
+        query = {}
 
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, side_effect=Exception("API Error")):
-            # Call the method
-            with pytest.raises(InsightsApiError) as exc_info:
-                await imagebuilder_mcp_server.get_compose_details(compose_identifier=compose_uuid)
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, error=Exception("API Error"))
+        # Call the method
+        with pytest.raises(InsightsApiError) as exc_info:
+            await imagebuilder_mcp_server.get_compose_details(compose_identifier=compose_uuid)
 
-            assert_api_error_message(exc_info.value)
+        assert_api_error_message(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_compose_details_unexpected_list_response(
@@ -144,11 +155,13 @@ class TestGetComposeDetails:
     ):
         """Test get_compose_details when API returns unexpected list response."""
         compose_uuid = "abcd1234-5678-9012-3456-789012345678"
+        endpoint = f"composes/{compose_uuid}"
+        query = {}
 
         # Setup mocks
-        with setup_toolset_mock(imagebuilder_mcp_server, imagebuilder_mock_client, [{"id": "test-id"}]):
-            # Call the method
-            with pytest.raises(InsightsApiError) as exc_info:
-                await imagebuilder_mcp_server.get_compose_details(compose_identifier=compose_uuid)
+        imagebuilder_mock_client.api.register(HTTPMethod.GET, endpoint, response_body=[{"id": "test-id"}], query=query)
+        # Call the method
+        with pytest.raises(InsightsApiError) as exc_info:
+            await imagebuilder_mcp_server.get_compose_details(compose_identifier=compose_uuid)
 
-            assert f"Error: Unexpected list response for {compose_uuid}" in str(exc_info.value)
+        assert f"Error: Unexpected list response for {compose_uuid}" in str(exc_info.value)

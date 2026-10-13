@@ -2,7 +2,7 @@
 # pylint: disable=duplicate-code
 
 import json
-from unittest.mock import patch
+from http import HTTPMethod
 
 import pytest
 
@@ -96,171 +96,180 @@ class TestPlanningGetRelevantRhelLifecycle:
     async def test_get_relevant_rhel_lifecycle_basic_functionality(
         self,
         planning_mcp_server,
+        planning_mock_client,
         mock_lifecycle_response,
     ):
         """Test basic functionality of get_relevant_rhel_lifecycle method."""
-        with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.return_value = mock_lifecycle_response
+        endpoint = "relevant/lifecycle/rhel"
+        query = {"related": False}
+        planning_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_lifecycle_response)
 
-            # Call the method with no parameters (defaults: include_related="false")
-            result = await planning_mcp_server.get_relevant_rhel_lifecycle()
+        # Call the method with no parameters (defaults: include_related="false")
+        result = await planning_mcp_server.get_relevant_rhel_lifecycle()
 
-            # Backend endpoint should be invoked with related=False by default
-            mock_get.assert_called_once_with(
-                "relevant/lifecycle/rhel",
-                params={"related": False},
-                timeout=30,
-            )
+        # Backend endpoint should be invoked with related=False by default
+        planning_mock_client.get.assert_called_once_with(
+            endpoint,
+            params=query,
+            timeout=30,
+        )
 
-            # Tool returns a JSON-encoded string; parse and validate structure
-            parsed = json.loads(result)
+        # Tool returns a JSON-encoded string; parse and validate structure
+        parsed = json.loads(result)
 
-            # Validate meta section
-            assert "meta" in parsed
-            assert "count" in parsed["meta"]
-            assert "total" in parsed["meta"]
-            assert parsed["meta"]["count"] == 3
-            assert parsed["meta"]["total"] == 3
+        # Validate meta section
+        assert "meta" in parsed
+        assert "count" in parsed["meta"]
+        assert "total" in parsed["meta"]
+        assert parsed["meta"]["count"] == 3
+        assert parsed["meta"]["total"] == 3
 
-            # Validate data section
-            assert "data" in parsed
-            assert isinstance(parsed["data"], list)
-            assert len(parsed["data"]) == 3
+        # Validate data section
+        assert "data" in parsed
+        assert isinstance(parsed["data"], list)
+        assert len(parsed["data"]) == 3
 
-            # Verify structure of first item
-            item = parsed["data"][0]
+        # Verify structure of first item
+        item = parsed["data"][0]
 
-            # Top-level fields per schema
-            assert "name" in item
-            assert "display_name" in item
-            assert "major" in item
-            assert "minor" in item
-            assert "start_date" in item
-            assert "end_date" in item
-            assert "support_status" in item
-            assert "count" in item
-            assert "lifecycle_type" in item
-            assert "related" in item
-            assert "systems_detail" in item
-            assert "systems" in item
+        # Top-level fields per schema
+        assert "name" in item
+        assert "display_name" in item
+        assert "major" in item
+        assert "minor" in item
+        assert "start_date" in item
+        assert "end_date" in item
+        assert "support_status" in item
+        assert "count" in item
+        assert "lifecycle_type" in item
+        assert "related" in item
+        assert "systems_detail" in item
+        assert "systems" in item
 
-            # Verify values of first item
-            assert item["name"] == "RHEL"
-            assert item["display_name"] == "RHEL 9.0"
-            assert item["major"] == 9
-            assert item["minor"] == 0
-            assert item["lifecycle_type"] == "mainline"
-            assert item["related"] is False
+        # Verify values of first item
+        assert item["name"] == "RHEL"
+        assert item["display_name"] == "RHEL 9.0"
+        assert item["major"] == 9
+        assert item["minor"] == 0
+        assert item["lifecycle_type"] == "mainline"
+        assert item["related"] is False
 
-            # Verify systems_detail structure
-            assert isinstance(item["systems_detail"], list)
-            if item["systems_detail"]:
-                system = item["systems_detail"][0]
-                assert "id" in system
-                assert "display_name" in system
-                assert "os_major" in system
-                assert "os_minor" in system
+        # Verify systems_detail structure
+        assert isinstance(item["systems_detail"], list)
+        if item["systems_detail"]:
+            system = item["systems_detail"][0]
+            assert "id" in system
+            assert "display_name" in system
+            assert "os_major" in system
+            assert "os_minor" in system
 
     @pytest.mark.asyncio
     async def test_get_relevant_rhel_lifecycle_with_major_version(
         self,
         planning_mcp_server,
+        planning_mock_client,
         mock_lifecycle_response,
     ):
         """Test get_relevant_rhel_lifecycle with major version filter."""
-        with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.return_value = mock_lifecycle_response
+        endpoint = "relevant/lifecycle/rhel"
+        query = {"major": 9, "related": False}
+        planning_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_lifecycle_response)
 
-            # Call with major version
-            result = await planning_mcp_server.get_relevant_rhel_lifecycle(major="9")
+        # Call with major version
+        result = await planning_mcp_server.get_relevant_rhel_lifecycle(major="9")
 
-            # Backend should receive the major parameter and related=False
-            mock_get.assert_called_once_with(
-                "relevant/lifecycle/rhel",
-                params={"major": 9, "related": False},
-                timeout=30,
-            )
+        # Backend should receive the major parameter and related=False
+        planning_mock_client.get.assert_called_once_with(
+            endpoint,
+            params=query,
+            timeout=30,
+        )
 
-            # Validate response structure
-            parsed = json.loads(result)
-            assert "meta" in parsed
-            assert "data" in parsed
+        # Validate response structure
+        parsed = json.loads(result)
+        assert "meta" in parsed
+        assert "data" in parsed
 
     @pytest.mark.asyncio
     async def test_get_relevant_rhel_lifecycle_with_major_and_minor(
         self,
         planning_mcp_server,
+        planning_mock_client,
         mock_lifecycle_response,
     ):
         """Test get_relevant_rhel_lifecycle with major and minor version filters."""
-        with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.return_value = mock_lifecycle_response
+        endpoint = "relevant/lifecycle/rhel"
+        query = {"major": 9, "minor": 2, "related": False}
+        planning_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_lifecycle_response)
 
-            # Call with both major and minor versions
-            result = await planning_mcp_server.get_relevant_rhel_lifecycle(major="9", minor="2")
+        # Call with both major and minor versions
+        result = await planning_mcp_server.get_relevant_rhel_lifecycle(major="9", minor="2")
 
-            # Backend should receive both parameters and related=False
-            mock_get.assert_called_once_with(
-                "relevant/lifecycle/rhel",
-                params={"major": 9, "minor": 2, "related": False},
-                timeout=30,
-            )
+        # Backend should receive both parameters and related=False
+        planning_mock_client.get.assert_called_once_with(
+            endpoint,
+            params=query,
+            timeout=30,
+        )
 
-            # Validate response structure
-            parsed = json.loads(result)
-            assert "meta" in parsed
-            assert "data" in parsed
+        # Validate response structure
+        parsed = json.loads(result)
+        assert "meta" in parsed
+        assert "data" in parsed
 
     @pytest.mark.parametrize("include_related", (True, False))
     @pytest.mark.asyncio
     async def test_get_relevant_rhel_lifecycle_with_include_related(
-        self, planning_mcp_server, mock_lifecycle_response, include_related
+        self, planning_mcp_server, planning_mock_client, mock_lifecycle_response, include_related
     ):
         """Test get_relevant_rhel_lifecycle with include_related explicitly set"""
-        with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.return_value = mock_lifecycle_response
+        endpoint = "relevant/lifecycle/rhel"
+        query = {"related": include_related}
+        planning_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_lifecycle_response)
 
-            result = await planning_mcp_server.get_relevant_rhel_lifecycle(include_related=include_related)
+        result = await planning_mcp_server.get_relevant_rhel_lifecycle(include_related=include_related)
 
-            mock_get.assert_called_once_with(
-                "relevant/lifecycle/rhel",
-                params={"related": include_related},
-                timeout=30,
-            )
+        planning_mock_client.get.assert_called_once_with(
+            endpoint,
+            params=query,
+            timeout=30,
+        )
 
-            # Validate response structure
-            parsed = json.loads(result)
-            assert "meta" in parsed
-            assert "data" in parsed
+        # Validate response structure
+        parsed = json.loads(result)
+        assert "meta" in parsed
+        assert "data" in parsed
 
     @pytest.mark.asyncio
     async def test_get_relevant_rhel_lifecycle_with_all_parameters(
         self,
         planning_mcp_server,
+        planning_mock_client,
         mock_lifecycle_response,
     ):
         """Test get_relevant_rhel_lifecycle with major, minor, and include_related."""
-        with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.return_value = mock_lifecycle_response
+        endpoint = "relevant/lifecycle/rhel"
+        query = {"major": 9, "minor": 4, "related": True}
+        planning_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_lifecycle_response)
 
-            # Call with all parameters
-            result = await planning_mcp_server.get_relevant_rhel_lifecycle(
-                major="9",
-                minor="4",
-                include_related="true",
-            )
+        # Call with all parameters
+        result = await planning_mcp_server.get_relevant_rhel_lifecycle(
+            major="9",
+            minor="4",
+            include_related="true",
+        )
 
-            # Backend should receive all parameters
-            mock_get.assert_called_once_with(
-                "relevant/lifecycle/rhel",
-                params={"major": 9, "minor": 4, "related": True},
-                timeout=30,
-            )
+        # Backend should receive all parameters
+        planning_mock_client.get.assert_called_once_with(
+            endpoint,
+            params=query,
+            timeout=30,
+        )
 
-            # Validate response structure
-            parsed = json.loads(result)
-            assert "meta" in parsed
-            assert "data" in parsed
+        # Validate response structure
+        parsed = json.loads(result)
+        assert "meta" in parsed
+        assert "data" in parsed
 
     @pytest.mark.asyncio
     async def test_get_relevant_rhel_lifecycle_minor_without_major_raises_error(
@@ -276,12 +285,15 @@ class TestPlanningGetRelevantRhelLifecycle:
         assert "The 'minor' parameter requires 'major' to be specified" in error_message
 
     @pytest.mark.asyncio
-    async def test_get_relevant_rhel_lifecycle_api_error(self, planning_mcp_server):
+    async def test_get_relevant_rhel_lifecycle_api_error(self, planning_mcp_server, planning_mock_client):
         """Test get_relevant_rhel_lifecycle when backend raises an API error."""
-        with patch.object(planning_mcp_server.insights_client, "get") as mock_get:
-            mock_get.side_effect = RuntimeError("Backend unavailable")
+        endpoint = "relevant/lifecycle/rhel"
+        query = {"related": False}
+        planning_mock_client.api.register(
+            HTTPMethod.GET, endpoint, query=query, error=RuntimeError("Backend unavailable")
+        )
 
-            with pytest.raises(InsightsApiError) as exc_info:
-                await planning_mcp_server.get_relevant_rhel_lifecycle()
+        with pytest.raises(InsightsApiError) as exc_info:
+            await planning_mcp_server.get_relevant_rhel_lifecycle()
 
-            assert_api_error_message(exc_info.value)
+        assert_api_error_message(exc_info.value)
