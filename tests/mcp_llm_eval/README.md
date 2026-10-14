@@ -62,6 +62,12 @@ set of tools and at least one tool from another set. For example,
 `expected_tools=("advisor__get_hosts_hitting_a_rule", "advisor__get_active_rules")`
 requires the KB lookup tool and either way of checking affected systems.
 
+When essentials are listed in `required_tools`, the direct `expected_tools`
+assertion can be redundant with that hard gate. A future harness change may
+drop the direct assert for such turns and rely on non-zero `threshold` guardian
+scoring when multiple acceptable follow-up tools should be treated as soft
+alternatives.
+
 Example:
 
 ```python
