@@ -7,7 +7,7 @@ Every row uses `--all-tools` (maximum tools per mode).
 
 | Mode | Tools | Input tokens |
 |------|------:|-------------:|
-| all-tools | 50 | 11989 |
+| all-tools | 52 | 12703 |
 | advisor | 12 | 1813 |
 | content-sources | 7 | 1241 |
 | image-builder | 15 | 1674 |
@@ -16,4 +16,4 @@ Every row uses `--all-tools` (maximum tools per mode).
 | rbac | 5 | 704 |
 | remediations | 6 | 902 |
 | rhsm | 7 | 1045 |
-| vulnerability | 13 | 3103 |
+| vulnerability | 15 | 3817 |

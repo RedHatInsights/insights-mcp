@@ -23,6 +23,8 @@ Tools marked as read-write **`(rw)`** are excluded by default. Use the `--all-to
 - `get_cve`: Get details about specific CVE.
 - `get_cve_systems`: Get list of systems affected by a given CVE.
 - `get_cves`: Get list of CVEs affecting the account.
+- `get_lightwell_adopt`: Explain how to adopt a Red Hat Lightwell fix for an in-scope third-party library (Java/Maven or
+- `get_lightwell_systems`: List systems affected by a CVE that have a Red Hat Lightwell reproducer-verified fix available.
 - `get_openapi`: Get $container_brand_long Vulnerability OpenAPI specification in JSON format.
 - `get_system_cves`: Get list of CVEs affecting a given system.
 - `get_systems`: Get list of systems in $container_brand_long Vulnerability inventory.
