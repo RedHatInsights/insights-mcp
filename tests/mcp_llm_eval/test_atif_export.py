@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable, Sequence
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Literal, cast
 
 import pytest
 
 from tests.mcp_llm_eval import atif_export
+from tests.mcp_llm_eval import fixtures as eval_fixtures
 
 
 def test_node_display_id_strips_module_path():
@@ -28,13 +31,6 @@ def test_node_display_id_without_py_marker():
     """Node ids without a .py:: marker keep the last path component."""
     assert atif_export.node_display_id("tests/foo.py") == "foo.py"
     assert atif_export.node_display_id("TestClass::test_one") == "TestClass::test_one"
-
-
-def test_node_test_id_strips_pytest_param_block() -> None:
-    """Unparametrized test id is Class::test without the trailing param brackets."""
-    display_id = "TestAdvisorLLMPrompts::test_llm_eval[kb_article_impact-Granite 4h tiny]"
-    assert atif_export.node_test_id(display_id) == "TestAdvisorLLMPrompts::test_llm_eval"
-    assert atif_export.node_test_id("TestAdvisorLLMPrompts::test_llm_eval") == ("TestAdvisorLLMPrompts::test_llm_eval")
 
 
 def test_utc_timestamp_has_millisecond_precision() -> None:
@@ -143,11 +139,12 @@ class AgentOutput:  # pylint: disable=too-few-public-methods
 
     def __init__(
         self,
-        content: str,
+        content: Any = "",
         tool_calls: list[Any] | None = None,
         raw: Any = None,
+        blocks: list[Any] | None = None,
     ) -> None:
-        self.response = SimpleNamespace(content=content, blocks=[], additional_kwargs={})
+        self.response = SimpleNamespace(content=content, blocks=blocks or [], additional_kwargs={})
         self.tool_calls = tool_calls or []
         self.raw = raw
 
@@ -167,7 +164,30 @@ class AgentInput:  # pylint: disable=too-few-public-methods
         self.input = messages
 
 
-def _builder() -> atif_export.AtifTrajectoryBuilder:
+class _SteppedClock:
+    """UTC clock that tests advance explicitly."""
+
+    def __init__(self) -> None:
+        self.now = datetime(2026, 10, 8, 12, 0, 0, tzinfo=timezone.utc)
+
+    def __call__(self) -> datetime:
+        return self.now
+
+    def advance(self, milliseconds: int) -> None:
+        """Move the clock forward.
+
+        Args:
+            milliseconds: How far to move ``now``.
+        """
+        self.now += timedelta(milliseconds=milliseconds)
+
+
+def _parsed_span_time(value: str) -> datetime:
+    """Parse a span or ATIF timestamp."""
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def _builder(clock: Callable[[], datetime] | None = None) -> atif_export.AtifTrajectoryBuilder:
     return atif_export.AtifTrajectoryBuilder(
         session_id="20260922125600",
         trajectory_id="TestAdvisorLLMPrompts::test_llm_eval[top_critical_issues-Gemini 2.5 Flash]",
@@ -188,6 +208,7 @@ def _builder() -> atif_export.AtifTrajectoryBuilder:
         ],
         test_file="tests/mcp_llm_eval/generators.py",
         test_line=43,
+        clock=clock,
     )
 
 
@@ -296,8 +317,8 @@ def test_tool_definitions_from_tools_uses_metadata() -> None:
     ]
 
 
-def test_atif_session_id_shared_across_params_of_same_test() -> None:
-    """Parametrized nodes of one test function share a Phoenix session/trace id."""
+def test_atif_session_id_is_unique_per_pytest_node() -> None:
+    """Each parametrized case gets its own Phoenix session id."""
     run_id = "20260923150944"
     first = atif_export.atif_session_id(
         run_id, "TestAdvisorLLMPrompts::test_llm_eval[kb_article_impact-Granite 4h tiny]"
@@ -308,13 +329,13 @@ def test_atif_session_id_shared_across_params_of_same_test() -> None:
     other_test = atif_export.atif_session_id(
         run_id, "TestInventoryLLMPrompts::test_llm_eval[open_inventory_dashboard-Granite 4h tiny]"
     )
-    assert first == second
-    assert first == f"{run_id}::TestAdvisorLLMPrompts::test_llm_eval"
+    assert first != second
+    assert first == (f"{run_id}::TestAdvisorLLMPrompts::test_llm_eval[kb_article_impact-Granite 4h tiny]")
     assert other_test != first
 
 
 def test_atif_builder_session_id_per_test_keeps_testrun_folder_id() -> None:
-    """ATIF session_id is per test function; extra.testrun stays the fourteen-digit run folder."""
+    """Each pytest node has its own session id; extra.testrun stays the run folder."""
     run_id = "20260923150944"
     first = _builder()
     first.session_id = atif_export.atif_session_id(run_id, "TestA::test[one]")
@@ -330,7 +351,7 @@ def test_atif_builder_session_id_per_test_keeps_testrun_folder_id() -> None:
     second.consume_event(AgentOutput("ok-b"))
     first_trajectory = first.finish(pytest_outcome="passed")
     second_trajectory = second.finish(pytest_outcome="passed")
-    assert first_trajectory["session_id"] == second_trajectory["session_id"]
+    assert first_trajectory["session_id"] != second_trajectory["session_id"]
     assert first_trajectory["trajectory_id"] != second_trajectory["trajectory_id"]
     assert first_trajectory["extra"]["testrun"] == run_id
     assert second_trajectory["extra"]["testrun"] == run_id
@@ -347,6 +368,101 @@ def test_atif_builder_thinking_delta_becomes_reasoning_content() -> None:
     agent_step = trajectory["steps"][1]
     assert agent_step["reasoning_content"] == "Check the KB article."
     assert agent_step["message"] == "Here is the recommendation."
+
+
+def test_model_output_dump_keeps_thinking_raw_extras_and_non_string_content() -> None:
+    """Thinking blocks, provider extras, and non-string content survive JSON encoding."""
+
+    class _RawResponse:  # pylint: disable=too-few-public-methods
+        """Stand-in for an OpenAI SDK model that only exposes extras via model_dump."""
+
+        def model_dump(self, mode: str = "json") -> dict[str, Any]:
+            """Return the provider payload, including a non-standard thinking field."""
+            _ = mode
+            return {
+                "choices": [
+                    {
+                        "finish_reason": "length",
+                        "message": {"content": "", "thinking": b"hidden-bytes"},
+                    }
+                ],
+                "usage": {"completion_tokens": 1024},
+            }
+
+    message = SimpleNamespace(
+        content=[{"type": "text", "text": "corrupt-token"}],
+        blocks=[SimpleNamespace(block_type="thinking", content="spent the budget")],
+        additional_kwargs={},
+    )
+    dump = atif_export.model_output_dump(message, raw=_RawResponse(), thinking="stream ")
+    assert dump["thinking"] == "stream \nspent the budget"
+    assert dump["content"] == [{"type": "text", "text": "corrupt-token"}]
+    assert dump["raw"]["choices"][0]["finish_reason"] == "length"
+    assert dump["raw"]["choices"][0]["message"]["thinking"] == repr(b"hidden-bytes")
+    assert dump["raw"]["usage"]["completion_tokens"] == 1024
+    assert "visible_text" not in dump
+    assert json.loads(atif_export.render_model_output(dump)) == dump
+
+
+def test_atif_builder_thinking_only_output_is_visible_in_message() -> None:
+    """Empty content with a thinking block and 1024 raw tokens is stored for Phoenix and JSON."""
+    thinking = "spent the budget on host tags"
+    raw = {
+        "choices": [
+            {
+                "finish_reason": "length",
+                "message": {"role": "assistant", "content": "", "thinking": thinking},
+            }
+        ],
+        "usage": {"prompt_tokens": 3592, "completion_tokens": 1024},
+    }
+    builder = _builder()
+    builder.begin_turn("Get all tags for hosts that were updated in the last 24 hours")
+    builder.consume_event(
+        AgentOutput(
+            "",
+            raw=raw,
+            blocks=[SimpleNamespace(block_type="thinking", content=thinking)],
+        )
+    )
+    trajectory = builder.finish(pytest_outcome="failed")
+    agent_step = trajectory["steps"][1]
+    model_output = agent_step["extra"]["model_output"]
+    assert agent_step["reasoning_content"] == thinking
+    assert model_output["thinking"] == thinking
+    assert model_output["raw"]["usage"]["completion_tokens"] == 1024
+    assert model_output["raw"]["choices"][0]["message"]["thinking"] == thinking
+    assert agent_step["message"] == atif_export.render_model_output(model_output)
+    assert thinking in agent_step["message"]
+    assert agent_step["metrics"]["completion_tokens"] == 1024
+
+
+def test_atif_builder_non_string_content_is_dumped() -> None:
+    """A list content payload is recorded instead of becoming an empty assistant message."""
+    parts = [{"type": "text", "text": "corrupt-token"}]
+    builder = _builder()
+    builder.begin_turn("prompt")
+    builder.consume_event(AgentOutput(parts))
+    agent_step = builder.finish(pytest_outcome="failed")["steps"][1]
+    assert agent_step["extra"]["model_output"]["content"] == parts
+    assert "corrupt-token" in agent_step["message"]
+
+
+def test_atif_builder_normal_text_reply_keeps_message() -> None:
+    """Visible assistant text stays the step message; the raw dump is only extra data."""
+    reply = "Here is the recommendation."
+    builder = _builder()
+    builder.begin_turn("prompt")
+    builder.consume_event(
+        AgentOutput(
+            reply,
+            raw={"choices": [{"message": {"content": reply, "thinking": "brief"}}]},
+        )
+    )
+    agent_step = builder.finish(pytest_outcome="passed")["steps"][1]
+    assert agent_step["message"] == reply
+    assert agent_step["extra"]["model_output"]["visible_text"] == reply
+    assert agent_step["extra"]["model_output"]["raw"]["choices"][0]["message"]["thinking"] == "brief"
 
 
 def test_atif_builder_agent_input_recorded_as_llm_input() -> None:
@@ -504,6 +620,7 @@ def test_atif_builder_live_workflow_event_order_one_step_per_tool_round() -> Non
     trajectory = builder.finish(pytest_outcome="passed")
     agent_steps = [step for step in trajectory["steps"] if step["source"] == "agent"]
     assert len(agent_steps) == 3
+    assert agent_steps[0]["message"] == ""
     assert agent_steps[0]["tool_calls"][0]["function_name"] == "advisor__get_rule_from_node_id"
     assert agent_steps[0]["observation"]["results"][0]["content"] == '["rule-a"]'
     assert agent_steps[1]["tool_calls"][0]["function_name"] == "advisor__get_hosts_hitting_a_rule"
@@ -511,6 +628,129 @@ def test_atif_builder_live_workflow_event_order_one_step_per_tool_round() -> Non
     assert agent_steps[2]["message"] == "none of your systems are affected"
     assert "tool_calls" not in agent_steps[2]
     assert trajectory["final_metrics"]["total_steps"] == 4
+
+
+def test_atif_builder_records_model_interval_before_tool_interval() -> None:
+    """A tool round stores the model call, then the tool call, on the agent step."""
+    clock = _SteppedClock()
+    builder = _builder(clock)
+    builder.begin_turn("list distributions")
+    clock.advance(10)
+    builder.consume_event(AgentInput([SimpleNamespace(role="user", content="list distributions", blocks=[])]))
+    clock.advance(5000)
+    builder.consume_event(
+        AgentOutput(
+            "",
+            tool_calls=[
+                SimpleNamespace(
+                    tool_id="c1",
+                    tool_name="image-builder__get_distributions",
+                    tool_kwargs={},
+                )
+            ],
+        )
+    )
+    clock.advance(30)
+    builder.consume_event(ToolCall("image-builder__get_distributions", {}, "c1"))
+    clock.advance(200)
+    builder.consume_event(ToolCallResult("c1", '{"distributions": []}'))
+    trajectory = builder.finish(pytest_outcome="passed")
+    agent_step = next(step for step in trajectory["steps"] if step["source"] == "agent")
+    model_started = agent_step["extra"]["llm_started_at"]
+    model_ended = agent_step["extra"]["llm_ended_at"]
+    tool_extra = agent_step["tool_calls"][0]["extra"]
+    assert model_started < model_ended < tool_extra["started_at"] < tool_extra["ended_at"]
+    assert _parsed_span_time(model_ended) - _parsed_span_time(model_started) == timedelta(milliseconds=5000)
+    assert agent_step["_phoenix_llm_latency_ms"] == 5000
+    assert agent_step["_phoenix_llm_latency_source"] == "measured"
+    assert _parsed_span_time(tool_extra["ended_at"]) - _parsed_span_time(tool_extra["started_at"]) == timedelta(
+        milliseconds=200
+    )
+
+
+def _tool_round_trajectory(display_id: str) -> dict[str, Any]:
+    """Build one tool round whose model call lasts five seconds."""
+    clock = _SteppedClock()
+    builder = _builder(clock)
+    builder.session_id = atif_export.atif_session_id("20260923150944", display_id)
+    builder.trajectory_id = display_id
+    builder.testrun = "20260923150944"
+    builder.begin_turn("list distributions")
+    clock.advance(10)
+    builder.consume_event(AgentInput([SimpleNamespace(role="user", content="list distributions", blocks=[])]))
+    clock.advance(5000)
+    builder.consume_event(
+        AgentOutput(
+            "",
+            tool_calls=[
+                SimpleNamespace(
+                    tool_id="c1",
+                    tool_name="image-builder__get_distributions",
+                    tool_kwargs={},
+                )
+            ],
+        )
+    )
+    clock.advance(30)
+    builder.consume_event(ToolCall("image-builder__get_distributions", {}, "c1"))
+    clock.advance(200)
+    builder.consume_event(ToolCallResult("c1", '{"distributions": []}'))
+    return builder.finish(pytest_outcome="passed")
+
+
+def _assert_chain_encloses_model(trace_spans: Sequence[Any]) -> None:
+    """Assert one trace has a single agent root, a model bar inside its chain, and a tool mark."""
+    roots = [span for span in trace_spans if "parent_id" not in span]
+    assert len(roots) == 1
+    assert roots[0]["span_kind"] == "AGENT"
+    tool = next(span for span in trace_spans if span["span_kind"] == "TOOL")
+    chain = next(span for span in trace_spans if span["context"]["span_id"] == tool["parent_id"])
+    model = next(
+        span
+        for span in trace_spans
+        if span["span_kind"] == "LLM" and span.get("parent_id") == chain["context"]["span_id"]
+    )
+    chain_start = _parsed_span_time(chain["start_time"])
+    chain_end = _parsed_span_time(chain["end_time"])
+    model_start = _parsed_span_time(model["start_time"])
+    model_end = _parsed_span_time(model["end_time"])
+    assert chain_start <= model_start <= model_end <= chain_end
+    assert model_end - model_start == timedelta(milliseconds=5000)
+    assert _parsed_span_time(tool["start_time"]) == _parsed_span_time(tool["end_time"]) == chain_end
+    assert model["attributes"]["metadata"]["atif.timing"] == "measured"
+
+
+def test_converter_places_model_inside_chain_and_tool_at_chain_end() -> None:
+    """The ATIF converter keeps the model bar inside its chain and the tool on the chain end."""
+    convert = atif_export._convert_atif_trajectories_to_spans  # pylint: disable=protected-access
+    if convert is None:
+        pytest.skip("arize-phoenix-client is not installed")
+    first = _tool_round_trajectory("TestA::test[one]")
+    second = _tool_round_trajectory("TestA::test[two]")
+    spans = convert([first, second])
+    trace_ids = {span["context"]["trace_id"] for span in spans}
+    assert first["session_id"] != second["session_id"]
+    assert len(trace_ids) == 2
+    for trace_id in trace_ids:
+        trace_spans = [span for span in spans if span["context"]["trace_id"] == trace_id]
+        _assert_chain_encloses_model(trace_spans)
+
+
+def test_attach_llm_interval_skips_incomplete_or_negative_duration() -> None:
+    """A model interval without a non-negative duration does not set the converter latency field."""
+    builder = _builder()
+    started = datetime(2026, 10, 8, tzinfo=timezone.utc)
+    incomplete: dict[str, Any] = {"extra": {}}
+    builder._llm_started_at = started  # pylint: disable=protected-access
+    builder._llm_ended_at = None  # pylint: disable=protected-access
+    builder._attach_llm_interval(incomplete)  # pylint: disable=protected-access
+    assert "_phoenix_llm_latency_ms" not in incomplete
+    reversed_interval: dict[str, Any] = {"extra": {}}
+    builder._llm_ended_at = started - timedelta(seconds=1)  # pylint: disable=protected-access
+    builder._attach_llm_interval(reversed_interval)  # pylint: disable=protected-access
+    assert "_phoenix_llm_latency_ms" not in reversed_interval
+    assert "llm_started_at" in reversed_interval["extra"]
+    assert "llm_ended_at" in reversed_interval["extra"]
 
 
 def test_atif_builder_empty_output_with_tools_still_flushes() -> None:
@@ -535,6 +775,110 @@ def test_atif_builder_empty_output_with_tools_still_flushes() -> None:
     assert agent_steps[0]["message"] == ""
     assert agent_steps[0]["tool_calls"][0]["function_name"] == "advisor__get_rule_from_node_id"
     assert agent_steps[0]["tool_calls"][0]["arguments"] == {"node_id": 1}
+
+
+def test_atif_builder_setup_failure_without_steps() -> None:
+    """A fixture failure with no LLM turns still finishes as one system step."""
+    builder = _builder()
+    message = "InsightsApiError: [INSTRUCTION] HTTP 403 lacks permission"
+    builder.record_fixture_failure(message)
+    trajectory = builder.finish(
+        pytest_outcome="failed",
+        pytest_status_message=message,
+        pytest_when="setup",
+    )
+    assert trajectory["extra"]["pytest_outcome"] == "failed"
+    assert trajectory["extra"]["pytest_when"] == "setup"
+    assert trajectory["extra"]["pytest_status_message"] == message
+    assert len(trajectory["steps"]) == 1
+    step = trajectory["steps"][0]
+    assert step["source"] == "system"
+    assert step["message"] == message
+    assert step["extra"]["pytest_outcome"] == "failed"
+    assert step["extra"]["pytest_when"] == "setup"
+
+
+def test_record_fixture_failure_empty_message_uses_fallback() -> None:
+    """Blank fixture-failure text is replaced so the system step is not empty."""
+    builder = _builder()
+    builder.record_fixture_failure("  ")
+    trajectory = builder.finish(pytest_outcome="failed", pytest_when="teardown")
+    assert trajectory["steps"][0]["message"] == "pytest failed before any LLM turn"
+    assert trajectory["extra"]["pytest_when"] == "teardown"
+
+
+def _pytest_report(
+    when: Literal["setup", "call", "teardown"],
+    outcome: Literal["passed", "failed", "skipped"],
+    longrepr: str | None = None,
+) -> pytest.TestReport:
+    """Build a pytest report without running a test."""
+    return pytest.TestReport(
+        nodeid="tests/mcp_llm_eval/test_atif_export.py::test_report",
+        location=("tests/mcp_llm_eval/test_atif_export.py", 0, "test_report"),
+        keywords={},
+        outcome=outcome,
+        longrepr=longrepr,
+        when=when,
+    )
+
+
+def test_report_should_export_setup_and_teardown_failures() -> None:
+    """Failed setup and teardown export; passed setup and teardown wait for the call."""
+    should_export = eval_fixtures._report_should_export  # pylint: disable=protected-access
+    assert should_export(_pytest_report("setup", "failed")) is True
+    assert should_export(_pytest_report("setup", "passed")) is False
+    assert should_export(_pytest_report("call", "passed")) is True
+    assert should_export(_pytest_report("teardown", "failed")) is True
+    assert should_export(_pytest_report("teardown", "passed")) is False
+
+
+def test_export_setup_failure_without_agent_writes_and_uploads(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A setup error with no agent still writes ATIF JSON and uploads it to Phoenix."""
+    run_id = "20260925113900"
+    node_id = (
+        "src/advisor_mcp/tests/test_advisor_llm_prompts.py::"
+        "TestAdvisorLLMPrompts::test_llm_eval[top_critical_issues-Qwen3.5 9b]"
+    )
+    config = SimpleNamespace(stash=pytest.Stash(), rootpath=tmp_path)
+    config.stash[eval_fixtures._ATIF_RUN_ID] = run_id  # pylint: disable=protected-access
+    config.stash[eval_fixtures._ATIF_RUN_DIR] = tmp_path  # pylint: disable=protected-access
+    item = SimpleNamespace(
+        config=config,
+        stash=pytest.Stash(),
+        nodeid=node_id,
+        location=("/tmp/not-a-test.py", 8, "TestAdvisorLLMPrompts.test_llm_eval"),
+        callspec=SimpleNamespace(params={"llm_config": {"MODEL_ID": "qwen3.5-9b", "name": "Qwen3.5 9b"}}),
+    )
+    status = "InsightsApiError: [INSTRUCTION] The user is authenticated but lacks permission (HTTP 403)."
+    report = _pytest_report("setup", "failed", status)
+    uploaded: dict[str, Any] = {}
+
+    def _capture_upload(trajectories: list[dict[str, Any]], *, project_name: str, endpoint: str) -> None:
+        uploaded["trajectories"] = trajectories
+        uploaded["project_name"] = project_name
+        uploaded["endpoint"] = endpoint
+
+    monkeypatch.setattr(eval_fixtures, "trace_export_disabled", lambda: False)
+    monkeypatch.setattr(eval_fixtures, "phoenix_collector_endpoint", lambda: "http://phoenix.example")
+    monkeypatch.setattr(eval_fixtures, "upload_trajectories", _capture_upload)
+
+    eval_fixtures._export_atif_for_item(cast(pytest.Item, item), report)  # pylint: disable=protected-access
+
+    display_id = atif_export.node_display_id(node_id)
+    written = json.loads((tmp_path / f"{display_id}.json").read_text(encoding="utf-8"))
+    assert written["extra"]["pytest_outcome"] == "failed"
+    assert written["extra"]["pytest_when"] == "setup"
+    assert "HTTP 403" in written["extra"]["pytest_status_message"]
+    assert written["agent"]["model_name"] == "qwen3.5-9b"
+    assert len(written["steps"]) == 1
+    assert written["steps"][0]["source"] == "system"
+    assert uploaded["endpoint"] == "http://phoenix.example"
+    assert uploaded["project_name"] == atif_export.phoenix_project_name(run_id)
+    assert uploaded["trajectories"][0]["extra"]["pytest_when"] == "setup"
 
 
 def test_write_atif_json_round_trip(tmp_path: Path) -> None:

@@ -31,6 +31,7 @@ from insights_mcp.config import (
     BRAND_CLIENT_SECRET_ENV,
     BRAND_CLIENT_SECRET_HEADER,
     INSIGHTS_BASE_URL,
+    INSIGHTS_HTTP_TIMEOUT_SECONDS,
     INSIGHTS_PROXY_URL,
     SSO_TOKEN_ENDPOINT,
 )
@@ -40,6 +41,7 @@ from insights_mcp.session_cache import SessionCache
 from . import __version__
 
 USER_AGENT = f"insights-mcp/{__version__}"
+INSIGHTS_HTTP_TIMEOUT = httpx.Timeout(INSIGHTS_HTTP_TIMEOUT_SECONDS)
 
 # SSO claim keys containing PII (personally identifiable information); masked in logs for ISO 27018 compliance
 _PII_CLAIM_KEYS = frozenset({"subject", "account_id", "username", "email"})
@@ -98,6 +100,7 @@ class InsightsClientBase(httpx.AsyncClient):
         super().__init__(
             headers={"User-Agent": USER_AGENT, "Content-Type": "application/json"},
             proxy=proxy_url,
+            timeout=INSIGHTS_HTTP_TIMEOUT,
         )
         self.insights_base_url = base_url
         self.proxy_url = proxy_url
@@ -469,6 +472,7 @@ class InsightsOAuth2Client(InsightsClientBase, AsyncOAuth2Client):
             token_endpoint=token_endpoint,
             headers=self.headers,
             proxy=self.proxy_url,
+            timeout=INSIGHTS_HTTP_TIMEOUT,
         )
         # Cache whether we're using environment credentials (set once at init)
         self._using_env_credentials = bool(client_id or client_secret)

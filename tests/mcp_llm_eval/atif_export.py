@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,14 @@ try:
 except ImportError:  # pragma: no cover - optional runtime dependency
     Client = None  # type: ignore[misc, assignment]
     _convert_atif_trajectories_to_spans = None  # type: ignore[misc, assignment]
+
+from .model_output import merge_thinking, message_text, model_output_dump, render_model_output, thinking_text
+
+# Phoenix's ATIF converter reads these step fields and clamps the LLM bar inside the chain.
+# Names match phoenix.client.helpers.atif._convert.
+_PHOENIX_LLM_LATENCY_MS = "_phoenix_llm_latency_ms"
+_PHOENIX_LLM_LATENCY_SOURCE = "_phoenix_llm_latency_source"
+_PHOENIX_LLM_LATENCY_SOURCE_MEASURED = "measured"
 
 DISABLE_TRACE_EXPORT_ENV = "INSIGHTS_MCP_DISABLE_TRACE_EXPORT"
 PHOENIX_COLLECTOR_ENDPOINT_ENV = "PHOENIX_COLLECTOR_ENDPOINT"
@@ -114,20 +123,26 @@ def node_display_id(node_id: str) -> str:
     return node_id.rsplit("/", 1)[-1]
 
 
-def node_test_id(display_id: str) -> str:
-    """Return ``Class::test`` without a trailing pytest param block.
+def _utc_now() -> datetime:
+    """Return the current UTC time."""
+    return datetime.now(timezone.utc)
+
+
+def format_utc_timestamp(moment: datetime) -> str:
+    """Return ``moment`` as an ATIF UTC timestamp with millisecond precision.
 
     Args:
-        display_id: ``Class::test[params]`` from ``node_display_id``.
+        moment: Time to format. Naive values are treated as UTC.
 
     Returns:
-        Unparametrized test id. Unchanged when there is no ``[...]`` suffix.
+        ISO-8601 UTC timestamp with millisecond precision and a ``Z`` suffix.
     """
-    if display_id.endswith("]"):
-        bracket = display_id.rfind("[")
-        if bracket > 0:
-            return display_id[:bracket]
-    return display_id
+    if moment.tzinfo is None:
+        utc_moment = moment.replace(tzinfo=timezone.utc)
+    else:
+        utc_moment = moment.astimezone(timezone.utc)
+    millisecond = utc_moment.microsecond // 1000
+    return utc_moment.strftime("%Y-%m-%dT%H:%M:%S.") + f"{millisecond:03d}Z"
 
 
 def utc_timestamp() -> str:
@@ -136,9 +151,7 @@ def utc_timestamp() -> str:
     Returns:
         ISO-8601 UTC timestamp with millisecond precision and a ``Z`` suffix.
     """
-    now = datetime.now(timezone.utc)
-    millisecond = now.microsecond // 1000
-    return now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{millisecond:03d}Z"
+    return format_utc_timestamp(_utc_now())
 
 
 def session_run_id() -> str:
@@ -151,19 +164,20 @@ def session_run_id() -> str:
 
 
 def atif_session_id(run_id: str, display_id: str) -> str:
-    """Return an ATIF session id shared by all params of one pytest test function.
+    """Return an ATIF session id unique to one pytest node.
 
-    Phoenix derives trace_id from session_id. Parametrized nodes of the same
-    ``Class::test`` share a trace; AGENT roots stay distinct via trajectory_id.
+    Phoenix derives trace_id from session_id. Each parametrized case needs its own
+    trace so the waterfall has a single AGENT root. The shared run folder stays in
+    ``extra.testrun``.
 
     Args:
         run_id: Fourteen-digit testrun id (YYYYMMDDhhmmss).
         display_id: ``Class::test[params]`` from ``node_display_id``.
 
     Returns:
-        ``{run_id}::{Class::test}``.
+        ``{run_id}::{display_id}``.
     """
-    return f"{run_id}::{node_test_id(display_id)}"
+    return f"{run_id}::{display_id}"
 
 
 def _trajectory_extra(trajectory: dict[str, Any]) -> dict[str, Any]:
@@ -233,6 +247,10 @@ def upload_trajectories(
     endpoint: str,
 ) -> Any:
     """Convert ATIF trajectories to Phoenix spans and upload them.
+
+    The Phoenix ATIF converter places each model bar inside its iteration chain
+    from ``_phoenix_llm_latency_ms`` on the agent step. Tool spans stay a mark
+    at the chain end.
 
     Args:
         trajectories: ATIF trajectory dicts.
@@ -307,16 +325,9 @@ def _tool_output_content(tool_output: Any) -> str:
     """Stringify a LlamaIndex ``ToolOutput`` (or test double) for ATIF observations."""
     if tool_output is None:
         return ""
-    content = getattr(tool_output, "content", None)
-    if isinstance(content, str) and content:
-        return content
-    texts: list[str] = []
-    for block in getattr(tool_output, "blocks", None) or []:
-        text = getattr(block, "text", None)
-        if text:
-            texts.append(str(text))
-    if texts:
-        return "\n".join(texts)
+    text = message_text(tool_output)
+    if text:
+        return text
     raw_output = getattr(tool_output, "raw_output", None)
     if raw_output is None or isinstance(raw_output, (bytes, bytearray)):
         return str(tool_output)
@@ -329,28 +340,9 @@ def _tool_output_content(tool_output: Any) -> str:
     return dumped
 
 
-def _message_text(message: Any) -> str:
-    """Extract display text from a chat message or similar object."""
-    if message is None:
-        return ""
-    content = getattr(message, "content", None)
-    if isinstance(content, str) and content:
-        return content
-    texts: list[str] = []
-    for block in getattr(message, "blocks", None) or []:
-        text = getattr(block, "text", None)
-        if text:
-            texts.append(str(text))
-    if texts:
-        return "\n".join(texts)
-    if isinstance(message, str):
-        return message
-    return ""
-
-
 def _response_message_text(event: Any) -> str:
     """Extract assistant text from an ``AgentOutput``-like event."""
-    return _message_text(getattr(event, "response", None))
+    return message_text(getattr(event, "response", None))
 
 
 def _role_name(role: Any) -> str:
@@ -368,7 +360,7 @@ def _serialize_llm_input(messages: Any) -> list[dict[str, str]]:
         serialized.append(
             {
                 "role": _role_name(getattr(message, "role", "")),
-                "content": _message_text(message),
+                "content": message_text(message),
             }
         )
     return serialized
@@ -453,7 +445,10 @@ def _tool_call_dict(event: Any) -> dict[str, Any]:
 
 
 class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
-    """Accumulate ATIF steps from one LLM test (possibly multiple user turns)."""
+    """Accumulate ATIF steps from one LLM test (possibly multiple user turns).
+
+    ``clock`` overrides the UTC clock used for model and tool intervals.
+    """
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
@@ -466,6 +461,7 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         test_file: str,
         test_line: int,
         testrun: str | None = None,
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.session_id = session_id
         self.testrun = testrun if testrun is not None else session_id
@@ -475,13 +471,17 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         self.tool_definitions = tool_definitions
         self.test_file = test_file
         self.test_line = test_line
+        self._clock = clock if clock is not None else _utc_now
         self._steps: list[dict[str, Any]] = []
         self._turn_start_index = 0
         self._pending_tool_calls: list[dict[str, Any]] = []
         self._pending_observations: list[dict[str, Any]] = []
         self._pending_thinking = ""
+        self._pending_model_output: dict[str, Any] = {}
         self._pending_llm_input: list[dict[str, str]] = []
         self._pending_metrics: dict[str, int] = {}
+        self._llm_started_at: datetime | None = None
+        self._llm_ended_at: datetime | None = None
         self._outcome = "passed"
         self._status_message = ""
 
@@ -524,6 +524,7 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
             self._consume_agent_input(event)
             return
         if event_name == "AgentStream":
+            self._note_llm_started()
             thinking_delta = getattr(event, "thinking_delta", None)
             if isinstance(thinking_delta, str) and thinking_delta:
                 self._pending_thinking += thinking_delta
@@ -539,21 +540,33 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
                     "content": _tool_output_content(getattr(event, "tool_output", None)),
                 }
             )
+            self._stamp_tool_call(call_id, ended_at=self._format_now())
             return
         if event_name == "AgentOutput":
             self._consume_agent_output(event)
+
+    def record_fixture_failure(self, message: str) -> None:
+        """Record a system step when pytest failed before any LLM turn.
+
+        Args:
+            message: Pytest failure representation. Empty text uses a fixed fallback.
+        """
+        text = message.strip() or "pytest failed before any LLM turn"
+        self._steps.append(self._make_step(source="system", message=text))
 
     def finish(
         self,
         *,
         pytest_outcome: str,
         pytest_status_message: str = "",
+        pytest_when: str = "",
     ) -> dict[str, Any]:
         """Build the ATIF trajectory object.
 
         Args:
-            pytest_outcome: Pytest call outcome (``passed``, ``failed``, ``skipped``).
+            pytest_outcome: Pytest report outcome (``passed``, ``failed``, ``skipped``).
             pytest_status_message: Failure representation; empty on success.
+            pytest_when: Pytest phase (``setup``, ``call``, or ``teardown``). Empty omits the field.
 
         Returns:
             ATIF trajectory dict ready to serialize.
@@ -565,10 +578,14 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         extra["testrun"] = self.testrun
         if pytest_status_message:
             extra["pytest_status_message"] = pytest_status_message
+        if pytest_when:
+            extra["pytest_when"] = pytest_when
         for step in self._steps:
             step_extra = dict(step.get("extra") or {})
             step_extra.update(self._location_extra())
             step_extra["pytest_outcome"] = pytest_outcome
+            if pytest_when:
+                step_extra["pytest_when"] = pytest_when
             step["extra"] = step_extra
         return {
             "schema_version": ATIF_SCHEMA_VERSION,
@@ -609,13 +626,16 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         reasoning_content: str = "",
         metrics: dict[str, int] | None = None,
         llm_input: list[dict[str, str]] | None = None,
+        model_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         extra = self._location_extra()
         if llm_input:
             extra["llm_input"] = llm_input
+        if model_output:
+            extra["model_output"] = model_output
         step: dict[str, Any] = {
             "step_id": len(self._steps) + 1,
-            "timestamp": utc_timestamp(),
+            "timestamp": self._format_now(),
             "source": source,
             "message": message,
             "extra": extra,
@@ -643,8 +663,91 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         self._pending_tool_calls = []
         self._pending_observations = []
         self._pending_thinking = ""
+        self._pending_model_output = {}
         self._pending_llm_input = []
         self._pending_metrics = {}
+        self._llm_started_at = None
+        self._llm_ended_at = None
+
+    def _now(self) -> datetime:
+        """Return the current UTC time from the injected clock."""
+        moment = self._clock()
+        if moment.tzinfo is None:
+            return moment.replace(tzinfo=timezone.utc)
+        return moment.astimezone(timezone.utc)
+
+    def _format_now(self) -> str:
+        """Return the current UTC time as an ATIF timestamp."""
+        return format_utc_timestamp(self._now())
+
+    def _note_llm_started(self) -> None:
+        """Record the model-call start once per round."""
+        if self._llm_started_at is None:
+            self._llm_started_at = self._now()
+
+    def _any_tool_started(self) -> bool:
+        """Return True when a pending tool call already has a start time."""
+        for tool_call in self._pending_tool_calls:
+            extra = tool_call.get("extra")
+            if isinstance(extra, dict) and extra.get("started_at"):
+                return True
+        return False
+
+    def _pending_tool_call(self, call_id: str) -> dict[str, Any] | None:
+        """Return the pending tool call with ``call_id``, or the last call when it is empty."""
+        if call_id:
+            for tool_call in self._pending_tool_calls:
+                if tool_call.get("tool_call_id") == call_id:
+                    return tool_call
+            return None
+        if self._pending_tool_calls:
+            return self._pending_tool_calls[-1]
+        return None
+
+    def _stamp_tool_call(
+        self,
+        call_id: str,
+        *,
+        started_at: str | None = None,
+        ended_at: str | None = None,
+    ) -> None:
+        """Record a tool interval on the matching pending call.
+
+        Args:
+            call_id: Tool call id. An empty id selects the latest pending call.
+            started_at: ATIF timestamp. Kept when the call already has one.
+            ended_at: ATIF timestamp for the tool result.
+        """
+        tool_call = self._pending_tool_call(call_id)
+        if tool_call is None:
+            return
+        extra = dict(tool_call.get("extra") or {})
+        if started_at is not None:
+            extra.setdefault("started_at", started_at)
+        if ended_at is not None:
+            extra["ended_at"] = ended_at
+        tool_call["extra"] = extra
+
+    def _attach_llm_interval(self, step: dict[str, Any]) -> None:
+        """Copy the model interval onto an agent step and tell the ATIF converter its duration.
+
+        The converter reads ``_phoenix_llm_latency_ms`` and draws the LLM span inside
+        the iteration chain. It does not read the extra timestamps.
+        """
+        if self._llm_started_at is None and self._llm_ended_at is None:
+            return
+        extra = step["extra"]
+        if self._llm_started_at is not None:
+            extra["llm_started_at"] = format_utc_timestamp(self._llm_started_at)
+        if self._llm_ended_at is not None:
+            extra["llm_ended_at"] = format_utc_timestamp(self._llm_ended_at)
+        if self._llm_started_at is None or self._llm_ended_at is None:
+            return
+        latency_ms = (self._llm_ended_at - self._llm_started_at).total_seconds() * 1000
+        if latency_ms < 0:
+            return
+        step[_PHOENIX_LLM_LATENCY_MS] = latency_ms
+        step[_PHOENIX_LLM_LATENCY_SOURCE] = _PHOENIX_LLM_LATENCY_SOURCE_MEASURED
 
     def _record_tool_call(self, tool_call: dict[str, Any]) -> None:
         call_id = tool_call.get("tool_call_id", "")
@@ -662,41 +765,72 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         elif self._pending_metrics and not self._pending_tool_calls:
             self._flush_pending_agent_step("")
         self._pending_llm_input = _serialize_llm_input(getattr(event, "input", None))
+        self._note_llm_started()
 
     def _consume_tool_call(self, event: Any) -> None:
         if self._pending_round_complete():
             self._flush_pending_agent_step("")
-        self._record_tool_call(_tool_call_dict(event))
+        tool_call = _tool_call_dict(event)
+        self._record_tool_call(tool_call)
+        self._stamp_tool_call(str(tool_call.get("tool_call_id", "")), started_at=self._format_now())
 
     def _consume_agent_output(self, event: Any) -> None:
+        self._note_llm_started()
+        if not self._any_tool_started():
+            self._llm_ended_at = self._now()
         usage = _usage_from_event(event)
         if usage:
             self._pending_metrics.update(usage)
         for selection in getattr(event, "tool_calls", None) or []:
             self._record_tool_call(_tool_call_dict(selection))
+        self._capture_model_output(event)
         message = _response_message_text(event)
         if self._has_incomplete_tool_round():
             return
         has_thinking = bool(self._pending_thinking.strip())
-        if message.strip() or self._pending_tool_calls or has_thinking or self._pending_metrics:
+        has_model_output = bool(self._pending_model_output)
+        if message.strip() or self._pending_tool_calls or has_thinking or self._pending_metrics or has_model_output:
             self._flush_pending_agent_step(message)
 
+    def _capture_model_output(self, event: Any) -> None:
+        """Keep thinking blocks and the provider payload until the agent step is flushed."""
+        response = getattr(event, "response", None)
+        self._pending_thinking = merge_thinking(self._pending_thinking, thinking_text(response))
+        self._pending_model_output = model_output_dump(
+            response,
+            raw=getattr(event, "raw", None),
+            thinking=self._pending_thinking,
+        )
+
+    def _agent_step_message(self, visible: str) -> str:
+        """Use visible text when present. Otherwise put the raw dump in the message Phoenix reads.
+
+        Tool-call steps keep an empty message so the span stays a tool call. A thinking-only
+        or corrupt payload has no visible text and no tool call, so the dump is the message.
+        """
+        if visible.strip() or self._pending_tool_calls:
+            return visible
+        return render_model_output(self._pending_model_output) or visible
+
     def _flush_pending_agent_step(self, message: str) -> None:
-        has_message = bool(message.strip())
+        displayed = self._agent_step_message(message)
+        has_message = bool(displayed.strip())
         has_tools = bool(self._pending_tool_calls)
         has_thinking = bool(self._pending_thinking.strip())
         has_metrics = bool(self._pending_metrics)
-        if not (has_message or has_tools or has_thinking or has_metrics):
+        has_model_output = bool(self._pending_model_output)
+        if not (has_message or has_tools or has_thinking or has_metrics or has_model_output):
             return
-        self._steps.append(
-            self._make_step(
-                source="agent",
-                message=message,
-                tool_calls=self._pending_tool_calls or None,
-                observation_results=self._pending_observations or None,
-                reasoning_content=self._pending_thinking,
-                metrics=self._pending_metrics or None,
-                llm_input=self._pending_llm_input or None,
-            )
+        step = self._make_step(
+            source="agent",
+            message=displayed,
+            tool_calls=self._pending_tool_calls or None,
+            observation_results=self._pending_observations or None,
+            reasoning_content=self._pending_thinking,
+            metrics=self._pending_metrics or None,
+            llm_input=self._pending_llm_input or None,
+            model_output=self._pending_model_output or None,
         )
+        self._attach_llm_interval(step)
+        self._steps.append(step)
         self._clear_pending_agent_state()

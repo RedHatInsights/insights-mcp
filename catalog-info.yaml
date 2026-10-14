@@ -80,6 +80,9 @@ spec:
       description: "Find Advisor Recommendations using Knowledge Base solution ID or article ID"
     # content-sources
     - type: tool
+      name: content-sources__get_repository
+      description: "Get full details for one repository by UUID."
+    - type: tool
       name: content-sources__list_repositories
       description: "List repositories with filtering and pagination options."
     # image-builder

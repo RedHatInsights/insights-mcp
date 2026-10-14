@@ -22,9 +22,13 @@ from mcp.shared._httpx_utils import create_mcp_http_client
 from tests.mcp_llm_eval.atif_export import AtifTrajectoryBuilder
 from tests.mcp_llm_eval.deepeval_support.tracing import WorkflowToolCallCollector, tools_called_from_agent_run
 from tests.mcp_llm_eval.mcp_jsonrpc import fetch_mcp_instructions_http, fetch_mcp_instructions_stdio
+from tests.mcp_llm_eval.model_output import model_output_dump, render_model_output
+from tests.mcp_llm_eval.utils import abbreviate_middle
 
 _MCP_INSTRUCTIONS_HEADER = "## MCP server instructions"
 _USER_REQUEST_HEADER = "## User request"
+# Per-request HTTP timeout for the matrix model (MODEL_API), including slow local Ollama runs.
+MATRIX_LLM_HTTP_TIMEOUT_SECONDS = 1800.0
 
 
 def format_user_message_with_mcp_instructions(user_msg: str, mcp_instructions: str) -> str:
@@ -45,6 +49,23 @@ def _chat_message_text(message: ChatMessage) -> str:
         if text:
             block_texts.append(text)
     return "\n".join(block_texts)
+
+
+def _rendered_model_output(response: Any) -> str:
+    """JSON dump of a workflow response, including thinking blocks and provider extras.
+
+    Args:
+        response: Workflow handler result. The assistant message is ``response.response`` when present.
+
+    Returns:
+        JSON text for logs. Empty when the response has no captured payload.
+    """
+    return render_model_output(
+        model_output_dump(
+            getattr(response, "response", response),
+            raw=getattr(response, "raw", None),
+        )
+    )
 
 
 def _assistant_text_from_handler_response(response: Any) -> str:
@@ -166,7 +187,9 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         """Initialize MCP session and agent on the caller's event loop."""
         if self._initialized:
             return
-        self._llm_http_client = httpx.AsyncClient(timeout=httpx.Timeout(60.0))
+        self._llm_http_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(MATRIX_LLM_HTTP_TIMEOUT_SECONDS),
+        )
         # parallel_tool_calls is enforced via FunctionAgent.allow_parallel_tool_calls;
         # omit it here because some OpenAI-compatible gateways (e.g. Gemini Flash) reject the field.
         self.llama_llm = OpenAILike(
@@ -175,11 +198,13 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             api_key=self.api_key,
             temperature=0.1,
             context_window=self.token_limit,
-            max_tokens=1024,
+            max_tokens=16384,
             is_chat_model=True,
             is_function_calling_model=True,
             # Some OpenAI-compatible gateways (e.g. Mistral) reject strict JSON-schema tool mode.
             strict=False,
+            # OpenAILike's own timeout is sent on every request and overrides the httpx client.
+            timeout=MATRIX_LLM_HTTP_TIMEOUT_SECONDS,
             async_http_client=self._llm_http_client,
         )
         self._memory = Memory.from_defaults(
@@ -280,9 +305,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         self._step_names.append(ev_name)
         if not self.logger or ev_name in ["AgentStream"]:
             return
-        data_str = f"{ev}"
-        if len(data_str) > 2000:
-            data_str = data_str[:1000] + "\n<… abbreviated log …>\n" + data_str[-1000:]
+        data_str = abbreviate_middle(f"{ev}")
         log_function = self.logger.info if ev_name == "ToolCall" else self.logger.debug
         log_function("📡 Event %s: %s", ev_name, data_str)
 
@@ -324,7 +347,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         self,
         user_msg: str,
         chat_history: Optional[list[ChatMessage]] = None,
-        max_iterations: int = 10,
+        max_iterations: int = 20,
     ) -> tuple[str, list[dict[str, Any]], list[ToolCall], list[ChatMessage]]:
         """Execute agent, record tool calls and steps, return response and artifacts."""
         if not self.agent or self.llama_llm is None or self._memory is None:
@@ -357,12 +380,19 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
                 break
             if attempt == 0:
                 self.logger.warning(
-                    "Empty agent's final response for model %s; retrying once",
+                    "Empty agent's final response for model %s; retrying once. model_output=%s",
                     self.model_id,
+                    _rendered_model_output(response),
                 )
                 # Wipe the potentially polluted memory so the retry runs cleanly from prior history.
                 await self._memory.aset(prior_history)
                 self.context = Context(self.agent)
+                continue
+            self.logger.warning(
+                "Empty agent's final response for model %s. model_output=%s",
+                self.model_id,
+                _rendered_model_output(response),
+            )
 
         reasoning_steps: list[dict[str, Any]] = [
             {"step_number": idx + 1, "step_type": "event", "content": name} for idx, name in enumerate(self._step_names)

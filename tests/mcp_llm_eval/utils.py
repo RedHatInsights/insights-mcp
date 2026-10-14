@@ -7,6 +7,16 @@ import os
 from deepeval.models import OpenAIModel
 from llama_index.core.llms import ChatMessage
 
+ABBREVIATED_LOG_MARKER = "\n<…abbreviated_log…>\n"
+
+
+def abbreviate_middle(text: str, max_length: int = 2000) -> str:
+    """Return text unchanged, or keep the first and last halves with a marker between."""
+    if len(text) <= max_length:
+        return text
+    half = max_length // 2
+    return text[:half] + ABBREVIATED_LOG_MARKER + text[-half:]
+
 
 def should_skip_llm_tests() -> bool:
     """Check if LLM integration tests should be skipped."""

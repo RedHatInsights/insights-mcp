@@ -1,10 +1,13 @@
 """Test suite for the get_rule_by_text_search() method."""
 
+import copy
 from http import HTTPMethod
 
 import pytest
 
 from insights_mcp.errors import InsightsApiError
+
+from .conftest import RULE_LIST_DETAIL_FIELDS, assert_rule_list_slimmed
 
 
 class TestGetRuleByTextSearch:
@@ -106,8 +109,12 @@ class TestGetRuleByTextSearch:
         # Verify API was called correctly
         advisor_mock_client.get.assert_called_once_with(endpoint, params=query)
 
-        # Verify the result
-        assert result == mock_api_response
+        expected = copy.deepcopy(mock_api_response)
+        for rule in expected["data"]:
+            for field in RULE_LIST_DETAIL_FIELDS:
+                rule.pop(field, None)
+        assert result == expected
+        assert_rule_list_slimmed(result)
 
     @pytest.mark.asyncio
     async def test_get_rule_by_text_search_multiword_search(

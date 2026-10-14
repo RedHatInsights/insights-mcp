@@ -23,6 +23,7 @@ PROMPTS = TestScenarioRegistry(
                 ),
             ),
         ),
+        threshold=0.3,
     ),
     image_build_status=TestScenario(
         turns=(
@@ -35,6 +36,8 @@ PROMPTS = TestScenarioRegistry(
                 ),
             ),
         ),
+        # there could be no compose - so only get_composes is fine
+        threshold=0.5,
     ),
     llm_paging=TestScenario(
         turns=(

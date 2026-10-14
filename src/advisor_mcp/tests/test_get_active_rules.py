@@ -1,5 +1,6 @@
 """Test suite for the get_active_rules() method."""
 
+import copy
 from http import HTTPMethod
 
 import pytest
@@ -9,7 +10,7 @@ from tests.conftest import (  # pylint: disable=import-error
     assert_api_error_message,
 )
 
-from .conftest import get_default_active_rules_params
+from .conftest import assert_rule_list_slimmed, get_default_active_rules_params
 
 
 class TestGetActiveRules:
@@ -244,6 +245,44 @@ class TestGetActiveRules:
         # Verify response
         assert result == large_api_response
         assert len(result["data"]) == 50
+
+    @pytest.fixture
+    def mock_api_response_with_details(self, mock_api_response):
+        """Mock list response including detail-only fields returned by the Insights API."""
+        response = copy.deepcopy(mock_api_response)
+        for rule in response["data"]:
+            rule["resolution_set"] = [{"resolution": "Apply remediation steps.", "has_playbook": True}]
+            rule["reason"] = "This host is affected because of a configuration issue."
+            rule["more_info"] = "See the knowledge base article for more information."
+            rule["generic"] = rule["summary"]
+        return response
+
+    @pytest.mark.asyncio
+    async def test_get_active_rules_slims_detail_fields(
+        self, advisor_mcp_server, advisor_mock_client, mock_api_response_with_details
+    ):
+        """Test get_active_rules omits detail-only fields from list responses."""
+        endpoint = "rule/"
+        query = {"offset": 0, "limit": 10, "impacting": True, "sort": "-total_risk"}
+        advisor_mock_client.api.register(
+            HTTPMethod.GET, endpoint, query=query, response_body=mock_api_response_with_details
+        )
+        result = await advisor_mcp_server.get_active_rules(**get_default_active_rules_params())
+
+        assert_rule_list_slimmed(result)
+        for rule in result["data"]:
+            assert "rule_id" in rule
+            assert "summary" in rule
+
+    @pytest.mark.asyncio
+    async def test_get_active_rules_caps_limit(self, advisor_mcp_server, advisor_mock_client, mock_api_response):
+        """Test get_active_rules caps limit at 20 per request."""
+        endpoint = "rule/"
+        query = {"offset": 0, "limit": 20, "impacting": True, "sort": "-total_risk"}
+        advisor_mock_client.api.register(HTTPMethod.GET, endpoint, query=query, response_body=mock_api_response)
+        await advisor_mcp_server.get_active_rules(**get_default_active_rules_params(limit=50))
+
+        advisor_mock_client.get.assert_called_once_with(endpoint, params=query)
 
     # Edge case tests
     @pytest.mark.asyncio

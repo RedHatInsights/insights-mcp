@@ -59,6 +59,32 @@ def mcp_server_url(request):
         cleanup_server_process(server_process)
 
 
+def toolset_mcp_server_url(toolset: str):
+    """Return a session fixture that starts the MCP server with only ``toolset`` mounted.
+
+    Assign the result in a toolset ``conftest.py`` so live-server tests do not inherit the
+    all-toolset fixture from this module:
+
+        mcp_server_url = toolset_mcp_server_url("advisor")
+    """
+
+    @pytest.fixture(scope="session")
+    def mcp_server_url(request):  # pylint: disable=redefined-outer-name
+        """Start MCP server with only the requested toolset for integration tests."""
+        transport = getattr(request, "param", "http")
+        if hasattr(request.node, "callspec") and "transport" in request.node.callspec.params:
+            transport = request.node.callspec.params["transport"]
+
+        server_url, server_process = start_insights_mcp_server(transport, toolset=toolset)
+
+        try:
+            yield server_url
+        finally:
+            cleanup_server_process(server_process)
+
+    return mcp_server_url
+
+
 @pytest.fixture()
 def mcp_tools(mcp_server_url):  # pylint: disable=redefined-outer-name
     """Fetch tools from the MCP server.
