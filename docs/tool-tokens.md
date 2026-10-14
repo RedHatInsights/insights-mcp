@@ -7,9 +7,9 @@ Every row uses `--all-tools` (maximum tools per mode).
 
 | Mode | Tools | Input tokens |
 |------|------:|-------------:|
-| all-tools | 51 | 13604 |
-| advisor | 12 | 2845 |
-| content-sources | 6 | 1110 |
+| all-tools | 52 | 12703 |
+| advisor | 12 | 1813 |
+| content-sources | 7 | 1241 |
 | image-builder | 15 | 1674 |
 | inventory | 14 | 3011 |
 | planning | 11 | 4128 |
