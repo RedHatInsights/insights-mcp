@@ -5,7 +5,6 @@ Conftest for advisor_mcp tests - re-exports fixtures from top-level tests.
 import pytest
 
 from advisor_mcp import AdvisorMCP
-from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 
 # Import directly from tests since pytest now knows where to find packages
 from tests.conftest import (
@@ -21,23 +20,11 @@ from tests.conftest import (
     mcp_tools,
     mock_http_headers,
     test_client_credentials,
+    toolset_mcp_server_url,
 )
 from tests.mcp_llm_eval.fixtures import guardian_agent, test_agent, verbose_logger
 
-
-@pytest.fixture(scope="session")
-def mcp_server_url(request):
-    """Start MCP server with only the advisor toolset for LLM integration tests."""
-    transport = getattr(request, "param", "http")
-    if hasattr(request.node, "callspec") and "transport" in request.node.callspec.params:
-        transport = request.node.callspec.params["transport"]
-
-    server_url, server_process = start_insights_mcp_server(transport, toolset="advisor")
-
-    try:
-        yield server_url
-    finally:
-        cleanup_server_process(server_process)
+mcp_server_url = toolset_mcp_server_url("advisor")
 
 
 # Test constants specific to advisor

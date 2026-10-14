@@ -10,7 +10,6 @@ from unittest.mock import patch
 import pytest
 
 from image_builder_mcp import ImageBuilderMCP
-from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
 from tests.conftest import (
     TEST_BLUEPRINT_UUID,
     TEST_CLIENT_ID,
@@ -25,23 +24,11 @@ from tests.conftest import (
     mcp_tools,
     mock_http_headers,
     test_client_credentials,
+    toolset_mcp_server_url,
 )
 from tests.mcp_llm_eval.fixtures import guardian_agent, test_agent, verbose_logger
 
-
-@pytest.fixture(scope="session")
-def mcp_server_url(request):
-    """Start MCP server with only the image-builder toolset for LLM integration tests."""
-    transport = getattr(request, "param", "http")
-    if hasattr(request.node, "callspec") and "transport" in request.node.callspec.params:
-        transport = request.node.callspec.params["transport"]
-
-    server_url, server_process = start_insights_mcp_server(transport, toolset="image-builder")
-
-    try:
-        yield server_url
-    finally:
-        cleanup_server_process(server_process)
+mcp_server_url = toolset_mcp_server_url("image-builder")
 
 
 @pytest.fixture
