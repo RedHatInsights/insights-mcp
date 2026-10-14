@@ -59,7 +59,7 @@ class ContentSourcesMCP(InsightsMCP):
         - list_repositories: For queries like "List my repositories", "Show repositories", etc.
           Returns a short summary per repository. Do not request details for every row.
 
-        🔴 **ONE REPOSITORY ONLY**:
+        **Single repository (UUID required)**:
         - get_repository: Call only when a single repository UUID is already known
           (from list_repositories or from the user). Never call it once per list item.
 
@@ -172,7 +172,7 @@ class ContentSourcesMCP(InsightsMCP):
     ) -> str:
         """Get full details for one repository by UUID.
 
-        🔴 Call only for a single repository UUID from list_repositories or supplied by the user.
+        Call only for a single repository UUID from list_repositories or supplied by the user.
         Returns the complete repository, including the GPG key, snapshot, and introspection fields.
         """
         canonical_uuid = _canonical_repository_uuid(repository_uuid)
