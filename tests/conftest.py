@@ -2,6 +2,7 @@
 
 import asyncio
 import functools
+import sys
 from http import HTTPMethod
 from unittest.mock import Mock
 
@@ -95,7 +96,7 @@ def mcp_tools(mcp_server_url):  # pylint: disable=redefined-outer-name
 
     async def _fetch():
         if mcp_server_url == "stdio":
-            client = BasicMCPClient("python", args=["-m", "insights_mcp.server", "stdio"])
+            client = BasicMCPClient(sys.executable, args=["-m", "insights_mcp.server", "stdio"])
         else:
             client = BasicMCPClient(mcp_server_url)
         try:

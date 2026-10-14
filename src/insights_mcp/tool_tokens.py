@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import sys
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
@@ -61,7 +62,7 @@ def fetch_mcp_tools(
             if not readonly:
                 args.append("--all-tools")
             args.append("stdio")
-            client = BasicMCPClient("python", args=args)
+            client = BasicMCPClient(sys.executable, args=args)
         else:
             client = BasicMCPClient(server_url)
 
