@@ -1,7 +1,7 @@
 """Test suite for the OCP Advisor get_info() tool."""
 
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import Mock
 
 import pytest
 
@@ -12,7 +12,7 @@ from .conftest import setup_ocp_advisor_mock
 
 @pytest.mark.asyncio
 async def test_get_info_calls_info_endpoint(
-    ocp_advisor_mock_client: AsyncMock,
+    ocp_advisor_mock_client: Mock,
     mock_info_response: dict[str, Any],
 ) -> None:
     """get_info calls the /info endpoint without authentication and returns its response."""
@@ -25,7 +25,7 @@ async def test_get_info_calls_info_endpoint(
 
 @pytest.mark.asyncio
 async def test_get_info_returns_plain_text_response(
-    ocp_advisor_mock_client: AsyncMock,
+    ocp_advisor_mock_client: Mock,
 ) -> None:
     """get_info returns plain-text responses unchanged."""
     plain_text_response = "ok"
