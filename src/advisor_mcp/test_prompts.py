@@ -21,7 +21,11 @@ PROMPTS = TestScenarioRegistry(
                     "does any of my systems are affected by the issue it describes?"
                 ),
                 required_tools=("advisor__get_rule_from_node_id",),
-                expected_tools=("advisor__get_hosts_hitting_a_rule", "advisor__get_active_rules"),
+                expected_tools=(
+                    "advisor__get_hosts_hitting_a_rule",
+                    "advisor__get_hosts_details_for_rule",
+                    "advisor__get_active_rules",
+                ),
             ),
         ),
         threshold=0,
