@@ -57,6 +57,7 @@ Tools marked as read-write **`(rw)`** are excluded by default. Use the `--all-to
 
 ## ocp-advisor
 - `get_info`: Get OCP Advisor backend health, deployed OCP rules version, and release metadata.
+- `list_clusters`: List clusters available to the authenticated user.
 
 ## rbac
 - `explain_access_denied`: Diagnose a 403 access denial for a specific MCP tool call.
