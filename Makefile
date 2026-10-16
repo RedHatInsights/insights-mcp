@@ -301,8 +301,8 @@ usage.md: $(ALL_PYTHON_FILES) Makefile
 toolsets.md: $(ALL_PYTHON_FILES) Makefile
 	uv run python -m insights_mcp --toolset-help > $@
 
-docs/architecture-structure.svg docs/architecture-deployment.svg docs/architecture-structure.png docs/architecture-deployment.png: HACKING.md scripts/generate_diagrams.py
-	uv run python scripts/generate_diagrams.py --format svg,png
+docs/architecture-structure.svg docs/architecture-deployment.svg: HACKING.md scripts/generate_diagrams.py
+	uv run python scripts/generate_diagrams.py --format svg
 
 .agents/skills/README.md: README.md generate-rbac-docs
 	cp README.md .agents/skills/README.md
