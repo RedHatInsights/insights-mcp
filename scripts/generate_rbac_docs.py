@@ -30,6 +30,7 @@ SKIP_TOOLSETS = frozenset({"rbac"})
 
 TOOLSET_LABELS = {
     "advisor": "Advisor tools",
+    "ocp-advisor": "OCP Advisor tools",
     "inventory": "Inventory tools",
     "vulnerability": "Vulnerability tools",
     "remediations": "Remediation tools",
@@ -41,6 +42,7 @@ TOOLSET_LABELS = {
 
 PREFERRED_ORDER = (
     "advisor",
+    "ocp-advisor",
     "inventory",
     "vulnerability",
     "remediations",

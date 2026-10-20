@@ -127,6 +127,28 @@ def test_build_access_denied_report_empty_when_held():
     assert "workspace scoping" in report["note"]
 
 
+def test_build_access_denied_report_ocp_advisor_list_clusters():
+    """403 on list_clusters names OCP Advisor administrator when the caller has no grants."""
+    entry = get_tool_entry("ocp-advisor__list_clusters")
+    assert entry is not None
+    report = build_access_denied_report(
+        AccessDeniedInput(
+            call=AccessDeniedCall(
+                failed_tool="ocp-advisor__list_clusters",
+                failed_url="https://console.redhat.com/api/insights-results-aggregator/v2/clusters",
+                http_status=403,
+                failed_method="GET",
+            ),
+            entry=entry,
+            access_payload={"data": []},
+            access_token=None,
+            role_catalog=_catalog(),
+        )
+    )
+    assert report["missing_roles"] == ["OCP Advisor administrator"]
+    assert report["do_not_infer_other_permissions"] is True
+
+
 def test_required_roles_for_advisor_get_active_rules():
     """lookup mapping for advisor rules uses RHEL Advisor viewer display_name."""
     entry = get_tool_entry("advisor__get_active_rules")

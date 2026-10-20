@@ -43,6 +43,7 @@ PROMPTS = TestScenarioRegistry(
                     "and risk levels."
                 ),
                 expected_tools=("ocp-advisor__list_clusters",),
+                forbidden_tools=("rbac__explain_access_denied",),
             ),
         ),
     ),

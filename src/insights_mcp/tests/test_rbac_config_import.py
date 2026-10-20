@@ -25,3 +25,12 @@ def test_import_platform_roles_from_fixture():
     names = {role.name for role in roles}
     assert "Inventory Hosts Viewer" in names
     assert "Vulnerability viewer" in names
+
+
+def test_default_prefixes_keep_ocp_advisor_administrator():
+    """Default MCP prefixes include ocp-advisor so the administrator role is kept."""
+    yaml_text = FIXTURE_PATH.read_text(encoding="utf-8")
+    roles = import_platform_roles(yaml_text=yaml_text)
+    by_name = {role.name: role for role in roles}
+    assert by_name["OCP Advisor administrator"].display_name == "OCP Advisor administrator"
+    assert by_name["OCP Advisor administrator"].permissions == frozenset({"ocp-advisor:*:*"})
