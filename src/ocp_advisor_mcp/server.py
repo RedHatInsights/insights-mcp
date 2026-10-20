@@ -7,6 +7,7 @@ Provides tools to get OpenShift Advisor information from Red Hat Insights.
 from typing import Any
 
 from insights_mcp.mcp import InsightsMCP
+from tools.common import run_insights_tool_request
 
 mcp = InsightsMCP(
     name="$container_brand_long OCP Advisor MCP Server",
@@ -44,3 +45,18 @@ async def get_info() -> dict[str, Any] | str:
     if isinstance(response, str):
         return response
     return response
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+async def list_clusters() -> str:
+    """List clusters available to the authenticated user.
+
+    🟢 CALL IMMEDIATELY - No information gathering required.
+
+    Uses the Insights Results Aggregator v2 ``/clusters`` endpoint, which returns clusters
+    visible to the authenticated account along with recommendation hit counts and risk summaries.
+    """
+    return await run_insights_tool_request(
+        mcp.insights_client.get("clusters"),
+        error_message=lambda exc: f"Error listing Insights Results Aggregator clusters: {exc}",
+    )

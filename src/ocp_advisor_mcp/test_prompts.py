@@ -35,4 +35,15 @@ PROMPTS = TestScenarioRegistry(
             ),
         ),
     ),
+    list_available_clusters=TestScenario(
+        turns=(
+            PromptWithTools(
+                prompt=(
+                    "List the OpenShift clusters visible to OCP Advisor and summarize their recommendation hit counts "
+                    "and risk levels."
+                ),
+                expected_tools=("ocp-advisor__list_clusters",),
+            ),
+        ),
+    ),
 )

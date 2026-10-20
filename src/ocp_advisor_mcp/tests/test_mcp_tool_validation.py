@@ -19,8 +19,13 @@ from tests.test_patterns import (
             "Get OCP Advisor backend health, deployed OCP rules version, and release metadata.",
             {},
         ),
+        (
+            "ocp-advisor__list_clusters",
+            "List clusters available to the authenticated user.",
+            {},
+        ),
     ],
-    ids=["ocp-advisor__get_info"],
+    ids=["ocp-advisor__get_info", "ocp-advisor__list_clusters"],
 )
 def test_mcp_tools_include_descriptions_and_annotations(
     mcp_tools,
@@ -33,13 +38,21 @@ def test_mcp_tools_include_descriptions_and_annotations(
     assert_mcp_tool_descriptions_and_annotations(mcp_tools, subtests, tool_name, expected_desc, params)
 
 
+@pytest.mark.parametrize(
+    "tool_name",
+    ["ocp-advisor__get_info", "ocp-advisor__list_clusters"],
+)
 @pytest.mark.parametrize("mcp_server_url", ["http", "sse"], indirect=True)
-def test_transport_types_with_get_info(mcp_tools, request):
-    """Test that http and sse transport types can start and expose get_info tool."""
-    assert_transport_types_expose_tool(mcp_tools, request, "ocp-advisor__get_info")
+def test_transport_types_with_ocp_advisor_tools(mcp_tools, request, tool_name: str):
+    """Test that http and sse transport types expose OCP Advisor tools."""
+    assert_transport_types_expose_tool(mcp_tools, request, tool_name)
 
 
+@pytest.mark.parametrize(
+    "tool_name",
+    ["ocp-advisor__get_info", "ocp-advisor__list_clusters"],
+)
 @pytest.mark.parametrize("mcp_server_url", ["stdio"], indirect=True)
-def test_stdio_transport_with_get_info(mcp_tools):
-    """Test stdio transport with get_info tool using BasicMCPClient subprocess."""
-    assert_stdio_transport_exposes_tool(mcp_tools, "ocp-advisor__get_info")
+def test_stdio_transport_with_ocp_advisor_tools(mcp_tools, tool_name: str):
+    """Test stdio transport exposes OCP Advisor tools using BasicMCPClient subprocess."""
+    assert_stdio_transport_exposes_tool(mcp_tools, tool_name)
