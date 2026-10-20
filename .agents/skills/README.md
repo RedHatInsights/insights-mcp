@@ -40,6 +40,7 @@ There are two ways to authenticate:
 Different toolsets require specific roles for your service account:
 
 - **Advisor tools**: `RHEL Advisor viewer`, `Inventory Hosts viewer`
+- **OCP Advisor tools**: `OCP Advisor administrator`
 - **Inventory tools**: `Inventory Hosts viewer`, `Workspace viewer`
 - **Vulnerability tools**: `Vulnerability viewer`, `Inventory Hosts viewer`
 - **Remediation tools**: `Remediations user`

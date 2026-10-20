@@ -62,6 +62,18 @@ objects:
             }
           ]
         }
+      ocp-advisor.json: |
+        {
+          "roles": [
+            {
+              "name": "OCP Advisor administrator",
+              "display_name": "OCP Advisor administrator",
+              "access": [
+                {"permission": "ocp-advisor:*:*"}
+              ]
+            }
+          ]
+        }
       rhel.json: |
         {
           "roles": [

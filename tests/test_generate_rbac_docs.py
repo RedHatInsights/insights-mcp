@@ -19,6 +19,7 @@ def test_generated_readme_block_uses_display_names():
     catalog = catalog_from_rbac_config_yaml(FIXTURE_PATH.read_text(encoding="utf-8"))
     toolsets = roles_by_toolset(catalog)
     assert toolsets["advisor"] == ["RHEL Advisor viewer", "Inventory Hosts viewer"]
+    assert toolsets["ocp-advisor"] == ["OCP Advisor administrator"]
     assert "Workspace viewer" in toolsets["inventory"]
     assert "Inventory Hosts viewer" in toolsets["inventory"]
     assert toolsets["vulnerability"] == ["Vulnerability viewer", "Inventory Hosts viewer"]

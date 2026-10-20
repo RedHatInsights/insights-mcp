@@ -77,6 +77,7 @@ needed based on the toolsets they plan to use:
 | Toolset | Required Roles |
 |---|---|
 | advisor | RHEL Advisor viewer, Inventory Hosts viewer |
+| ocp-advisor | OCP Advisor administrator |
 | inventory | Inventory Hosts viewer, Workspace viewer |
 | vulnerability | Vulnerability viewer, Inventory Hosts viewer |
 | remediations | Remediations user |

@@ -23,6 +23,7 @@ MCP_APPLICATION_PREFIXES: tuple[str, ...] = (
     "inventory",
     "vulnerability",
     "advisor",
+    "ocp-advisor",
     "config-manager",
     "content-sources",
     "roadmap",
