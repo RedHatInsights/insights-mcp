@@ -115,6 +115,7 @@ All toolsets load by default. To limit which ones are active, add
 |---|---|
 | **vulnerability** | CVE analysis, system-CVE mapping, explain why CVEs affect your systems |
 | **advisor** | Configuration issue recommendations (availability, stability, performance, security) |
+| **ocp-advisor** | OpenShift cluster health recommendations, backend metadata, and cluster listing |
 | **inventory** | Host discovery, workspaces, system profiles, tags, fleet overview |
 | **image-builder** | Create and manage custom RHEL image blueprints and composes |
 | **remediations** | Generate Ansible playbooks to fix CVEs on specific systems |
