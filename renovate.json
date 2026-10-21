@@ -30,6 +30,27 @@
             "datasourceTemplate": "github-release-attachments",
             "extractVersionTemplate": "^v(?<version>.*)$",
             "packageNameTemplate": "modelcontextprotocol/registry"
+        },
+        {
+            "customType": "regex",
+            "description": "Pin mermaid-cli container image used to render architecture diagrams",
+            "managerFilePatterns": [
+                "/^scripts\\/generate_diagrams\\.py$/"
+            ],
+            "matchStrings": [
+                "MERMAID_CLI_IMAGE\\s*=\\s*\"(?<depName>ghcr\\.io/[^\":]+):(?<currentValue>[^\"]+)\""
+            ],
+            "datasourceTemplate": "docker"
+        }
+    ],
+    "packageRules": [
+        {
+            "matchDatasources": ["docker"],
+            "matchPackageNames": ["ghcr.io/mermaid-js/mermaid-cli/mermaid-cli"],
+            "automerge": false,
+            "prBodyNotes": [
+                "As the mermaid container reference was updated, please regenerate docs with `make generate-docs` before merging. This needs to be done manually as we need signed commits."
+            ]
         }
     ]
 }
