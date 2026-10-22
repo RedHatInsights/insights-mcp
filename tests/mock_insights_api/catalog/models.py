@@ -39,6 +39,7 @@ class SystemProfile:
     cloud_provider: str
     installed_packages: tuple[str, ...]
     enabled_repository_ids: tuple[str, ...]
+    installed_app_streams: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,6 +112,60 @@ class AdvisorRule:
 
 
 @dataclass(frozen=True, slots=True)
+class RHELLifecycleRecord:
+    """A RHEL version and its lifecycle dates."""
+
+    major: int
+    minor: int | None
+    start_date: str
+    end_date: str
+    support_status: str
+    display_name: str
+    name: str = "RHEL"
+    end_date_e4s: str | None = None
+    end_date_els: str | None = None
+    end_date_eus: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ApplicationStreamRecord:
+    """An Application Stream lifecycle record."""
+
+    name: str
+    stream: str
+    display_name: str
+    application_stream_name: str
+    application_stream_type: str | None
+    start_date: str | None
+    end_date: str | None
+    impl: str
+    initial_product_version: str | None
+    support_status: str
+    os_major: int | None
+    os_minor: int | None
+    lifecycle: int | None = None
+    rolling: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class UpcomingChange:
+    """A roadmap change that can be matched to installed host data."""
+
+    name: str
+    change_type: str
+    packages: tuple[str, ...]
+    release: str
+    os_major: int
+    date: str
+    summary: str
+    training_ticket: str
+    date_added: str
+    last_modified: str
+    architecture: str | None = None
+    deployed_date: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class CatalogIndexes:
     """Immutable lookup tables derived from catalog relationships."""
 
@@ -179,6 +234,9 @@ class MockCatalog:
     advisor_rules: tuple[AdvisorRule, ...]
     reference_time: datetime
     rbac_username: str
+    rhel_lifecycle: tuple[RHELLifecycleRecord, ...] = ()
+    application_streams: tuple[ApplicationStreamRecord, ...] = ()
+    upcoming_changes: tuple[UpcomingChange, ...] = ()
     _indexes: CatalogIndexes = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:

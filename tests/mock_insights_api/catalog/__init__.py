@@ -6,18 +6,22 @@ from tests.mock_insights_api.catalog.errors import CatalogValidationError
 from tests.mock_insights_api.catalog.models import (
     CVE,
     AdvisorRule,
+    ApplicationStreamRecord,
     CatalogIndexes,
     Host,
     MockCatalog,
     RepositoryReference,
+    RHELLifecycleRecord,
     SystemProfile,
     Tag,
+    UpcomingChange,
     Workspace,
 )
 from tests.mock_insights_api.catalog.validation import validate_catalog
 
 __all__ = [
     "CVE",
+    "ApplicationStreamRecord",
     "CatalogIndexes",
     "CatalogValidationError",
     "DEFAULT_CATALOG",
@@ -26,8 +30,10 @@ __all__ = [
     "Host",
     "MockCatalog",
     "RepositoryReference",
+    "RHELLifecycleRecord",
     "SystemProfile",
     "Tag",
+    "UpcomingChange",
     "Workspace",
     "build_llm_api_context",
     "validate_catalog",
