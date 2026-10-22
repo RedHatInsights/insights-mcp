@@ -14,6 +14,7 @@ from tests.mock_insights_api.types import (
     MockResponse,
     MockRoute,
     QueryMatcher,
+    ResponseFactory,
 )
 
 __all__ = [
@@ -26,5 +27,6 @@ __all__ = [
     "MockResponse",
     "MockRoute",
     "QueryMatcher",
+    "ResponseFactory",
     "UnknownRouteError",
 ]
