@@ -107,6 +107,7 @@ class AdvisorRule:
     playbook_available: bool
     affected_host_ids: tuple[str, ...]
     cve_ids: tuple[str, ...] = ()
+    node_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

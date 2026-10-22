@@ -47,7 +47,7 @@ class _MockRequestHandler(BaseHTTPRequestHandler):
 
         if response.error is not None:
             status = response.status if response.status >= 400 else 500
-            self._send_response(MockResponse(body=str(response.error), status=status))
+            self._send_response(MockResponse(body=str(response.error), status=status, headers=response.headers))
             return
 
         self._send_response(response)
@@ -71,8 +71,11 @@ class _MockRequestHandler(BaseHTTPRequestHandler):
 
     def _send_response(self, response: MockResponse) -> None:
         body = self._serialize_body(response.body)
+        headers = dict(response.headers)
+        headers["Content-Length"] = str(len(body))
         self.send_response(response.status)
-        self.send_header("Content-Length", str(len(body)))
+        for key, value in headers.items():
+            self.send_header(key, value)
         self.end_headers()
         self.wfile.write(body)
 

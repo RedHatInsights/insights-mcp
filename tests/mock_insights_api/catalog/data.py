@@ -27,6 +27,7 @@ CVE_PYTHON = "CVE-2024-34567"
 RULE_KERNEL = "kernel_security|KERNEL_SECURITY_UPDATE"
 RULE_THP = "thp_disabled|DISABLE_THP"
 RULE_OPENSSL = "openssl_outdated|OPENSSL_OUTDATED"
+RULE_LIBDB = "libdb_deprecated|LIBDB_DEPRECATED_WARN"
 
 
 DEFAULT_CATALOG = MockCatalog(
@@ -228,7 +229,7 @@ DEFAULT_CATALOG = MockCatalog(
         AdvisorRule(
             id=RULE_KERNEL,
             description="Update the kernel package to address a critical security issue.",
-            impact=3,
+            impact=4,
             category="Security",
             reboot_required=True,
             playbook_available=True,
@@ -253,6 +254,16 @@ DEFAULT_CATALOG = MockCatalog(
             playbook_available=True,
             affected_host_ids=(HOST_PRODUCTION_DB, HOST_PRODUCTION_WEB),
             cve_ids=(CVE_OPENSSL,),
+        ),
+        AdvisorRule(
+            id=RULE_LIBDB,
+            description="The Berkeley Database is deprecated in Red Hat Enterprise Linux 9.",
+            impact=2,
+            category="Availability",
+            reboot_required=False,
+            playbook_available=False,
+            affected_host_ids=(),
+            node_id="6464541",
         ),
     ),
     reference_time=FIXTURE_NOW,
