@@ -7,6 +7,9 @@ from tests.mock_insights_api.catalog.models import (
     AdvisorRule,
     ApplicationStreamRecord,
     Host,
+    ImageBlueprint,
+    ImageCompose,
+    ImageDistribution,
     MockCatalog,
     RepositoryReference,
     RHELLifecycleRecord,
@@ -378,6 +381,128 @@ UPCOMING_CHANGES = (
 )
 
 
+def _fixture_timestamp(hours_from_now: int) -> str:
+    return (FIXTURE_NOW + timedelta(hours=hours_from_now)).isoformat().replace("+00:00", "Z")
+
+
+def _image_request(architecture: str, image_type: str = "guest-image") -> dict[str, object]:
+    return {
+        "architecture": architecture,
+        "image_type": image_type,
+        "upload_request": {"type": "aws", "options": {}},
+    }
+
+
+def _image_compose(
+    compose_id: str,
+    blueprint: ImageBlueprint,
+    image_name: str,
+    status: str,
+    hours_ago: int,
+) -> ImageCompose:
+    request = {
+        "distribution": blueprint.distribution,
+        "image_name": image_name,
+        "image_requests": list(blueprint.image_requests),
+        "customizations": dict(blueprint.customizations),
+    }
+    image_status: dict[str, object] = {"status": status}
+    if status == "success":
+        image_status["upload_status"] = {
+            "status": "success",
+            "type": "aws",
+            "options": {"image_name": image_name, "url": f"https://example.com/images/{compose_id}.qcow2"},
+        }
+    return ImageCompose(
+        id=compose_id,
+        blueprint_id=blueprint.id,
+        image_name=image_name,
+        created_at=_fixture_timestamp(-hours_ago),
+        request=request,
+        image_status=image_status,
+    )
+
+
+IMAGE_BLUEPRINTS = (
+    ImageBlueprint(
+        id="55555555-5555-4555-8555-555555555555",
+        name="rhel-9-web",
+        description="Synthetic rhel-9 image blueprint for rhel-9-web.",
+        distribution="rhel-9",
+        version=1,
+        last_modified_at=_fixture_timestamp(-1),
+        image_requests=(_image_request("x86_64"),),
+        customizations={"packages": ["httpd", "python3"]},
+        lint={"errors": [], "warnings": []},
+    ),
+    ImageBlueprint(
+        id="66666666-6666-4666-8666-666666666666",
+        name="rhel-9-database",
+        description="Synthetic rhel-9 image blueprint for rhel-9-database.",
+        distribution="rhel-9",
+        version=1,
+        last_modified_at=_fixture_timestamp(-4),
+        image_requests=(_image_request("x86_64"),),
+        customizations={"packages": ["postgresql-server"]},
+        lint={"errors": [], "warnings": []},
+    ),
+    ImageBlueprint(
+        id="77777777-7777-4777-8777-777777777777",
+        name="rhel-10-minimal",
+        description="Synthetic rhel-10 image blueprint for rhel-10-minimal.",
+        distribution="rhel-10",
+        version=1,
+        last_modified_at=_fixture_timestamp(-8),
+        image_requests=(_image_request("aarch64"),),
+        customizations={"packages": []},
+        lint={"errors": [], "warnings": []},
+    ),
+    ImageBlueprint(
+        id="88888888-8888-4888-8888-888888888888",
+        name="rhel-8-legacy",
+        description="Synthetic rhel-8 image blueprint for rhel-8-legacy.",
+        distribution="rhel-8",
+        version=1,
+        last_modified_at=_fixture_timestamp(-12),
+        image_requests=(_image_request("x86_64"),),
+        customizations={"packages": ["python39"]},
+        lint={"errors": [], "warnings": []},
+    ),
+)
+
+
+IMAGE_COMPOSES = (
+    _image_compose(
+        "99999999-9999-4999-8999-999999999999",
+        IMAGE_BLUEPRINTS[0],
+        "rhel-9-web-latest",
+        "success",
+        1,
+    ),
+    _image_compose(
+        "aaaa1111-aaaa-4aaa-8aaa-aaaaaaaa1111",
+        IMAGE_BLUEPRINTS[2],
+        "rhel-10-minimal-current",
+        "building",
+        3,
+    ),
+    _image_compose(
+        "bbbb1111-bbbb-4bbb-8bbb-bbbbbbbb1111",
+        IMAGE_BLUEPRINTS[1],
+        "rhel-9-database-failed",
+        "failure",
+        24,
+    ),
+)
+
+
+IMAGE_DISTRIBUTIONS = (
+    ImageDistribution("rhel-8", "Red Hat Enterprise Linux 8"),
+    ImageDistribution("rhel-9", "Red Hat Enterprise Linux 9"),
+    ImageDistribution("rhel-10", "Red Hat Enterprise Linux 10"),
+)
+
+
 DEFAULT_CATALOG = MockCatalog(
     hosts=(
         Host(
@@ -623,4 +748,7 @@ DEFAULT_CATALOG = MockCatalog(
     rhel_lifecycle=RHEL_LIFECYCLE,
     application_streams=APPLICATION_STREAMS,
     upcoming_changes=UPCOMING_CHANGES,
+    image_blueprints=IMAGE_BLUEPRINTS,
+    image_composes=IMAGE_COMPOSES,
+    image_distributions=IMAGE_DISTRIBUTIONS,
 )

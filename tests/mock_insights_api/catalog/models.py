@@ -9,7 +9,7 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from types import MappingProxyType
-from typing import TypeVar
+from typing import Any, TypeVar
 
 _Entity = TypeVar("_Entity")
 
@@ -109,6 +109,41 @@ class AdvisorRule:
     affected_host_ids: tuple[str, ...]
     cve_ids: tuple[str, ...] = ()
     node_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ImageBlueprint:
+    """An Image Builder blueprint and its latest version."""
+
+    id: str
+    name: str
+    description: str
+    distribution: str
+    version: int
+    last_modified_at: str
+    image_requests: tuple[Mapping[str, Any], ...]
+    customizations: Mapping[str, Any]
+    lint: Mapping[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class ImageCompose:
+    """An Image Builder compose and its status."""
+
+    id: str
+    blueprint_id: str
+    image_name: str
+    created_at: str
+    request: Mapping[str, Any]
+    image_status: Mapping[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class ImageDistribution:
+    """An Image Builder distribution available to the test account."""
+
+    name: str
+    description: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -237,6 +272,9 @@ class MockCatalog:
     rhel_lifecycle: tuple[RHELLifecycleRecord, ...] = ()
     application_streams: tuple[ApplicationStreamRecord, ...] = ()
     upcoming_changes: tuple[UpcomingChange, ...] = ()
+    image_blueprints: tuple[ImageBlueprint, ...] = ()
+    image_composes: tuple[ImageCompose, ...] = ()
+    image_distributions: tuple[ImageDistribution, ...] = ()
     _indexes: CatalogIndexes = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
