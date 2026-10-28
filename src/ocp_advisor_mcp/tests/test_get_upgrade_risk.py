@@ -1,4 +1,4 @@
-"""Test suite for the OCP Advisor get_upgrade_risk_prediction() tool."""
+"""Test suite for the OCP Advisor get_upgrade_risk() tool."""
 
 import json
 from http import HTTPMethod
@@ -8,7 +8,7 @@ from unittest.mock import Mock
 import pytest
 
 from insights_mcp.errors import InsightsApiError
-from ocp_advisor_mcp.server import get_upgrade_risk_prediction
+from ocp_advisor_mcp.server import get_upgrade_risk
 
 CLUSTER_ID = "11111111-2222-3333-4444-555555555555"
 ENDPOINT = f"cluster/{CLUSTER_ID}/upgrade-risks-prediction"
@@ -61,7 +61,7 @@ def fixture_no_risk_response() -> dict[str, Any]:
 
 
 @pytest.mark.asyncio
-async def test_get_upgrade_risk_prediction_returns_risk_findings(
+async def test_get_upgrade_risk_returns_risk_findings(
     ocp_advisor_mock_client: Mock,
     upgrade_risk_response: dict[str, Any],
 ) -> None:
@@ -72,7 +72,7 @@ async def test_get_upgrade_risk_prediction_returns_risk_findings(
         response_body=upgrade_risk_response,
     )
 
-    result = await get_upgrade_risk_prediction(CLUSTER_ID)
+    result = await get_upgrade_risk(CLUSTER_ID)
 
     ocp_advisor_mock_client.get.assert_called_once_with(ENDPOINT)
     payload = json.loads(result)
@@ -83,7 +83,7 @@ async def test_get_upgrade_risk_prediction_returns_risk_findings(
 
 
 @pytest.mark.asyncio
-async def test_get_upgrade_risk_prediction_returns_explicit_no_risk(
+async def test_get_upgrade_risk_returns_explicit_no_risk(
     ocp_advisor_mock_client: Mock,
     no_risk_response: dict[str, Any],
 ) -> None:
@@ -94,7 +94,7 @@ async def test_get_upgrade_risk_prediction_returns_explicit_no_risk(
         response_body=no_risk_response,
     )
 
-    result = await get_upgrade_risk_prediction(CLUSTER_ID)
+    result = await get_upgrade_risk(CLUSTER_ID)
 
     payload = json.loads(result)
     assert payload["prediction_available"] is True
@@ -103,7 +103,7 @@ async def test_get_upgrade_risk_prediction_returns_explicit_no_risk(
 
 
 @pytest.mark.asyncio
-async def test_get_upgrade_risk_prediction_maps_managed_cluster_empty_body(
+async def test_get_upgrade_risk_maps_managed_cluster_empty_body(
     ocp_advisor_mock_client: Mock,
 ) -> None:
     """HTTP 204 / empty body is reported as unavailable (managed cluster), not as no risk."""
@@ -113,7 +113,7 @@ async def test_get_upgrade_risk_prediction_maps_managed_cluster_empty_body(
         response_body="",
     )
 
-    result = await get_upgrade_risk_prediction(CLUSTER_ID)
+    result = await get_upgrade_risk(CLUSTER_ID)
 
     payload = json.loads(result)
     assert payload == {
@@ -132,7 +132,7 @@ async def test_get_upgrade_risk_prediction_maps_managed_cluster_empty_body(
         (503, "upgrade risks service unavailable"),
     ],
 )
-async def test_get_upgrade_risk_prediction_surfaces_upstream_errors(
+async def test_get_upgrade_risk_surfaces_upstream_errors(
     ocp_advisor_mock_client: Mock,
     status: int,
     content: str,
@@ -145,11 +145,11 @@ async def test_get_upgrade_risk_prediction_surfaces_upstream_errors(
     )
 
     with pytest.raises(InsightsApiError, match=str(status)):
-        await get_upgrade_risk_prediction(CLUSTER_ID)
+        await get_upgrade_risk(CLUSTER_ID)
 
 
 @pytest.mark.asyncio
-async def test_get_upgrade_risk_prediction_maps_request_errors(
+async def test_get_upgrade_risk_maps_request_errors(
     ocp_advisor_mock_client: Mock,
 ) -> None:
     """Transport failures are wrapped with an OCP Advisor specific error message."""
@@ -159,15 +159,15 @@ async def test_get_upgrade_risk_prediction_maps_request_errors(
         InsightsApiError,
         match=f"Error retrieving upgrade-risk prediction for cluster {CLUSTER_ID}",
     ):
-        await get_upgrade_risk_prediction(CLUSTER_ID)
+        await get_upgrade_risk(CLUSTER_ID)
 
 
 @pytest.mark.asyncio
-async def test_get_upgrade_risk_prediction_rejects_empty_cluster_id(
+async def test_get_upgrade_risk_rejects_empty_cluster_id(
     ocp_advisor_mock_client: Mock,
 ) -> None:
     """Empty cluster_id is rejected before calling the API."""
     with pytest.raises(InsightsApiError, match="non-empty cluster UUID"):
-        await get_upgrade_risk_prediction("   ")
+        await get_upgrade_risk("   ")
 
     ocp_advisor_mock_client.get.assert_not_called()

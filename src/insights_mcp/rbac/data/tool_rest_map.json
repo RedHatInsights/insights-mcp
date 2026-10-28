@@ -426,6 +426,20 @@
         "kessel_note": "The /clusters endpoint returns a list of clusters available for the authenticated user. It requires the user to be authenticated."
       }
     ],
+    "ocp-advisor__get_upgrade_risk": [
+      {
+        "method": "GET",
+        "api_path": "api/insights-results-aggregator/v2",
+        "path_template": "/cluster/{clusterId}/upgrade-risks-prediction",
+        "application": "ocp-advisor",
+        "required_v1_permissions": [
+          [
+            "ocp-advisor:recommendation-results:read"
+          ]
+        ],
+        "kessel_note": "The /cluster/{clusterId}/upgrade-risks-prediction endpoint returns upgrade-risk predictors for one cluster. Managed clusters may return HTTP 204."
+      }
+    ],
     "planning__get_upcoming_changes": [
       {
         "method": "GET",

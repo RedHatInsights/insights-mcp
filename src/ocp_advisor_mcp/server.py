@@ -30,7 +30,7 @@ mcp = InsightsMCP(
     health/status, build times, versions, commit hashes, utility version, database versions, and deployed OCP rules
     version. Use them for release verification, deployed ccx-ocp-rules checks, and backend health diagnostics.
 
-    Use list_clusters to discover cluster IDs, then get_upgrade_risk_prediction for a single cluster's
+    Use list_clusters to discover cluster IDs, then get_upgrade_risk for a single cluster's
     upgrade-risk assessment. A missing or unavailable prediction is not the same as an explicit no-risk result;
     do not infer upgrade safety from missing data.
 
@@ -103,13 +103,12 @@ async def list_clusters() -> str:
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
-async def get_upgrade_risk_prediction(
+async def get_upgrade_risk(
     cluster_id: Annotated[
         str,
         Field(
             description=(
-                "OpenShift cluster UUID. Take it from list_clusters or from the user. "
-                "Call this for one cluster only."
+                "OpenShift cluster UUID. Take it from list_clusters or from the user. Call this for one cluster only."
             ),
         ),
     ],
@@ -135,8 +134,6 @@ async def get_upgrade_risk_prediction(
     endpoint = f"cluster/{normalized}/upgrade-risks-prediction"
     return await run_insights_tool_request(
         mcp.insights_client.get(endpoint),
-        error_message=lambda exc: (
-            f"Error retrieving upgrade-risk prediction for cluster {normalized}: {exc}"
-        ),
+        error_message=lambda exc: f"Error retrieving upgrade-risk prediction for cluster {normalized}: {exc}",
         response_transform=lambda response: _normalize_upgrade_risk_response(normalized, response),
     )
