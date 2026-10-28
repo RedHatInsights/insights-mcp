@@ -47,4 +47,16 @@ PROMPTS = TestScenarioRegistry(
             ),
         ),
     ),
+    upgrade_risk_for_cluster=TestScenario(
+        turns=(
+            PromptWithTools(
+                prompt=(
+                    "For cluster 11111111-2222-3333-4444-555555555555, get the upgrade-risk prediction and "
+                    "explain any alerts or operator conditions that would block an upgrade."
+                ),
+                expected_tools=("ocp-advisor__get_upgrade_risk_prediction",),
+                forbidden_tools=("rbac__explain_access_denied",),
+            ),
+        ),
+    ),
 )

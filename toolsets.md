@@ -57,6 +57,7 @@ Tools marked as read-write **`(rw)`** are excluded by default. Use the `--all-to
 
 ## ocp-advisor
 - `get_info`: Get OCP Advisor backend health, deployed OCP rules version, and release metadata.
+- `get_upgrade_risk_prediction`: Get upgrade-risk prediction for one OpenShift cluster.
 - `list_clusters`: List clusters available to the authenticated user.
 
 ## rbac
