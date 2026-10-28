@@ -29,7 +29,10 @@ from tests.test_patterns import (
             "Get upgrade-risk prediction for one OpenShift cluster.",
             {
                 "cluster_id": {
-                    "description": "OpenShift cluster UUID. Take it from list_clusters or from the user. Call this for one cluster only.",
+                    "description": (
+                        "OpenShift cluster UUID. Take it from list_clusters or from the user. "
+                        "Call this for one cluster only."
+                    ),
                     "type": "string",
                     "anyOf": None,
                 },
