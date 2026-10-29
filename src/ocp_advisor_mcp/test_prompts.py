@@ -52,7 +52,7 @@ PROMPTS = TestScenarioRegistry(
             PromptWithTools(
                 prompt=(
                     "For clusters 11111111-2222-3333-4444-555555555555 and "
-                    "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee, get the upgrade-risk predictions and "
+                    "22222222-3333-4444-5555-666666666666, get the upgrade-risk predictions and "
                     "explain any alerts or operator conditions that would block an upgrade."
                 ),
                 expected_tools=("ocp-advisor__get_upgrade_risk",),
