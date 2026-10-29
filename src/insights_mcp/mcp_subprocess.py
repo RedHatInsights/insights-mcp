@@ -77,6 +77,14 @@ def _resolve_container_brand(container_brand: str | None) -> str:
 
 
 @dataclass(frozen=True)
+class ServerEnvironment:
+    """Environment values that must be passed explicitly to the MCP child."""
+
+    container_brand: str | None = None
+    insights_base_url: str | None = None
+
+
+@dataclass(frozen=True)
 class _ServerWorkerConfig:
     """Arguments for :func:`_server_worker` (pickled for multiprocessing)."""
 
@@ -85,6 +93,7 @@ class _ServerWorkerConfig:
     toolset: str | None
     readonly: bool
     container_brand: str
+    insights_base_url: str | None
 
 
 def _server_worker(config: _ServerWorkerConfig, server_queue: multiprocessing.Queue) -> None:
@@ -96,6 +105,8 @@ def _server_worker(config: _ServerWorkerConfig, server_queue: multiprocessing.Qu
     """
     try:
         os.environ["CONTAINER_BRAND"] = config.container_brand
+        if config.insights_base_url is not None:
+            os.environ["INSIGHTS_BASE_URL"] = config.insights_base_url
 
         original_argv = sys.argv.copy()
         try:
@@ -162,16 +173,23 @@ def start_insights_mcp_server(
     timeout: int = 30,
     toolset: str | None = None,
     readonly: bool = False,
-    container_brand: str | None = None,
+    server_environment: ServerEnvironment | None = None,
 ) -> tuple[str, multiprocessing.Process]:
-    """Start the Insights MCP server and return its URL and process handle."""
+    """Start the Insights MCP server and return its URL and process handle.
+
+    Values in ``server_environment`` are passed explicitly to the child
+    process so test servers can use a per-session local API regardless of
+    multiprocessing start-method environment inheritance.
+    """
+    environment = server_environment or ServerEnvironment()
     server_url, port = get_server_url_and_port(transport)
     worker_config = _ServerWorkerConfig(
         transport=transport,
         port=port,
         toolset=toolset,
         readonly=readonly,
-        container_brand=_resolve_container_brand(container_brand),
+        container_brand=_resolve_container_brand(environment.container_brand),
+        insights_base_url=environment.insights_base_url,
     )
 
     server_queue: multiprocessing.Queue = multiprocessing.Queue()

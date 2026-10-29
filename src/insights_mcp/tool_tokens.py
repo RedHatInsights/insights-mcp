@@ -13,7 +13,7 @@ import tiktoken
 from llama_index.core.tools import BaseTool
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 
-from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
+from insights_mcp.mcp_subprocess import ServerEnvironment, cleanup_server_process, start_insights_mcp_server
 from insights_mcp.server import MCPS
 
 logger = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ def fetch_mcp_tools(
         transport,
         toolset=toolset,
         readonly=readonly,
-        container_brand=container_brand,
+        server_environment=ServerEnvironment(container_brand=container_brand),
     )
 
     try:
