@@ -53,6 +53,16 @@ def test_rejects_unknown_profile_repository() -> None:
     _assert_invalid(catalog, "Unknown repository reference")
 
 
+def test_rejects_unknown_content_source_repository() -> None:
+    repository = replace(DEFAULT_CATALOG.content_source_repositories[0], repository_reference_id="missing-repository")
+    catalog = replace(
+        DEFAULT_CATALOG,
+        content_source_repositories=(repository, *DEFAULT_CATALOG.content_source_repositories[1:]),
+    )
+
+    _assert_invalid(catalog, "Unknown repository reference")
+
+
 def test_rejects_unknown_workspace_host() -> None:
     workspace = replace(DEFAULT_CATALOG.workspaces[0], host_ids=("missing-host",))
     catalog = replace(DEFAULT_CATALOG, workspaces=(workspace, *DEFAULT_CATALOG.workspaces[1:]))
@@ -113,3 +123,10 @@ def test_rejects_nonreciprocal_advisor_cve_reference() -> None:
     catalog = replace(DEFAULT_CATALOG, cves=(cve, *DEFAULT_CATALOG.cves[1:]))
 
     _assert_invalid(catalog, "are not reciprocal")
+
+
+def test_rejects_unknown_ocp_advisor_cluster() -> None:
+    rule = replace(DEFAULT_CATALOG.ocp_advisor_rules[0], affected_cluster_ids=("missing-cluster",))
+    catalog = replace(DEFAULT_CATALOG, ocp_advisor_rules=(rule, *DEFAULT_CATALOG.ocp_advisor_rules[1:]))
+
+    _assert_invalid(catalog, "Unknown OCP Advisor cluster reference")

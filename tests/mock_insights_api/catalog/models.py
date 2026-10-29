@@ -80,6 +80,95 @@ class RepositoryReference:
 
 
 @dataclass(frozen=True, slots=True)
+class ContentSourceRepository:
+    """A Content Sources repository and its introspection details."""
+
+    id: str
+    name: str
+    label: str
+    url: str
+    origin: str
+    content_type: str
+    distribution_versions: tuple[str, ...]
+    distribution_arch: str
+    package_count: int
+    build_count: int
+    version_count: int
+    status: str
+    enabled: bool
+    gpg_key: str
+    last_introspection_time: str | None
+    last_success_introspection_time: str | None
+    last_update_introspection_time: str | None
+    last_introspection_error: str | None
+    metadata_verification: bool
+    snapshots: tuple[Mapping[str, Any], ...] = ()
+    repository_reference_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ActivationKey:
+    """An RHSM activation key available to the test account."""
+
+    id: str
+    name: str
+    description: str
+    service_level: str
+    role: str
+    usage: str
+    release_version: str
+    subscriptions: tuple[Mapping[str, Any], ...]
+    additional_repositories: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class OCPAdvisorCluster:
+    """An OpenShift cluster summary returned by OCP Advisor."""
+
+    cluster_id: str
+    cluster_name: str
+    total_hits: int
+    hits_by_total_risk: Mapping[str, int]
+    managed: bool
+    cluster_version: str
+    last_checked_at: str
+    upgrade_recommended: bool = True
+    upgrade_risks_predictors: Mapping[str, Any] = field(
+        default_factory=lambda: {"alerts": [], "operator_conditions": []}
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class OCPAdvisorRule:
+    """An OCP Advisor rule and the clusters it affects."""
+
+    id: str
+    description: str
+    generic: str
+    reason: str
+    resolution: str
+    more_info: str
+    total_risk: int
+    impact: int
+    likelihood: int
+    resolution_risk: int
+    publish_date: str
+    tags: tuple[str, ...]
+    affected_cluster_ids: tuple[str, ...]
+    groups: tuple[Mapping[str, Any], ...] = ()
+    disabled: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class RBACRole:
+    """A console role and the v1 permissions it grants."""
+
+    name: str
+    display_name: str
+    permissions: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class CVE:
     """A vulnerability and the hosts affected by it."""
 
@@ -209,6 +298,7 @@ class CatalogIndexes:
     repositories_by_id: Mapping[str, RepositoryReference]
     cves_by_id: Mapping[str, CVE]
     rules_by_id: Mapping[str, AdvisorRule]
+    ocp_advisor_clusters_by_id: Mapping[str, OCPAdvisorCluster]
     workspaces_by_host_id: Mapping[str, tuple[Workspace, ...]]
     tags_by_host_id: Mapping[str, tuple[Tag, ...]]
     cves_by_host_id: Mapping[str, tuple[CVE, ...]]
@@ -239,6 +329,7 @@ def build_catalog_indexes(catalog: MockCatalog) -> CatalogIndexes:  # pylint: di
     repositories_by_id = _build_index(catalog.repositories, lambda repository: repository.id)
     cves_by_id = _build_index(catalog.cves, lambda cve: cve.id)
     rules_by_id = _build_index(catalog.advisor_rules, lambda rule: rule.id)
+    ocp_advisor_clusters_by_id = _build_index(catalog.ocp_advisor_clusters, lambda cluster: cluster.cluster_id)
     profiles_by_host_id = _build_index(catalog.system_profiles, lambda profile: profile.host_id)
 
     host_ids = hosts_by_id.keys()
@@ -248,6 +339,7 @@ def build_catalog_indexes(catalog: MockCatalog) -> CatalogIndexes:  # pylint: di
         repositories_by_id=repositories_by_id,
         cves_by_id=cves_by_id,
         rules_by_id=rules_by_id,
+        ocp_advisor_clusters_by_id=ocp_advisor_clusters_by_id,
         workspaces_by_host_id=_group_by_host(catalog.workspaces, lambda workspace: workspace.host_ids, host_ids),
         tags_by_host_id=_group_by_host(catalog.tags, lambda tag: tag.host_ids, host_ids),
         cves_by_host_id=_group_by_host(catalog.cves, lambda cve: cve.affected_host_ids, host_ids),
@@ -275,6 +367,12 @@ class MockCatalog:
     image_blueprints: tuple[ImageBlueprint, ...] = ()
     image_composes: tuple[ImageCompose, ...] = ()
     image_distributions: tuple[ImageDistribution, ...] = ()
+    content_source_repositories: tuple[ContentSourceRepository, ...] = ()
+    activation_keys: tuple[ActivationKey, ...] = ()
+    ocp_advisor_info: Mapping[str, Any] = field(default_factory=dict)
+    ocp_advisor_clusters: tuple[OCPAdvisorCluster, ...] = ()
+    ocp_advisor_rules: tuple[OCPAdvisorRule, ...] = ()
+    rbac_roles: tuple[RBACRole, ...] = ()
     _indexes: CatalogIndexes = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
@@ -325,3 +423,7 @@ class MockCatalog:
         return tuple(
             self._indexes.repositories_by_id[repository_id] for repository_id in profile.enabled_repository_ids
         )
+
+    def ocp_advisor_cluster(self, cluster_id: str) -> OCPAdvisorCluster:
+        """Return an OCP Advisor cluster by ID."""
+        return self._indexes.ocp_advisor_clusters_by_id[cluster_id]
