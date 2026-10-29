@@ -428,16 +428,16 @@
     ],
     "ocp-advisor__get_upgrade_risk": [
       {
-        "method": "GET",
+        "method": "POST",
         "api_path": "api/insights-results-aggregator/v2",
-        "path_template": "/cluster/{clusterId}/upgrade-risks-prediction",
+        "path_template": "/upgrade-risks-prediction",
         "application": "ocp-advisor",
         "required_v1_permissions": [
           [
             "ocp-advisor:recommendation-results:read"
           ]
         ],
-        "kessel_note": "The /cluster/{clusterId}/upgrade-risks-prediction endpoint returns upgrade-risk predictors for one cluster. Managed clusters may return HTTP 204."
+        "kessel_note": "The /upgrade-risks-prediction endpoint returns upgrade-risk predictors for one or more clusters. Each prediction includes prediction_status; non-ok statuses mean unavailable data, not an explicit no-risk result."
       }
     ],
     "planning__get_upcoming_changes": [

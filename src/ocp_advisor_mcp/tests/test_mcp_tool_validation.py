@@ -26,14 +26,14 @@ from tests.test_patterns import (
         ),
         (
             "ocp-advisor__get_upgrade_risk",
-            "Get upgrade-risk prediction for one OpenShift cluster.",
+            "Get upgrade-risk predictions for one or more OpenShift clusters.",
             {
-                "cluster_id": {
+                "cluster_ids": {
                     "description": (
-                        "OpenShift cluster UUID. Take it from list_clusters or from the user. "
-                        "Call this for one cluster only."
+                        "OpenShift cluster UUIDs (1-100). Take them from list_clusters or from the user. "
+                        "Pass a one-element list for a single cluster."
                     ),
-                    "type": "string",
+                    "type": "array",
                     "anyOf": None,
                 },
             },
