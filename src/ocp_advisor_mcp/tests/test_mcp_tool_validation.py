@@ -24,8 +24,26 @@ from tests.test_patterns import (
             "List clusters available to the authenticated user.",
             {},
         ),
+        (
+            "ocp-advisor__get_upgrade_risk",
+            "Get upgrade-risk predictions for one or more OpenShift clusters.",
+            {
+                "cluster_ids": {
+                    "description": (
+                        "OpenShift cluster UUIDs (1-100). Take them from list_clusters or from the user. "
+                        "Pass a one-element list for a single cluster."
+                    ),
+                    "type": "array",
+                    "anyOf": None,
+                },
+            },
+        ),
     ],
-    ids=["ocp-advisor__get_info", "ocp-advisor__list_clusters"],
+    ids=[
+        "ocp-advisor__get_info",
+        "ocp-advisor__list_clusters",
+        "ocp-advisor__get_upgrade_risk",
+    ],
 )
 def test_mcp_tools_include_descriptions_and_annotations(
     mcp_tools,
@@ -40,7 +58,11 @@ def test_mcp_tools_include_descriptions_and_annotations(
 
 @pytest.mark.parametrize(
     "tool_name",
-    ["ocp-advisor__get_info", "ocp-advisor__list_clusters"],
+    [
+        "ocp-advisor__get_info",
+        "ocp-advisor__list_clusters",
+        "ocp-advisor__get_upgrade_risk",
+    ],
 )
 @pytest.mark.parametrize("mcp_server_url", ["http", "sse"], indirect=True)
 def test_transport_types_with_ocp_advisor_tools(mcp_tools, request, tool_name: str):
@@ -50,7 +72,11 @@ def test_transport_types_with_ocp_advisor_tools(mcp_tools, request, tool_name: s
 
 @pytest.mark.parametrize(
     "tool_name",
-    ["ocp-advisor__get_info", "ocp-advisor__list_clusters"],
+    [
+        "ocp-advisor__get_info",
+        "ocp-advisor__list_clusters",
+        "ocp-advisor__get_upgrade_risk",
+    ],
 )
 @pytest.mark.parametrize("mcp_server_url", ["stdio"], indirect=True)
 def test_stdio_transport_with_ocp_advisor_tools(mcp_tools, tool_name: str):

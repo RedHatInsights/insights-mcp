@@ -149,6 +149,9 @@ spec:
       name: ocp-advisor__get_info
       description: "Get OCP Advisor backend health, deployed OCP rules version, and release metadata."
     - type: tool
+      name: ocp-advisor__get_upgrade_risk
+      description: "Get upgrade-risk predictions for one or more OpenShift clusters."
+    - type: tool
       name: ocp-advisor__list_clusters
       description: "List clusters available to the authenticated user."
     # planning
