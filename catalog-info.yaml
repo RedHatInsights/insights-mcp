@@ -146,8 +146,17 @@ spec:
       description: "Show, list, or display fleet inventory in an interactive dashboard."
     # ocp-advisor
     - type: tool
+      name: ocp-advisor__get_dvo_namespaces
+      description: "List DVO workload namespaces with recommendation counts and severities."
+    - type: tool
+      name: ocp-advisor__get_dvo_recommendations
+      description: "Get DVO workload recommendations for a cluster namespace, with rendered details."
+    - type: tool
       name: ocp-advisor__get_info
       description: "Get OCP Advisor backend health, deployed OCP rules version, and release metadata."
+    - type: tool
+      name: ocp-advisor__get_recommendations
+      description: "Get Insights Advisor recommendations (rule hits) for a cluster, with rendered details."
     - type: tool
       name: ocp-advisor__get_upgrade_risk
       description: "Get upgrade-risk predictions for one or more OpenShift clusters."

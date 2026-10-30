@@ -56,7 +56,10 @@ Tools marked as read-write **`(rw)`** are excluded by default. Use the `--all-to
 - `list_repositories`: List repositories with filtering and pagination options.
 
 ## ocp-advisor
+- `get_dvo_namespaces`: List DVO workload namespaces with recommendation counts and severities.
+- `get_dvo_recommendations`: Get DVO workload recommendations for a cluster namespace, with rendered details.
 - `get_info`: Get OCP Advisor backend health, deployed OCP rules version, and release metadata.
+- `get_recommendations`: Get Insights Advisor recommendations (rule hits) for a cluster, with rendered details.
 - `get_upgrade_risk`: Get upgrade-risk predictions for one or more OpenShift clusters.
 - `list_clusters`: List clusters available to the authenticated user.
 
