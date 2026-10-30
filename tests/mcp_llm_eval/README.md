@@ -272,7 +272,10 @@ The harness supplies defaults, but the consumer may override them:
   stdio connections when `mcp_server_url` is `"stdio"`. The default is
   `("python", ["-m", "mcp_server", "stdio"])`.
 - `mcp_memory_token_limit: int` — agent memory limit. The default is `16384`.
-- Matrix model HTTP timeout — `MCPAgentWrapper` uses `MATRIX_LLM_HTTP_TIMEOUT_SECONDS` (1800s) for `MODEL_API` chat requests.
+- Matrix model HTTP timeout — `MCPAgentWrapper` uses `MATRIX_LLM_HTTP_TIMEOUT_SECONDS` (1800s) for `MODEL_API` chat requests. This is the **client** read timeout; a **504 Gateway Time-out** HTML response from a corporate model proxy means the **gateway** gave up first—raising this value does not fix that.
+- Matrix model SDK retries — `OpenAILike` uses `MCP_LLM_MATRIX_MAX_RETRIES` (default `6`; `0` disables SDK retries) for OpenAI SDK retries on HTTP ≥500, timeouts, and rate limits.
+- Workflow retries after SDK exhaustion — on transient gateway errors, `_run_workflow_attempt` retries up to `MCP_LLM_TRANSIENT_RETRIES` times (default `2`, plus the initial attempt → 3 runs; `0` disables workflow retries) with exponential backoff from `MCP_LLM_TRANSIENT_RETRY_BASE_SECONDS` (default `45`). Each retry restores memory, context, tool events, and the ATIF turn to the state from before that attempt.
+- Guardian HTTP timeout — `gpt_model_from_config` passes `GUARDIAN_LLM_HTTP_TIMEOUT_SECONDS` (default `1800`) to DeepEval's `OpenAIModel`. DeepEval otherwise defaults to 30s per judge call. For SDK-managed retries on the guardian, set `DEEPEVAL_SDK_RETRY_PROVIDERS=openai` (see DeepEval retry docs); otherwise DeepEval uses Tenacity with SDK retries disabled.
 - `verbose_logger` — logging fixture if the consumer needs custom formatting
   or verbosity behavior.
 
@@ -319,6 +322,8 @@ make test-llm
 # equivalent:
 env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -v
 ```
+
+When pytest-xdist runs more than one worker, tests that share a `MODEL_ID` stay on one worker. Other models still run at the same time. Raise that limit with `--llm-model-concurrency 2` or `MCP_LLM_MODEL_CONCURRENCY=2`.
 
 Run one generated suite with:
 
