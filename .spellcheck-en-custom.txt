@@ -62,6 +62,8 @@ JWT
 lifecycle
 Lifecycle
 Lightspeed
+linter
+linters
 LLM
 LLM's
 Makefile
@@ -96,6 +98,8 @@ prepends
 proxying
 PyPI
 pyproject
+pylint
+pyspelling
 pytest
 Pytest
 rbac
