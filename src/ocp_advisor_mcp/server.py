@@ -6,12 +6,18 @@ Provides tools to get OpenShift Advisor information from Red Hat Insights.
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
+from uuid import UUID
 
 from pydantic import Field
 
 from insights_mcp.errors import InsightsApiError
 from insights_mcp.mcp import InsightsMCP
+from ocp_advisor_mcp.rendering import (
+    ADVISOR_TEMPLATE_FIELDS,
+    apply_rendering_status,
+    render_recommendation_fields,
+)
 from tools.common import run_insights_tool_request
 
 # Smart Proxy rejects multi-cluster upgrade-risk requests above this size.
@@ -125,4 +131,97 @@ async def get_upgrade_risk(
     return await run_insights_tool_request(
         mcp.insights_client.post("upgrade-risks-prediction", json={"clusters": normalized}),
         error_message=lambda exc: f"Error retrieving upgrade-risk predictions: {exc}",
+    )
+
+
+def _render_advisor_report(
+    response: dict[str, Any] | str | list[Any],
+) -> dict[str, Any] | str | list[Any]:
+    """Render the DoT.js template fields of every rule hit in an Advisor report."""
+    response = cast(dict[str, Any], response)
+    for hit in response["report"]["data"]:
+        # The smart-proxy report puts the per-hit template data (``pydata``
+        # values) in ``extra_data``; the ``details`` field is static prose.
+        rendered, errors = render_recommendation_fields(
+            hit, hit.get("extra_data") or {}, fields=ADVISOR_TEMPLATE_FIELDS
+        )
+        hit.update(rendered)
+        apply_rendering_status(hit, errors)
+    return response
+
+
+def _render_dvo_recommendations(
+    response: dict[str, Any] | str | list[Any],
+) -> dict[str, Any] | str | list[Any]:
+    """Render the DoT.js template fields of every DVO recommendation."""
+    response = cast(dict[str, Any], response)
+    for recommendation in response["recommendations"]:
+        rendered, errors = render_recommendation_fields(
+            recommendation, recommendation.get("extra_data") or {}
+        )
+        recommendation.update(rendered)
+        apply_rendering_status(recommendation, errors)
+    return response
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+async def get_recommendations(
+    cluster_id: Annotated[UUID, Field(description="Cluster UUID, e.g. from list_clusters")],
+    include_disabled: Annotated[bool, Field(description="Include disabled recommendations")] = False,
+) -> str:
+    """Get Insights Advisor recommendations (rule hits) for a cluster, with rendered details.
+
+    🔴 GATHER INFO FIRST - Use a supplied cluster UUID or find one with list_clusters.
+
+    Returns cluster metadata, rule hits, risk levels, and cluster-specific guidance.
+    Set include_disabled=true to include disabled recommendations.
+    Fields that fail to render retain template text and are flagged by
+    ``rendering: {"status": "failed"}``; do not treat them as rendered guidance.
+    """
+    cluster = str(cluster_id)
+    params: dict[str, Any] | None = {"get_disabled": "true"} if include_disabled else None
+    return await run_insights_tool_request(
+        mcp.insights_client.get(f"cluster/{cluster}/reports", params=params),
+        error_message=lambda exc: f"Error retrieving recommendations for cluster {cluster}: {exc}",
+        response_transform=_render_advisor_report,
+    )
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+async def get_dvo_namespaces() -> str:
+    """List DVO workload namespaces with recommendation counts and severities.
+
+    🟢 CALL IMMEDIATELY - No information gathering required.
+
+    Returns cluster and namespace UUIDs with recommendation counts and severity summaries.
+    Use the UUIDs with get_dvo_recommendations.
+    """
+    return await run_insights_tool_request(
+        mcp.insights_client.get("namespaces/dvo"),
+        error_message=lambda exc: f"Error listing DVO namespaces: {exc}",
+    )
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+async def get_dvo_recommendations(
+    cluster_id: Annotated[UUID, Field(description="Cluster UUID from get_dvo_namespaces")],
+    namespace_id: Annotated[UUID, Field(description="Namespace UUID from get_dvo_namespaces")],
+) -> str:
+    """Get DVO workload recommendations for a cluster namespace, with rendered details.
+
+    🔴 GATHER INFO FIRST - Use supplied cluster and namespace UUIDs or find them with get_dvo_namespaces.
+
+    Returns workload findings, risk levels, affected objects, and rendered guidance.
+    Fields that fail to render retain template text and are flagged by
+    ``rendering: {"status": "failed"}``; do not treat them as rendered guidance.
+    """
+    cluster = str(cluster_id)
+    namespace = str(namespace_id)
+    return await run_insights_tool_request(
+        mcp.insights_client.get(f"namespaces/dvo/{namespace}/cluster/{cluster}"),
+        error_message=lambda exc: (
+            f"Error retrieving DVO recommendations for namespace {namespace} "
+            f"of cluster {cluster}: {exc}"
+        ),
+        response_transform=_render_dvo_recommendations,
     )
