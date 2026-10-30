@@ -9,6 +9,7 @@ aspell
 ATIF
 auth
 autopep
+backoff
 backend
 basename
 baseos
@@ -32,6 +33,7 @@ deduplicated
 DVO
 deepeval
 DeepEval
+DeepEval's
 deeplink
 deeplinks
 deprecations

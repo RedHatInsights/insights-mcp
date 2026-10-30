@@ -504,7 +504,7 @@ class AtifTrajectoryBuilder:  # pylint: disable=too-many-instance-attributes
         self._steps.append(self._make_step(source="user", message=user_msg))
 
     def reset_turn(self, user_msg: str) -> None:
-        """Drop the current turn (used on empty-response retry) and start it again.
+        """Drop the current turn (empty-response or gateway retry) and start it again.
 
         Args:
             user_msg: Prompt sent to the agent.

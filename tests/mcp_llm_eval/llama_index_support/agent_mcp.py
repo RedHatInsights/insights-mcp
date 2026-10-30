@@ -6,6 +6,7 @@ import uuid
 from typing import Any, Optional, Sequence
 
 import httpx
+import openai
 from deepeval.test_case import ToolCall
 from llama_index.core.agent.workflow.function_agent import FunctionAgent
 from llama_index.core.agent.workflow.workflow_events import AgentOutput, AgentWorkflowStartEvent
@@ -21,6 +22,12 @@ from mcp.shared._httpx_utils import create_mcp_http_client
 
 from tests.mcp_llm_eval.atif_export import AtifTrajectoryBuilder
 from tests.mcp_llm_eval.deepeval_support.tracing import WorkflowToolCallCollector, tools_called_from_agent_run
+from tests.mcp_llm_eval.llm_transient_errors import (
+    is_transient_llm_http_error,
+    matrix_llm_http_max_retries,
+    transient_llm_retry_delay_seconds,
+    transient_llm_workflow_attempts,
+)
 from tests.mcp_llm_eval.mcp_jsonrpc import fetch_mcp_instructions_http, fetch_mcp_instructions_stdio
 from tests.mcp_llm_eval.model_output import model_output_dump, render_model_output
 from tests.mcp_llm_eval.utils import abbreviate_middle
@@ -205,6 +212,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             strict=False,
             # OpenAILike's own timeout is sent on every request and overrides the httpx client.
             timeout=MATRIX_LLM_HTTP_TIMEOUT_SECONDS,
+            max_retries=matrix_llm_http_max_retries(),
             async_http_client=self._llm_http_client,
         )
         self._memory = Memory.from_defaults(
@@ -318,13 +326,13 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
                 recorder.consume_event(ev)
             self._log_workflow_event(ev)
 
-    async def _run_workflow_attempt(
+    async def _run_workflow_attempt_once(
         self,
         agent_user_msg: str,
         max_iterations: int,
         tool_collector: WorkflowToolCallCollector,
     ) -> Any:
-        """Run one agent workflow and drain its event stream."""
+        """Run one agent workflow and drain its event stream (no transient-error retry)."""
         if self.agent is None:
             raise ValueError("Agent not initialized")
         start_event = AgentWorkflowStartEvent(
@@ -342,6 +350,59 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
                 await asyncio.wait_for(stream_task, timeout=0.5)
             except asyncio.TimeoutError:
                 stream_task.cancel()
+
+    async def _reset_transient_retry(
+        self,
+        agent_user_msg: str,
+        tool_collector: WorkflowToolCallCollector,
+        memory_snapshot: list[ChatMessage],
+    ) -> None:
+        """Drop partial turn state so a gateway retry starts from the pre-attempt history.
+
+        A failed ``agent.run()`` may already have appended tool results to memory and
+        recorded tool events. Restoring the snapshot avoids replaying that partial turn
+        on top of itself.
+        """
+        tool_collector.clear()
+        self._step_names = []
+        if self.atif_recorder is not None:
+            self.atif_recorder.reset_turn(agent_user_msg)
+        if self.agent is not None:
+            self.context = Context(self.agent)
+        if self._memory is not None:
+            await self._memory.aset(list(memory_snapshot))
+
+    async def _run_workflow_attempt(
+        self,
+        agent_user_msg: str,
+        max_iterations: int,
+        tool_collector: WorkflowToolCallCollector,
+    ) -> Any:
+        """Run one agent workflow, retrying transient model gateway failures after SDK retries."""
+        if self._memory is None:
+            raise ValueError("Agent not initialized")
+        max_workflow_attempts = transient_llm_workflow_attempts()
+        memory_snapshot = list(await self._memory.aget_all(status=MessageStatus.ACTIVE))
+        for workflow_attempt in range(max_workflow_attempts):
+            if workflow_attempt > 0:
+                await self._reset_transient_retry(agent_user_msg, tool_collector, memory_snapshot)
+            try:
+                return await self._run_workflow_attempt_once(agent_user_msg, max_iterations, tool_collector)
+            except openai.APIError as exc:
+                retries_exhausted = workflow_attempt >= max_workflow_attempts - 1
+                if not is_transient_llm_http_error(exc) or retries_exhausted:
+                    raise
+                delay = transient_llm_retry_delay_seconds(workflow_attempt)
+                self.logger.warning(
+                    "Transient LLM HTTP error for model %s (attempt %d/%d): %s; retrying in %.1fs",
+                    self.model_id,
+                    workflow_attempt + 1,
+                    max_workflow_attempts,
+                    exc,
+                    delay,
+                )
+                await asyncio.sleep(delay)
+        raise RuntimeError("workflow attempt loop exited without result or exception")
 
     async def execute_with_reasoning(
         self,
