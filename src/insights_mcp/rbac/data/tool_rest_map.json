@@ -440,6 +440,45 @@
         "kessel_note": "The /upgrade-risks-prediction endpoint returns upgrade-risk predictors for one or more clusters. Each prediction includes prediction_status; non-ok statuses mean unavailable data, not an explicit no-risk result."
       }
     ],
+    "ocp-advisor__get_recommendations": [
+      {
+        "method": "GET",
+        "api_path": "api/insights-results-aggregator/v2",
+        "path_template": "/cluster/{cluster_id}/reports",
+        "application": "ocp-advisor",
+        "required_v1_permissions": [
+          [
+            "ocp-advisor:recommendation-results:read"
+          ]
+        ]
+      }
+    ],
+    "ocp-advisor__get_dvo_namespaces": [
+      {
+        "method": "GET",
+        "api_path": "api/insights-results-aggregator/v2",
+        "path_template": "/namespaces/dvo",
+        "application": "ocp-advisor",
+        "required_v1_permissions": [
+          [
+            "ocp-advisor:recommendation-results:read"
+          ]
+        ]
+      }
+    ],
+    "ocp-advisor__get_dvo_recommendations": [
+      {
+        "method": "GET",
+        "api_path": "api/insights-results-aggregator/v2",
+        "path_template": "/namespaces/dvo/{namespace_id}/cluster/{cluster_id}",
+        "application": "ocp-advisor",
+        "required_v1_permissions": [
+          [
+            "ocp-advisor:recommendation-results:read"
+          ]
+        ]
+      }
+    ],
     "planning__get_upcoming_changes": [
       {
         "method": "GET",
