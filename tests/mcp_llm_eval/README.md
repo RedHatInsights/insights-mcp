@@ -323,6 +323,8 @@ make test-llm
 env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -v
 ```
 
+When pytest-xdist runs more than one worker, tests that share a `MODEL_ID` stay on one worker. Other models still run at the same time. Raise that limit with `--llm-model-concurrency 2` or `MCP_LLM_MODEL_CONCURRENCY=2`.
+
 Run one generated suite with:
 
 ```bash
