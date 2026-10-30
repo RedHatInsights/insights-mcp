@@ -110,7 +110,8 @@ def node_display_id(node_id: str) -> str:
     """Return ``Class::test[params]`` from a full pytest node id.
 
     Args:
-        node_id: Full pytest node id, including the module path.
+        node_id: Full pytest node id, including the module path. A pytest-xdist
+            ``@llm-model-...`` group suffix is removed so trace filenames stay stable.
 
     Returns:
         Node id without the ``path/to/file.py::`` prefix, safe as a filename stem.
@@ -119,8 +120,13 @@ def node_display_id(node_id: str) -> str:
     index = node_id.rfind(marker)
     if index >= 0:
         prefix_end = index + len(marker)
-        return node_id[prefix_end:]
-    return node_id.rsplit("/", 1)[-1]
+        display = node_id[prefix_end:]
+    else:
+        display = node_id.rsplit("/", 1)[-1]
+    suffix_at = display.rfind("@llm-model-")
+    if suffix_at > display.rfind("]"):
+        return display[:suffix_at]
+    return display
 
 
 def _utc_now() -> datetime:

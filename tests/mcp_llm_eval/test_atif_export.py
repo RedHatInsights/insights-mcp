@@ -33,6 +33,18 @@ def test_node_display_id_without_py_marker():
     assert atif_export.node_display_id("TestClass::test_one") == "TestClass::test_one"
 
 
+def test_node_display_id_strips_xdist_model_group() -> None:
+    """The loadgroup suffix is not part of the ATIF filename."""
+    node_id = (
+        "src/vulnerability_mcp/tests/test_vulnerability_llm_prompts.py::"
+        "TestVulnerabilityLLMPrompts::test_llm_eval[kernel_cves_on_system-Qwen3.8 27B FP8]"
+        "@llm-model-qwen3-8-27b-fp8-0"
+    )
+    assert atif_export.node_display_id(node_id) == (
+        "TestVulnerabilityLLMPrompts::test_llm_eval[kernel_cves_on_system-Qwen3.8 27B FP8]"
+    )
+
+
 def test_utc_timestamp_has_millisecond_precision() -> None:
     """ATIF timestamps are ISO-8601 UTC with milliseconds so Phoenix can order steps."""
     timestamp = atif_export.utc_timestamp()
