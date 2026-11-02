@@ -10,7 +10,6 @@ PROMPTS = TestScenarioRegistry(
             PromptWithTools(
                 prompt="Get the deployed ccx-ocp-rules version for OCP Advisor in production.",
                 expected_tools=("ocp-advisor__get_info",),
-
             ),
         ),
     ),
@@ -22,7 +21,6 @@ PROMPTS = TestScenarioRegistry(
                     "and show the Content Service commit and build metadata."
                 ),
                 expected_tools=("ocp-advisor__get_info",),
-
             ),
         ),
     ),
@@ -34,7 +32,6 @@ PROMPTS = TestScenarioRegistry(
                     "Aggregator, and Content Service."
                 ),
                 expected_tools=("ocp-advisor__get_info",),
-
             ),
         ),
     ),
@@ -47,7 +44,6 @@ PROMPTS = TestScenarioRegistry(
                 ),
                 expected_tools=("ocp-advisor__list_clusters",),
                 forbidden_tools=("rbac__explain_access_denied",),
-
             ),
         ),
     ),
@@ -96,9 +92,7 @@ PROMPTS = TestScenarioRegistry(
     dvo_namespaces_overview=TestScenario(
         turns=(
             PromptWithTools(
-                prompt=(
-                    "Which namespaces have DVO workload recommendations and how severe are they?"
-                ),
+                prompt=("Which namespaces have DVO workload recommendations and how severe are they?"),
                 expected_tools=("ocp-advisor__get_dvo_namespaces",),
                 forbidden_tools=("rbac__explain_access_denied",),
                 turn_criteria=(

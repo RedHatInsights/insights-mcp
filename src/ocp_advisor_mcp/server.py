@@ -156,9 +156,7 @@ def _render_dvo_recommendations(
     """Render the DoT.js template fields of every DVO recommendation."""
     response = cast(dict[str, Any], response)
     for recommendation in response["recommendations"]:
-        rendered, errors = render_recommendation_fields(
-            recommendation, recommendation.get("extra_data") or {}
-        )
+        rendered, errors = render_recommendation_fields(recommendation, recommendation.get("extra_data") or {})
         recommendation.update(rendered)
         apply_rendering_status(recommendation, errors)
     return response
@@ -220,8 +218,7 @@ async def get_dvo_recommendations(
     return await run_insights_tool_request(
         mcp.insights_client.get(f"namespaces/dvo/{namespace}/cluster/{cluster}"),
         error_message=lambda exc: (
-            f"Error retrieving DVO recommendations for namespace {namespace} "
-            f"of cluster {cluster}: {exc}"
+            f"Error retrieving DVO recommendations for namespace {namespace} of cluster {cluster}: {exc}"
         ),
         response_transform=_render_dvo_recommendations,
     )
