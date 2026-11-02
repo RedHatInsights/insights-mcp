@@ -109,7 +109,7 @@ PROMPTS = TestScenarioRegistry(
         turns=(
             PromptWithTools(
                 prompt=(
-                    "Show the DVO recommendations for namespace aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee "
+                    "Show the DVO recommendations for namespace a3b5c7d9-e1f2-4a3b-8c5d-6e7f8a9b0c1d "
                     "of cluster 11111111-2222-3333-4444-555555555555, including the affected workloads."
                 ),
                 expected_tools=("ocp-advisor__get_dvo_recommendations",),
