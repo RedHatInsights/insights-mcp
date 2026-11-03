@@ -10,6 +10,7 @@ from typing import Any
 
 import pytest
 import pytest_asyncio
+from _pytest.nodeid import coerce_node_id
 
 from .atif_export import (
     AtifTrajectoryBuilder,
@@ -179,6 +180,22 @@ def llm_model_group_name(model_id: str, slot: int) -> str:
     return f"{_LLM_MODEL_GROUP_PREFIX}{safe_model_id}-{slot}"
 
 
+def _suffix_node_id_with_group(item: Any, group_name: str) -> None:
+    """Append ``@group`` to a collected node id so xdist loadgroup can see it.
+
+    pytest 9 stores the id on ``_id``. xdist 3.8 still assigns the old ``_nodeid``
+    string, which collection no longer reports, so the worker must set ``_id``.
+    """
+    node_id = getattr(item, "nodeid", None)
+    if not isinstance(node_id, str) or "@llm-model-" in node_id:
+        return
+    suffixed = f"{node_id}@{group_name}"
+    if hasattr(item, "_id"):
+        item._id = coerce_node_id(suffixed)  # pylint: disable=protected-access
+    else:
+        item._nodeid = suffixed  # pylint: disable=protected-access
+
+
 def assign_llm_model_groups(items: list[Any], concurrency: int) -> None:
     """Round-robin LLM matrix items into *concurrency* xdist groups per model."""
     counts: dict[str, int] = {}
@@ -188,7 +205,9 @@ def assign_llm_model_groups(items: list[Any], concurrency: int) -> None:
             continue
         slot = counts.get(model_id, 0) % concurrency
         counts[model_id] = counts.get(model_id, 0) + 1
-        item.add_marker(pytest.mark.xdist_group(llm_model_group_name(model_id, slot)))
+        group_name = llm_model_group_name(model_id, slot)
+        item.add_marker(pytest.mark.xdist_group(group_name))
+        _suffix_node_id_with_group(item, group_name)
 
 
 def _new_atif_recorder(item: pytest.Item, run_id: str) -> AtifTrajectoryBuilder:
@@ -267,13 +286,17 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 def pytest_configure(config: pytest.Config) -> None:
     """Pin same-model LLM tests to one xdist worker, then check Phoenix.
 
-    ``pytest_cmdline_main`` is first-result, so a late implementation never runs.
-    xdist has already turned ``--numprocesses`` into ``dist=load`` by the time
-    configure starts, and its own configure hook is ``trylast``.
+    The controller turns ``--numprocesses`` into ``dist=load`` before this hook.
+    Workers re-parse the original CLI, then ``setup_config`` records ``loadgroup``
+    from that ``dist`` and clears ``numprocesses``. Setting ``loadgroup`` here
+    runs after that snapshot so collection appends ``@llm-model-...`` to node ids.
     """
     numprocesses = getattr(config.option, "numprocesses", None)
     if numprocesses and getattr(config.option, "dist", None) == "load":
         config.option.dist = "loadgroup"
+    # Workers have already cleared numprocesses. The scheduler groups node ids
+    # only when this flag is set before collection.
+    config.option.loadgroup = True
     try:
         raw = config.getoption("llm_model_concurrency")
     except ValueError:

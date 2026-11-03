@@ -76,10 +76,21 @@ def test_resolve_llm_model_concurrency_rejects_zero() -> None:
         resolve_llm_model_concurrency(0)
 
 
+@pytest.mark.parametrize(
+    "llm_config",
+    [{"MODEL_ID": "grouped-model", "name": "Grouped"}],
+    ids=["Grouped"],
+)
+def test_llm_config_item_is_grouped(llm_config: dict[str, str]) -> None:
+    """Matrix item so a worker run can show the xdist group suffix on the node id."""
+    assert llm_config["MODEL_ID"] == "grouped-model"
+
+
 def test_xdist_uses_loadgroup_scheduling() -> None:
-    """A multi-worker run reports LoadGroupScheduling instead of LoadScheduling."""
+    """A multi-worker run groups a matrix item and reports LoadGroupScheduling."""
     env = os.environ.copy()
     env["DEEPEVAL_TELEMETRY_OPT_OUT"] = "YES"
+    env["INSIGHTS_MCP_DISABLE_TRACE_EXPORT"] = "true"
     result = subprocess.run(
         [
             sys.executable,
@@ -103,3 +114,4 @@ def test_xdist_uses_loadgroup_scheduling() -> None:
     output = result.stdout + result.stderr
     assert result.returncode == 0, output
     assert "scheduling tests via LoadGroupScheduling" in output
+    assert "@llm-model-grouped-model-0" in output
