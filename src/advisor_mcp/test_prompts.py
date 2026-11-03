@@ -10,6 +10,7 @@ PROMPTS = TestScenarioRegistry(
             PromptWithTools(
                 prompt="Show me the top 5 critical issues on my systems",
                 expected_tools=("advisor__get_active_rules",),
+                forbidden_tools=("rbac__explain_access_denied",),
             ),
         ),
     ),
@@ -26,6 +27,7 @@ PROMPTS = TestScenarioRegistry(
                     "advisor__get_hosts_details_for_rule",
                     "advisor__get_active_rules",
                 ),
+                forbidden_tools=("rbac__explain_access_denied",),
             ),
         ),
         threshold=0,
@@ -35,6 +37,7 @@ PROMPTS = TestScenarioRegistry(
             PromptWithTools(
                 prompt="List all the affected recommendations that have automated solutions available",
                 expected_tools=("advisor__get_active_rules",),
+                forbidden_tools=("rbac__explain_access_denied",),
             ),
         ),
     ),
@@ -43,6 +46,7 @@ PROMPTS = TestScenarioRegistry(
             PromptWithTools(
                 prompt='Show me the details for the advisor recommendation "{rule_id}"',
                 expected_tools=("advisor__get_rule_details",),
+                forbidden_tools=("rbac__explain_access_denied",),
             ),
         ),
     ),
@@ -55,6 +59,7 @@ PROMPTS = TestScenarioRegistry(
                     "advisor__get_hosts_details_for_rule",
                     "advisor__get_rule_details",
                 ),
+                forbidden_tools=("rbac__explain_access_denied",),
             ),
         ),
         threshold=0,
@@ -64,6 +69,7 @@ PROMPTS = TestScenarioRegistry(
             PromptWithTools(
                 prompt="Show me Advisor recommendations for systems tagged 'insights-client/security=strict'.",
                 expected_tools=("advisor__get_active_rules",),
+                forbidden_tools=("rbac__explain_access_denied",),
             ),
         ),
     ),
@@ -72,6 +78,7 @@ PROMPTS = TestScenarioRegistry(
             PromptWithTools(
                 prompt='Show me Advisor recommendations for systems in the workspace "{workspace}".',
                 expected_tools=("advisor__get_active_rules",),
+                forbidden_tools=("rbac__explain_access_denied",),
             ),
         ),
     ),
@@ -80,6 +87,7 @@ PROMPTS = TestScenarioRegistry(
             PromptWithTools(
                 prompt="Show me the 10 recommendations that affect the most systems.",
                 expected_tools=("advisor__get_active_rules",),
+                forbidden_tools=("rbac__explain_access_denied",),
             ),
         ),
     ),
@@ -91,6 +99,7 @@ PROMPTS = TestScenarioRegistry(
                     "that have a playbook available for remediation."
                 ),
                 expected_tools=("advisor__get_active_rules",),
+                forbidden_tools=("rbac__explain_access_denied",),
             ),
         ),
     ),
@@ -99,6 +108,7 @@ PROMPTS = TestScenarioRegistry(
             PromptWithTools(
                 prompt='List me RHEL 8 systems affected by the issue "{rule_id}".',
                 expected_tools=("advisor__get_hosts_details_for_rule", "advisor__get_hosts_hitting_a_rule"),
+                forbidden_tools=("rbac__explain_access_denied",),
             ),
         ),
         threshold=0,
@@ -108,6 +118,7 @@ PROMPTS = TestScenarioRegistry(
             PromptWithTools(
                 prompt="List recommendations that requires a reboot?",
                 expected_tools=("advisor__get_active_rules",),
+                forbidden_tools=("rbac__explain_access_denied",),
             ),
         ),
     ),
@@ -121,6 +132,7 @@ PROMPTS = TestScenarioRegistry(
                     "advisor__get_rule_details",
                     "advisor__get_rule_by_text_search",
                 ),
+                forbidden_tools=("rbac__explain_access_denied",),
             ),
         ),
         threshold=0,
