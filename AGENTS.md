@@ -313,8 +313,9 @@ podman run -it --rm insights-mcp /bin/bash
 2. **Security**: Never commit credentials or sensitive data
 3. **Testing**: Run `make test` after significant changes
 4. **Code Style**: stick to the settings in `pyproject.toml` and `.editorconfig`
-5. **Dependencies**: Check `pyproject.toml` for current dependencies
-6. **Compliance**: For logging, debug mode, and ISO alignment (27001, 27017, 27018, 42001), see [HACKING.md - Logging and Compliance](HACKING.md#logging-and-compliance)
-7. **MCP Apps**: For adding or maintaining interactive UI apps, see [HACKING.md - MCP Apps](HACKING.md#mcp-apps)
+5. **Lint**: Prefer code that satisfies pylint, mypy, and the other linters. Do not add `# pylint: disable` (or an equivalent suppression) when a more specific implementation removes the warning. Use a suppression only when the construct is intentional and cannot be written in a way the linter accepts. When pyspelling flags a real project term, add it to `.spellcheck-en-custom.txt` (keep the list in alphabetical order) and confirm with `uv run pre-commit run pyspelling --all-files`.
+6. **Dependencies**: Check `pyproject.toml` for current dependencies
+7. **Compliance**: For logging, debug mode, and ISO alignment (27001, 27017, 27018, 42001), see [HACKING.md - Logging and Compliance](HACKING.md#logging-and-compliance)
+8. **MCP Apps**: For adding or maintaining interactive UI apps, see [HACKING.md - MCP Apps](HACKING.md#mcp-apps)
 
 This guide supplements the README with development-specific information for AI coding assistants working on the Insights MCP project. The architecture supports multiple Red Hat Insights service toolsets through a unified server interface.

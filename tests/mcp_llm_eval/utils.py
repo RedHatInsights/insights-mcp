@@ -7,6 +7,8 @@ import os
 from deepeval.models import OpenAIModel
 from llama_index.core.llms import ChatMessage
 
+from tests.mcp_llm_eval.llm_transient_errors import guardian_llm_http_timeout_seconds
+
 ABBREVIATED_LOG_MARKER = "\n<…abbreviated_log…>\n"
 
 
@@ -92,6 +94,7 @@ def gpt_model_from_config(config: dict[str, str]) -> OpenAIModel:
         base_url=config["MODEL_API"],
         api_key=config["USER_KEY"],
         temperature=0,
+        timeout=guardian_llm_http_timeout_seconds(),
     )
 
 

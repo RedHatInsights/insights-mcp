@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
 import pytest
 import pytest_asyncio
+from _pytest.nodeid import coerce_node_id
 
 from .atif_export import (
     AtifTrajectoryBuilder,
@@ -33,6 +35,9 @@ _, guardian_llm_config = load_llm_configurations()
 _ATIF_RUN_ID = pytest.StashKey[str]()
 _ATIF_RUN_DIR = pytest.StashKey[Path]()
 _ATIF_AGENT = pytest.StashKey[MCPAgentWrapper]()
+_LLM_MODEL_CONCURRENCY = pytest.StashKey[int]()
+_LLM_MODEL_GROUP_PREFIX = "llm-model-"
+_LLM_MODEL_CONCURRENCY_ENV = "MCP_LLM_MODEL_CONCURRENCY"
 
 
 @pytest.fixture(scope="session")
@@ -153,6 +158,58 @@ def _llm_model_name(item: pytest.Item) -> str:
     return model_id if isinstance(model_id, str) else ""
 
 
+def resolve_llm_model_concurrency(raw: str | int | None) -> int:
+    """Return how many tests may run at once for one ``MODEL_ID``.
+
+    ``None`` reads ``MCP_LLM_MODEL_CONCURRENCY``, which defaults to 1.
+    """
+    if raw is None or raw == "":
+        raw = os.environ.get(_LLM_MODEL_CONCURRENCY_ENV, "1")
+    try:
+        value = int(raw)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"invalid --llm-model-concurrency: got {raw!r}, want a positive integer") from exc
+    if value < 1:
+        raise ValueError(f"invalid --llm-model-concurrency: got {value}, want a positive integer")
+    return value
+
+
+def llm_model_group_name(model_id: str, slot: int) -> str:
+    """Return the xdist group that pins one concurrency slot of *model_id*."""
+    safe_model_id = model_id.replace("@", "-")
+    return f"{_LLM_MODEL_GROUP_PREFIX}{safe_model_id}-{slot}"
+
+
+def _suffix_node_id_with_group(item: Any, group_name: str) -> None:
+    """Append ``@group`` to a collected node id so xdist loadgroup can see it.
+
+    pytest 9 stores the id on ``_id``. xdist 3.8 still assigns the old ``_nodeid``
+    string, which collection no longer reports, so the worker must set ``_id``.
+    """
+    node_id = getattr(item, "nodeid", None)
+    if not isinstance(node_id, str) or "@llm-model-" in node_id:
+        return
+    suffixed = f"{node_id}@{group_name}"
+    if hasattr(item, "_id"):
+        item._id = coerce_node_id(suffixed)  # pylint: disable=protected-access
+    else:
+        item._nodeid = suffixed  # pylint: disable=protected-access
+
+
+def assign_llm_model_groups(items: list[Any], concurrency: int) -> None:
+    """Round-robin LLM matrix items into *concurrency* xdist groups per model."""
+    counts: dict[str, int] = {}
+    for item in items:
+        model_id = _llm_model_name(item)
+        if not model_id:
+            continue
+        slot = counts.get(model_id, 0) % concurrency
+        counts[model_id] = counts.get(model_id, 0) + 1
+        group_name = llm_model_group_name(model_id, slot)
+        item.add_marker(pytest.mark.xdist_group(group_name))
+        _suffix_node_id_with_group(item, group_name)
+
+
 def _new_atif_recorder(item: pytest.Item, run_id: str) -> AtifTrajectoryBuilder:
     """Build a recorder for an LLM item whose agent never started."""
     display_id = node_display_id(item.nodeid)
@@ -212,13 +269,53 @@ def _export_atif_for_item(item: pytest.Item, report: pytest.TestReport) -> None:
     )
 
 
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """Register the per-model LLM concurrency limit."""
+    parser.addoption(
+        "--llm-model-concurrency",
+        action="store",
+        default=None,
+        help=(
+            "Maximum LLM tests running at once for one MODEL_ID (default 1). "
+            f"Falls back to {_LLM_MODEL_CONCURRENCY_ENV}."
+        ),
+    )
+
+
+@pytest.hookimpl(tryfirst=True)
 def pytest_configure(config: pytest.Config) -> None:
-    """Fail fast when Phoenix live upload is requested without arize-phoenix-client."""
-    _ = config
+    """Pin same-model LLM tests to one xdist worker, then check Phoenix.
+
+    The controller turns ``--numprocesses`` into ``dist=load`` before this hook.
+    Workers re-parse the original CLI, then ``setup_config`` records ``loadgroup``
+    from that ``dist`` and clears ``numprocesses``. Setting ``loadgroup`` here
+    runs after that snapshot so collection appends ``@llm-model-...`` to node ids.
+    """
+    numprocesses = getattr(config.option, "numprocesses", None)
+    if numprocesses and getattr(config.option, "dist", None) == "load":
+        config.option.dist = "loadgroup"
+    # Workers have already cleared numprocesses. The scheduler groups node ids
+    # only when this flag is set before collection.
+    config.option.loadgroup = True
+    try:
+        raw = config.getoption("llm_model_concurrency")
+    except ValueError:
+        raw = None
+    try:
+        config.stash[_LLM_MODEL_CONCURRENCY] = resolve_llm_model_concurrency(raw)
+    except ValueError as exc:
+        pytest.exit(str(exc), returncode=2)
     try:
         ensure_phoenix_ready()
     except RuntimeError as exc:
         pytest.exit(str(exc), returncode=2)
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Pin each MODEL_ID to a fixed number of xdist groups."""
+    concurrency = config.stash.get(_LLM_MODEL_CONCURRENCY, 1)
+    assign_llm_model_groups(items, concurrency)
 
 
 def pytest_collection_finish(session: pytest.Session) -> None:
