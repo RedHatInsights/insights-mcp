@@ -1,4 +1,7 @@
 __pycache__
+.mypy_cache
+.pytest_cache
+.ruff_cache
 *.egg-info
 .python-version
 .vscode
@@ -9,6 +12,7 @@ test_config.json
 *.dxt
 *.mcpb
 .envrc
+.venv
 
 # temporary mermaid cache
 /docs/input.mmd
