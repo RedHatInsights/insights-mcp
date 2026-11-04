@@ -28,6 +28,12 @@ repos:
         language: system
         types: [file, yaml]
         args: [--strict]
+      - id: skill-validator
+        name: Validate agent skills (format + content)
+        entry: uv run --frozen python scripts/validate_skills.py
+        language: system
+        files: ^\.agents/skills/
+        pass_filenames: false
       - id: pyspelling
         name: pyspelling
         entry: uv run --frozen pyspelling
