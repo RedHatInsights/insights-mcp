@@ -118,6 +118,11 @@ test-llm-very-verbose: ## Run only @pytest.mark.llm behavioral tests showing all
 	@echo "Running LLM tests with debug output (pytest -m llm)..."
 	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -vvv -o log_cli=true --numprocesses=$(PARALLEL_TESTS)
 
+.PHONY: test-skills
+test-skills: install-test-deps ## Run agent skill validation tests (format + content, tests/skills/)
+	@echo "Running agent skill tests..."
+	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v tests/skills/
+
 # Define a reusable check function for container sanity tests
 # $(1) = image URL, $(2) = expected CONTAINER_BRAND value
 define check_container
