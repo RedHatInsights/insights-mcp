@@ -25,15 +25,10 @@ PROMPTS = TestScenarioRegistry(
         turns=(
             PromptWithTools(
                 prompt="Get details for host named '{hostname}'",
-                expected_tools=(
-                    "inventory__list_hosts",
-                    "inventory__find_host_by_name",
-                    "inventory__get_host_system_profile",
-                    "inventory__get_host_details",
-                ),
+                turn_criteria="The response should include some host details.",
+                expected_tools=("inventory__find_host_by_name",),
             ),
         ),
-        threshold=0.50,
     ),
     stale_host_count=TestScenario(
         turns=(
