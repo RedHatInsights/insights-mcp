@@ -25,6 +25,16 @@ from tests.test_patterns import (
             {},
         ),
         (
+            "ocp-advisor__list_rules",
+            "List available OCP Advisor rules and recommendation metadata.",
+            {},
+        ),
+        (
+            "ocp-advisor__get_rule_content",
+            "Get generic static content for one OCP Advisor or DVO-backed rule.",
+            {},
+        ),
+        (
             "ocp-advisor__get_upgrade_risk",
             "Get upgrade-risk predictions for one or more OpenShift clusters.",
             {
@@ -42,6 +52,8 @@ from tests.test_patterns import (
     ids=[
         "ocp-advisor__get_info",
         "ocp-advisor__list_clusters",
+        "ocp-advisor__list_rules",
+        "ocp-advisor__get_rule_content",
         "ocp-advisor__get_upgrade_risk",
     ],
 )
@@ -61,6 +73,8 @@ def test_mcp_tools_include_descriptions_and_annotations(
     [
         "ocp-advisor__get_info",
         "ocp-advisor__list_clusters",
+        "ocp-advisor__list_rules",
+        "ocp-advisor__get_rule_content",
         "ocp-advisor__get_upgrade_risk",
     ],
 )
@@ -75,6 +89,8 @@ def test_transport_types_with_ocp_advisor_tools(mcp_tools, request, tool_name: s
     [
         "ocp-advisor__get_info",
         "ocp-advisor__list_clusters",
+        "ocp-advisor__list_rules",
+        "ocp-advisor__get_rule_content",
         "ocp-advisor__get_upgrade_risk",
     ],
 )

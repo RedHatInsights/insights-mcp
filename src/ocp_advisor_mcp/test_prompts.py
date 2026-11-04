@@ -47,6 +47,27 @@ PROMPTS = TestScenarioRegistry(
             ),
         ),
     ),
+    list_rule_content=TestScenario(
+        turns=(
+            PromptWithTools(
+                prompt="List the OCP Advisor rules I can ask about and show their risk and impacted cluster counts.",
+                expected_tools=("ocp-advisor__list_rules",),
+                forbidden_tools=("rbac__explain_access_denied",),
+            ),
+        ),
+    ),
+    get_rule_content=TestScenario(
+        turns=(
+            PromptWithTools(
+                prompt=(
+                    "Get the generic rule content for "
+                    "ccx_rules_ocp.external.rules.example.report|EXAMPLE_WARNING and explain its remediation steps."
+                ),
+                expected_tools=("ocp-advisor__get_rule_content",),
+                forbidden_tools=("rbac__explain_access_denied",),
+            ),
+        ),
+    ),
     upgrade_risk_for_cluster=TestScenario(
         turns=(
             PromptWithTools(

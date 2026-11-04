@@ -57,8 +57,10 @@ Tools marked as read-write **`(rw)`** are excluded by default. Use the `--all-to
 
 ## ocp-advisor
 - `get_info`: Get OCP Advisor backend health, deployed OCP rules version, and release metadata.
+- `get_rule_content`: Get generic static content for one OCP Advisor or DVO-backed rule.
 - `get_upgrade_risk`: Get upgrade-risk predictions for one or more OpenShift clusters.
 - `list_clusters`: List clusters available to the authenticated user.
+- `list_rules`: List available OCP Advisor rules and recommendation metadata.
 
 ## rbac
 - `explain_access_denied`: Diagnose a 403 access denial for a specific MCP tool call.

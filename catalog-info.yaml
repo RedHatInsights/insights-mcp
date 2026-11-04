@@ -149,11 +149,17 @@ spec:
       name: ocp-advisor__get_info
       description: "Get OCP Advisor backend health, deployed OCP rules version, and release metadata."
     - type: tool
+      name: ocp-advisor__get_rule_content
+      description: "Get generic static content for one OCP Advisor or DVO-backed rule."
+    - type: tool
       name: ocp-advisor__get_upgrade_risk
       description: "Get upgrade-risk predictions for one or more OpenShift clusters."
     - type: tool
       name: ocp-advisor__list_clusters
       description: "List clusters available to the authenticated user."
+    - type: tool
+      name: ocp-advisor__list_rules
+      description: "List available OCP Advisor rules and recommendation metadata."
     # planning
     - type: tool
       name: planning__get_appstreams_lifecycle
