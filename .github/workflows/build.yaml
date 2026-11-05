@@ -17,8 +17,12 @@ on:  # yamllint disable-line rule:truthy
         default: false
 
 jobs:
+  ubuntu-runner:
+    uses: ./.github/workflows/ubuntu-runner.yaml
+
   generate-tag:
-    runs-on: ubuntu-latest
+    needs: ubuntu-runner
+    runs-on: ${{ needs.ubuntu-runner.outputs.label }}
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
     steps:
@@ -29,8 +33,8 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
   build-image:
-    runs-on: ubuntu-latest
-    needs: generate-tag
+    runs-on: ${{ needs.ubuntu-runner.outputs.label }}
+    needs: [ubuntu-runner, generate-tag]
 
     permissions:
       packages: write
@@ -109,8 +113,8 @@ jobs:
           make test-upstream-containers
 
   build-release-artifacts:
-    runs-on: ubuntu-latest
-    needs: [generate-tag, build-image]
+    runs-on: ${{ needs.ubuntu-runner.outputs.label }}
+    needs: [ubuntu-runner, generate-tag, build-image]
     permissions:
       contents: write
     steps:

@@ -1,0 +1,28 @@
+name: Ubuntu runner
+
+on:  # yamllint disable-line rule:truthy
+  workflow_call:
+    outputs:
+      label:
+        description: GitHub-hosted runner label from .github/ubuntu-runner-version
+        value: ${{ jobs.read.outputs.label }}
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    # Only reads the version file. The OS here does not have to match the pin.
+    runs-on: ubuntu-latest
+    outputs:
+      label: ${{ steps.label.outputs.label }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read pinned runner label
+        id: label
+        run: |
+          set -euo pipefail
+          version=$(tr -d '[:space:]' < .github/ubuntu-runner-version)
+          echo "label=ubuntu-${version}" >> "$GITHUB_OUTPUT"
