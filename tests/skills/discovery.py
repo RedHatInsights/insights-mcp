@@ -73,8 +73,9 @@ def parse_skill_md(path: Path) -> Skill:
     if closing_index is None:
         return replace(skill, frontmatter_error="frontmatter is not terminated by a closing '---' delimiter")
 
+    body_start = closing_index + 1
     frontmatter_text = "\n".join(lines[1:closing_index])
-    body = "\n".join(lines[closing_index + 1 :])
+    body = "\n".join(lines[body_start:])
 
     try:
         frontmatter = yaml.safe_load(frontmatter_text)
