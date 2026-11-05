@@ -15,7 +15,7 @@ test_config.json
 .venv
 
 # temporary mermaid cache
-/docs/input.mmd
+/docs/input*.mmd
 /docs/.cache/
 /site/
 .envrc
