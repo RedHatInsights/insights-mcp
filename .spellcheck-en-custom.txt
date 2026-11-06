@@ -15,9 +15,9 @@ basename
 baseos
 bool
 booleans
-CDN
 ccx
 CCX
+CDN
 Claude
 CLI
 codebase
@@ -30,7 +30,6 @@ CVE
 cves
 DCR
 deduplicated
-DVO
 deepeval
 DeepEval
 DeepEval's
@@ -41,6 +40,7 @@ Deprecations
 Dev
 direnv
 distro
+DVO
 env
 EPEL
 FastMCP's
@@ -76,12 +76,14 @@ Middleware
 Mitigations
 multiuser
 mypy
+namespace
+namespaces
 natively
 nodejs
 OAuth
+OCI
 ocp
 OCP
-OCI
 OIDC
 openapi
 parametrized
@@ -119,8 +121,9 @@ RHSM
 roadmap
 Roadmap
 roundtrips
-schemas
 SDK
+severities
+schemas
 SSO
 SSO's
 Starlette

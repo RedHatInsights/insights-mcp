@@ -11,7 +11,7 @@ ENV CONTAINER_BRAND=${CONTAINER_BRAND}
 WORKDIR /app
 
 RUN microdnf install -y --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
-    python312 python3.12-pip && \
+    python312 python3.12-pip nodejs npm && \
     microdnf clean all
 
 # Copy the project configuration and required files
