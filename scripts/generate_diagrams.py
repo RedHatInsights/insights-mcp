@@ -13,7 +13,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-MERMAID_CLI_IMAGE = "ghcr.io/mermaid-js/mermaid-cli/mermaid-cli:11.14.1-beta.13"
+MERMAID_CLI_IMAGE = "ghcr.io/mermaid-js/mermaid-cli/mermaid-cli:11.15.1-beta.13"
 
 
 def extract_mermaid_blocks(markdown_file: Path) -> dict[str, str]:
