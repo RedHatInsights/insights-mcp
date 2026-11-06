@@ -142,7 +142,7 @@ server is up-to-date, and revisit the permissions table above.
   `--all-tools`. If the user asks to create something and the tool doesn't
   exist, tell them to add `--all-tools` to the container args and restart.
 - **Tool naming convention.** Every tool is prefixed with its toolset name:
-  `vulnerability_get_cves`, `advisor_get_active_rules`, `inventory_list_hosts`.
+  `vulnerability__get_cves`, `advisor__get_active_rules`, `inventory__list_hosts`.
   Always use the full prefixed name.
 - **Cursor tool name length limit.** If Cursor says "Some tools have naming
   issues and may be filtered out", the server name in `mcp.json` is too long.

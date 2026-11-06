@@ -79,7 +79,7 @@ lint: install-test-deps ## Run linting with pre-commit (same hooks as CI lint wo
 	uv run pre-commit run --show-diff-on-failure --all-files --hook-stage manual
 
 .PHONY: test
-test: install-test-deps test-instrumentation ## Run tests with pytest (hides logging output)
+test: install-test-deps test-instrumentation test-skills ## Run tests with pytest (hides logging output)
 	@echo "Running pytest tests..."
 	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v --numprocesses=$(PARALLEL_TESTS)
 
