@@ -6,6 +6,7 @@ Provides tools to get OpenShift Advisor information from Red Hat Insights.
 
 from __future__ import annotations
 
+import re
 from typing import Annotated, Any
 
 from pydantic import Field
@@ -16,6 +17,9 @@ from tools.common import run_insights_tool_request
 
 # Smart Proxy rejects multi-cluster upgrade-risk requests above this size.
 _MAX_UPGRADE_RISK_CLUSTERS = 100
+_DEFAULT_RULE_LIST_LIMIT = 20
+_MAX_RULE_LIST_LIMIT = 100
+_RULE_ID_PATTERN = re.compile(r"^([a-zA-Z_0-9.]+)[|]([a-zA-Z_0-9.]+)$")
 
 mcp = InsightsMCP(
     name="$container_brand_long OCP Advisor MCP Server",
@@ -63,6 +67,70 @@ def _normalize_cluster_ids(cluster_ids: list[str]) -> list[str]:
     return normalized
 
 
+def _normalize_rule_id(rule_id: str) -> str:
+    """Strip and validate a Smart Proxy composite rule ID."""
+    if not isinstance(rule_id, str):
+        raise InsightsApiError("rule_id must be a string in format rule.module|ERROR_KEY")
+
+    normalized = rule_id.strip()
+    if not normalized or not _RULE_ID_PATTERN.match(normalized):
+        raise InsightsApiError("rule_id must be a non-empty string in format rule.module|ERROR_KEY")
+    return normalized
+
+
+def _normalize_rule_list_bounds(limit: int, offset: int) -> tuple[int, int]:
+    """Validate and normalize local rule-list pagination bounds."""
+    if limit < 1 or limit > _MAX_RULE_LIST_LIMIT:
+        raise InsightsApiError(f"limit must be between 1 and {_MAX_RULE_LIST_LIMIT}, got {limit}")
+    if offset < 0:
+        raise InsightsApiError(f"offset must be greater than or equal to 0, got {offset}")
+    return limit, offset
+
+
+def _slice_rule_list_response(
+    response: dict[str, Any] | str | list[Any],
+    *,
+    limit: int,
+    offset: int,
+) -> dict[str, Any] | str | list[Any]:
+    """Apply MCP-level pagination to the Smart Proxy recommendation list response."""
+    if not isinstance(response, dict) or not isinstance(response.get("recommendations"), list):
+        return response
+
+    recommendations = response["recommendations"]
+    total = len(recommendations)
+    sliced_response = dict(response)
+    end = offset + limit
+    sliced_response["recommendations"] = recommendations[offset:end]
+    sliced_response["meta"] = {
+        "count": len(sliced_response["recommendations"]),
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "has_next": end < total,
+        "has_previous": offset > 0,
+        "pagination_note": (
+            "The Smart Proxy /rule endpoint does not provide native pagination; "
+            "limit and offset are applied by the MCP tool after retrieving the rule list."
+        ),
+    }
+    return sliced_response
+
+
+def _mark_rule_content_response(response: dict[str, Any] | str | list[Any]) -> dict[str, Any] | str | list[Any]:
+    """Annotate rule content responses as generic static content."""
+    if not isinstance(response, dict):
+        return response
+
+    marked_response = dict(response)
+    marked_response["content_type"] = "generic_static_rule_content"
+    marked_response["content_note"] = (
+        "This is generic rule content from Smart Proxy /rule/{ruleId}/content. It is not a rendered, "
+        "cluster-specific finding; use cluster/namespace recommendation tools for rendered findings."
+    )
+    return marked_response
+
+
 @mcp.tool(annotations={"readOnlyHint": True})
 async def get_info() -> dict[str, Any] | str:
     """Get OCP Advisor backend health, deployed OCP rules version, and release metadata.
@@ -92,6 +160,100 @@ async def list_clusters() -> str:
     return await run_insights_tool_request(
         mcp.insights_client.get("clusters"),
         error_message=lambda exc: f"Error listing Insights Results Aggregator clusters: {exc}",
+    )
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+async def list_rules(
+    impacting: Annotated[
+        bool | None,
+        Field(
+            description=(
+                "Optional Smart Proxy impacting filter. Omit to list all available rules; true lists only rules "
+                "currently impacting clusters; false lists rules that are not currently impacting clusters."
+            ),
+        ),
+    ] = None,
+    limit: Annotated[
+        int,
+        Field(
+            description=(
+                "Maximum number of rules to return after MCP-side slicing. Range 1-100. Default 20. "
+                "The upstream /rule endpoint has no native pagination."
+            ),
+            ge=1,
+            le=_MAX_RULE_LIST_LIMIT,
+        ),
+    ] = _DEFAULT_RULE_LIST_LIMIT,
+    offset: Annotated[
+        int,
+        Field(
+            description=(
+                "Zero-based rule offset for MCP-side slicing. Default 0. "
+                "The upstream /rule endpoint has no native pagination."
+            ),
+            ge=0,
+        ),
+    ] = 0,
+) -> str:
+    """List available OCP Advisor rules and recommendation metadata.
+
+    🟢 CALL IMMEDIATELY - No information gathering required.
+
+    Uses Insights Results Smart Proxy v2 ``GET /rule``. Returned rule identifiers are
+    composite IDs such as ``ccx_rules_ocp.external.rules.example.report|ERROR_KEY`` and
+    are suitable for ``get_rule_content``. Each recommendation can include title/description,
+    generic text, publication date, risk/impact/likelihood, tags, disabled state, and impacted
+    cluster counts.
+
+    The upstream endpoint does not expose native pagination. ``limit`` and ``offset`` are
+    documented MCP-side collection bounds applied after retrieving the list. Unknown upstream
+    failures, authorization failures, and malformed ``impacting`` values are raised as errors;
+    failed retrieval is not returned as an empty successful list.
+    """
+    normalized_limit, normalized_offset = _normalize_rule_list_bounds(limit, offset)
+    params = {"impacting": impacting} if impacting is not None else None
+    return await run_insights_tool_request(
+        mcp.insights_client.get("rule", params=params),
+        error_message=lambda exc: f"Error listing OCP Advisor rules: {exc}",
+        response_transform=lambda response: _slice_rule_list_response(
+            response,
+            limit=normalized_limit,
+            offset=normalized_offset,
+        ),
+    )
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+async def get_rule_content(
+    rule_id: Annotated[
+        str,
+        Field(
+            description=(
+                "Composite OCP Advisor rule identifier in format rule.module|ERROR_KEY. "
+                "Use the rule_id/check returned by list_rules or by OCP Advisor/DVO recommendation results."
+            ),
+        ),
+    ],
+) -> str:
+    """Get generic static content for one OCP Advisor or DVO-backed rule.
+
+    🟢 CALL IMMEDIATELY when rule_id is already known.
+
+    Uses Insights Results Smart Proxy v2 ``GET /rule/{ruleId}/content``. The response is generic,
+    cluster-independent static content: title/description, generic description, reason, resolution,
+    more_info/documentation links, total risk, impact, likelihood, publish date, tags, and groups.
+
+    This tool intentionally does not return cluster-specific rendered findings or DVO object details.
+    Recommendation/report tools remain responsible for presenting rendered cluster or namespace details.
+    If static content for a DVO or other source rule is unavailable, the upstream 404/503 is surfaced
+    explicitly instead of being treated as an empty successful result.
+    """
+    normalized_rule_id = _normalize_rule_id(rule_id)
+    return await run_insights_tool_request(
+        mcp.insights_client.get(f"rule/{normalized_rule_id}/content"),
+        error_message=lambda exc: f"Error retrieving OCP Advisor rule content for {normalized_rule_id}: {exc}",
+        response_transform=_mark_rule_content_response,
     )
 
 

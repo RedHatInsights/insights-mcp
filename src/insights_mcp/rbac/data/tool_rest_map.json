@@ -426,6 +426,34 @@
         "kessel_note": "The /clusters endpoint returns a list of clusters available for the authenticated user. It requires the user to be authenticated."
       }
     ],
+    "ocp-advisor__list_rules": [
+      {
+        "method": "GET",
+        "api_path": "api/insights-results-aggregator/v2",
+        "path_template": "/rule",
+        "application": "ocp-advisor",
+        "required_v1_permissions": [
+          [
+            "ocp-advisor:recommendation-results:read"
+          ]
+        ],
+        "kessel_note": "The /rule endpoint returns OCP Advisor recommendation metadata and impacted cluster counts for rules visible to the authenticated account."
+      }
+    ],
+    "ocp-advisor__get_rule_content": [
+      {
+        "method": "GET",
+        "api_path": "api/insights-results-aggregator/v2",
+        "path_template": "/rule/{rule_id}/content",
+        "application": "ocp-advisor",
+        "required_v1_permissions": [
+          [
+            "ocp-advisor:recommendation-results:read"
+          ]
+        ],
+        "kessel_note": "The /rule/{ruleId}/content endpoint returns generic static rule content from Smart Proxy content cache; it does not return cluster-specific rendered findings."
+      }
+    ],
     "ocp-advisor__get_upgrade_risk": [
       {
         "method": "POST",
