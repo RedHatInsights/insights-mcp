@@ -1,0 +1,50 @@
+name: Monthly changelog
+
+# On the 1st of each month, append a Monthly Changelog to the newest release
+# of each of the last two completed months. The overlap covers a missed run.
+# A manual run can pass a larger `months` window.
+
+on:  # yamllint disable-line rule:truthy
+  schedule:
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+    inputs:
+      months:
+        description: Completed calendar months to update
+        type: number
+        default: 2
+      dry_run:
+        description: Print updated notes without editing releases
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: monthly-changelog
+  cancel-in-progress: false
+
+jobs:
+  ubuntu-runner:
+    uses: ./.github/workflows/ubuntu-runner.yaml
+
+  changelog:
+    needs: ubuntu-runner
+    runs-on: ${{ needs.ubuntu-runner.outputs.label }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Append monthly changelogs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MONTHS: ${{ inputs.months || 2 }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          args=(--months "$MONTHS")
+          if [ "$DRY_RUN" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          python3 scripts/monthly_changelog.py "${args[@]}"
