@@ -1,0 +1,23 @@
+name: Check ubuntu-latest
+
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+    branches:
+      - "*"
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 7 * * 1"
+
+jobs:
+  check:
+    # Probe the floating label. A mismatch is a warning annotation, not a failed check,
+    # so pull requests stay mergeable. The log still says how to bump the pin.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Compare ubuntu-latest with the pinned runner
+        run: python3 scripts/check_ubuntu_latest.py

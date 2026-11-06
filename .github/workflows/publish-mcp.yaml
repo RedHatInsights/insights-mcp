@@ -7,8 +7,12 @@ on:  # yamllint disable-line rule:truthy
   workflow_dispatch:
 
 jobs:
+  ubuntu-runner:
+    uses: ./.github/workflows/ubuntu-runner.yaml
+
   publish:
-    runs-on: ubuntu-latest
+    needs: ubuntu-runner
+    runs-on: ${{ needs.ubuntu-runner.outputs.label }}
     permissions:
       id-token: write  # Required for OIDC authentication with MCP registry
       contents: read
