@@ -20,7 +20,7 @@ from datetime import date, datetime, timezone
 from enum import Enum
 from typing import Any, TextIO, assert_never
 
-MONTHLY_CHANGELOG_HEADING = "## Monthly Changelog"
+MONTHLY_CHANGELOG_HEADING_PREFIX = "## Monthly Changelog Summary"
 AUTO_UPDATES_HEADING = "### Auto updates"
 WHATS_CHANGED_HEADING = "## What's Changed"
 KONFLUX_MARKER = "@red-hat-konflux[bot]"
@@ -243,6 +243,25 @@ def extract_changed_lines(body: str) -> list[str]:
     return lines
 
 
+def format_month_year_label(year: int, month: int) -> str:
+    """Return a full month name and year, for example ``October 2026``."""
+    return date(year, month, 1).strftime("%B %Y")
+
+
+def monthly_changelog_heading(year: int, month: int) -> str:
+    """Return the monthly changelog section heading for ``year``/``month``."""
+    return f"{MONTHLY_CHANGELOG_HEADING_PREFIX} - {format_month_year_label(year, month)}"
+
+
+def monthly_changelog_badge(year: int, month: int) -> str:
+    """Return a shields.io badge line for the monthly changelog month."""
+    label = format_month_year_label(year, month)
+    badge_value = label.replace(" ", "_")
+    alt = f"Monthly Changelog Summary {label}"
+    url = f"https://img.shields.io/badge/Monthly_Release-{badge_value}-blue"
+    return f"![{alt}]({url})"
+
+
 def already_has_changelog(body: str) -> bool:
     """Return whether ``body`` already contains the monthly changelog heading.
 
@@ -250,10 +269,10 @@ def already_has_changelog(body: str) -> bool:
         body: GitHub release notes.
 
     Returns:
-        True when a line is exactly ``## Monthly Changelog``.
+        True when a line starts with ``## Monthly Changelog Summary``.
     """
     for line in body.splitlines():
-        if line.strip() == MONTHLY_CHANGELOG_HEADING:
+        if line.strip().startswith(MONTHLY_CHANGELOG_HEADING_PREFIX):
             return True
     return False
 
@@ -290,6 +309,8 @@ def render_monthly_changelog(
     human_lines: list[str],
     auto_lines: list[str],
     prior: Release | None,
+    year: int,
+    month: int,
 ) -> str:
     """Return the markdown block appended to a month's newest release.
 
@@ -297,6 +318,8 @@ def render_monthly_changelog(
         human_lines: What's Changed bullets that are not Konflux updates.
         auto_lines: What's Changed bullets from ``@red-hat-konflux[bot]``.
         prior: Newest release of the previous month, if one exists.
+        year: Calendar year of the month being summarized.
+        month: Calendar month number, 1 through 12.
 
     Returns:
         The changelog block, including both headings and a trailing newline.
@@ -305,7 +328,11 @@ def render_monthly_changelog(
         prior_line = "Prior monthly release: none"
     else:
         prior_line = f"Prior monthly release: [{prior.tag}]({prior.url})"
-    blocks = ["---", MONTHLY_CHANGELOG_HEADING]
+    blocks = [
+        "---",
+        monthly_changelog_heading(year, month),
+        monthly_changelog_badge(year, month),
+    ]
     human_block = "\n".join(human_lines)
     if human_block:
         blocks.append(human_block)
@@ -439,6 +466,8 @@ def releases_to_update(releases: list[Release], today: date, months: int) -> Cha
             human_lines,
             auto_lines,
             _prior_release(grouped, year, month),
+            year,
+            month,
         )
         updates.append(ReleaseUpdate(tag=newest.tag, body=append_changelog(newest.body, section)))
     return ChangelogPlan(updates=tuple(updates), skipped_tags=tuple(skipped_tags))

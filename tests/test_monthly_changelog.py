@@ -23,6 +23,8 @@ from monthly_changelog import (
     extract_changed_lines,
     fetch_releases,
     gh_json_list,
+    monthly_changelog_badge,
+    monthly_changelog_heading,
     oldest_release_date,
     parse_repo,
     parse_today,
@@ -156,9 +158,9 @@ def test_extract_changed_lines_keeps_bullets_and_drops_the_rest():
 
 def test_already_has_changelog_matches_only_the_heading_line():
     """A mention of the heading inside a bullet is not the section."""
-    assert already_has_changelog("* see ## Monthly Changelog in the discussion\n") is False
-    assert already_has_changelog("## Monthly Changelog\n") is True
-    assert already_has_changelog("## Monthly Changelog   \n") is True
+    assert already_has_changelog("* see ## Monthly Changelog Summary in the discussion\n") is False
+    assert already_has_changelog("## Monthly Changelog Summary - October 2026\n") is True
+    assert already_has_changelog("## Monthly Changelog Summary - October 2026   \n") is True
 
 
 def test_split_changes_moves_konflux_lines_and_drops_duplicate_pull_requests():
@@ -171,11 +173,12 @@ def test_split_changes_moves_konflux_lines_and_drops_duplicate_pull_requests():
 def test_render_monthly_changelog_places_prior_release_between_the_lists():
     """Human edits, the previous month's release, then Konflux updates."""
     prior = make_release(SEPTEMBER_NEWEST, "2026-09-30T11:12:46Z", "")
-    section = render_monthly_changelog([CLUSTER_LINE], [KONFLUX_458, KONFLUX_473], prior)
+    section = render_monthly_changelog([CLUSTER_LINE], [KONFLUX_458, KONFLUX_473], prior, 2026, 10)
     assert section == "\n".join(
         [
             "---",
-            "## Monthly Changelog",
+            monthly_changelog_heading(2026, 10),
+            monthly_changelog_badge(2026, 10),
             CLUSTER_LINE,
             "",
             expected_prior(prior),
@@ -191,11 +194,12 @@ def test_render_monthly_changelog_places_prior_release_between_the_lists():
 
 def test_render_monthly_changelog_keeps_empty_sections_and_names_a_missing_prior():
     """Both headings are written when a month has no matching bullets."""
-    section = render_monthly_changelog([], [], None)
+    section = render_monthly_changelog([], [], None, 2026, 9)
     assert section == "\n".join(
         [
             "---",
-            "## Monthly Changelog",
+            monthly_changelog_heading(2026, 9),
+            monthly_changelog_badge(2026, 9),
             "",
             "Prior monthly release: none",
             "",
@@ -208,9 +212,10 @@ def test_render_monthly_changelog_keeps_empty_sections_and_names_a_missing_prior
 
 def test_append_changelog_keeps_the_original_notes():
     """The new section follows the existing notes. Blank notes are replaced by the section."""
-    section = "---\n## Monthly Changelog\n---\n"
+    heading = monthly_changelog_heading(2026, 10)
+    section = f"---\n{heading}\n---\n"
     assert append_changelog("## What's Changed\n* kept\n", section) == (
-        "## What's Changed\n* kept\n\n---\n## Monthly Changelog\n---\n"
+        f"## What's Changed\n* kept\n\n---\n{heading}\n---\n"
     )
     assert append_changelog("  \n", section) == section
 
@@ -416,7 +421,8 @@ def test_releases_to_update_summarizes_the_last_two_completed_months():
     october_section = "\n".join(
         [
             "---",
-            "## Monthly Changelog",
+            monthly_changelog_heading(2026, 10),
+            monthly_changelog_badge(2026, 10),
             CLUSTER_LINE,
             "",
             expected_prior(september_newest),
@@ -429,7 +435,7 @@ def test_releases_to_update_summarizes_the_last_two_completed_months():
         ]
     )
     assert plan.updates[0].body == append_changelog(october_newest_body, october_section)
-    october_monthly = plan.updates[0].body.split("## Monthly Changelog", 1)[1]
+    october_monthly = plan.updates[0].body.split(monthly_changelog_heading(2026, 10), 1)[1]
     assert "first contribution" not in october_monthly
     assert "Full Changelog" not in october_monthly
     assert october_monthly.count("pull/468") == 1
@@ -438,7 +444,8 @@ def test_releases_to_update_summarizes_the_last_two_completed_months():
     september_section = "\n".join(
         [
             "---",
-            "## Monthly Changelog",
+            monthly_changelog_heading(2026, 9),
+            monthly_changelog_badge(2026, 9),
             CATALOG_LINE,
             DOC_LINKS_LINE,
             PLAYBOOK_LINE,
@@ -461,7 +468,7 @@ def test_releases_to_update_skips_a_release_that_already_has_the_heading():
     october = make_release(
         OCTOBER_NEWEST,
         "2026-10-22T10:40:05Z",
-        "notes\n\n## Monthly Changelog\n",
+        f"notes\n\n{monthly_changelog_heading(2026, 10)}\n",
     )
     september = make_release(
         SEPTEMBER_NEWEST,
