@@ -19,7 +19,7 @@ from mcp.types import Icon, ToolAnnotations
 
 from insights_mcp import __version__, config
 from insights_mcp.catalog_tools import catalog_tool_description
-from insights_mcp.client import build_mounted_tool_names
+from insights_mcp.client import MCP_VERSION_TOOL, build_mounted_tool_names
 from insights_mcp.mcp import InsightsMCP
 from insights_mcp.tool_description import mcp_tool_title_from_docstring
 from insights_mcp.toolsets import MCPS
@@ -688,6 +688,7 @@ def main():  # pylint: disable=too-many-statements,too-many-locals
     version_doc = (get_mcp_version.__doc__ or "").format(container_brand_long=container_brand_long).strip()
     mcp_server.tool(
         get_mcp_version,
+        name=MCP_VERSION_TOOL,
         annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
         description=version_doc,
         title=mcp_tool_title_from_docstring(version_doc),
