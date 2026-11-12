@@ -14,10 +14,12 @@ LLM tests use OpenAI-compatible model endpoints, including vLLM and gateway-host
   - `generators.py` - `create_test_suite()` for generated per-toolset tests
   - `llm_prompt_support.py` - Scenario resolution, execution, and assertions
   - `fixtures.py` - Shared agent, guardian, and logging fixtures
+- `mock_insights_api/` - Catalog-backed Insights API used by LLM tests by default;
+  see [`mock_insights_api/README.md`](mock_insights_api/README.md)
 - `conftest.py` - Project-specific fixtures, collection-time credential skips, and the Python/DeepEval compatibility patch
 - `../instrumentation_tests/` - Structural MCP checks (run ``make test-instrumentation``)
 - `test_tokens.py` - MCP tool input token budget checks (see below)
-- `llm_api_discovery.py` - Resolves `{cve_id}`, `{host_id}`, etc. from live Insights APIs before each test
+- `llm_api_discovery.py` - Resolves `{cve_id}`, `{host_id}`, etc. from live Insights APIs in live mode
 - `src/<toolset>_mcp/tests/test_<toolset>_llm_prompts.py` - Generated per-toolset LLM tests
 
 ## LLM Integration Testing
@@ -51,10 +53,10 @@ The LLM integration tests support matrix testing across multiple LLM configurati
    }
    ```
 
-3. **Configure Insights credentials** for tests that start a real Insights MCP server. Set
-   `INSIGHTS_CLIENT_ID` and `INSIGHTS_CLIENT_SECRET`, or the equivalent `LIGHTSPEED_*` variables.
-   Without these credentials, project LLM tests are marked skipped during collection before server
-   fixtures are started.
+3. **Configure Insights credentials only for live API mode.** LLM tests use the catalog-backed mock
+   API by default, so mock-mode runs do not need an Insights account or Insights credentials. Set
+   `INSIGHTS_LLM_API_MODE=live` for real Insights API validation, then provide `INSIGHTS_CLIENT_ID`
+   and `INSIGHTS_CLIENT_SECRET`, or the equivalent `LIGHTSPEED_*` variables.
 
 ### Running Tests
 
@@ -69,10 +71,13 @@ make test-verbose
 # or
 make test-very-verbose
 
-# LLM integration tests only (requires test_config.json and Insights credentials)
+# LLM integration tests only (uses the local mock Insights API by default)
 make test-llm
 # equivalent:
 # env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -v
+
+# Use the real Insights API to keep up with changes.
+INSIGHTS_LLM_API_MODE=live make test-llm
 
 # One toolset only
 uv run pytest src/vulnerability_mcp/tests/test_vulnerability_llm_prompts.py -m llm -v -rs
@@ -86,6 +91,9 @@ are resolved from live APIs; scenarios skip when data is missing (`-rs`). `{work
 Hosts is never used as `{workspace}`). Creating a named group such as `mcp_test` in the test
 account is optional. Dashboard LLM prompts check that the model calls `load_*_dashboard`; they do
 not render MCP Apps UI. Regenerate example Markdown with `make test-prompts-md`.
+
+The mock API catalog, route coverage, relationships, and extension workflow are documented in
+[`mock_insights_api/README.md`](mock_insights_api/README.md).
 
 ### LLM test tracing
 

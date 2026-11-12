@@ -13,6 +13,7 @@ from tests.mock_insights_api.types import (
     MockResponse,
     MockRoute,
     QueryMatcher,
+    ResponseFactory,
 )
 
 
@@ -51,6 +52,7 @@ class MockInsightsAPI:
         query: QueryMatcher | None = None,
         body: BodyMatcher | None = None,
         response_body: Any = None,
+        response_factory: ResponseFactory | None = None,
         status: int = 200,
         headers: Mapping[str, str] | None = None,
         error: BaseException | None = None,
@@ -60,6 +62,11 @@ class MockInsightsAPI:
         Mapping matchers are subset matches. Callable matchers receive the
         complete query mapping or decoded request body and can implement
         exact or domain-specific matching when needed.
+
+        ``response_body`` remains the static-response form. Use
+        ``response_factory`` when the response depends on the request, for
+        example for pagination or a write response derived from the submitted
+        body. The factory provides the complete ``MockResponse``.
         """
         route_path = path.lstrip("/")
         if self.path_prefix:
@@ -67,6 +74,7 @@ class MockInsightsAPI:
         route = MockRoute(
             method=method,
             path=route_path,
+            response_factory=response_factory,
             query=query,
             body=body,
             response=MockResponse(
@@ -85,7 +93,7 @@ class MockInsightsAPI:
         routes = self._routes.get((request.method, request.path), ())
         for route in reversed(routes):
             if route.matches(request):
-                return route.response
+                return route.resolve(request)
         raise UnknownRouteError(request)
 
     def routes(self) -> Sequence[MockRoute]:

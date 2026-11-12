@@ -63,9 +63,10 @@ def mcp_stdio_config() -> tuple[str, list[str]]:
 
 @pytest_asyncio.fixture
 async def test_agent(  # pylint: disable=too-many-arguments,too-many-positional-arguments,redefined-outer-name
-    mcp_server_url: str,
+    llm_mcp_server_url: str,
     mcp_http_headers: dict[str, str] | None,
     mcp_stdio_config: tuple[str, list[str]],
+    llm_mcp_stdio_env: dict[str, str] | None,
     mcp_memory_token_limit: int,
     verbose_logger: logging.Logger,
     request: pytest.FixtureRequest,
@@ -75,7 +76,7 @@ async def test_agent(  # pylint: disable=too-many-arguments,too-many-positional-
     stdio_command, stdio_args = mcp_stdio_config
 
     agent = MCPAgentWrapper(
-        server_url=mcp_server_url,
+        server_url=llm_mcp_server_url,
         api_url=llm_config["MODEL_API"],
         model_id=llm_config["MODEL_ID"],
         api_key=llm_config["USER_KEY"],
@@ -83,6 +84,7 @@ async def test_agent(  # pylint: disable=too-many-arguments,too-many-positional-
         mcp_http_headers=mcp_http_headers,
         stdio_command=stdio_command,
         stdio_args=stdio_args,
+        stdio_env=llm_mcp_stdio_env,
         token_limit=mcp_memory_token_limit,
     )
     verbose_logger.info("🧪 Testing the model: %s", agent.model_id)

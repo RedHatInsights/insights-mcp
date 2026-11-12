@@ -63,9 +63,9 @@ def fetch_mcp_instructions_http(
     return instructions if isinstance(instructions, str) else ""
 
 
-async def fetch_mcp_instructions_stdio(command: str, args: List[str]) -> str:
+async def fetch_mcp_instructions_stdio(command: str, args: List[str], env: Optional[Dict[str, str]] = None) -> str:
     """Return MCP ``initialize`` ``instructions`` from a stdio MCP server subprocess."""
-    server_parameters = StdioServerParameters(command=command, args=args)
+    server_parameters = StdioServerParameters(command=command, args=args, env=env)
     async with stdio_client(server_parameters) as (read, write):
         async with ClientSession(read, write) as session:
             init_result = await session.initialize()

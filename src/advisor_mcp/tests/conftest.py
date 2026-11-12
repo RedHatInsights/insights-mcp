@@ -20,11 +20,13 @@ from tests.conftest import (
     mcp_tools,
     mock_http_headers,
     test_client_credentials,
+    toolset_llm_mcp_server_url,
     toolset_mcp_server_url,
 )
 from tests.mcp_llm_eval.fixtures import guardian_agent, test_agent, verbose_logger
 
 mcp_server_url = toolset_mcp_server_url("advisor")
+llm_mcp_server_url = toolset_llm_mcp_server_url("advisor")
 
 
 # Test constants specific to advisor

@@ -162,6 +162,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         mcp_http_headers: dict[str, str] | None = None,
         stdio_command: str | None = None,
         stdio_args: list[str] | None = None,
+        stdio_env: dict[str, str] | None = None,
     ):  # pylint: disable=too-many-instance-attributes
         self.server_url = server_url
         self.mcp_http_headers = mcp_http_headers
@@ -173,6 +174,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         self.mcp_instructions = ""
         self._stdio_command = stdio_command
         self._stdio_args = stdio_args or []
+        self._stdio_env = stdio_env
         self.agent: FunctionAgent | None = None
         self.context: Context | None = None
         self.atif_recorder: AtifTrajectoryBuilder | None = None
@@ -259,7 +261,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
             if self.server_url == "stdio":
                 if not self._stdio_command:
                     raise ValueError("stdio_command is required when server_url is 'stdio'")
-                mcp_client = BasicMCPClient(self._stdio_command, args=self._stdio_args)
+                mcp_client = BasicMCPClient(self._stdio_command, args=self._stdio_args, env=self._stdio_env)
             else:
                 mcp_http_client = create_mcp_http_client(headers=self.mcp_http_headers)
                 mcp_client = BasicMCPClient(self.server_url, http_client=mcp_http_client)
@@ -283,7 +285,7 @@ class MCPAgentWrapper:  # pylint: disable=too-many-instance-attributes
         try:
             if self.server_url == "stdio":
                 assert self._stdio_command is not None
-                return await fetch_mcp_instructions_stdio(self._stdio_command, self._stdio_args)
+                return await fetch_mcp_instructions_stdio(self._stdio_command, self._stdio_args, self._stdio_env)
             if self.server_url.startswith("http"):
                 return fetch_mcp_instructions_http(self.server_url, headers=self.mcp_http_headers)
         except Exception as exc:  # pylint: disable=broad-exception-caught
