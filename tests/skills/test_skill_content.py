@@ -68,13 +68,16 @@ def _skill_with_body(body: str) -> Skill:
     )
 
 
-def test_single_underscore_tool_reference_is_a_typo() -> None:
-    """A single-underscore reference is reported as a typo of the mounted name."""
+def test_single_underscore_tool_reference_is_ignored() -> None:
+    """Single-underscore tokens are not tool references and produce no errors."""
     skill = _skill_with_body("Call `vulnerability_get_cves` to list CVEs.")
-    errors = tool_reference_errors(skill, REGISTERED_TOOLS)
-    assert len(errors) == 1
-    assert "single underscore" in errors[0]
-    assert "vulnerability__get_cves" in errors[0]
+    assert not tool_reference_errors(skill, REGISTERED_TOOLS)
+
+
+def test_root_server_tool_reference_is_accepted() -> None:
+    """Root server tools such as insights__get_mcp_version are always valid."""
+    skill = _skill_with_body("Call `insights__get_mcp_version` to check the version.")
+    assert not tool_reference_errors(skill, REGISTERED_TOOLS)
 
 
 def test_double_underscore_tool_reference_is_accepted() -> None:

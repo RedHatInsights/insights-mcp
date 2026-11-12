@@ -21,8 +21,9 @@ from tests.skills.discovery import REPOSITORY_ROOT, Skill
 TOOLSETS_MARKDOWN = REPOSITORY_ROOT / "toolsets.md"
 
 #: Tools registered directly on the root server in ``insights_mcp/server.py``.
-#: They have no toolset prefix; ``get_mcp_version`` is currently the only one.
-ROOT_SERVER_TOOLS = frozenset({"get_mcp_version"})
+#: They use a pseudo toolset prefix; ``insights__get_mcp_version`` is currently
+#: the only one.
+ROOT_SERVER_TOOLS = frozenset({"insights__get_mcp_version"})
 
 #: Placeholder markers that must be resolved before a skill is published.
 _PLACEHOLDER_PATTERNS = (
@@ -33,9 +34,10 @@ _PLACEHOLDER_PATTERNS = (
 
 _TOOLSET_HEADER_PATTERN = re.compile(r"^## (?P<toolset>\S+)\s*$")
 _TOOL_ENTRY_PATTERN = re.compile(r"^- `(?P<tool>[a-z0-9_]+)`")
-#: Lowercase tokens whose toolset prefix is followed by one or two underscores,
-#: e.g. ``vulnerability_get_cves`` (typo) or ``vulnerability__get_cves``.
-_TOOL_REFERENCE_PATTERN = re.compile(r"^[a-z][a-z0-9-]*_{1,2}[a-z][a-z0-9_-]*$")
+#: Lowercase tokens in the mounted ``toolset__tool`` form, e.g.
+#: ``vulnerability__get_cves``. Single-underscore tokens are not tool
+#: references; every mounted tool uses a double underscore separator.
+_TOOL_REFERENCE_PATTERN = re.compile(r"^[a-z][a-z0-9-]*__[a-z][a-z0-9_-]*$")
 _BACKTICK_PATTERN = re.compile(r"`([^`\n]+)`")
 _SECTION_HEADING_PATTERN = re.compile(r"^## ", re.MULTILINE)
 
@@ -112,16 +114,12 @@ def placeholder_errors(skill: Skill) -> list[str]:
 def tool_reference_errors(skill: Skill, registered_tools: RegisteredTools) -> list[str]:
     """Backticked tool names must reference registered tools.
 
-    A backticked token is treated as a tool reference when it is lowercase,
-    contains an underscore, and starts with a registered toolset name (for
-    example ``vulnerability__get_cves``). Root server tools such as
-    ``get_mcp_version`` are always valid. Tokens with another prefix are
-    ignored: they may be commands or variable names that merely look like
-    tool names.
-
-    Mounted tools are prefixed as ``toolset__tool`` with a double underscore.
-    A single-underscore reference such as ``vulnerability_get_cves`` is
-    reported as a likely typo of the registered double-underscore name.
+    A backticked token is treated as a tool reference when it is lowercase
+    and in the mounted ``toolset__tool`` double-underscore form (for example
+    ``vulnerability__get_cves``). Root server tools such as
+    ``insights__get_mcp_version`` are always valid. Tokens in any other
+    shape are ignored: they may be commands or variable names that merely
+    look like tool names.
     """
     errors: list[str] = []
     for token in _BACKTICK_PATTERN.findall(skill.body):
@@ -130,19 +128,10 @@ def tool_reference_errors(skill: Skill, registered_tools: RegisteredTools) -> li
             continue
         if token in ROOT_SERVER_TOOLS or token in registered_tools.tool_names:
             continue
-        prefix, _, rest = token.partition("_")
+        prefix = token.split("__", 1)[0]
         if prefix not in registered_tools.toolset_names:
             continue
-        canonical = f"{prefix}__{rest}"
-        if canonical != token and canonical in registered_tools.tool_names:
-            errors.append(
-                f"tool reference {token!r} separates toolset and tool with a single underscore; "
-                f"mounted tools use two — did you mean {canonical!r}? (see toolsets.md)"
-            )
-        else:
-            errors.append(
-                f"tool reference {token!r} is not a registered tool of the {prefix!r} toolset (see toolsets.md)"
-            )
+        errors.append(f"tool reference {token!r} is not a registered tool of the {prefix!r} toolset (see toolsets.md)")
     return errors
 
 
