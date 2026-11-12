@@ -132,7 +132,7 @@ Suggest these prompts to confirm things work end-to-end:
 - "Show me the top 5 critical CVEs affecting my account" (tests vulnerability)
 - "What advisor recommendations are impacting my systems?" (tests advisor)
 
-If any fail with an auth error, call `get_mcp_version` to check whether the
+If any fail with an auth error, call `insights__get_mcp_version` to check whether the
 server is up-to-date, and revisit the permissions table above.
 
 ## Gotchas
@@ -142,7 +142,7 @@ server is up-to-date, and revisit the permissions table above.
   `--all-tools`. If the user asks to create something and the tool doesn't
   exist, tell them to add `--all-tools` to the container args and restart.
 - **Tool naming convention.** Every tool is prefixed with its toolset name:
-  `vulnerability_get_cves`, `advisor_get_active_rules`, `inventory_list_hosts`.
+  `vulnerability__get_cves`, `advisor__get_active_rules`, `inventory__list_hosts`.
   Always use the full prefixed name.
 - **Cursor tool name length limit.** If Cursor says "Some tools have naming
   issues and may be filtered out", the server name in `mcp.json` is too long.
@@ -153,7 +153,7 @@ server is up-to-date, and revisit the permissions table above.
 - **Cached tool descriptions.** After rebuilding the container, fully restart
   the IDE — the "restart MCP server" button doesn't always pick up new tool
   descriptions.
-- **Version checking.** If something seems broken, call `get_mcp_version`. It
+- **Version checking.** If something seems broken, call `insights__get_mcp_version`. It
   compares the running version against the latest GitHub release and shows
   what changed between them.
 

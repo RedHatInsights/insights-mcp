@@ -16,13 +16,13 @@ def test_get_mcp_version_description_uses_container_brand(
     brand: str,
     expected_brand_long: str,
 ) -> None:
-    """Ensure get_mcp_version exposes only the concise first-line LLM description."""
+    """Ensure insights__get_mcp_version exposes only the concise first-line LLM description."""
     _ = expected_brand_long
     tools = get_mcp_tools_with_toolset("http", toolset=None, container_brand=brand)
     tool_map = {getattr(t.metadata, "name", ""): t for t in tools}
 
-    assert "get_mcp_version" in tool_map
-    version_tool = tool_map["get_mcp_version"]
+    assert "insights__get_mcp_version" in tool_map
+    version_tool = tool_map["insights__get_mcp_version"]
 
     description = getattr(version_tool.metadata, "description", "") or ""
     assert description.startswith("MCP server package version only—not image builds or compose status.")

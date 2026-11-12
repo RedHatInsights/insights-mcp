@@ -45,7 +45,7 @@ def test_no_auth_error_mentions_rbac_only_when_mounted(mounted_tool_names, expec
     )
     error_msg = client.no_auth_error(ValueError("Missing credentials"))
 
-    assert "get_mcp_version" in error_msg
+    assert "insights__get_mcp_version" in error_msg
     assert (RBAC_DIAGNOSTIC_TOOL in error_msg) is expect_rbac
     assert "Don't proceed" not in error_msg
 
@@ -70,6 +70,6 @@ def test_no_rbac_error_mentions_rbac_only_when_mounted(mounted_tool_names, expec
     error = httpx.HTTPStatusError("Forbidden", request=response.request, response=response)
     error_msg = client.no_rbac_error(error)
 
-    assert "get_mcp_version" in error_msg
+    assert "insights__get_mcp_version" in error_msg
     assert (RBAC_EXPLAIN_DENIED_TOOL in error_msg) is expect_rbac
     assert "Don't proceed" not in error_msg
