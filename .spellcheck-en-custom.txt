@@ -18,6 +18,7 @@ booleans
 CDN
 ccx
 CCX
+CI
 Claude
 CLI
 codebase
@@ -138,6 +139,7 @@ Toolset
 toolsets
 Toolsets
 triaging
+turn's
 TTL
 TUI
 UI
@@ -151,3 +153,4 @@ Vendored
 verifier
 workspaces
 xdist
+YAMLs

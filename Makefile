@@ -79,7 +79,7 @@ lint: install-test-deps ## Run linting with pre-commit (same hooks as CI lint wo
 	uv run pre-commit run --show-diff-on-failure --all-files --hook-stage manual
 
 .PHONY: test
-test: install-test-deps test-instrumentation ## Run tests with pytest (hides logging output)
+test: install-test-deps test-instrumentation test-skills ## Run tests with pytest (hides logging output)
 	@echo "Running pytest tests..."
 	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v --numprocesses=$(PARALLEL_TESTS)
 
@@ -117,6 +117,11 @@ test-llm-verbose: ## Run only @pytest.mark.llm behavioral tests (needs test_conf
 test-llm-very-verbose: ## Run only @pytest.mark.llm behavioral tests showing all intermediate agent steps
 	@echo "Running LLM tests with debug output (pytest -m llm)..."
 	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -vvv -o log_cli=true --numprocesses=$(PARALLEL_TESTS)
+
+.PHONY: test-skills
+test-skills: install-test-deps ## Run agent skill validation tests (format + content, tests/skills/)
+	@echo "Running agent skill tests..."
+	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v tests/skills/
 
 # Define a reusable check function for container sanity tests
 # $(1) = image URL, $(2) = expected CONTAINER_BRAND value

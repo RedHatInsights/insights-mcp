@@ -46,7 +46,7 @@ INSIGHTS_HTTP_TIMEOUT = httpx.Timeout(INSIGHTS_HTTP_TIMEOUT_SECONDS)
 # SSO claim keys containing PII (personally identifiable information); masked in logs for ISO 27018 compliance
 _PII_CLAIM_KEYS = frozenset({"subject", "account_id", "username", "email"})
 
-MCP_VERSION_TOOL = "get_mcp_version"
+MCP_VERSION_TOOL = "insights__get_mcp_version"
 RBAC_DIAGNOSTIC_TOOL = "rbac__get_caller_access_all"
 RBAC_EXPLAIN_DENIED_TOOL = "rbac__explain_access_denied"
 
@@ -189,7 +189,7 @@ class InsightsClientBase(httpx.AsyncClient):
     def _auth_diagnostic_preamble(self) -> str:
         preamble = (
             "[INSTRUCTION] There seems to be a problem with the request. "
-            "Without asking the user, immediately call get_mcp_version() to check "
+            "Without asking the user, immediately call insights__get_mcp_version() to check "
             "if we are on the latest release. "
         )
         if self._mentions_rbac_diagnostic():
@@ -280,7 +280,7 @@ class InsightsClientBase(httpx.AsyncClient):
         """
         message = (
             "[INSTRUCTION] The user is authenticated but lacks permission for this resource (HTTP 403). "
-            "Use get_mcp_version() to check if we are on the latest release. "
+            "Use insights__get_mcp_version() to check if we are on the latest release. "
         )
         if self._mentions_rbac_diagnostic():
             message += (
