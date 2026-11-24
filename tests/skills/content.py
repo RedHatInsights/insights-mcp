@@ -12,6 +12,7 @@ criterion at a time; ``check_content`` combines them for the CLI.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -51,10 +52,12 @@ class RegisteredTools:
         tool_names: All prefixed tool names (for example
             ``image-builder__get_blueprints``). Mounted tools always use a
             double underscore between the toolset name and the tool name.
+        tools_by_toolset: Unprefixed tool names grouped by toolset name.
     """
 
     toolset_names: frozenset[str]
     tool_names: frozenset[str]
+    tools_by_toolset: Mapping[str, frozenset[str]]
 
 
 def load_registered_tools(toolsets_markdown: Path = TOOLSETS_MARKDOWN) -> RegisteredTools:
@@ -85,6 +88,7 @@ def load_registered_tools(toolsets_markdown: Path = TOOLSETS_MARKDOWN) -> Regist
     return RegisteredTools(
         toolset_names=frozenset(tools_by_toolset),
         tool_names=frozenset(tool_names),
+        tools_by_toolset={toolset: frozenset(tools) for toolset, tools in tools_by_toolset.items()},
     )
 
 
@@ -120,6 +124,12 @@ def tool_reference_errors(skill: Skill, registered_tools: RegisteredTools) -> li
     ``insights__get_mcp_version`` are always valid. Tokens in any other
     shape are ignored: they may be commands or variable names that merely
     look like tool names.
+
+    A token whose toolset prefix is not registered is only reported when
+    its tool part exactly matches a tool registered under some toolset (for
+    example ``vlnerability__get_cves``); the error then suggests the
+    registered toolset(s) that provide that tool. Tokens whose tool part is
+    not registered anywhere stay ignored.
     """
     errors: list[str] = []
     for token in _BACKTICK_PATTERN.findall(skill.body):
@@ -128,8 +138,13 @@ def tool_reference_errors(skill: Skill, registered_tools: RegisteredTools) -> li
             continue
         if token in ROOT_SERVER_TOOLS or token in registered_tools.tool_names:
             continue
-        prefix = token.split("__", 1)[0]
+        prefix, _, tool = token.partition("__")
         if prefix not in registered_tools.toolset_names:
+            owners = sorted(toolset for toolset, tools in registered_tools.tools_by_toolset.items() if tool in tools)
+            if not owners:
+                continue
+            suggestions = " or ".join(f"'{owner}__{tool}'" for owner in owners)
+            errors.append(f"tool reference {token!r} is not a registered tool; did you mean {suggestions}?")
             continue
         errors.append(f"tool reference {token!r} is not a registered tool of the {prefix!r} toolset (see toolsets.md)")
     return errors

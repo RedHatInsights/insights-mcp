@@ -93,3 +93,27 @@ def test_unknown_tool_of_registered_toolset_is_rejected() -> None:
     assert len(errors) == 1
     assert "not a registered tool" in errors[0]
     assert "did you mean" not in errors[0]
+
+
+def test_unknown_toolset_with_registered_tool_is_rejected() -> None:
+    """An unregistered toolset prefix with a registered tool part suggests the real tool."""
+    skill = _skill_with_body("Call `vlnerability__get_cves` to list CVEs.")
+    errors = tool_reference_errors(skill, REGISTERED_TOOLS)
+    assert len(errors) == 1
+    assert "not a registered tool" in errors[0]
+    assert "did you mean 'vulnerability__get_cves'?" in errors[0]
+
+
+def test_unknown_toolset_with_multi_toolset_tool_lists_all_owners() -> None:
+    """A tool registered under several toolsets suggests every providing toolset."""
+    skill = _skill_with_body("Call `wrong__get_openapi` to inspect the API.")
+    errors = tool_reference_errors(skill, REGISTERED_TOOLS)
+    assert len(errors) == 1
+    assert "'image-builder__get_openapi'" in errors[0]
+    assert "'vulnerability__get_openapi'" in errors[0]
+
+
+def test_unknown_toolset_and_tool_is_ignored() -> None:
+    """A token whose tool part is not registered anywhere is not a tool reference."""
+    skill = _skill_with_body("Call `not_a_toolset__not_a_tool` to do nothing.")
+    assert not tool_reference_errors(skill, REGISTERED_TOOLS)
