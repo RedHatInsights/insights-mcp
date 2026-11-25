@@ -11,9 +11,10 @@ from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 
 from insights_mcp.client import InsightsClient, build_mounted_tool_names
 from insights_mcp.config import INSIGHTS_BASE_URL
-from insights_mcp.mcp_subprocess import cleanup_server_process, start_insights_mcp_server
+from insights_mcp.mcp_subprocess import ServerEnvironment, cleanup_server_process, start_insights_mcp_server
 from tests import oauth_utils as oauth_utils_module
-from tests.llm_api_discovery import build_llm_api_context
+from tests.llm_api_discovery import build_llm_api_context as build_live_llm_api_context
+from tests.mock_insights_api.catalog import build_llm_api_context as build_mock_llm_api_context
 from tests.mock_insights_api.registry import MockInsightsAPI
 from tests.mock_insights_api.types import MockRequest
 
@@ -84,6 +85,34 @@ def toolset_mcp_server_url(toolset: str):
             cleanup_server_process(server_process)
 
     return mcp_server_url
+
+
+def toolset_llm_mcp_server_url(toolset: str):
+    """Return a session fixture for an LLM test server backed by the selected API mode."""
+
+    @pytest.fixture(scope="session")
+    def llm_mcp_server_url(request):  # pylint: disable=redefined-outer-name
+        """Start the toolset MCP server against the catalog or the live Insights API."""
+        transport = getattr(request, "param", "http")
+        if hasattr(request.node, "callspec") and "transport" in request.node.callspec.params:
+            transport = request.node.callspec.params["transport"]
+
+        mock_server = request.getfixturevalue("mock_insights_http_server")
+        server_environment = (
+            ServerEnvironment(insights_base_url=mock_server.base_url) if mock_server is not None else None
+        )
+        server_url, server_process = start_insights_mcp_server(
+            transport,
+            toolset=toolset,
+            server_environment=server_environment,
+        )
+
+        try:
+            yield server_url
+        finally:
+            cleanup_server_process(server_process)
+
+    return llm_mcp_server_url
 
 
 @pytest.fixture()
@@ -259,11 +288,14 @@ def multi_user_tokens():
 
 
 @functools.cache
-def _build_llm_api_context() -> dict[str, str]:
-    return asyncio.run(build_llm_api_context())
+def _build_live_llm_api_context() -> dict[str, str]:
+    return asyncio.run(build_live_llm_api_context())
 
 
 @pytest.fixture(scope="session")
-def llm_api_context() -> dict[str, str]:
-    """Live API-derived placeholder values for LLM prompt tests (session scope)."""
-    return dict(_build_llm_api_context())
+def llm_api_context(request) -> dict[str, str]:
+    """Return catalog or live placeholder values according to the selected API mode."""
+    api_mode = request.getfixturevalue("insights_llm_api_mode")
+    if api_mode == "mock":
+        return dict(build_mock_llm_api_context())
+    return dict(_build_live_llm_api_context())

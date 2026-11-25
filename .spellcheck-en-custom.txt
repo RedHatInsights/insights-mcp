@@ -148,6 +148,7 @@ Ungrouped
 URI
 UUID
 UUIDs
+vmaas
 vendored
 Vendored
 verifier

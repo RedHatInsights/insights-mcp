@@ -6,13 +6,24 @@ from unittest.mock import Mock
 import pytest
 
 from inventory_mcp.server import mcp
-from tests.conftest import create_mock_client, llm_api_context, toolset_mcp_server_url
+from tests.conftest import (
+    create_mock_client,
+    llm_api_context,
+    toolset_llm_mcp_server_url,
+    toolset_mcp_server_url,
+)
 from tests.mcp_llm_eval.fixtures import test_agent, verbose_logger
 
-__all__ = ["llm_api_context", "mcp_server_url", "test_agent", "verbose_logger"]
+__all__ = [
+    "llm_api_context",
+    "mcp_server_url",
+    "test_agent",
+    "verbose_logger",
+]
 
 
 mcp_server_url = toolset_mcp_server_url("inventory")
+llm_mcp_server_url = toolset_llm_mcp_server_url("inventory")
 
 
 @pytest.fixture

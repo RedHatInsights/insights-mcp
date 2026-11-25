@@ -11,11 +11,13 @@ from tests.conftest import (
     create_mock_client,
     llm_api_context,
     mcp_tools,
+    toolset_llm_mcp_server_url,
     toolset_mcp_server_url,
 )
 from tests.mcp_llm_eval.fixtures import test_agent, verbose_logger
 
 mcp_server_url = toolset_mcp_server_url("planning")
+llm_mcp_server_url = toolset_llm_mcp_server_url("planning")
 
 
 @pytest.fixture

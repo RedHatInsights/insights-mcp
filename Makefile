@@ -104,12 +104,12 @@ test-coverage: install-test-deps ## Run tests with coverage reporting
 	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -v --cov=. --cov-report=html --cov-report=term-missing --numprocesses=$(PARALLEL_TESTS)
 
 .PHONY: test-llm
-test-llm: ## Run only @pytest.mark.llm behavioral tests (needs test_config.json + INSIGHTS_* creds)
+test-llm: ## Run only @pytest.mark.llm behavioral tests (needs test_config.json; Insights creds only in live mode)
 	@echo "Running LLM tests (pytest -m llm)..."
 	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -v --numprocesses=$(PARALLEL_TESTS)
 
 .PHONY: test-llm-verbose
-test-llm-verbose: ## Run only @pytest.mark.llm behavioral tests (needs test_config.json + INSIGHTS_* creds)
+test-llm-verbose: ## Run only @pytest.mark.llm behavioral tests (needs test_config.json; Insights creds only in live mode)
 	@echo "Running LLM tests (pytest -m llm)..."
 	env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -vv -o log_cli=true --numprocesses=$(PARALLEL_TESTS)
 

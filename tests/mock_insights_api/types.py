@@ -19,7 +19,7 @@ BodyMatcher: TypeAlias = Mapping[str, Any] | Matcher
 
 @dataclass(frozen=True, slots=True)
 class MockRequest:
-    """A normalized request presented to a registered mock route."""
+    """A request presented to a registered mock route."""
 
     method: HTTPMethod
     path: str
@@ -43,6 +43,9 @@ class MockResponse:
     error: BaseException | None = None
 
 
+ResponseFactory: TypeAlias = Callable[[MockRequest], MockResponse]
+
+
 @dataclass(frozen=True, slots=True)
 class MockRoute:
     """A method/path route with optional query and body matching."""
@@ -50,6 +53,7 @@ class MockRoute:
     method: HTTPMethod
     path: str
     response: MockResponse
+    response_factory: ResponseFactory | None = None
     query: QueryMatcher | None = None
     body: BodyMatcher | None = None
 
@@ -61,6 +65,12 @@ class MockRoute:
             and _matches(self.query, request.query)
             and _matches(self.body, request.body)
         )
+
+    def resolve(self, request: MockRequest) -> MockResponse:
+        """Return the static response or invoke the request-aware factory."""
+        if self.response_factory is None:
+            return self.response
+        return self.response_factory(request)
 
 
 def _matches(matcher: Mapping[str, Any] | Matcher | None, value: Any) -> bool:
