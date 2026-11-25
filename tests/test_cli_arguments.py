@@ -32,7 +32,7 @@ class TestCliArguments:
     # Expected tools for each toolset
     EXPECTED_TOOLS: dict[str, set[str]] = {
         "insights-mcp": {
-            "get_mcp_version",
+            "insights__get_mcp_version",
         },
         "rbac": {
             "rbac__explain_access_denied",

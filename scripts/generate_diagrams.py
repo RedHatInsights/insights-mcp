@@ -11,6 +11,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 MERMAID_CLI_IMAGE = "ghcr.io/mermaid-js/mermaid-cli/mermaid-cli:11.15.1-beta.13"
@@ -83,32 +84,43 @@ def generate_diagram_from_mermaid(mermaid_code: str, output_file: Path, docs_dir
     if not check_podman():
         raise FileNotFoundError("podman is not available. Please install podman to generate diagrams.")
 
-    # Write input file directly to docs directory
-    input_file = docs_dir / "input.mmd"
-    input_file.write_text(mermaid_code, encoding="utf-8")
-
-    container_image = MERMAID_CLI_IMAGE
-
-    # Run podman to convert Mermaid to requested format
-    # Mount docs_dir as both /data (for input) and /output (for output)
     docs_dir.mkdir(parents=True, exist_ok=True)
 
-    cmd = [
-        "podman",
-        "run",
-        "--rm",
-        "--userns=keep-id",
-        f"--user={os.getuid()}",
-        "-v",
-        f"{docs_dir.absolute()}:/data:Z",
-        container_image,
-        "-i",
-        "/data/input.mmd",
-        "-o",
-        f"/data/{output_file.name}",
-    ]
-
+    # Write input file directly to docs directory.
+    # Use a unique file name per call: podman's virtiofs share on macOS
+    # (libkrun) serves stale directory entries for file names that were
+    # deleted earlier, which makes the mermaid container fail with
+    # "Input file doesn't exist" when any earlier run used the same name
+    # (for example when make runs this script once per output target).
+    file_descriptor, input_path = tempfile.mkstemp(
+        dir=docs_dir,
+        prefix=f"input-{output_file.stem}-",
+        suffix=".mmd",
+    )
+    input_file = Path(input_path)
     try:
+        os.close(file_descriptor)
+        input_file.write_text(mermaid_code, encoding="utf-8")
+
+        container_image = MERMAID_CLI_IMAGE
+
+        # Run podman to convert Mermaid to requested format
+        # Mount docs_dir as both /data (for input) and /output (for output)
+        cmd = [
+            "podman",
+            "run",
+            "--rm",
+            "--userns=keep-id",
+            f"--user={os.getuid()}",
+            "-v",
+            f"{docs_dir.absolute()}:/data:Z",
+            container_image,
+            "-i",
+            f"/data/{input_file.name}",
+            "-o",
+            f"/data/{output_file.name}",
+        ]
+
         subprocess.run(cmd, check=True)
 
         # Post-process SVG to make box border match background color
@@ -121,8 +133,7 @@ def generate_diagram_from_mermaid(mermaid_code: str, output_file: Path, docs_dir
         raise RuntimeError(error_msg) from e
     finally:
         # Clean up input file
-        if input_file.exists():
-            input_file.unlink()
+        input_file.unlink(missing_ok=True)
 
 
 def _make_box_border_match_background(svg_file: Path, rgb_color: tuple[int, int, int]) -> None:
