@@ -54,6 +54,7 @@ dev = [
     "llama-index-llms-openai-like",
     "llama-index-workflows>=2.24.1",
     "mkdocs-techdocs-core",
+    "openai<3"
 ]
 
 [project.scripts]
