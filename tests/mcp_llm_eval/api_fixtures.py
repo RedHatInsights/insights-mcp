@@ -6,7 +6,8 @@ from collections.abc import Iterator
 
 import pytest
 
-from tests.mock_insights_api import MockInsightsHTTPServer, create_mock_insights_api
+from tests.mock_insights_api import MockInsightsHTTPServer
+from tests.mock_insights_api.factory import create_mock_insights_api
 from tests.mock_insights_api.openapi import fetch_openapi_documents
 from tests.utils import get_llm_api_mode
 
