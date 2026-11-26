@@ -17,14 +17,14 @@ The mock API is the default backend:
 make test-llm
 ```
 
-The backend can be selected explicitly with `INSIGHTS_LLM_API_MODE`:
+The backend can be selected explicitly with `INSIGHTS_TEST_LLM_API_MODE`:
 
 ```bash
 # Deterministic local catalog; this is the default.
-INSIGHTS_LLM_API_MODE=mock make test-llm
+INSIGHTS_TEST_LLM_API_MODE=mock make test-llm
 
 # Real Insights API; useful for nightly or weekly validation.
-INSIGHTS_LLM_API_MODE=live make test-llm
+INSIGHTS_TEST_LLM_API_MODE=live make test-llm
 ```
 
 Both modes still require the configured model and guardian model endpoints.
@@ -56,11 +56,13 @@ The layers have separate responsibilities:
 
 - `catalog/` contains typed, reusable entities and the canonical synthetic
   data set.
-- `routes/` translates catalog entities into the response shape expected by a
-  real service endpoint. Each route module owns one service projection.
+- `src/<toolset>_mcp/tests/<toolset>_mock_routes.py` translates catalog entities
+  into the response shape expected by that service's endpoints.
+- `routes/` provides shared route helpers and registers the service modules.
 - `registry.py` provides exact method/path route registration and request
   recording. An unregistered endpoint fails instead of silently returning a
   fabricated response.
+- `factory.py` creates a registry with all service routes registered.
 - `server.py` exposes the registry through local HTTP so the normal
   `InsightsClient` and MCP process path are exercised.
 - `mcp_llm_eval/api_fixtures.py` selects mock or live mode for LLM tests.
@@ -68,7 +70,8 @@ The layers have separate responsibilities:
 The route registry is reusable outside the LLM tests as well:
 
 ```python
-from tests.mock_insights_api import MockInsightsHTTPServer, create_mock_insights_api
+from tests.mock_insights_api import MockInsightsHTTPServer
+from tests.mock_insights_api.factory import create_mock_insights_api
 from tests.mock_insights_api.openapi import fetch_openapi_documents
 
 with MockInsightsHTTPServer(create_mock_insights_api(openapi_documents=fetch_openapi_documents())) as server:
@@ -110,27 +113,13 @@ Run this after changing catalog entities or their relationships. The
 validation checks IDs, required system profiles, foreign-key-like references,
 and reciprocal CVE/Advisor relationships.
 
-## Mocked service projections
+## Service route modules
 
-`routes/__init__.py` registers the current route modules through
-`register_all_routes()`:
-
-| Toolset | API projection | Main mocked data |
-| --- | --- | --- |
-| Inventory | `api/inventory/v1` | Hosts, groups, tags, system profiles, repositories, and host relationships |
-| Vulnerability | `api/vulnerability/v1` and `api/vmaas/v3` | Systems, CVE records, affected systems, system CVEs, and vulnerability queries |
-| Advisor | `api/insights/v1` | Rules, rule statistics, affected systems, system details, and knowledge-base content |
-| Remediations | `api/remediations/v1` | Resolution suggestions and dynamically registered remediation playbooks |
-| Planning | `api/roadmap/v1` | Upcoming changes, RHEL lifecycle, and application streams |
-| Image Builder | `api/image-builder/v1` | Distributions, blueprints, composes, and blueprint write operations |
-| Content Sources | `api/content-sources/v1.0` | Repository lists and repository details |
-| RHSM | `api/rhsm/v2` | Activation keys |
-| OCP Advisor | `api/insights-results-aggregator/v2` | Cluster information, rules, rule content, and upgrade-risk predictions |
-| RBAC | `api/rbac/v1` | Access records and roles |
-
-These are projections, not duplicate client models. A route should return the
-shape consumed by the tool, while the catalog should retain the shared entity
-relationships needed by several routes.
+Service projections live in `src/<toolset>_mcp/tests/<toolset>_mock_routes.py`;
+the registrations in each file show which endpoints it mocks. The shared
+`routes/registration.py` calls them explicitly through `register_all_routes()`.
+A route should return the shape consumed by the tool, while the catalog
+retains entity relationships needed by several routes.
 
 ### OpenAPI-backed routes
 
@@ -184,12 +173,13 @@ When adding a tool or a new scenario:
    Put shared synthetic records in `catalog/data.py`; keep service-specific
    constants in `catalog/service_data.py` when they have no cross-service
    relationship.
-5. Add the smallest response projection to the relevant file in `routes/`.
+5. Add the smallest response projection to
+   `src/<toolset>_mcp/tests/<toolset>_mock_routes.py` for the toolset.
    Use the shared request, query, and pagination helpers where the behavior is
    common. Keep response envelopes and service-specific filtering local to
    the route module.
 6. Register the exact endpoint in that route module. New route modules must
-   also be added to `routes/__init__.py` so `register_all_routes()` includes
+   also be added to `routes/registration.py` so `register_all_routes()` includes
    them.
 7. Extend `catalog/context.py` only when a prompt needs a new placeholder.
    The value should be selected from the catalog, not placed separately in
@@ -211,7 +201,7 @@ uv run pytest -p no:rerunfailures -q tests/mock_insights_api/catalog/test_valida
 make test-llm
 
 # Live Insights API validation for scheduled pipelines.
-INSIGHTS_LLM_API_MODE=live make test-llm
+INSIGHTS_TEST_LLM_API_MODE=live make test-llm
 
 # Inspect skipped scenarios and their missing live data.
 env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -v -rs
