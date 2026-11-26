@@ -55,7 +55,7 @@ The LLM integration tests support matrix testing across multiple LLM configurati
 
 3. **Configure Insights credentials only for live API mode.** LLM tests use the catalog-backed mock
    API by default, so mock-mode runs do not need an Insights account or Insights credentials. Set
-   `INSIGHTS_LLM_API_MODE=live` for real Insights API validation, then provide `INSIGHTS_CLIENT_ID`
+   `INSIGHTS_TEST_LLM_API_MODE=live` for real Insights API validation, then provide `INSIGHTS_CLIENT_ID`
    and `INSIGHTS_CLIENT_SECRET`, or the equivalent `LIGHTSPEED_*` variables.
 
 ### Running Tests
@@ -77,7 +77,7 @@ make test-llm
 # env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -v
 
 # Use the real Insights API to keep up with changes.
-INSIGHTS_LLM_API_MODE=live make test-llm
+INSIGHTS_TEST_LLM_API_MODE=live make test-llm
 
 # One toolset only
 uv run pytest src/vulnerability_mcp/tests/test_vulnerability_llm_prompts.py -m llm -v -rs

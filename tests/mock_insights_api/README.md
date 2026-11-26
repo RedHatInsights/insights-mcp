@@ -17,14 +17,14 @@ The mock API is the default backend:
 make test-llm
 ```
 
-The backend can be selected explicitly with `INSIGHTS_LLM_API_MODE`:
+The backend can be selected explicitly with `INSIGHTS_TEST_LLM_API_MODE`:
 
 ```bash
 # Deterministic local catalog; this is the default.
-INSIGHTS_LLM_API_MODE=mock make test-llm
+INSIGHTS_TEST_LLM_API_MODE=mock make test-llm
 
 # Real Insights API; useful for nightly or weekly validation.
-INSIGHTS_LLM_API_MODE=live make test-llm
+INSIGHTS_TEST_LLM_API_MODE=live make test-llm
 ```
 
 Both modes still require the configured model and guardian model endpoints.
@@ -211,7 +211,7 @@ uv run pytest -p no:rerunfailures -q tests/mock_insights_api/catalog/test_valida
 make test-llm
 
 # Live Insights API validation for scheduled pipelines.
-INSIGHTS_LLM_API_MODE=live make test-llm
+INSIGHTS_TEST_LLM_API_MODE=live make test-llm
 
 # Inspect skipped scenarios and their missing live data.
 env DEEPEVAL_TELEMETRY_OPT_OUT=YES uv run pytest -m llm -v -rs

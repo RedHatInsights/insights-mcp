@@ -1,7 +1,5 @@
 """Root conftest — overrides mcp_llm_eval defaults for this project."""
 
-import os
-
 import nest_asyncio
 import pytest
 
@@ -11,15 +9,13 @@ from insights_mcp.config import (
     INSIGHTS_CLIENT_ID,
     INSIGHTS_CLIENT_SECRET,
 )
-from tests.utils import should_skip_insights_llm_tests
-
-INSIGHTS_LLM_API_MODE_ENV = "INSIGHTS_LLM_API_MODE"
+from tests.utils import get_llm_api_mode, should_skip_insights_llm_tests
 
 
 @pytest.hookimpl(trylast=True)
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     """Skip live-API LLM tests when Insights credentials are unavailable."""
-    api_mode = os.getenv(INSIGHTS_LLM_API_MODE_ENV, "mock").strip().lower()
+    api_mode = get_llm_api_mode()
     if api_mode != "live" or not should_skip_insights_llm_tests():
         return
 
@@ -40,7 +36,7 @@ pytest_plugins = ("tests.mcp_llm_eval.fixtures", "tests.mcp_llm_eval.api_fixture
 
 def pytest_report_header() -> str:
     """Show which Insights API mode is selected for the test session."""
-    api_mode = os.getenv(INSIGHTS_LLM_API_MODE_ENV, "mock").strip().lower()
+    api_mode = get_llm_api_mode()
     return f"Insights LLM API mode: {api_mode}"
 
 

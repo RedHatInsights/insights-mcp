@@ -3,6 +3,11 @@
 import os
 
 
+def get_llm_api_mode() -> str:
+    """Return the normalized LLM-test API mode, defaulting to the local mock."""
+    return os.getenv("INSIGHTS_TEST_LLM_API_MODE", "mock").strip().lower()
+
+
 def has_insights_credentials() -> bool:
     """Return True when Insights service account credentials are available in the environment."""
     client_id = os.getenv("INSIGHTS_CLIENT_ID") or os.getenv("LIGHTSPEED_CLIENT_ID") or ""
