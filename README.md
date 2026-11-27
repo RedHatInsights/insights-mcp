@@ -544,6 +544,9 @@ Please rename your MCP server name in the MCP configuration file (`mcp.json`) to
     "red-hat-lightspeed-mcp-this-will-be-too-long": { # <--- rename this
 …
 ```
+## Official Documentation of MCP Server for Lightspeed
+Please find the official documentation of the MCP Server for Lightspeed here: https://docs.redhat.com/en/documentation/red_hat_lightspeed/1-latest/
+
 
 ## Disclaimer
 
