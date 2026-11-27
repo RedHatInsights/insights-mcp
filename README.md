@@ -556,5 +556,9 @@ The OAuth/JWT auth provider used by this server for HTTP transport deployments i
 shared across Red Hat FastMCP servers. See [HACKING.md](HACKING.md#hosted-mcp-server-with-auth-provider-http-transport)
 for usage and environment variable reference.
 
+## RedHat Documentation:
+
+The detailed instructions are also available on RedHat Documentation website, available here: https://docs.redhat.com/en/documentation/red_hat_lightspeed/1-latest/html/getting_started_with_mcp_server_for_red_hat_lightspeed/index
+
 ## Contributing
 Please refer to the [hacking guide](HACKING.md) to learn more.
